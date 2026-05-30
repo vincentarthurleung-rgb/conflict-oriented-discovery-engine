@@ -1,0 +1,59 @@
+{
+  "synonym_map": {
+    "ketamine": "KETAMINE",
+    "ketamine administration": "KETAMINE",
+    "acute ketamine": "KETAMINE",
+    "subanesthetic doses of ketamine": "KETAMINE",
+    "low-dose ketamine": "KETAMINE",
+    "bdnf": "BDNF",
+    "brain-derived neurotrophic factor": "BDNF",
+    "mtor": "MTOR",
+    "mtorc1": "MTORC1",
+    "gsk-3": "GSK3",
+    "gsk3": "GSK3",
+    "nmdar": "NMDAR",
+    "nmda": "NMDAR",
+    "glun2b": "GLUN2B",
+    "glun2a": "GLUN2A",
+    "ampa": "AMPAR",
+    "human": "HUMAN",
+    "patients": "HUMAN",
+    "mouse": "MOUSE",
+    "mice": "MOUSE",
+    "rat": "RAT",
+    "rats": "RAT"
+  },
+  "forbidden_object_keywords": [
+    "effect", "behavior", "efficacy", "improvement", "response", "behavioral",
+    "ideation", "suicidal", "depression", "mdd", "anhedonia", "deficit"
+  ],
+  "weak_ontology_projection": {
+    "cell_line_or_type": {
+      "ASTROCYTE": {
+        "if_localization_is": "unspecified",
+        "then_project_localization_to": "CNS"
+      },
+      "MICROGLIA": {
+        "if_localization_is": "unspecified",
+        "then_project_localization_to": "CNS"
+      },
+      "PRIMARY_NEURON": {
+        "if_localization_is": "unspecified",
+        "then_project_localization_to": "BRAIN"
+      }
+    }
+  },
+  "composite_variable_mapping": {
+    "treatment_time_cascade": {
+      "primary_axis": "treatment",
+      "secondary_axis": "time",
+      "fusion_rules": {
+        "KETAMINE_30MIN": "KETAMINE_ACUTE",
+        "KETAMINE_24H": "KETAMINE_ACUTE",
+        "KETAMINE_48H": "KETAMINE_SUBACUTE",
+        "KETAMINE_CHRONIC": "KETAMINE_CHRONIC"
+      },
+      "fallback_strategy": "UPPER_JOIN"
+    }
+  }
+}
