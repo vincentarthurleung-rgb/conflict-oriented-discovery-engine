@@ -1,0 +1,8 @@
+{
+  "report_timestamp": "2026-05-31 22:49:39",
+  "evaluated_candidates_count": 3,
+  "falsified_sign_mismatch_count": 0,
+  "falsified_pedigree_dilution_count": 1,
+  "passed_retained_count": 2,
+  "net_omics_survival_rate": "66.67%"
+}

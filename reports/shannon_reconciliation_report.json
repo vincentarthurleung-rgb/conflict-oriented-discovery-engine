@@ -1,0 +1,11 @@
+{
+  "report_timestamp": "2026-05-31 21:25:51",
+  "total_pairs_evaluated": 699,
+  "conflict_attribution_summary": {
+    "Uncontested": 687,
+    "Type I": 3,
+    "Type II": 0,
+    "Type III": 9
+  },
+  "l2_l3_pipeline_status": "SUCCESS"
+}

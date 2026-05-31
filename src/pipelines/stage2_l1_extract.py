@@ -2,10 +2,14 @@
 C.O.D.E. Core Pipeline - Stage 2: Layer 1 Belief & Constraint Extraction
 Complete Release 1.8.9 (Production Core - Soft Healing & Fast Overclock Edition)
 
-[Release 1.8.9 Patch]:
-1. Tightened request timeout to 30s and reduced retries to 2 to crush latency.
-2. Implemented active 'causal_tuples: []' fallback on exhausted worker retries.
-3. Prevents a single hanging text block from hostage-locking the entire full-text asset.
+This module performs asynchronous extraction of causal triplets from unified
+payloads (PMC full-text and PubMed abstracts) using parallel sampling and
+consensus aggregation to mitigate LLM variance.
+
+[Release 1.8.9 Changes]:
+- Reduced request timeout to 30 seconds and retry count to 2 to lower latency.
+- Implements active fallback to {"causal_tuples": []} when worker retries are exhausted.
+- Prevents a single hanging chunk from blocking the processing of an entire asset.
 """
 
 import os
@@ -40,8 +44,7 @@ if not API_KEY:
 N_SAMPLES = 5                     # Number of parallel samples for stochastic variance capture
 CHUNK_WORD_LIMIT = 1200           # Maximum words per sliding window chunk
 
-# 🛡️ 战术卡尺安全线：将并发控制在 16 路，给网关充足的响应时间，杜绝拥堵
-MAX_CONCURRENT_WORKERS = 16       
+MAX_CONCURRENT_WORKERS = 16       # Number of concurrent API workers
 
 # ==================== 2. Dynamic System Prompt Template Loader ====================
 def load_commander_system_prompt():
@@ -150,7 +153,7 @@ async def call_llm_worker(session, chunk_content, sample_id, asset_id):
         "Authorization": f"Bearer {API_KEY}"
     }
 
-    # ⚡【战术级超频微调】：重试降低为 2 次，单次网络死锁超时压缩到 30 秒！绝不干等！
+    # Retry up to 2 times with a 30-second timeout per attempt
     for attempt in range(2):
         try:
             async with session.post(API_URL, json=payload, headers=headers, timeout=30) as response:
@@ -168,14 +171,12 @@ async def call_llm_worker(session, chunk_content, sample_id, asset_id):
                     write_audit_event("API_ERROR", asset_id, f"Non-200 response: {response.status}", {"text": status_text[:200]})
                     await asyncio.sleep(2)
         except json.JSONDecodeError:
-            # 🛡️ 格式损坏直接原地化为空解耦，拒绝卡死流水线
+            # Malformed JSON response – treat as empty extraction
             return {"causal_tuples": []}
         except Exception:
             await asyncio.sleep(1)
 
-    # ⚡【至高核心自愈盾牌】：如果这个 Chunk 卡死超过一分钟（2次重试均阵亡）
-    # 强制赋予该 Chunk 一个合法的空结果字典，作为有效负面观测直接过关！
-    # 确保整篇大文章能瞬间在磁盘写出完结 JSON，让后续的文献全速向前大超车！
+    # Fallback after exhausting retries: return empty list to allow asset completion
     write_audit_event("SOFT_TIMEOUT_HEAL", asset_id, f"Chunk sample {sample_id} reached fallback limits. Force committed empty lists.")
     return {"causal_tuples": []}
 
@@ -185,7 +186,7 @@ def aggregate_parallel_universe_samples(samples):
     total_valid_samples = 0
 
     for s in samples:
-        # 即使被软自愈赋予了默认值，只要它满足字典流形，依旧平权计入分母！
+        # Skip invalid or error responses
         if not s or not isinstance(s, dict) or "pipeline_error" in s:
             continue
 
@@ -336,7 +337,7 @@ async def run_extraction_pipeline():
     asset_dict = manifest.get("papers", {})
     all_asset_ids = list(asset_dict.keys())
 
-    # Filter out already processed assets to avoid redundant work and UI lockup
+    # Filter out already processed assets
     final_mining_tasks = []
     skipped_count = 0
 
