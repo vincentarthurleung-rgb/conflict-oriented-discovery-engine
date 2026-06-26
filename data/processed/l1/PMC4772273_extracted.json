@@ -1,0 +1,2794 @@
+{
+  "asset_id": "PMC4772273",
+  "doi": "10.1093/ijnp/pyv087",
+  "article_title": "Two Binges of Ethanol a Day Keep the Memory Away in Adolescent Rats: Key Role for GLUN2B Subunit",
+  "journal": "International Journal of Neuropsychopharmacology",
+  "belief_weight": 0.65,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [
+        {
+          "subject": "ethanol exposure",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "motivation and preference for alcohol intake",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "adolescence (exposure), later in life (effect)",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "our laboratory demonstrated that such a pattern of ethanol exposure during adolescence in rats increased motivation and preference for alcohol intake later in life.",
+            "In this context, our laboratory demonstrated that such a pattern of ethanol exposure during adolescence in rats increased motivation and preference for alcohol intake later in life."
+          ],
+          "mean_confidence": 0.97,
+          "predominant_negated": false
+        },
+        {
+          "subject": "2-week intermittent ethanol exposure",
+          "relation_raw_variants": [
+            "decreased"
+          ],
+          "relation_sign": -1,
+          "object": "LTP",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "hippocampal",
+              "time": "a few days after 2-week exposure",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Long-term synaptic potentiation (LTP) decreased for a few days after a 2-week intermittent ethanol exposure"
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol exposure",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "motivation and preference for alcohol intake",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "adolescence (exposure), later in life (effect)",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "our laboratory demonstrated that such a pattern of ethanol exposure during adolescence in rats increased motivation and preference for alcohol intake later in life.",
+              "confidence": 1.0
+            },
+            {
+              "subject": "2-week intermittent ethanol exposure",
+              "relation_raw": "decreased",
+              "relation_sign": -1,
+              "object": "LTP",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "hippocampal",
+                "time": "a few days after 2-week exposure",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Long-term synaptic potentiation (LTP) decreased for a few days after a 2-week intermittent ethanol exposure",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol exposure",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "motivation and preference for alcohol intake",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In this context, our laboratory demonstrated that such a pattern of ethanol exposure during adolescence in rats increased motivation and preference for alcohol intake later in life.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "MATERIALS AND METHODS",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Ethanol Exposure and Pharmacological Treatments",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Blood Ethanol Content",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Slices and Electrophysiology",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Novel Object Recognition Test",
+      "aggregated_relations": [
+        {
+          "subject": "EtOH",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "low performance",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "EtOH",
+              "localization": "unspecified",
+              "time": "48h pre-training",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "EtOH (3g/kg, i.p.)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "EtOH",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": -1,
+          "object": "low performance",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "D-serine + EtOH",
+              "localization": "unspecified",
+              "time": "48h pre-training",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "D-serine (300mg/kg, i.p.) + EtOH (3g/kg, i.p.)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "EtOH + D-serine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "low performance",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "48h pre-training",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Administration of ketamine (25mg/kg, i.p.) induces the same result as EtOH."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "EtOH",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "lower discrimination ratio",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "EtOH",
+              "localization": "unspecified",
+              "time": "48h pre-training",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In contrast, EtOH or ketamine treatments induced a lower ratio, suggesting there was no preference for the novel object."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "lower discrimination ratio",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "48h pre-training",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In contrast, EtOH or ketamine treatments induced a lower ratio, suggesting there was no preference for the novel object."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "EtOH",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "EtOH",
+                "localization": "unspecified",
+                "time": "48h pre-training",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "D-serine + EtOH",
+                "localization": "unspecified",
+                "time": "48h pre-training",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "48h pre-training",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of ketamine (25mg/kg, i.p.) induces the same result as EtOH.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "EtOH",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "lower discrimination ratio",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "EtOH",
+                "localization": "unspecified",
+                "time": "48h pre-training",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In contrast, EtOH or ketamine treatments induced a lower ratio, suggesting there was no preference for the novel object.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "lower discrimination ratio",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "48h pre-training",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In contrast, EtOH or ketamine treatments induced a lower ratio, suggesting there was no preference for the novel object.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "EtOH",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "EtOH (3g/kg, i.p.)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "D-serine (300mg/kg, i.p.) + EtOH (3g/kg, i.p.)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "EtOH",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "EtOH",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "EtOH + D-serine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of D-serine (300mg/kg, i.p.) in addition to EtOH prevented the low performance induced by EtOH alone.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "low performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Administration of ketamine (25mg/kg, i.p.) induces the same result as EtOH.",
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Statistics and Data Presentation",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Blood Ethanol Content",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Disturbances of Cognitive Function",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Bidirectional Synaptic Plasticity After Two Binges of Ethanol",
+      "aggregated_relations": [
+        {
+          "subject": "ethanol",
+          "relation_raw_variants": [
+            "abolished"
+          ],
+          "relation_sign": -1,
+          "object": "LTD",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slices",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "When recordings were performed 48h after EtOH, LTD was abolished at the end of the recording (EtOH48h: -3.6±3.2 %, n = 8, P=.002 compared with control) (Figure 2A\n1-A2)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ethanol",
+          "relation_raw_variants": [
+            "abolished"
+          ],
+          "relation_sign": 1,
+          "object": "LTD",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slices",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "8 days",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "LTD abolition was not obtained if the delay between treatment and recordings was increased to 8 days (control NaCl: -20.9±3.9% of baseline, n = 7, vs EtOH8d: -29.9±7.5, n = 6, P=.1) (Figure 2A\n2-A4)."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": true
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol",
+              "relation_raw": "abolished",
+              "relation_sign": -1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal slices",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "When recordings were performed 48h after EtOH, LTD was abolished at the end of the recording (EtOH48h: -3.6±3.2 %, n = 8, P=.002 compared with control) (Figure 2A\n1-A2).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ethanol",
+              "relation_raw": "abolished",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal slices",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "8 days",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "LTD abolition was not obtained if the delay between treatment and recordings was increased to 8 days (control NaCl: -20.9±3.9% of baseline, n = 7, vs EtOH8d: -29.9±7.5, n = 6, P=.1) (Figure 2A\n2-A4).",
+              "confidence": 0.7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "The Effects of One Binge of Ethanol on Synaptic Plasticity",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Effects of Ethanol on Basal Synaptic Transmission",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Cellular Targets of 2 Binges of Ethanol During LTD Abolition",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "abolished"
+          ],
+          "relation_sign": -1,
+          "object": "LTD",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal neurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "hippocampal slices",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In contrast, ketamine abolished LTD and evoked similar effects as 2 binges of EtOH (Figure 7B1-B2; Ket 48 hours: -0.03±7.0, n = 6, P=.02 vs control group).",
+            "In contrast, ketamine abolished LTD and evoked similar effects as 2 binges of EtOH"
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": -1,
+          "object": "LTD abolition",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal neurons",
+              "species": "unspecified",
+              "treatment": "D-serine, EtOH",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "hippocampal neurons",
+              "species": "unspecified",
+              "treatment": "D-serine",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, D-serine administered after each binge of EtOH prevented LTD abolition 48 hours later (Figure 4C1-C2) (control NaCl: -18.0±4.3% of baseline, n=9 vs EtOH+D-serine 48 hours: -30.2±8.0, n = 5, P=.08).",
+            "Interestingly, D-serine administered after each binge of EtOH prevented LTD abolition 48 hours later"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "THIP",
+          "relation_raw_variants": [
+            "abolished"
+          ],
+          "relation_sign": 1,
+          "object": "LTD",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 2,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal neurons",
+              "species": "unspecified",
+              "treatment": "THIP",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "None of these agents abolished LTD after 48 hours (Figure 8A-B; THIP 48 hours: -28.8±8.5, n=6 vs Musci 48 hours: -26.6±7.3, n = 6, P=.4).",
+            "None of these agents abolished LTD after 48 hours"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        },
+        {
+          "subject": "muscimol",
+          "relation_raw_variants": [
+            "abolished"
+          ],
+          "relation_sign": 1,
+          "object": "LTD",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 2,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal neurons",
+              "species": "unspecified",
+              "treatment": "muscimol",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "None of these agents abolished LTD after 48 hours (Figure 8A-B; THIP 48 hours: -28.8±8.5, n=6 vs Musci 48 hours: -26.6±7.3, n = 6, P=.4).",
+            "None of these agents abolished LTD after 48 hours"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": 1,
+          "object": "the effects of EtOH on LTD",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slices",
+              "species": "unspecified",
+              "treatment": "D-serine + EtOH",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Coadministrations of D-serine (300mg/kg) with EtOH (3g/kg) prevented the effects of EtOH on LTD."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "abolished",
+              "relation_sign": -1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In contrast, ketamine abolished LTD and evoked similar effects as 2 binges of EtOH (Figure 7B1-B2; Ket 48 hours: -0.03±7.0, n = 6, P=.02 vs control group).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD abolition",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "D-serine, EtOH",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, D-serine administered after each binge of EtOH prevented LTD abolition 48 hours later (Figure 4C1-C2) (control NaCl: -18.0±4.3% of baseline, n=9 vs EtOH+D-serine 48 hours: -30.2±8.0, n = 5, P=.08).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "THIP",
+              "relation_raw": "abolished",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "THIP",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "None of these agents abolished LTD after 48 hours (Figure 8A-B; THIP 48 hours: -28.8±8.5, n=6 vs Musci 48 hours: -26.6±7.3, n = 6, P=.4).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "muscimol",
+              "relation_raw": "abolished",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "muscimol",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "None of these agents abolished LTD after 48 hours (Figure 8A-B; THIP 48 hours: -28.8±8.5, n=6 vs Musci 48 hours: -26.6±7.3, n = 6, P=.4).",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "abolished",
+              "relation_sign": -1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In contrast, ketamine abolished LTD and evoked similar effects as 2 binges of EtOH",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD abolition",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "D-serine",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, D-serine administered after each binge of EtOH prevented LTD abolition 48 hours later",
+              "confidence": 0.9
+            },
+            {
+              "subject": "THIP",
+              "relation_raw": "abolished",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "THIP",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "None of these agents abolished LTD after 48 hours",
+              "confidence": 0.9
+            },
+            {
+              "subject": "muscimol",
+              "relation_raw": "abolished",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal neurons",
+                "species": "unspecified",
+                "treatment": "muscimol",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "None of these agents abolished LTD after 48 hours",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "abolished",
+              "relation_sign": -1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal slices",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In contrast, ketamine abolished LTD and evoked similar effects as 2 binges of EtOH (Figure 7B1-B2; Ket 48 hours: -0.03±7.0, n = 6, P=.02 vs control group).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": 1,
+              "object": "the effects of EtOH on LTD",
+              "context": {
+                "cell_line_or_type": "hippocampal slices",
+                "species": "unspecified",
+                "treatment": "D-serine + EtOH",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Coadministrations of D-serine (300mg/kg) with EtOH (3g/kg) prevented the effects of EtOH on LTD.",
+              "confidence": 0.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Analysis of NMDA-fEPSPs After 2 Binges of Ethanol",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Two Binges of Ethanol Change the Threshold for Synaptic Plasticity",
+      "aggregated_relations": [
+        {
+          "subject": "2 binges of ethanol",
+          "relation_raw_variants": [
+            "lead to"
+          ],
+          "relation_sign": 1,
+          "object": "leftward shift of the BCM curve",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Therefore, 2 binges of ethanol lead to a leftward shift of the BCM curve."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "2 binges of ethanol",
+              "relation_raw": "lead to",
+              "relation_sign": 1,
+              "object": "leftward shift of the BCM curve",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Therefore, 2 binges of ethanol lead to a leftward shift of the BCM curve.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "2 binges of ethanol",
+              "relation_raw": "lead to",
+              "relation_sign": 1,
+              "object": "leftward shift of the BCM curve",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Therefore, 2 binges of ethanol lead to a leftward shift of the BCM curve.",
+              "confidence": 0.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "2 alcohol binges",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "cognitive deficits",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "alcohol binge",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": -1,
+          "object": "cognitive deficits",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "D-serine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+            "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": -1,
+          "object": "LTD deficits",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "D-serine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+            "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "mimicked"
+          ],
+          "relation_sign": 1,
+          "object": "cognitive deficits",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+            "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "mimicked"
+          ],
+          "relation_sign": 1,
+          "object": "LTD deficits",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+            "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "alcohol binges",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "cognitive deficits",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "alcohol binges",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "cognitive deficits are induced 48 hours after only 2 alcohol binges"
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "2 alcohol binges",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "alcohol binge",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "mimicked",
+              "relation_sign": 1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "mimicked",
+              "relation_sign": 1,
+              "object": "LTD deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Our major findings are: (1) cognitive deficits are induced 48 hours after only 2 alcohol binges; (2) ethanol-induced abolition of LTD in the hippocampus is observed at the same time when cognitive deficits occurred; (3) both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine; and (4) deficits seem to be linked to repetitive short-lasting NMDA receptor blockade only, inducing a change in subunit composition of the NMDA receptor.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "alcohol binges",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "alcohol binges",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "cognitive deficits are induced 48 hours after only 2 alcohol binges",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "D-serine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "D-serine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "mimicked",
+              "relation_sign": 1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "mimicked",
+              "relation_sign": 1,
+              "object": "LTD deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "both cognitive and LTD deficits are prevented by D-serine and mimicked by ketamine",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 16,
+      "section": "Behavior Effects of Two Binges of Ethanol",
+      "aggregated_relations": [
+        {
+          "subject": "Two binges of ethanol",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "cognitive deficits",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol binges",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Two binges of ethanol induced cognitive deficits, since NOR was impaired."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ethanol",
+          "relation_raw_variants": [
+            "suppressed"
+          ],
+          "relation_sign": -1,
+          "object": "hippocampus LTD",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "More interestingly, animals were trained at a time when hippocampus LTD has been selectively suppressed by ethanol (see below)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "2 i.p. doses of 2.5g/kg ethanol",
+          "relation_raw_variants": [
+            "impaired"
+          ],
+          "relation_sign": -1,
+          "object": "Y-maze performance",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In 7-day-old animals, 2 i.p. doses of 2.5g/kg ethanol given 2 hours apart impaired Y-maze performance (spontaneous alternation) without affecting water maze learning and retrieval 3 weeks later (Izumi et al., 2005a), although others found some disturbances (Wozniak et al., 2004)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "Four days of binge ethanol exposure",
+          "relation_raw_variants": [
+            "impaired"
+          ],
+          "relation_sign": -1,
+          "object": "NOR",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "young adult rats",
+              "treatment": "binge ethanol exposure",
+              "localization": "unspecified",
+              "time": "1 week after treatment",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Four days of binge ethanol exposure in young adult rats impaired NOR 1 week after treatment (Cippitelli et al., 2010), suggesting that repetition of binges durably alter cognitive function."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "chronic methylphenidate treatment",
+          "relation_raw_variants": [
+            "impaired"
+          ],
+          "relation_sign": -1,
+          "object": "object memory",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "methylphenidate",
+              "localization": "unspecified",
+              "time": "15 days after treatment",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, 15 days after a chronic methylphenidate treatment but not the day after the treatment (Taukulis et al., 2014), object memory was impaired, suggesting that the effects of drugs of abuse develop during the abstinence period."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "Two binges of ethanol",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "cognitive deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol binges",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Two binges of ethanol induced cognitive deficits, since NOR was impaired.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ethanol",
+              "relation_raw": "suppressed",
+              "relation_sign": -1,
+              "object": "hippocampus LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "More interestingly, animals were trained at a time when hippocampus LTD has been selectively suppressed by ethanol (see below).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "2 i.p. doses of 2.5g/kg ethanol",
+              "relation_raw": "impaired",
+              "relation_sign": -1,
+              "object": "Y-maze performance",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In 7-day-old animals, 2 i.p. doses of 2.5g/kg ethanol given 2 hours apart impaired Y-maze performance (spontaneous alternation) without affecting water maze learning and retrieval 3 weeks later (Izumi et al., 2005a), although others found some disturbances (Wozniak et al., 2004).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "Four days of binge ethanol exposure",
+              "relation_raw": "impaired",
+              "relation_sign": -1,
+              "object": "NOR",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "young adult rats",
+                "treatment": "binge ethanol exposure",
+                "localization": "unspecified",
+                "time": "1 week after treatment",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Four days of binge ethanol exposure in young adult rats impaired NOR 1 week after treatment (Cippitelli et al., 2010), suggesting that repetition of binges durably alter cognitive function.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "chronic methylphenidate treatment",
+              "relation_raw": "impaired",
+              "relation_sign": -1,
+              "object": "object memory",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "methylphenidate",
+                "localization": "unspecified",
+                "time": "15 days after treatment",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 15 days after a chronic methylphenidate treatment but not the day after the treatment (Taukulis et al., 2014), object memory was impaired, suggesting that the effects of drugs of abuse develop during the abstinence period.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 17,
+      "section": "LTD Is More Sensitive Than LTP",
+      "aggregated_relations": [
+        {
+          "subject": "chronic intermittent ethanol exposure",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "hippocampus NMDA-dependent LTD",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "hippocampus",
+              "time": "chronic, several weeks",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "hippocampus",
+              "time": "several weeks",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In adult rats, chronic intermittent ethanol exposure reduced hippocampus NMDA-dependent LTD (Thinschmidt et al., 2003), although ethanol treatment was performed over several weeks."
+          ],
+          "mean_confidence": 0.97,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ethanol",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA-dependent LTD",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "chronic intermittent ethanol",
+              "localization": "hippocampus",
+              "time": "several weeks",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In adult rats, chronic intermittent ethanol exposure reduced hippocampus NMDA-dependent LTD (Thinschmidt et al., 2003), although ethanol treatment was performed over several weeks."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "chronic intermittent ethanol exposure",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "hippocampus NMDA-dependent LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "hippocampus",
+                "time": "chronic, several weeks",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In adult rats, chronic intermittent ethanol exposure reduced hippocampus NMDA-dependent LTD (Thinschmidt et al., 2003), although ethanol treatment was performed over several weeks.",
+              "confidence": 1.0
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "NMDA-dependent LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "chronic intermittent ethanol",
+                "localization": "hippocampus",
+                "time": "several weeks",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In adult rats, chronic intermittent ethanol exposure reduced hippocampus NMDA-dependent LTD (Thinschmidt et al., 2003), although ethanol treatment was performed over several weeks.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "chronic intermittent ethanol exposure",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "hippocampus NMDA-dependent LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "hippocampus",
+                "time": "several weeks",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In adult rats, chronic intermittent ethanol exposure reduced hippocampus NMDA-dependent LTD (Thinschmidt et al., 2003), although ethanol treatment was performed over several weeks.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 18,
+      "section": "The Effects of Ethanol Include a Specific Role for GluN2B Subunit",
+      "aggregated_relations": [
+        {
+          "subject": "acute ethanol",
+          "relation_raw_variants": [
+            "block"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA receptors",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ethanol",
+          "relation_raw_variants": [
+            "block",
+            "blocks"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA receptors",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012)."
+          ],
+          "mean_confidence": 0.94,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": -1,
+          "object": "ethanol-induced LTD abolition",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "GABAA receptor agonists",
+          "relation_raw_variants": [
+            "inhibit"
+          ],
+          "relation_sign": 1,
+          "object": "LTD",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "GABAA receptor agonist",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Finally, and in contrast to NMDA receptor involvement, a role for a GABAergic component can be excluded, since no LTD inhibition was observed after i.p. injections of 2 different agonists of the GABAA receptor."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        },
+        {
+          "subject": "D-serine",
+          "relation_raw_variants": [
+            "prevented"
+          ],
+          "relation_sign": -1,
+          "object": "LTD abolition",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol, D-serine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "D-serine, ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ethanol",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "LTD abolition",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "acute ethanol",
+              "relation_raw": "block",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol",
+              "relation_raw": "block",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "ethanol-induced LTD abolition",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "GABAA receptor agonists",
+              "relation_raw": "inhibit",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "GABAA receptor agonist",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Finally, and in contrast to NMDA receptor involvement, a role for a GABAergic component can be excluded, since no LTD inhibition was observed after i.p. injections of 2 different agonists of the GABAA receptor.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol",
+              "relation_raw": "block",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD abolition",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol, D-serine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012).",
+              "confidence": 1.0
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD abolition",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol",
+              "relation_raw": "block",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "D-serine is a pro-mnesiant drug and acute ethanol is known to block NMDA receptors (Möykkynen and Korpi, 2012).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ethanol",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "LTD abolition",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "D-serine",
+              "relation_raw": "prevented",
+              "relation_sign": -1,
+              "object": "LTD abolition",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "D-serine, ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, ethanol-induced LTD abolition was prevented when D-serine was i.p. co-injected with ethanol.",
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 19,
+      "section": "Intermittence Reveals the Effects of Ethanol",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 20,
+      "section": "Significance of BEC Level",
+      "aggregated_relations": [
+        {
+          "subject": "ethanol regimen",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "500mg/dL BEC 1 hour after a second injection and/or a sustained 200-mg/dL level",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "1 hour after second injection",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In several studies, ethanol regimen induced 500mg/dL BEC 1 hour after a second injection and/or a sustained 200-mg/dL level for several hours (Collins et al., 1998; Crews et al., 2000; Izumi et al., 2005a)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "2 independent intoxications",
+          "relation_raw_variants": [
+            "inducing"
+          ],
+          "relation_sign": 1,
+          "object": "a repeated specific ethanol-related mechanism",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances."
+          ],
+          "mean_confidence": 0.78,
+          "predominant_negated": false
+        },
+        {
+          "subject": "repeated specific ethanol-related mechanism",
+          "relation_raw_variants": [
+            "leading to"
+          ],
+          "relation_sign": 1,
+          "object": "behavior and electrophysiological disturbances",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances."
+          ],
+          "mean_confidence": 0.75,
+          "predominant_negated": false
+        },
+        {
+          "subject": "LTD abolition",
+          "relation_raw_variants": [
+            "responsible for",
+            "was responsible for"
+          ],
+          "relation_sign": 1,
+          "object": "learning deficits",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol binge",
+              "localization": "unspecified",
+              "time": "48 hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "LTD abolition needs 48 hours to be measurable and was responsible for learning deficits."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "a repeated specific ethanol-related mechanism",
+          "relation_raw_variants": [
+            "leading to"
+          ],
+          "relation_sign": 1,
+          "object": "behavior and electrophysiological disturbances",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ethanol",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances."
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ethanol regimen",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "500mg/dL BEC 1 hour after a second injection and/or a sustained 200-mg/dL level",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "1 hour after second injection",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In several studies, ethanol regimen induced 500mg/dL BEC 1 hour after a second injection and/or a sustained 200-mg/dL level for several hours (Collins et al., 1998; Crews et al., 2000; Izumi et al., 2005a).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "2 independent intoxications",
+              "relation_raw": "inducing",
+              "relation_sign": 1,
+              "object": "a repeated specific ethanol-related mechanism",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances.",
+              "confidence": 0.75
+            },
+            {
+              "subject": "repeated specific ethanol-related mechanism",
+              "relation_raw": "leading to",
+              "relation_sign": 1,
+              "object": "behavior and electrophysiological disturbances",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances.",
+              "confidence": 0.75
+            },
+            {
+              "subject": "LTD abolition",
+              "relation_raw": "responsible for",
+              "relation_sign": 1,
+              "object": "learning deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "LTD abolition needs 48 hours to be measurable and was responsible for learning deficits.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "2 independent intoxications",
+              "relation_raw": "inducing",
+              "relation_sign": 1,
+              "object": "a repeated specific ethanol-related mechanism",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances.",
+              "confidence": 0.8
+            },
+            {
+              "subject": "a repeated specific ethanol-related mechanism",
+              "relation_raw": "leading to",
+              "relation_sign": 1,
+              "object": "behavior and electrophysiological disturbances",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Therefore, our procedure can be interpreted as 2 independent intoxications inducing a repeated specific ethanol-related mechanism, leading to behavior and electrophysiological disturbances.",
+              "confidence": 0.8
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "LTD abolition",
+              "relation_raw": "was responsible for",
+              "relation_sign": 1,
+              "object": "learning deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol binge",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "LTD abolition needs 48 hours to be measurable and was responsible for learning deficits.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "LTD abolition",
+              "relation_raw": "was responsible for",
+              "relation_sign": 1,
+              "object": "learning deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ethanol",
+                "localization": "unspecified",
+                "time": "48 hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "LTD abolition needs 48 hours to be measurable and was responsible for learning deficits.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 21,
+      "section": "Statement of Interest",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ]
+}

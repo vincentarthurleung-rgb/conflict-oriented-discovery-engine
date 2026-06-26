@@ -1,0 +1,192 @@
+{
+  "pmcid": "PMC3965840",
+  "doi": "10.1038/mp.2013.66",
+  "article_title": "Reelin, an extracellular matrix protein linked to early onset psychiatric diseases, drives postnatal development of the prefrontal cortex via GluN2B-NMDARs and the mTOR pathway",
+  "journal": "Molecular Psychiatry",
+  "impact_factor": 11.1,
+  "jcr_tier": "Top",
+  "belief_weight": 0.85,
+  "is_noise_candidate": false,
+  "paragraphs": [
+    {
+      "section": "Introduction",
+      "text": "The brain extracellular matrix (ECM) is a complex assembly of different types of molecules including glycoproteins and proteoglycans, the functions of which extend far beyond its classical roles in structural scaffolding. The brain ECM is of considerable importance to the physiology of central synapses1 and numerous evidences point to its involvement in the etiology of several psychiatric disorders such as schizophrenia, bipolar disorders, major depression and autism.2, 3"
+    },
+    {
+      "section": "Introduction",
+      "text": "Reelin is a prominent ECM glycoprotein4 linked to an extensive signaling complex,5 which perfectly illustrates this duality. Reelin modulates several aspects of synaptic function and plasticity as well as neuronal morphology and development. In the adult brain, reelin supplementation increases hippocampal long-term potentiation (LTP)6 and synaptic activity,7 promotes hippocampal dendrite and spine development8, 9 and enhances cognitive ability.9 Reelin has been proposed to participate to the etiology of several psychiatric disorders. The reelin gene (RELN) is a strong candidate in diverse psychiatric diseases of early onset such as depression, schizophrenia and in neurodevelopmental disorders including autism.10, 11, 12, 13 Impairment in reelin signaling has been hypothetized to increase susceptibility to psychiatric disorders.2, 14, 15 Despite multiple lines of evidence in supporting a link between RELN and psychiatric disorders, it has proven very difficult to show a direct causal evidence of the involvement of the protein in early onset disorders. Indeed, behavioral studies modeling some endophenotypes of schizophrenia or depression gave conflicting results in reelin-haploinsufficient murine models at adult stages.16, 17"
+    },
+    {
+      "section": "Introduction",
+      "text": "The prefrontal cortex (PFC) is instrumental to higher cognitive and executive tasks and is implicated in emotional behavior.18, 19 Dysfunctions of the PFC are a hallmark feature of numerous neuropsychiatric diseases including depression, schizophrenia and autism.20, 21, 22 A prominent hypothesis suggests that many symptoms of schizophrenia arise from the hypofunction of N-methyl-𝒟-aspartate receptors (NMDARs)23, 24 and significant reductions in the expression of NMDAR subunits were reported in the PFC of patients with major depressive disorder.25 It is worth noting that our previous work has fueled the concept that in the postnatal brain, reelin is required for maintaining the mature subunit composition of NMDARs.26, 27, 28 Thus, despite multiple lines of evidence supporting a major role for NMDARs and reelin in PFC-related pathologies, how the ECM and specifically reelin governs NMDAR-mediated synaptic functions and plasticity during the early postnatal development of the PFC is unknown."
+    },
+    {
+      "section": "Introduction",
+      "text": "The early onset of psychiatric disorders implicating the ECM and specifically reelin and the PFC prompted us to study the functional and behavioral effects of impoverishment of extracellular reelin during the juvenile period of brain development. We found that juvenile reelin-haploinsufficient heterozygous mice are characterized by fear memory sensitive to erasure by extinction accompanied by abnormal synaptic plasticity and dendritic spine density in the PFC. We then showed that a single in vivo injection of the NMDAR antagonists, ketamine or Ro25-6981, restored not only normal synaptic function and morphology but also fear memory to an erasure-resistant state. We also present evidence that the rehabilitation of synaptic signaling and plasticity and behavior by ketamine involves the mammalian target of rapamycin (mTOR) signaling pathway. Finally, we show that fear erasure extends to adolescence in heterozygous reeler mice (HRM) and that a single in vivo exposure to ketamine during the juvenile period is able to convert fear memory to an erasure-resistant mode at the adolescent stage. The data reveal that behavioral and cellular dysfunctions linked to reelin deficiency are amenable to pharmacological intervention during a precise temporal window of early postnatal development."
+    },
+    {
+      "section": "Animals",
+      "text": "The heterozygous reeler mouse (B6C3Fe a/a-Relnrl/J strain) breeding pairs were purchased from the Jackson Laboratory (Bar Harbor, ME, USA). Postweaning juvenile littermates (P22–28), males and females, were used in electrophysiological and morphological studies and no significant sex-dependent differences were observed. All mice were weaned at 21 days. After weaning, they were caged socially in same-sex groups. The offsprings were genotyped by polymerase chain reaction using tail genomic DNA as described previously.8 The polymerase chain reaction primer sequences were: forward, 5′-TAATCTGTCCTCACTCTGCC-3′ reverse wild-type, 5′-ACAGTTGACATACCTTAATC-3′ and reverse mutated 5′-TGCATTAATGTGCAGTGTTG-3′. Polymerase chain reaction conditions were as follows: 1 cycle, 3 min at 95 °C; 40 cycles, 45 s at 95 °C, 45 s at 53 °C, 45 s 72 °C; and 1 cycle, 5 min at 72 °C."
+    },
+    {
+      "section": "Animals",
+      "text": "All experiments were conducted in strict compliance with European directives and French laws on animal experimentation (authorization number: 3307016)."
+    },
+    {
+      "section": "Drug administration",
+      "text": "Drugs were administered intraperitoneally to juvenile mice after weaning. For electrophysiological experiments, animals received a single intraperitoneal (i.p.) injection of ketamine (30 or 100 mg kg−1) 24 h or Ro25-6981 (10 mg kg−1) 6 h before prelimbic area of the PFC (PrPFC) slice preparation. Rapamycin was administered two times intraperitoneally at 3 mg kg−1, 24 and 3 h before ketamine injection (100 mg kg−1) and PrPFC slices were prepared 24 h after ketamine administration. For behavioral training performed during the juvenile period, ketamine (100 mg kg−1) was administered 24 h before and Ro25-6981 (10 mg kg−1) 6 h before fear conditioning in a volume of 10 ml kg−1 of body weight. For fear conditioning performed in adolescent mice, animals received a single intraperitoneal injection of ketamine (100 mg kg−1) during the juvenile period between P22 and P26."
+    },
+    {
+      "section": "Electrophysiology",
+      "text": "Coronal PrPFC slices were prepared as described previously.29 All experiments were carried out at 30–32 °C. Picrotoxin (100 μℳ) was added to the artificial cerebrospinal fluid to block GABAA synaptic transmission. Drugs were added at the final concentration to the artificial cerebrospinal fluid. Field potentials and whole-cell patch-clamp recordings were made in layer V/VI, collected using an Axopatch-1D amplifier (Axon Instruments, Molecular Devices, Sunnyvale, CA, USA) and acquired with Clampex 10.2 acquisition Software via a Digidata 1440A (Axon Instruments)."
+    },
+    {
+      "section": "Electrophysiology",
+      "text": "For extracellular fields, a stimulating glass electrode filled with recording artificial cerebrospinal fluid was placed in layer II/III and the recording pipette was filled with artificial cerebrospinal fluid.29 Field excitatory postsynaptic potentials (fEPSP) were evoked at 0.1 Hz and the glutamatergic nature of the fEPSP was confirmed at the end of each experiment by perfusing the non-NMDA ionotropic glutamate receptor antagonist DNQX (20 μℳ), which specifically blocked the synaptic component without altering the non-synaptic component (not shown). LTP was induced using a theta-burst stimulation protocol consisting of five trains of burst with four pulses at 100 Hz, at 200-ms interval, repeated four times at intervals of 10 s. Analysis of both area and amplitude of fEPSP was performed with Clampfit 10.0.0.61 (Axon Instruments). For fEPSP, the non-synaptic component was systematically substracted to fEPSP before analysis. The magnitude of LTP was calculated 20–30 min after theta-burst stimulation as a percentage of baseline responses."
+    },
+    {
+      "section": "Electrophysiology",
+      "text": "Pyramidal neurons in PrPFC layer V/VI were visualized using an infrared illuminated upright microscope (Olympus BX51WI, Olympus France, Rungis, France). Spontaneous AMPA (2-amino-3-(3-hydroxy-5-methyl-isoxazol-4-yl)propanoic acid) receptor-mediated excitatory postsynaptic currents (AMPAR-spEPSCs) were recorded at −70 mV with internal solution containing (mℳ): 145 K-gluconate, 5 NaCl, 1 MgCl2, 1 EGTA, 0.3 CaCl2, 10 HEPES, 2 Na2ATP, 0.3 NaGTP and 0.2 cAMP (pH 7.3 and 290 mOsm). Whole-cell recording electrodes had resistances of 4–6 MΩ. Access resistance was continuously monitored (<25 MΩ) and recordings were rejected if there was a >20% change during the course of the experiment. spEPSCs were filtered at 2 kHz and digitized at 10 kHz. AMPAR-spEPSCs amplitude and inter-interval time were analyzed with Axograph X using a double exponential template: f(t)=exp(−t/rise)+exp(−t/decay), rise=0.5 ms and decay=3 ms. The threshold of amplitude detection was set at 7 pA.26"
+    },
+    {
+      "section": "Dendritic spine reconstruction and quantification",
+      "text": "All whole-cell recorded neurons were loaded with neurobiotin through patch pipettes. Slices were then fixed overnight in 4% paraformaldehyde and revealed with Texas Red-conjugated avidin for subsequent confocal imaging. Only pyramidal neurons within layer V/VI of the PrPFC showing proper filling of the distal dendritic tree were included in the analysis. Oblique dendrites extending in layer II/III were analyzed. Stack images were acquired using an Olympus Fluoview FV500 confocal microscope equipped with a × 60 oil-immersion objective. Laser power and photomultiplier gain were adjusted to obtain few pixels with maximum intensity on dendrite shaft and the offset range was tuned to cutoff background noise. Tri-dimensional deconvolution of each stack was performed with AutoQuantX2 to compensate the spherical aberration and to correct the z-smear for reliable spine morphology. The tri-dimensional reconstruction and blind semiautomated analysis were performed with Imaris (Bitplane, Zurich, Switzerland)."
+    },
+    {
+      "section": "Behavioral training and measurements",
+      "text": "Juvenile male HRM and littermate controls were aged between P22 and P25 at the beginning of the training. Adolescent males were aged between P30 and P42 at the beginning of the training. Mice were trained in three phases, fear conditioning, extinction and renewal training,30 using an ABA paradigm. Fear conditioning was conducted in context A, extinction in context B and renewal in context A. Contexts A and B differ in visual cues on the inside wall, floor texture and in odor. The conditioning phase (day 1) consisted of 1-min baseline monitoring, followed by five paired tones (conditioned stimuli, CS) co-terminated with foot shocks (unconditioned stimuli, US). Cue presentations were separated by 1 min. The CS consisted of an 80 db 2.5 kHz tone lasting 20 s. The US consisted of 0.5 mA foot shock lasting 1 s. On days 2 and 3, conditioned mice were subjected to two extinction sessions of auditory fear in which each mouse was placed in context B during 2 min for baseline monitoring, followed by 12 presentations of the CS on each day. Context-dependent fear renewal was tested 7 days after the last extinction session (day 10) in the conditioning context (context A) using five presentations of the CS. For the non-extinction group, the animals underwent the same experimental conditions without the extinction sessions."
+    },
+    {
+      "section": "Behavioral training and measurements",
+      "text": "An automated photo sensor-beam activity tracking system was used to measure and score mouse freezing (TruScan 2.0; Coulbourn Instruments, Allentown, PA, USA). A freezing event was registered only when inactivity was recorded for a minimum of 2 consecutive seconds. The system was validated against blind manual registration. Results are expressed as a percentage of freezing time of 1 min duration bins."
+    },
+    {
+      "section": "Statistical analysis",
+      "text": "All values are given as mean±s.e.m. and statistical significance was set at P<0.05."
+    },
+    {
+      "section": "Statistical analysis",
+      "text": "Statistical analysis of electrophysiological and morphological data was performed with GraphPad Prism 6.0 (GraphPad Software, La Jolla, CA, USA). Multiple comparisons were made using a one-way analysis of variance (ANOVA), followed by a post hoc Tukey's test if significant. Two sample comparisons were made with the Mann–Whitney test. Kolmogorov–Smirnov tests were used for comparing the cumulative distributions of amplitudes and interevent intervals of AMPAR-spEPSCs."
+    },
+    {
+      "section": "Statistical analysis",
+      "text": "Behavioral data were analyzed using either one- or two-way repeated-measures ANOVA, followed by the corresponding post hoc analysis when required, or one-way ANOVA between subjects for each time point as explained in the text. All the analyses were conducted using GraphPad Prism 6.0 (GraphPad Software)."
+    },
+    {
+      "section": "Long-term fear memories are unstable in juvenile HRM",
+      "text": "To evaluate the effects of an extracellular neuronal environment impoverished in reelin, we submitted wild-type and HRM to a classical form of robust associative learning, called fear conditioning. Postweaning juvenile mice were trained to the pairing of an aversive stimulus (US; mild foot shock) with an auditory component (CS; tone). During the associative conditioned learning, both animal groups exhibited similar fear responses assessed by their levels of freezing behavior (Figure 1a), showing that reduced levels of reelin do not impair the acquisition of fear memory during the postweaning juvenile period. One day after acquisition, conditioned mice were exposed to the CS alone (that is, without the reinforcing US) to test a form of inhibitory learning called extinction. In this paradigm, the CS progressively looses harm prediction, resulting in a gradual diminution of fear responses. Such training induced similar extinction of learned fear in wild-type and HRM groups (Figure 1b) and in both groups extinction was not achieved before the last CS presentations on the second day of extinction (data not shown). Thus, acquisition and extinction of associative fear memory in juvenile mice are not affected by impoverished reelin levels."
+    },
+    {
+      "section": "Long-term fear memories are unstable in juvenile HRM",
+      "text": "To test whether reelin haploinsufficiency affects the renewal of the original memory, mice were re-exposed to the CS in the acquisition context 7 days after extinction. Wild-type mice exhibited a significant context-dependent renewal of fear memory, as shown by the increase of the freezing levels compared with those measured at the end of extinction training (Figure 1c). In stark contrast, there was a highly significant reduction in the freezing behavior of HRM mice compared with wild-type littermates. Altogether, these experiments show a deficit in the long-term retention of associative fear-conditioned memory in juvenile HRM."
+    },
+    {
+      "section": "Long-term fear memories are unstable in juvenile HRM",
+      "text": "The deficit in memory renewal could be due to a deficit in the retention of cue and contextual components of fear conditioning learning. To control for this possibility, HRMs were treated identically to renewal subjects, but the extinction was omitted. In this condition, HRM maintained elevated levels of freezing and exhibited a stable retention of fear memory for 10 days (Figure 1d)."
+    },
+    {
+      "section": "Long-term fear memories are unstable in juvenile HRM",
+      "text": "Previous studies have shown the existence of a developmental switch of fear memory, during the juvenile period, from erasure-prone to erasure-resistant by extinction.31, 32 The simplest interpretation of our data is that extinction leads to fear memory erasure in juvenile HRM in contrast to age-matched wild-type, where extinction induces inhibitory learning. Thus, the ECM protein reelin protects fear memory from erasure by extinction."
+    },
+    {
+      "section": "Reelin haploinsufficency disrupts LTP in juvenile PFC synapses",
+      "text": "In post-weaning rodents, cortical prefrontal circuits exert control on the acquisition, expression and extinction of associative fear memories.33, 34 To evaluate the effects of an extracellular neuronal environment impoverished in reelin on the synaptic physiology of the PFC, we prepared slices containing the PrPFC29 from post-weaning juvenile wild-type or HRM."
+    },
+    {
+      "section": "Reelin haploinsufficency disrupts LTP in juvenile PFC synapses",
+      "text": "In wild-type mice, theta-burst stimulation induced a robust LTP of field excitatory postsynaptic potentials (fEPSP) measured at the excitatory synapses onto layer V/VI pyramidal neurons (Figure 2a). LTP was blocked by DL-AP5, confirming that it was mediated by NMDARs (not shown).35 Thus, NMDAR-dependent LTP is an early attribute of postnatal PrPFC synapses. We found that in marked contrast to wild-type mice, LTP was absent in juvenile HRM mice (Figure 2a). Taken together, these data reveal that normal levels of reelin are necessary to the expression of NMDAR-dependent LTP in the PrPFC during early postnatal development."
+    },
+    {
+      "section": "Prefrontal dendritic spine density is reduced in juvenile HRM",
+      "text": "Structural deficits often underlie or correlate with functional aberrations of synaptic plasticity.36 Furthermore, dendritic arbors and spines, the physical substrates of excitatory transmission and the principal loci of activity-dependent synaptic rearrangements, are subject to intense maturational processes in the postnatal PFC.37, 38 In this context, we examined whether structural abnormalities correlated with retarded functional maturation of HRM PrPFC synapses. We performed a post hoc three-dimensional reconstruction following confocal imaging of deep layer PrPFC pyramidal neurons filled with neurobiotin during the physiological experiments. Quantitative analysis of spine density on layer II/III oblique dendrites revealed a reduction in the density of spines in juvenile HRM compared with their wild-type littermates (Figure 2b). Morphological analysis showed that the overall decrease of spines in HRM seen in Figure 2b is due to a selective loss of spines with small head diameter (Figure 2c). No differences were observed in spine length between genotypes (Supplementary Figure 1). Thus, our data indicate that reelin is necessary to the correct functional and structural maturation of PrPFC excitatory synapses during juvenile postnatal development."
+    },
+    {
+      "section": "Prefrontal dendritic spine density is reduced in juvenile HRM",
+      "text": "Altogether, the data reveal the leading role of reelin in PrPFC long-term synaptic plasticity, spinogenesis and inhibitory learning during a specific period of postnatal PFC development."
+    },
+    {
+      "section": "Ketamine restores the morphofunctional plasticity of juvenile HRM synapses",
+      "text": "Anesthetics such as ketamine, an NMDAR antagonist, have emerged as potent modulators of postnatal synaptogenesis and dendritic spine density in many limbic structures including the hippocampus and the PrPFC38, 39, 40, 41 where they promote synapse formation during critical temporal windows.40 In this context, we reasoned that structural and functional deficits that cripple HRM could be amenable to pharmacological rescue and specifically that ketamine may prove a viable strategy to restore normal spine complexity and perhaps synaptic plasticity and behavior41, 42 in HRM."
+    },
+    {
+      "section": "Ketamine restores the morphofunctional plasticity of juvenile HRM synapses",
+      "text": "Juvenile HRM were injected with subanesthetic (30 mg kg−1) or anesthetic (100 mg kg−1) doses of ketamine, 24 h before PrPFC slices preparation. We discovered that a single administration of ketamine (30 or 100 mg kg−1 intraperitoneally) was sufficient to restore normal spine density in oblique dendrites of deep layer pyramidal neurons of HRM (Figure 3a). In the same cells, the ketamine-induced spine recovery was accompanied by an increase in the amplitude of AMPAR-spEPSCs (Figure 3b and Supplementary Figure 2), suggesting that ketamine promotes the formation of functional excitatory synapses in juvenile HRM. NMDAR-spEPSCs were not affected by ketamine administration in HRM (Supplementary Figure 3)."
+    },
+    {
+      "section": "Ketamine restores the morphofunctional plasticity of juvenile HRM synapses",
+      "text": "We next tested if the restoration of spine density by in vivo ketamine was paralleled by a recuperation of LTP in juvenile HRM. Indeed, 24 h after a single injection of ketamine, juvenile HRM expressed LTP (Figure 3c). Interestingly, the magnitude of the ketamine effect was dose-dependent: subanesthetic doses (30 mg kg−1) induced levels of theta-burst LTP similar to those of age-matched wild-type, while injection of higher doses of ketamine (100 mg kg−1) markedly enhanced LTP compared with wild-type littermates (Figure 3c). Ketamine treatment did not modify theta-burst LTP in wild-type mice (Supplementary Figure 4). Taken together, the data show for the first time how it is possible to rescue the structural and functional abnormalities in HRM with ketamine during a restricted time window of postnatal development."
+    },
+    {
+      "section": "Ketamine restores the morphofunctional plasticity of juvenile HRM synapses",
+      "text": "In the PrPFC, activation of the mTOR pathway by ketamine underlies both its stimulatory effects on spine growth, synaptic transmission and behavioral signs of depression.41 In HRM, rapamycin prevented from the ketamine-induced augmentation of synaptic AMPAR content and restoration of theta-burst LTP (Figures 3b and c). Rapamycin pretreatment had no effect on NMDAR-spEPSCs in ketamine-injected HRM (Supplementary Figure 3). Administration of rapamycin had no effect on theta-burst LTP in wild-type juvenile mice (Supplementary Figure 4). Thus, the mTOR pathway underlies the restoration of functional synapses by ketamine. However, rapamycin did not prevent the effects of ketamine on spine growth (Figure 3a), a result compatible with the involvement of ‘the rapamycin-insensitive' mTORC2 pathway in the control of the actin cytoskeleton.43"
+    },
+    {
+      "section": "Ketamine restores adult fear memories in juvenile HRM via the mTOR pathway",
+      "text": "In juvenile wild-type rodents, fear memories become resilient to erasure by extinction during the third postnatal week.31, 32 Our previous experiments show that this feature is lost in post-weaning juvenile HRM and that extinction training leads to fear memory erasure. As ketamine restores mature PrPFC structural and functional properties in HRM, can treatment with ketamine also reinstate the long-term retention of associative fear-conditioned memory?"
+    },
+    {
+      "section": "Ketamine restores adult fear memories in juvenile HRM via the mTOR pathway",
+      "text": "To address this question, HRM were injected with ketamine or saline 24 h before acquisition of fear memory. Ketamine-treated HRM displayed normal fear acquisition and extinction compared with saline-injected HRM and wild-type mice (Figures 4a and b). In marked contrast with their saline counterparts, ketamine-injected HRM exhibited a return of fear during renewal and displayed freezing levels restored to those of wild-type littermates (Figure 4c). Our data demonstrate that in HRM, ketamine pretreatment prevents extinction from erasing fear memory. These data suggest a link between the beneficial actions of ketamine on synaptic plasticity and dendritic density and the reinstatement of erasure-resistant memories, typical of mature mice.31, 32"
+    },
+    {
+      "section": "Ketamine restores adult fear memories in juvenile HRM via the mTOR pathway",
+      "text": "In HRM, pretreatment with rapamycin before ketamine administration had no effect either on acquisition or extinction (Supplementary Figure 5), but prevented the rescue of fear memory renewal by ketamine (Figure 4d). Thus, similar to the restoration of functional synapses, the behavioral actions of ketamine in HRM require mTOR signaling."
+    },
+    {
+      "section": "Pharmacological inhibition of GluN2B reinstates plasticity and adult fear memories in juvenile HRM",
+      "text": "Administration of the selective GluN2B-containing NMDARs antagonist, Ro25-6981, induces effects similar to ketamine on PFC synaptic signaling and behavior.41 Moreover, we previously showed that blockade of reelin signaling increases the fraction of GluN2B-NMDARs by failing to convert immature GluN2B-NMDARs to adult GluN2A-NMDARs.26, 27, 28 In this context, we hypothetized that selective inhibition of GluN2B-NMDARs could promote the implementation of normal functional plasticity and adult fear memories in HRM."
+    },
+    {
+      "section": "Pharmacological inhibition of GluN2B reinstates plasticity and adult fear memories in juvenile HRM",
+      "text": "Juvenile HRM were injected with the GluN2B antagonist Ro25-6981 (10 mg kg−1 intraperitoneally) 6 h before experiments.41 A single injection was sufficient to restore normal spine density (Figure 5a) and increase AMPAR-spEPSC amplitude (Figure 5b). Ro25-6981 administration also reinstated LTP in juvenile HRM (Figure 5c). Finally, similar to ketamine, Ro25-6981 restored normal freezing levels during context-dependent renewal (Figure 5d). Fear acquisition and extinction were not perturbed by Ro25-6981 (Supplementary Figure 6)."
+    },
+    {
+      "section": "Ketamine injected during the juvenile period switches fear memory to an erasure-resistant state in adolescent HRM",
+      "text": "We dissected the age dependency of the fear erasure phenotype. HRM were trained for auditory fear conditioning at later stages of postnatal development. Adolescent HRM displayed normal fear acquisition and extinction compared with age-matched wild-type mice (Figures 6a and b). Thus, reduced levels of reelin do not impair acquisition and extinction of associative fear memory in more mature HRM."
+    },
+    {
+      "section": "Ketamine injected during the juvenile period switches fear memory to an erasure-resistant state in adolescent HRM",
+      "text": "In contrast to wild-type mice, which present a significant context-dependent renewal of fear memory, adolescent HRM exhibits a significant reduction of freezing levels when re-exposed to the CS in the acquisition context (Figure 6c). To examine whether extinction leads to fear memory erasure, HRM were tested for context-dependent renewal without extinction. In these conditions, HRM maintained elevated levels of freezing compared with HRM submitted to extinction (Figure 6d). Thus, when extinction is omitted, adolescent HRM exhibit a stable retention of fear memory for 10 days. Altogether, these results show that the immature phenotype of fear memory characterized by extinction erasure persists in adolescent HRM."
+    },
+    {
+      "section": "Ketamine injected during the juvenile period switches fear memory to an erasure-resistant state in adolescent HRM",
+      "text": "We then examined whether ketamine could restore adult fear memory in adolescent HRM and whether a single exposure at the juvenile period was able to rescue the deficits observed in renewal at adolescent stages. HRM were injected once with ketamine (100 mg kg−1 intraperitoneally) during the juvenile period and trained at the adolescent stage. In these conditions, ketamine-injected HRM showed normal fear acquisition and extinction compared with age-matched HRM (Supplementary Figure 7). Remarkably, the freezing behavior of ketamine-injected HRM was restored to wild-type levels during fear renewal (Figure 6c), showing that ketamine converted fear memory to an erasure-resistant state typical of mature mice."
+    },
+    {
+      "section": "Ketamine injected during the juvenile period switches fear memory to an erasure-resistant state in adolescent HRM",
+      "text": "Altogether, our data indicate that reelin is necessary to the correct maturation of fear memory during postnatal development, and that behavioral dysfunctions during the adolescent period are rehabilitated by therapeutic intervention during the juvenile period."
+    },
+    {
+      "section": "Discussion",
+      "text": "A salient feature of the mammalian PFC is that its neuronal networks undergo postnatal maturation and refinement until late into the adolescence. Evidence comes mostly from functional studies showing that via its integration in the neuronal network of the basal ganglia, the PFC participates in the organization and planning of goal-directed tasks.18, 19 On the whole, the molecular underpinning of this postnatal maturation remains largely unknown.44, 45"
+    },
+    {
+      "section": "Discussion",
+      "text": "We show for the first time that the morphofunctional properties of layer II/III-V/VI PFC excitatory synapses are affected during the early stages of postnatal development in HRM. In parallel to a lack of NMDAR-dependent LTP, we observed a decrease in the spine density in the oblique dendrites of principal pyramidal neurons. Our results show that during a precise temporal window of postnatal development, the juvenile period, long-term synaptic plasticity and spinogenesis in the PFC, as well as the stability of long-term fear memory, are under the control of reelin. Earlier studies suggested a prominent role of the extracellular environment, particularly reelin in various functions of the postnatal brain. Reelin downregulation impaired cortical synaptic maturation26, 27 and cognitive performances,15 whereas supplementation in reelin augments synaptic functions and improves learning processes.6, 7, 9, 15, 46 Our data shed light on previously undisclosed new functions for reelin during the juvenile period, an important early stage of the postnatal life."
+    },
+    {
+      "section": "Discussion",
+      "text": "Previous studies subjecting HRM to a battery of behavioral tests,16, 17, 47, 48, 49 including fear-conditioned learning and extinction,50, 51, 52 were performed at adult stages. This study is the first that examined auditory fear behavior in HRM at the juvenile and adolescent stage. Our data reveal a central role for reelin in protecting aversive memories from erasure by extinction. In young rodents, conditioned fear memories can be erased by extinction, whereas in older animals these memories are erasure-resistant to fear extinction.31, 32 For the first time, we found a persistence of the fear erasure phenotype, that is, susceptible to erasure by extinction, until during adolescence in HRM. Our data extend a recent report showing that in the amygdala, the perineuronal nets, a specialized structure of the ECM, develop concomitantly and participate to the switch of fear memories from erasure-prone to erasure-resistant during a critical period in juvenile rodents.31 In other structures such as the visual cortex, the appearance of perineuronal nets act as ‘structural brakes'53 and is involved in the closure of critical periods of experience-dependent plasticity.54 Thus, a more general function of the adult ECM might be the termination of juvenile plasticity during critical periods and the implementation of adult plasticity. Our data identify reelin as a molecular determinant of the ECM complex involved in long-term fear memory stabilization."
+    },
+    {
+      "section": "Discussion",
+      "text": "We also found that a single in vivo injection of ketamine is able to rescue the morphological and functional deficits in the PFC of juvenile HRM. We observed that within 24 h ketamine rescues LTP and increases synaptogenesis by increasing spine density and function as showed by the augmentation of AMPAR-spEPSCs in the same pyramidal neurons that were analyzed for spine morphology. This could be due to changes in AMPAR distribution and/or an increase in postsynaptic proteins such as PDS95 and the AMPAR-GluR1 subunit, synthesis of which has been showed to be increased for 72 h after a single dose of ketamine.41 Other signals, like neurotrophins, have been proposed to trigger and regulate spine development.55 Interestingly, it was recently reported that the behavioral antidepressant actions of ketamine are blocked in different brain-derived neurotrophic factor mutant lines,56, 57 suggesting that brain-derived neurotrophic factor could participate to the mechanism of action of ketamine."
+    },
+    {
+      "section": "Discussion",
+      "text": "The non-selective NMDAR antagonist ketamine is a widely used anesthetic and recreational drug and at low doses has a rapid antidepressant action, effective in patients resistant to conventional treatments. Our results are in line with and extend the recently described therapeutic applications of ketamine linked to spine formation in the PFC.41, 42 Furthermore, our results suggest that additional benefits may be obtained from using this compound during a specific postnatal developmental period. Previous studies reported that perinatal administration of other NMDAR antagonists, such as PCP, in wild-type rodents cause deficits in working memory and executive functions.58 In contrast, our results suggest that ketamine can induce ‘gain of function' in cognitive tasks in genetically deficient mice. Our results might be reconciled by the recent observation that the antidepressive functions of ketamine in the PFC of rats involve the specific recruitment of the mTOR pathway, leading to an increase in spine density and synaptic signaling.41 We found that the ketamine-induced increase in synaptic signaling and plasticity in HRM was sensitive to rapamycin, suggesting the involvement of the rapamycin-sensitive components of the mTORC1 pathway. Among the many signaling pathways activated by reelin, mTOR has been proposed to mediate the effects of reelin on dendrite maturation.59 Our observation that the ketamine-induced increase in spine density is insensitive to rapamycin does not exclude the participation of rapamycin-insensitive components of the mTOR pathway such as the mTORC2 complex.43, 60"
+    },
+    {
+      "section": "Discussion",
+      "text": "We were able to specify that GluN2B-containing NMDAR participate to the broad effect of NMDA antagonists by targeting these subunits with Ro25-6981. For the first time, we show that this compound rescues behavioral and both morphological and functional synaptic deficits. In the PFC of wild-type mice, GluN2B-NMDARs are critical for LTP and contextual fear memory.61 Although controversial,62 it has been proposed that the direction of long-term plasticity is controlled by the subunit composition of NMDARs with GluN2A-NMDARs more likely favoring the induction of LTP than GluN2B subtype.63, 64 Thus, the fact that Ro25-6981 restores LTP in HRM extends our previous finding showing that decreased levels of reelin prevents the maturational switch in NMDAR subunit composition from GluN2B- to GluN2A-containing receptors.26, 27, 28"
+    },
+    {
+      "section": "Discussion",
+      "text": "Finally, we found that when injected in juvenile mice, ketamine has a long-lasting effect and is able to convert fear memory to an erasure-resistant state. These data reveal the existence of a critical period in the juvenile development of the PFC during which genetic insufficiencies are amenable to pharmacological rescue."
+    },
+    {
+      "section": "Discussion",
+      "text": "In conclusion, we showed the ECM protein reelin is necessary for the proper structural, functional and behavioral development of juvenile prefrontal circuits. We also demonstrate that early onset deficits linked to reelin deficiency are rehabilitated by blocking NMDARs and that this rehabilitation requires the mTOR pathway signaling. Finally, our data also shed new light on the therapeutic use of ketamine and GluN2B-NMDARs antagonists during the juvenile period, a critical window of cortical circuits' development."
+    }
+  ]
+}

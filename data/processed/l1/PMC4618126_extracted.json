@@ -1,0 +1,904 @@
+{
+  "asset_id": "PMC4618126",
+  "doi": "10.1186/s12888-015-0641-4",
+  "article_title": "Study protocol for the randomised controlled trial: Ketamine augmentation of ECT to improve outcomes in depression (Ketamine-ECT study)",
+  "journal": "Molecular Psychiatry",
+  "belief_weight": 0.85,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Background",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "inhibits"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA receptors",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "stimulates"
+          ],
+          "relation_sign": 1,
+          "object": "glutamate release",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "potentiates"
+          ],
+          "relation_sign": 1,
+          "object": "non-NMDA receptor activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "antidepressant drugs",
+          "relation_raw_variants": [
+            "leads to"
+          ],
+          "relation_sign": 1,
+          "object": "normalisation of frontal cortical metabolism and function",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "antidepressant drugs",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Depression is associated with impaired frontal cortical metabolism and function [38, 39] and treatment with antidepressant drugs leads to their normalisation [38, 40]."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "Ketamine",
+          "relation_raw_variants": [
+            "potentiates",
+            "potentiates activity at"
+          ],
+          "relation_sign": 1,
+          "object": "non-NMDA receptors",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25]."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine augmentation",
+          "relation_raw_variants": [
+            "produced no reduction in"
+          ],
+          "relation_sign": 1,
+          "object": "cognitive impairment",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ultra-brief right unilateral stimulation",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "A further study found that ketamine augmentation produced no reduction in cognitive impairment after ultra-brief right unilateral stimulation on a range of tests"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "potentiates"
+          ],
+          "relation_sign": 1,
+          "object": "activity at non-NMDA receptors such as AMPA receptors",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "stimulates",
+              "relation_sign": 1,
+              "object": "glutamate release",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "potentiates",
+              "relation_sign": 1,
+              "object": "non-NMDA receptor activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "antidepressant drugs",
+              "relation_raw": "leads to",
+              "relation_sign": 1,
+              "object": "normalisation of frontal cortical metabolism and function",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Depression is associated with impaired frontal cortical metabolism and function [38, 39] and treatment with antidepressant drugs leads to their normalisation [38, 40].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "Ketamine",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "Ketamine",
+              "relation_raw": "stimulates",
+              "relation_sign": 1,
+              "object": "glutamate release",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "Ketamine",
+              "relation_raw": "potentiates",
+              "relation_sign": 1,
+              "object": "non-NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "stimulates",
+              "relation_sign": 1,
+              "object": "glutamate release",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "potentiates activity at",
+              "relation_sign": 1,
+              "object": "non-NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors [25].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine augmentation",
+              "relation_raw": "produced no reduction in",
+              "relation_sign": 1,
+              "object": "cognitive impairment",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ultra-brief right unilateral stimulation",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "A further study found that ketamine augmentation produced no reduction in cognitive impairment after ultra-brief right unilateral stimulation on a range of tests",
+              "confidence": 0.9
+            },
+            {
+              "subject": "antidepressant drugs",
+              "relation_raw": "leads to",
+              "relation_sign": 1,
+              "object": "normalisation of frontal cortical metabolism and function",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "antidepressant drugs",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Depression is associated with impaired frontal cortical metabolism and function [38, 39] and treatment with antidepressant drugs leads to their normalisation [38, 40].",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+              "confidence": 1.0
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "stimulates",
+              "relation_sign": 1,
+              "object": "glutamate release",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+              "confidence": 1.0
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "potentiates",
+              "relation_sign": 1,
+              "object": "activity at non-NMDA receptors such as AMPA receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine is a dissociative anaesthetic, analgesic and psychotomimetic which inhibits NMDA receptors but also stimulates glutamate release and potentiates activity at non-NMDA receptors such as AMPA receptors.",
+              "confidence": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Aims and Hypotheses",
+      "aggregated_relations": [
+        {
+          "subject": "ECT",
+          "relation_raw_variants": [
+            "caused"
+          ],
+          "relation_sign": 1,
+          "object": "cognitive dysfunction",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The primary aim of the Ketamine-ECT study is to investigate the effect of adjunctive ketamine on cognitive dysfunction caused by ECT using an RCT design with the hypothesis that ketamine, compared with saline treatment, given together with standard anaesthesia will reduce ECT-induced cognitive impairment."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ECT",
+              "relation_raw": "caused",
+              "relation_sign": 1,
+              "object": "cognitive dysfunction",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The primary aim of the Ketamine-ECT study is to investigate the effect of adjunctive ketamine on cognitive dysfunction caused by ECT using an RCT design with the hypothesis that ketamine, compared with saline treatment, given together with standard anaesthesia will reduce ECT-induced cognitive impairment.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Study Design",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Study Population",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Patient Inclusion criteria",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Patient Exclusion criteria",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Recruitment",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Intervention",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Outcome measures",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Neuropsychological measures",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Clinical efficacy measures",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Mechanistic measures",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Original sample size and power calculation",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Revised Power calculations",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Neuropsychological and clinical outcomes",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Mechanistic outcomes",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        }
+      ]
+    },
+    {
+      "chunk_index": 16,
+      "section": "Status of the Study",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 17,
+      "section": "Discussion",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ]
+}

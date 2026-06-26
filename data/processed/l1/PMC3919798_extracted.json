@@ -1,0 +1,1447 @@
+{
+  "asset_id": "PMC3919798",
+  "doi": "10.1371/journal.pone.0088617",
+  "article_title": "Preclinical Evidence of Rapid-Onset Antidepressant-Like Effect in Radix Polygalae Extract",
+  "journal": "PLOS ONE",
+  "belief_weight": 0.4,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [
+        {
+          "subject": "Radix Polygalae extract",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "dopamine-induced oxidative stress",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "YZ-50",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "BDNF",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24]."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "YZ-50",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "TrkB receptor",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "RP extract",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "dopamine-induced oxidative stress",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21]."
+          ],
+          "mean_confidence": 0.92,
+          "predominant_negated": false
+        },
+        {
+          "subject": "RP extract",
+          "relation_raw_variants": [
+            "protected"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA toxicity",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "cortical neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21]."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "YZ-50",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "BDNF expression",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression [24]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "YZ-50",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "TrkB receptor expression",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression [24]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "RP",
+          "relation_raw_variants": [
+            "protected"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA toxicity",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "cultured neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "RP",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "BDNF expression",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "cultured neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "YZ-50",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "TrkB",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "RP",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "BDNF",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "cultured neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "Radix Polygalae extract",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "dopamine-induced oxidative stress",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "TrkB receptor",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24].",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "RP extract",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "dopamine-induced oxidative stress",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "RP extract",
+              "relation_raw": "protected",
+              "relation_sign": -1,
+              "object": "NMDA toxicity",
+              "context": {
+                "cell_line_or_type": "cortical neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "BDNF expression",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression [24].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "TrkB receptor expression",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression [24].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "RP",
+              "relation_raw": "protected",
+              "relation_sign": -1,
+              "object": "NMDA toxicity",
+              "context": {
+                "cell_line_or_type": "cultured neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "RP",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "BDNF expression",
+              "context": {
+                "cell_line_or_type": "cultured neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "RP extract",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "dopamine-induced oxidative stress",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "RP extract",
+              "relation_raw": "protected",
+              "relation_sign": -1,
+              "object": "NMDA toxicity",
+              "context": {
+                "cell_line_or_type": "cortical neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "TrkB",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "RP",
+              "relation_raw": "protected",
+              "relation_sign": -1,
+              "object": "NMDA toxicity",
+              "context": {
+                "cell_line_or_type": "cultured neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "RP",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "context": {
+                "cell_line_or_type": "cultured neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "RP extract",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "dopamine-induced oxidative stress",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract has reduced dopamine-induced oxidative stress and protected cortical neurons from NMDA toxicity [20], [21].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "YZ-50",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "TrkB receptor",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "YZ-50 also increased brain-derived neurotrophic factor (BDNF) and Tyrosine kinase B (TrkB) receptor expression, which may induce hippocampal neurogenesis similarly to other antidepressant reagents [24].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "RP",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "BDNF expression",
+              "context": {
+                "cell_line_or_type": "cultured neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Because RP protected cultured neurons from NMDA toxicity and induced BDNF expression [25], we hypothesized that it modulates glutamatergic synapses to effect rapid-onset (within minutes or hours) antidepressant-like properties.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Animals",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Ethics Statement",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Plant material",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Preparation of Radix Polygalae extract",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Behaviors",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Behaviors",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Immunoblotting",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Statistics",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Screening for dose and time dependency of Radix Polygalae's antidepressant effect",
+      "aggregated_relations": [
+        {
+          "subject": "RP",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "immobility",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "1 mg/kg RP p.o.",
+              "localization": "unspecified",
+              "time": "30 minutes",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "RP 1 mg/kg reduced immobility relative to distilled water controls (p=0.006)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "RP",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "immobility",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "1 mg/kg RP p.o.",
+                "localization": "unspecified",
+                "time": "30 minutes",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP 1 mg/kg reduced immobility relative to distilled water controls (p=0.006).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Assessing the rapid-onset antidepressant-like effect of Radix Polygalae",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Assessing the rapid-onset antidepressant-like effect of Radix Polygalae",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Radix Polygalae regulates phosphorylation of the GluR1 AMPA receptor subunit but not mTOR in the hippocampus",
+      "aggregated_relations": [
+        {
+          "subject": "RP",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "GluR1 phosphorylation (S845)",
+          "sample_frequency": 1,
+          "consensus_score": 0.333,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "RP",
+              "localization": "hippocampal",
+              "time": "30 minutes",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "RP treatment (0.1 mg/kg p.o.) reduced hippocampal GluR1 phosphorylation (S845) but not when RP was co-administered with NBQX (10 mg/kg, i.p.) [F(2,15) = 4.38, p = 0.032]."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "activated"
+          ],
+          "relation_sign": 1,
+          "object": "mTOR pathway",
+          "sample_frequency": 1,
+          "consensus_score": 0.333,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "prefrontal cortex",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine rapidly activated this pathway, leading to an increase in the number of synaptic spines in the prefrontal cortex [15]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "RP",
+          "relation_raw_variants": [
+            "antagonizing"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.333,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "RP",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The finding of decreased GluR1 phosphorylation at Ser 845 following administration of RP, as well as the abolishment of this effect by AMPA blocker NBQX, is thus consistent with a mechanism in which RP exerts antidepressive effect by antagonizing NMDA, but not AMPA, activity."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "RP",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "GluR1 phosphorylation (S845)",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "RP",
+                "localization": "hippocampal",
+                "time": "30 minutes",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP treatment (0.1 mg/kg p.o.) reduced hippocampal GluR1 phosphorylation (S845) but not when RP was co-administered with NBQX (10 mg/kg, i.p.) [F(2,15) = 4.38, p = 0.032].",
+              "confidence": 1.0
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "activated",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "prefrontal cortex",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine rapidly activated this pathway, leading to an increase in the number of synaptic spines in the prefrontal cortex [15].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "RP",
+              "relation_raw": "antagonizing",
+              "relation_sign": -1,
+              "object": "NMDA activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "RP",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The finding of decreased GluR1 phosphorylation at Ser 845 following administration of RP, as well as the abolishment of this effect by AMPA blocker NBQX, is thus consistent with a mechanism in which RP exerts antidepressive effect by antagonizing NMDA, but not AMPA, activity.",
+              "confidence": 0.7
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Glutamatergic synaptic modulation and RP",
+      "aggregated_relations": [
+        {
+          "subject": "tenuifolin",
+          "relation_raw_variants": [
+            "inhibit"
+          ],
+          "relation_sign": -1,
+          "object": "amyloid-β secretion",
+          "sample_frequency": 3,
+          "consensus_score": 0.75,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "RP extract contains various substances like tenuigenin, tenuifolin, DISS (3,6′-disinapoyl sucrose), and TMCA (3,4,5-trimethoxycinnamic acid) previously shown to have proliferative and protective effects on hippocampal neurons (tenuigenin) [63], [64], inhibit amyloid-β secretion and improve cognitive function (tenuifolin) [65], [66]exert antidepressant-like effects in chronically stressed rats (DISS) [67], and ameliorate the behavioral effects of cold stress and corticotrophin-releasing hormone administration in rats (TMCA) [68]",
+            "RP extract contains various substances like tenuigenin, tenuifolin, DISS (3,6′-disinapoyl sucrose), and TMCA (3,4,5-trimethoxycinnamic acid) previously shown to have proliferative and protective effects on hippocampal neurons (tenuigenin) [63], [64], inhibit amyloid-β secretion and improve cognitive function (tenuifolin) [65], [66]exert antidepressant-like effects in chronically stressed rats (DISS) [67], and ameliorate the behavioral effects of cold stress and corticotrophin-releasing hormone administration in rats (TMCA) [68]."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "blocked"
+          ],
+          "relation_sign": -1,
+          "object": "RP effect",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In our study, the effect of RP in the TST was blocked by pretreatment with the AMPA antagonist NBQX, indicating the possibility of a similar interaction between RP and NMDA the mGlu2/3 receptors."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "produce"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant-like effects",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "NMDA receptor subtype-specific antagonists like ketamine have been found to produce antidepressant-like effects in clinical and preclinical paradigms [6], [12], [13], [54]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "blocked"
+          ],
+          "relation_sign": -1,
+          "object": "rapid-onset antidepressant-like effects",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "NBQX",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Among these, NMDA antagonists and mGlu2/3 antagonists were suggested to have rapid-onset antidepressant-like effects in association with the activation of AMPA receptor and mTOR, effects that were blocked when AMPA receptors were occupied by NBQX [60], [61]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "blocked"
+          ],
+          "relation_sign": -1,
+          "object": "effect of RP",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "NBQX",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In our study, the effect of RP in the TST was blocked by pretreatment with the AMPA antagonist NBQX, indicating the possibility of a similar interaction between RP and NMDA the mGlu2/3 receptors."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "tenuifolin",
+              "relation_raw": "inhibit",
+              "relation_sign": -1,
+              "object": "amyloid-β secretion",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract contains various substances like tenuigenin, tenuifolin, DISS (3,6′-disinapoyl sucrose), and TMCA (3,4,5-trimethoxycinnamic acid) previously shown to have proliferative and protective effects on hippocampal neurons (tenuigenin) [63], [64], inhibit amyloid-β secretion and improve cognitive function (tenuifolin) [65], [66]exert antidepressant-like effects in chronically stressed rats (DISS) [67], and ameliorate the behavioral effects of cold stress and corticotrophin-releasing hormone administration in rats (TMCA) [68]",
+              "confidence": 0.8
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "RP effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In our study, the effect of RP in the TST was blocked by pretreatment with the AMPA antagonist NBQX, indicating the possibility of a similar interaction between RP and NMDA the mGlu2/3 receptors.",
+              "confidence": 0.7
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "produce",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "NMDA receptor subtype-specific antagonists like ketamine have been found to produce antidepressant-like effects in clinical and preclinical paradigms [6], [12], [13], [54].",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "rapid-onset antidepressant-like effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "NBQX",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Among these, NMDA antagonists and mGlu2/3 antagonists were suggested to have rapid-onset antidepressant-like effects in association with the activation of AMPA receptor and mTOR, effects that were blocked when AMPA receptors were occupied by NBQX [60], [61].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "effect of RP",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "NBQX",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In our study, the effect of RP in the TST was blocked by pretreatment with the AMPA antagonist NBQX, indicating the possibility of a similar interaction between RP and NMDA the mGlu2/3 receptors.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "tenuifolin",
+              "relation_raw": "inhibit",
+              "relation_sign": -1,
+              "object": "amyloid-β secretion",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract contains various substances like tenuigenin, tenuifolin, DISS (3,6′-disinapoyl sucrose), and TMCA (3,4,5-trimethoxycinnamic acid) previously shown to have proliferative and protective effects on hippocampal neurons (tenuigenin) [63], [64], inhibit amyloid-β secretion and improve cognitive function (tenuifolin) [65], [66]exert antidepressant-like effects in chronically stressed rats (DISS) [67], and ameliorate the behavioral effects of cold stress and corticotrophin-releasing hormone administration in rats (TMCA) [68].",
+              "confidence": 0.8
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "NBQX",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "rapid-onset antidepressant-like effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Among these, NMDA antagonists and mGlu2/3 antagonists were suggested to have rapid-onset antidepressant-like effects in association with the activation of AMPA receptor and mTOR, effects that were blocked when AMPA receptors were occupied by NBQX [60], [61].",
+              "confidence": 0.9
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "effect of RP",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "NBQX",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In our study, the effect of RP in the TST was blocked by pretreatment with the AMPA antagonist NBQX, indicating the possibility of a similar interaction between RP and NMDA the mGlu2/3 receptors.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "tenuifolin",
+              "relation_raw": "inhibit",
+              "relation_sign": -1,
+              "object": "amyloid-β secretion",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "RP extract contains various substances like tenuigenin, tenuifolin, DISS (3,6′-disinapoyl sucrose), and TMCA (3,4,5-trimethoxycinnamic acid) previously shown to have proliferative and protective effects on hippocampal neurons (tenuigenin) [63], [64], inhibit amyloid-β secretion and improve cognitive function (tenuifolin) [65], [66]exert antidepressant-like effects in chronically stressed rats (DISS) [67], and ameliorate the behavioral effects of cold stress and corticotrophin-releasing hormone administration in rats (TMCA) [68].",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Conclusion",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Supporting Information",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ]
+}

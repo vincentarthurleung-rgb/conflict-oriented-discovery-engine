@@ -1,0 +1,100 @@
+{
+  "pmcid": "PMC3572668",
+  "doi": "10.3109/03009734.2012.724118",
+  "article_title": "Acute administration of ketamine in rats increases hippocampal BDNF and mTOR levels during forced swimming test",
+  "journal": "Upsala Journal of Medical Sciences",
+  "impact_factor": 3.5,
+  "jcr_tier": "Adaptive_Silver_Pool",
+  "belief_weight": 0.6,
+  "is_noise_candidate": false,
+  "paragraphs": [
+    {
+      "section": "Introduction",
+      "text": "By now, the existing widely prescribed antidepressants are supposedly acting by an effect on monoamine systems. Monoamine-based antidepressants exert their therapeutic effects with a delayed onset of 2–4 weeks, and in some patients they do not have an effective improvement of mood even after a long time of treatment (1). However, a large number of studies have shown that a single acute administration of a sub-anesthetic dose of ketamine, an ionotropic glutamatergic N-methyl-D-aspartate receptor (NMDAR) antagonist, produces a fast-acting and robust antidepressant effect both in patients suffering major depressive disorders (MDD) and in animal models of depression (1,2). However, the underlying relevant mechanisms are not totally understood."
+    },
+    {
+      "section": "Introduction",
+      "text": "Levels of brain-derived neurotrophic factor (BDNF), an important neurotrophic factor, have been reported to be reduced in the central nervous system (CNS) and in peripheral blood in MDD (3). It has also been shown that intra-cerebral infusion of BDNF results in an antidepressant effect in animal models of depression (4). Moreover, exposure of rats to the forced swimming test (FST) reduces BDNF mRNA expression in some regions of the hippocampus, while antidepressant treatment increases the expression of BDNF mRNA in hippocampus (5)."
+    },
+    {
+      "section": "Introduction",
+      "text": "The mammalian target of rapamycin (mTOR) is a serine/threonine protein kinase, which modulates cell growth, proliferation, motility, survival, and protein synthesis (6). Li et al. (7) have reported that an mTOR-induced rapid formation of synapses is an underlying mechanism for ketamine in exerting its rapid antidepressant effect. A recent case report has demonstrated that mTOR was constantly increased in peripheral blood of a depressed patient (8). Moreover, in a post-mortem study it was reported that depressed patients are characterized by a deficit of mTOR in cerebral cortex (9), which indicates that mTOR potentially might play an important role in the pathophysiology of depression."
+    },
+    {
+      "section": "Introduction",
+      "text": "Given the important roles of BDNF and mTOR in the treatment of MDD, the present study aims to investigate ketamine-induced antidepressant effects by analyzing the expression of hippocampal BDNF and mTOR after acute administration of different doses of ketamine in rats."
+    },
+    {
+      "section": "Animals",
+      "text": "Forty male Wistar rats weighting 200–300 g were purchased from Shanghai Animal Center, Shanghai, China. The animals were housed five per cage with food and water available ad libitum, and were maintained on a 12 h light/dark cycle (lights on at 7.00 a.m.). Animals were involved in this experiment in accordance with the Guide for Care and Use of Laboratory Animals of National Institutes of Health."
+    },
+    {
+      "section": "Open-field test",
+      "text": "An open-field test is usually performed to measure locomotor activity in rodents (10). Briefly, the apparatus used in the present study consisted of a gray square 100 cm × 100 cm × 30 cm which was divided into 20 cm × 20 cm equal squares. Rats were placed in the center, the number of crossings (squares crossed with the four paws into one square) and rearings (posture sustained with hind-paws on the ﬂoor) were counted manually for 5 min. After each test the apparatus was cleaned."
+    },
+    {
+      "section": "Forced swimming test (FST)",
+      "text": "This test included two separate exposures to a cylindrical tank with water in which rats cannot touch the bottom of the tank. The dimensions of the tank were 60 cm height and 30 cm diameter, and it was filled with water to a depth of 40 cm. The water in the tank was changed after the test of every rat. For the animal behavior observations, all procedures were conducted between 9.00 a.m. and 3.00 p.m. First, rats were placed in the water for 15 min without exposure to any drug. Twenty-three and a half hours later, rats were intraperitoneally injected with saline or different doses of ketamine. And 30 min later, rats were treated as the first episode for a 5 min session, and the immobility time was recorded. The definition of immobility in the FST is that the rat remained floating in the water without struggling and made only movements necessary to keep its head above the water (11). Rats were then intraperitoneally injected with saline or different doses of ketamine 30 min later, and a second episode of FST was then carried out. Counting immobility time was conducted by the same trained observer."
+    },
+    {
+      "section": "Test of BDNF",
+      "text": "After the FST, animals were killed immediately, and their hippocampi dissected. BDNF levels in the hippocampi were measured by anti-BDNF sandwich-ELISA, according to the manufacturer's instructions (Chemicon, Billerica, MA, USA). Briefly, rat hippocampus was homogenized in phosphate buffer solution with 1 mM phenylmethylsulfonyl fluoride and 1 mM EGTA. Microtiter plates (96-well flat-bottom) were coated for 24 h with the samples diluted 1:2 in sample diluent. The standard curve ranged from 7.8 to 500 pg/mL of BDNF. The plates were then washed four times with sample diluent, and a monoclonal anti-BDNF rabbit antibody diluted 1:1000 in sample diluent was added to each well and incubated for 3 h at room temperature. After washing, a peroxidase-conjugated anti-rabbit antibody (diluted 1:1000) was added to each well and incubated at room temperature for 1 h. After addition of streptavidin enzyme, substrate and stop solution, levels of BDNF were determined by absorbance at 450 nm. The standard curve demonstrated a direct relationship between optical density and BDNF concentration. Total protein was measured by Lowry's method using bovine serum albumin as a standard."
+    },
+    {
+      "section": "Test of mTOR",
+      "text": "Rat hippocampus was directly homogenized in ice-chilled buffer. Samples of homogenates (15 μg of protein) were subjected to SDS-PAGE under reducing conditions. Proteins were transferred onto PDVF membranes, which were incubated with anti-phospho mTOR Ser 2448 (1:2000, Cell Signaling Company, Beverly, MA, USA)."
+    },
+    {
+      "section": "Statistical analysis",
+      "text": "Data are expressed as mean ± standard deviation (SD). Statistical analyses were made by one-way analysis of variance, and post-hoc analyses were performed by least significant difference tests. These statistical analyses were conducted by Statistical Product for Social Sciences (SPSS version 17.0). Differences were considered to be significant at P < 0.05."
+    },
+    {
+      "section": "Locomotor activity",
+      "text": "Number of crossings showed no statistically significant differences between groups, and neither did number of rearings show any differences in the open-field test (P > 0.05 for all doses) (detailed data not shown)."
+    },
+    {
+      "section": "Duration of immobility",
+      "text": "There were statistically significant differences between the different test groups with regard to duration of immobility (F\n(3,36) = 77.64, P < 0.01). Thus, administration of ketamine at doses of 5, 10, and 15 mg/kg decreased the duration of immobility significantly (P < 0.05 for all doses) (Figure 1)."
+    },
+    {
+      "section": "Duration of immobility",
+      "text": "Duration of immobility in rats subject for forced swimming test after administration of different doses of ketamine."
+    },
+    {
+      "section": "Expression of BDNF",
+      "text": "The expression of hippocampal BDNF showed significant differences among groups (F\n(3,36) = 4.28, P < 0.05). While administration of ketamine at doses of 10 and 15 mg/kg showed a significant increase in the expression of hippocampal BDNF (P < 0.05), ketamine at a dose of 5 mg/kg presented no significant effect on the expression of hippocampal BDNF (P > 0.05) (Figure 2)."
+    },
+    {
+      "section": "Expression of BDNF",
+      "text": "Expression of BDNF in rat hippocampus after administration of different doses of ketamine."
+    },
+    {
+      "section": "Expression of mTOR",
+      "text": "There were significant increases in the relative levels of hippocampal mTOR (F\n(3,36) = 17.21, P < 0.05) after administration of ketamine at all three doses tested (Figure 3)."
+    },
+    {
+      "section": "Expression of mTOR",
+      "text": "Expression of mTOR in rat hippocampus after administration of different doses of ketamine."
+    },
+    {
+      "section": "Discussion",
+      "text": "Previous studies usually put forward the opinion that administration of ketamine has inherent side effects, such as hallucinations and schizophrenia-like symptoms, especially at large doses (12-15). Therefore, we chose acute administration of sub-anesthetic doses of ketamine to investigate its antidepressant effect. In this study, we tested the locomotor activity by the open-field test, and the results showed that ketamine did not induce significant changes with regard to horizontal and vertical movements, suggesting that ketamine has no influential effects on the duration of immobility in rats."
+    },
+    {
+      "section": "Discussion",
+      "text": "Depression is characterized as an increased immobility time in rats subject for FST as observed in the second episode of the two tests separated by 24 h (16,17). In the present study, acute administration of ketamine to rats decreased the immobility time and increased the expression of BDNF and mTOR in their hippocampi. Compared with conventional antidepressants, ketamine exerts a rapid-acting antidepressant effect within 0.5–2 h after administration in animal models (18). However, Popik et al. (19) have, shown that ketamine does not exert a persistent antidepressant effect in rodent models. Most of existing clinical studies support the opinion that ketamine has an ability to ameliorate the symptoms of depressed patients, especially in patients with treatment-resistant depression (20,21). Our results demonstrate that ketamine decreases the duration of immobility as measured in the rodent FST, supporting the idea that ketamine indeed has got an antidepressant effect."
+    },
+    {
+      "section": "Discussion",
+      "text": "The role of BDNF in the CNS has been implicated in the etiology of depression and in the action of antidepressant agents (22). In support of this, we observed increased levels of BDNF in the rat hippocampus after ketamine treatment. Interestingly, we observed that acute administration of ketamine at a dose of 10 mg/kg increased the expression of BDNF, whereas 5 mg/kg did not. Our results are in line with those of Garcia et al. (23) who have shown that acute administration of ketamine at a dose of 15 mg/kg increased the hippocampus BDNF levels. However, in another study of Garcia et al. (25) it was shown that chronic administration of ketamine elicited an antidepressant effect in rodents without affecting the BDNF levels in hippocampus. The different expressions of the BDNF between the acute and chronic administration suggested that some other signaling pathways also mediate ketamine-induced antidepressant effect."
+    },
+    {
+      "section": "Discussion",
+      "text": "Since Li et al. (7) found that mTOR plays an important role in the mechanisms of ketamine exerting its fast-acting antidepressant effect, several subsequent studies have focused on the role of this enzyme. Clinical research has shown that mTOR is likely to be implicated in the etiology of depression and in the antidepressant mechanism of ketamine (8,9). Our results indicate that acute administration of increasing doses of ketamine elicited a gradually enhanced antidepressant effect associated with an increased mTOR expression in rat hippocampus."
+    },
+    {
+      "section": "Discussion",
+      "text": "The coincidence of the decrease of immobility time and the increase of BDNF and mTOR after ketamine treatment suggests that there is an underlying link between antidepressant effects and the increase of BDNF and mTOR. Recently, Li et al. (26) have shown that ketamine, in a rat model, possibly exerts its antidepressant effects via rapid neurogenesis. Moreover, BDNF and mTOR are both important promoters for neurogenesis (27,28). In the present study, the levels of hippocampal BDNF and mTOR increased 30 min after administration of ketamine. Therefore, we speculate that the antidepressant effect of ketamine may be attributed to a rapid neurogenesis induced by an increase of both BDNF and mTOR."
+    }
+  ]
+}

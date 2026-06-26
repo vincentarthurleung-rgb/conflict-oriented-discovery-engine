@@ -1,0 +1,49 @@
+{
+  "asset_id": "FIXTURE_PAPER",
+  "doi": "10.0000/fixture",
+  "article_title": "Fixture Ketamine BDNF Conflict",
+  "belief_weight": 0.8,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "evidence_sentence": "Acute ketamine increases BDNF under normoxia.",
+              "context": {
+                "time": "acute",
+                "treatment": "ketamine",
+                "oxygen_condition": "normoxia"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "evidence_sentence": "Ketamine increases BDNF in normoxia.",
+              "context": {
+                "oxygen_condition": "normoxia"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "BDNF",
+              "evidence_sentence": "Ketamine decreases BDNF during hypoxia.",
+              "context": {
+                "oxygen_condition": "hypoxia"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

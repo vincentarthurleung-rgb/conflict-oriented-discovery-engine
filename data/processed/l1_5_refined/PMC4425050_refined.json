@@ -1,0 +1,1061 @@
+{
+  "asset_id": "PMC4425050",
+  "doi": "10.3390/ijms16047796",
+  "article_title": "Inflammatory Biomarkers as Differential Predictors of Antidepressant Response",
+  "journal": "International Journal of Molecular Sciences",
+  "belief_weight": 0.6,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [
+        {
+          "subject": "5-HT",
+          "relation_raw_variants": [
+            "inhibits the production of",
+            "inhibits"
+          ],
+          "relation_sign": -1,
+          "object": "IL-6",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, 5-HT inhibits the production of Th2 cytokines such as IL-6, whereas NE inhibits production of Th1 pro-inflammatory cytokines, including TNF-α (Figure 1) [18].",
+            "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α)",
+            "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α) (Figure 1) [18]."
+          ],
+          "mean_confidence": 0.82,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NE",
+          "relation_raw_variants": [
+            "inhibits production of",
+            "inhibits"
+          ],
+          "relation_sign": -1,
+          "object": "TNF-α",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, 5-HT inhibits the production of Th2 cytokines such as IL-6, whereas NE inhibits production of Th1 pro-inflammatory cytokines, including TNF-α (Figure 1) [18].",
+            "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α)",
+            "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α) (Figure 1) [18]."
+          ],
+          "mean_confidence": 0.82,
+          "predominant_negated": false
+        },
+        {
+          "subject": "SSRIs",
+          "relation_raw_variants": [
+            "cause"
+          ],
+          "relation_sign": 1,
+          "object": "Th1 shift",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The SSRIs (e.g., paroxetine, sertraline, fluoxetine, escitalopram) cause a Th1 shift."
+          ],
+          "mean_confidence": 0.81,
+          "predominant_negated": false
+        },
+        {
+          "subject": "SNRIs",
+          "relation_raw_variants": [
+            "cause"
+          ],
+          "relation_sign": 1,
+          "object": "Th2 shift",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+            "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift."
+          ],
+          "mean_confidence": 0.81,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NRIs",
+          "relation_raw_variants": [
+            "cause"
+          ],
+          "relation_sign": 1,
+          "object": "Th2 shift",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+            "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift."
+          ],
+          "mean_confidence": 0.81,
+          "predominant_negated": false
+        },
+        {
+          "subject": "5-HT",
+          "relation_raw_variants": [
+            "mediates",
+            "mediate"
+          ],
+          "relation_sign": 1,
+          "object": "Th1 shift",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "5-HT and NE are known to confer differential effects on inflammation, and mediate a Th1 shift and a Th2 shift, respectively.",
+            "NE and 5-HT are known to confer differential effects on inflammation, and mediate a T helper 1 (Th1) shift and a T helper 2 (Th2) shift, respectively."
+          ],
+          "mean_confidence": 0.88,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NE",
+          "relation_raw_variants": [
+            "mediates",
+            "mediate"
+          ],
+          "relation_sign": 1,
+          "object": "Th2 shift",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "5-HT and NE are known to confer differential effects on inflammation, and mediate a Th1 shift and a Th2 shift, respectively.",
+            "NE and 5-HT are known to confer differential effects on inflammation, and mediate a T helper 1 (Th1) shift and a T helper 2 (Th2) shift, respectively."
+          ],
+          "mean_confidence": 0.88,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NRIs",
+          "relation_raw_variants": [
+            "suppress"
+          ],
+          "relation_sign": -1,
+          "object": "Th1-type cytokines",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Thus, the antidepressants that affect 5-HT and NE distinctly affect immunity: while NRIs suppress Th1-type cytokines and shift the balance toward humoral immunity.",
+            "while NRIs suppress Th1-type cytokines and shift the balance toward humoral immunity."
+          ],
+          "mean_confidence": 0.78,
+          "predominant_negated": false
+        },
+        {
+          "subject": "SSRIs",
+          "relation_raw_variants": [
+            "reduce the production of",
+            "reduce"
+          ],
+          "relation_sign": -1,
+          "object": "Th2-type cytokines",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The SSRIs reduce the production of Th2-type cytokines and shift the balance toward cellular immune response (Figure 1) [17,18]."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": false
+        },
+        {
+          "subject": "SSRIs",
+          "relation_raw_variants": [
+            "reduce"
+          ],
+          "relation_sign": -1,
+          "object": "production of Th2-type cytokines",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The SSRIs reduce the production of Th2-type cytokines and shift the balance toward cellular immune response (Figure 1) [17,18]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "5-HT",
+              "relation_raw": "inhibits the production of",
+              "relation_sign": -1,
+              "object": "IL-6",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as IL-6, whereas NE inhibits production of Th1 pro-inflammatory cytokines, including TNF-α (Figure 1) [18].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NE",
+              "relation_raw": "inhibits production of",
+              "relation_sign": -1,
+              "object": "TNF-α",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as IL-6, whereas NE inhibits production of Th1 pro-inflammatory cytokines, including TNF-α (Figure 1) [18].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th1 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs (e.g., paroxetine, sertraline, fluoxetine, escitalopram) cause a Th1 shift.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SNRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "5-HT",
+              "relation_raw": "mediates",
+              "relation_sign": 1,
+              "object": "Th1 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "5-HT and NE are known to confer differential effects on inflammation, and mediate a Th1 shift and a Th2 shift, respectively.",
+              "confidence": 0.85,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NE",
+              "relation_raw": "mediates",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "5-HT and NE are known to confer differential effects on inflammation, and mediate a Th1 shift and a Th2 shift, respectively.",
+              "confidence": 0.85,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "suppress",
+              "relation_sign": -1,
+              "object": "Th1-type cytokines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Thus, the antidepressants that affect 5-HT and NE distinctly affect immunity: while NRIs suppress Th1-type cytokines and shift the balance toward humoral immunity.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "reduce the production of",
+              "relation_sign": -1,
+              "object": "Th2-type cytokines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs reduce the production of Th2-type cytokines and shift the balance toward cellular immune response (Figure 1) [17,18].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "5-HT",
+              "relation_raw": "mediate",
+              "relation_sign": 1,
+              "object": "Th1 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "NE and 5-HT are known to confer differential effects on inflammation, and mediate a T helper 1 (Th1) shift and a T helper 2 (Th2) shift, respectively.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NE",
+              "relation_raw": "mediate",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "NE and 5-HT are known to confer differential effects on inflammation, and mediate a T helper 1 (Th1) shift and a T helper 2 (Th2) shift, respectively.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "5-HT",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "IL-6",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α)",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NE",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "TNF-α",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α)",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th1 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs (e.g., paroxetine, sertraline, fluoxetine, escitalopram) cause a Th1 shift.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SNRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "5-HT",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "IL-6",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α) (Figure 1) [18].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NE",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "TNF-α",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α) (Figure 1) [18].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th1 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs (e.g., paroxetine, sertraline, fluoxetine, escitalopram) cause a Th1 shift.",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SNRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "suppress",
+              "relation_sign": -1,
+              "object": "Th1-type cytokines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "while NRIs suppress Th1-type cytokines and shift the balance toward humoral immunity.",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "reduce",
+              "relation_sign": -1,
+              "object": "production of Th2-type cytokines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs reduce the production of Th2-type cytokines and shift the balance toward cellular immune response (Figure 1) [17,18].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "5-HT",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "IL-6",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α) (Figure 1) [18].",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NE",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "TNF-α",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, 5-HT inhibits the production of Th2 cytokines such as interleukin 6 (IL-6), whereas NE inhibits production of Th1 pro-inflammatory cytokines, including tumor necrosis factor-α (TNF-α) (Figure 1) [18].",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th1 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs (e.g., paroxetine, sertraline, fluoxetine, escitalopram) cause a Th1 shift.",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SNRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "cause",
+              "relation_sign": 1,
+              "object": "Th2 shift",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SNRIs (venlafaxine, duloxetine), and NRIs (nortriptyline, reboxetine) cause a Th2 shift [18].",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NRIs",
+              "relation_raw": "suppress",
+              "relation_sign": -1,
+              "object": "Th1-type cytokines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Thus, the antidepressants that affect 5-HT and NE distinctly affect immunity: while NRIs suppress Th1-type cytokines and shift the balance toward humoral immunity.",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "SSRIs",
+              "relation_raw": "reduce",
+              "relation_sign": -1,
+              "object": "Th2-type cytokines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The SSRIs reduce the production of Th2-type cytokines and shift the balance toward cellular immune response (Figure 1) [17,18].",
+              "confidence": 0.5,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ],
+  "refined_status": "Release_3.2.1_Truth_Locked"
+}

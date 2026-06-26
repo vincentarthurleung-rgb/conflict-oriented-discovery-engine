@@ -1,0 +1,50 @@
+pmcid,journal,impact_factor,jcr_tier,belief_weight,is_noise_candidate,paragraph_count
+PMC4758914,Molecular Psychiatry,11.1,Top,0.85,False,29
+PMC4759104,Molecular Psychiatry,11.1,Top,0.85,False,68
+PMC4772273,International Journal of Neuropsychopharmacology,4.5,JCR-Q1,0.65,False,33
+PMC4673867,Frontiers in Psychiatry,4.8,JCR-Q1,0.65,False,52
+PMC4629199,Scientific Reports,4.6,JCR-Q1,0.6,False,30
+PMC4618126,Molecular Psychiatry,11.1,Top,0.85,False,52
+PMC4588184,Pharmaceuticals,5.1,JCR-Q1,0.65,False,30
+PMC4551989,Scientific Reports,4.6,JCR-Q1,0.6,False,34
+PMC4360248,International Journal of Neuropsychopharmacology,4.5,JCR-Q1,0.65,False,42
+PMC4527073,Indian Journal of Pharmacology,3.5,Adaptive_Silver_Pool,0.6,False,9
+PMC4469544,Journal of Psychopharmacology,3.2,JCR-Q2,0.5,False,39
+PMC4445748,Translational Psychiatry,5.8,JCR-Q1,0.7,False,32
+PMC4425050,International Journal of Molecular Sciences,3.5,Adaptive_Silver_Pool,0.6,False,7
+PMC4368871,International Journal of Neuropsychopharmacology,4.5,JCR-Q1,0.65,False,23
+PMC4243034,Current Neuropharmacology,4.6,JCR-Q1,0.65,False,78
+PMC4264404,eLife,8.4,Top,0.8,False,12
+PMC4270067,eLife,8.4,Top,0.8,False,38
+PMC4303351,International Journal of Neuropsychopharmacology,4.5,JCR-Q1,0.65,False,27
+PMC4269920,Cell Communication and Signaling : CCS,3.5,Adaptive_Silver_Pool,0.6,False,29
+PMC4249453,Frontiers in Molecular Neuroscience,3.5,Adaptive_Silver_Pool,0.6,False,22
+PMC4224009,Journal of Molecular Psychiatry,3.5,Adaptive_Silver_Pool,0.6,False,12
+PMC4195977,Molecular Psychiatry,11.1,Top,0.85,False,43
+PMC4153858,Clinical Psychopharmacology and Neuroscience,3.5,Adaptive_Silver_Pool,0.6,False,18
+PMC4080320,Translational Psychiatry,5.8,JCR-Q1,0.7,False,27
+PMC3915350,Current Neuropharmacology,4.6,JCR-Q1,0.65,False,43
+PMC4030322,Translational Psychiatry,5.8,JCR-Q1,0.7,False,14
+PMC3997017,Frontiers in Behavioral Neuroscience,3.5,Adaptive_Silver_Pool,0.6,False,44
+PMC3984887,Dialogues in Clinical Neuroscience,3.5,Adaptive_Silver_Pool,0.6,False,50
+PMC3968911,CNS Spectrums,3.5,Adaptive_Silver_Pool,0.6,False,41
+PMC3965840,Molecular Psychiatry,11.1,Top,0.85,False,45
+PMC3938562,PLOS ONE,2.9,JCR-Q2,0.4,False,37
+PMC3919798,PLOS ONE,2.9,JCR-Q2,0.4,False,52
+PMC3905222,Translational Psychiatry,5.8,JCR-Q1,0.7,False,23
+PMC3894182,PLOS ONE,2.9,JCR-Q2,0.4,False,52
+PMC3873522,Frontiers in Pharmacology,3.5,Adaptive_Silver_Pool,0.6,False,50
+PMC3834236,Frontiers in Cellular Neuroscience,3.5,Adaptive_Silver_Pool,0.6,False,50
+PMC3816696,Pharmaceuticals,5.1,JCR-Q1,0.65,False,71
+PMC3747027,Neuropsychiatric Disease and Treatment,3.5,Adaptive_Silver_Pool,0.6,False,30
+PMC3671988,Neuropsychopharmacology,6.6,JCR-Q1,0.75,False,34
+PMC3572668,Upsala Journal of Medical Sciences,3.5,Adaptive_Silver_Pool,0.6,False,22
+PMC3563541,PLOS ONE,2.9,JCR-Q2,0.4,False,27
+PMC3546630,Journal of Psychopharmacology,3.2,JCR-Q2,0.5,False,20
+PMC3529362,Frontiers in Synaptic Neuroscience,3.5,Adaptive_Silver_Pool,0.6,False,5
+PMC3498782,Indian Journal of Psychological Medicine,3.5,Adaptive_Silver_Pool,0.6,False,36
+PMC3461985,PLOS ONE,2.9,JCR-Q2,0.4,False,30
+PMC3362535,PLOS ONE,2.9,JCR-Q2,0.4,False,45
+PMC3336144,Journal of Biomedicine and Biotechnology,3.5,Adaptive_Silver_Pool,0.6,False,20
+PMC3172695,Nature,50.5,CNS,1.0,False,33
+PMC3177898,Journal of Neuroinflammation,3.5,Adaptive_Silver_Pool,0.6,False,33

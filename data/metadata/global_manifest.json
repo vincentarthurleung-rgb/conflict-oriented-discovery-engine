@@ -1,0 +1,254 @@
+{
+  "metadata": {
+    "query": "(Ketamine[Title/Abstract]) AND (antidepressant[Title/Abstract] OR depression[Title/Abstract] OR rapid-acting[Title/Abstract] OR fast-acting[Title/Abstract]) AND (NMDA[Title/Abstract] OR synaptic[Title/Abstract] OR glutamate[Title/Abstract] OR AMPA[Title/Abstract] OR mTOR[Title/Abstract]) AND open access[filter]",
+    "total_registered_assets": 49,
+    "timestamp": "2026-06-03 01:27:30"
+  },
+  "papers": {
+    "PMC4758914": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4759104": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4772273": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4673867": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4629199": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4618126": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4588184": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4551989": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4360248": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4527073": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4469544": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4445748": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4425050": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4368871": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4243034": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4264404": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4270067": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4303351": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4269920": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4249453": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4224009": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4195977": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4153858": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4080320": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3915350": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC4030322": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3997017": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3984887": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3968911": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3965840": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3938562": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3919798": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3905222": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3894182": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3873522": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3834236": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3816696": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3747027": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3671988": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3572668": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3563541": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3546630": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3529362": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3498782": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3461985": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3362535": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3336144": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3172695": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    },
+    "PMC3177898": {
+      "type": "fulltext",
+      "source": "pmc",
+      "timestamp": "2026-06-03 01:27:30"
+    }
+  }
+}

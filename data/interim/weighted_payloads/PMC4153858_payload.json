@@ -1,0 +1,84 @@
+{
+  "pmcid": "PMC4153858",
+  "doi": "10.9758/cpn.2014.12.2.124",
+  "article_title": "Antidepressant Effects of Ketamine on Depression-like Behavior in Juvenile Mice after Neonatal Dexamethasone Exposure",
+  "journal": "Clinical Psychopharmacology and Neuroscience",
+  "impact_factor": 3.5,
+  "jcr_tier": "Adaptive_Silver_Pool",
+  "belief_weight": 0.6,
+  "is_noise_candidate": false,
+  "paragraphs": [
+    {
+      "section": "INTRODUCTION",
+      "text": "Pediatric depression, a common psychiatric disease diagnosed in childhood and adolescence, is associated with interpersonal difficulties later in life, early parenthood, impaired school performance, unemployment, and other mental and substance abuse disorders.1,2) Despite the significant burden imposed by depression in children and adolescents, research has yet to determine the precise neurobiology of this disease."
+    },
+    {
+      "section": "INTRODUCTION",
+      "text": "Glucocorticoids are adrenocorticosteroid hormones that are secreted at high levels in response to activation of the hypothalamic-pituitary-adrenal (HPA) as part of a physiological response to stress. Chronic stress has a significant impact on neuroplasticity in limbic brain areas and is thought to contribute to the pathophysiology of major depression.3,4) Stress increases the levels of circulating corticosteroids, which act through glucocorticoid receptors in the brain. Very recently, we reported that neonatal exposure to dexamethasone (DEX), a potent synthetic glucocorticoid receptor agonist, induced depression-like behavior in juvenile mice.5) Furthermore, we found that alterations in glutamatergic transmission via the N-methyl-D-aspartate (NMDA) receptor may precipitate the behavioral abnormalities exhibited by juvenile mice after neonatal DEX exposure and that NMDA receptor antagonists could ameliorate the behavioral abnormalities in these mice.5) Taken together, our findings suggested that the behavioral abnormalities seen in juvenile mice after neonatal DEX exposure may represent an animal model of pediatric depression."
+    },
+    {
+      "section": "INTRODUCTION",
+      "text": "Growing evidence suggests that the glutamatergic system plays key roles in the neurobiology and treatment of major depression.6,7,8,9,10,11,12,13) The NMDA receptor antagonist ketamine has been associated with rapid and robust antidepressant effects in patients with treatment-resistant major depression.14,15) These effects were not apparent until after the psychotomimetic effects of ketamine had disappeared.14,16) Furthermore, the clinical benefits of a single dose of ketamine may last as briefly as 1 or 2 days or as long as more than 2 weeks.16,17) At present, ketamine is one of the most attractive antidepressants in the fight against treatment-resistant depression.16,18,19,20)"
+    },
+    {
+      "section": "INTRODUCTION",
+      "text": "The purpose of this study was to determine whether ketamine could improve depression-like behavior in juvenile mice after neonatal DEX exposure."
+    },
+    {
+      "section": "Animals and Treatment",
+      "text": "Male and female ICR mice (9 weeks old) were purchased from SLC Japan (Hamamatsu, Shizuoka, Japan). The mice were housed in groups of three or five per cage under a controlled 12/12-hour light/dark cycle (lights on from 7:00 AM to 7:00 PM) at a room temperature of 23±1℃ and humidity of 55±5%. Mice were given free access to water and food pellets. Experimental procedures were approved by the Animal Care and Use Committee of Chiba University."
+    },
+    {
+      "section": "Animals and Treatment",
+      "text": "The breeding procedure consisted of housing three or four females with one male for 14 days. At the end of this period, females were isolated and checked daily around the expected delivery day. The day of birth was considered day 0. DEX was dissolved in physiological saline. During DEX treatment procedures (between 10:00 and 12:00 hours), dams were separated from their nests for a limited period of time (3-5 minutes), and pups were transported to an adjacent room where they were injected intraperitoneally (i.p.) with DEX (Wako Pure Chemical Co., Tokyo, Japan) on neonatal day 1 (0.5 mg/kg body weight), day 2 (0.3 mg/kg), and day 3 (0.1 mg/kg), or with equal volumes (10 mL/kg) of sterile pyrogen-free saline (SAL) (Fig. 1).5) All pups in a nest received either DEX or SAL. At weaning, all female mice were discarded. Male mice were housed under the same conditions until all experiments were concluded."
+    },
+    {
+      "section": "Animals and Treatment",
+      "text": "Ketamine hydrochloride was prepared from ketamine hydrochloride (Ketalar®; Daiichi Sankyo Pharmaceutical Ltd., Tokyo, Japan) and dissolved in physiological saline. During postnatal days 29-32, mice were injected with ketamine (10 mg/kg, i.p.) 24 hours before the sucrose preference test (SPT), 40 hours before the tail suspension test (TST), and 46 hours before the forced swimming test (FST) (Fig. 1)."
+    },
+    {
+      "section": "Sucrose Preference Test (SPT)",
+      "text": "Mice were habituated to a 1% sucrose solution for 48 hours before the test day. Mice were deprived of water and food for the 4 hours from 13:00 PM to 17:00 PM, and this was followed by a 1-hour preference test with water and 1% sucrose delivered from identical bottles. The bottles containing water and sucrose were weighed before and after this period, and sucrose preference (%) was determined."
+    },
+    {
+      "section": "Tail Suspension Test (TST)",
+      "text": "Mouse tails were wrapped with tape from base to tip, covering approximately 4/5 of the tail length, and the mice were then fixed upside down on a hook. The immobility time of each mouse was recorded during a 10-minute period. Mice were considered immobile only when they hung passively and completely motionless. The observer assessing immobility was blind to the mouse groups."
+    },
+    {
+      "section": "Forced Swimming Test (FST)",
+      "text": "Mice were placed individually in a cylinder (diameter, 23 cm; height, 31 cm) containing 15 cm of water maintained at 23±1℃. The water was changed between testing sessions. Mice were placed in the water for 6 minutes and then returned to their home cages. During testing, mice were video recorded from above, and the duration of immobility was determined during the 6-minute test period using a stopwatch."
+    },
+    {
+      "section": "Statistical Analysis",
+      "text": "Data are presented as means±standard errors of the mean. The results of the SPT, TST, and FST were analyzed using one-way ANOVA, followed by the post hoc Bonferroni/Dunn test. For all analyses, differences were considered significant when p-values were lower than 0.05. Data were analyzed using the Statistical Package for the Social Sciences ver. 13.0 for Windows (SPSS Inc., Chicago, IL, USA)."
+    },
+    {
+      "section": "RESULTS",
+      "text": "We first performed the SPT 24 hours after a single dose of ketamine. The ANOVA revealed a significant difference [F(2, 27)=6.481, p=0.005] among the three groups. Subsequent post hoc analysis showed that neonatal DEX treatment significantly decreased preference for the 1% sucrose solution compared with SAL, indicating that neonatal DEX exposure produced anhedonia in juvenile mice. A single dose of ketamine (10 mg/kg) significantly attenuated this decreased preference for 1% sucrose (Fig. 1A)."
+    },
+    {
+      "section": "RESULTS",
+      "text": "Next, we performed the TST and FST 40 and 46 hours, respectively, after a single administration of ketamine. The immobility time of DEX-treated juvenile mice in both the TST and FST was significantly attenuated after a single dose of ketamine (10 mg/kg) (Fig. 1B, 1C). The ANOVA identified significant differences (TST: F[2, 27]=9.14, p=0.001, FST: F[2, 31]=13.61, p<0.001) among the three groups. Subsequent post hoc analysis found that the immobility time of DEX-treated mice was significantly longer than was that of that of SAL-treated mice (Fig. 1B, 1C), indicating that neonatal DEX exposure induces depression-like behavior in juveniles."
+    },
+    {
+      "section": "DISCUSSION",
+      "text": "In this study, we found that neonatal DEX exposure (days 1-3) caused depression-like behavior (i.e., decreased preference for consumption of 1% sucrose and increased immobility times in the TST and FST) in juvenile mice and that a single dose of ketamine produced a long-lasting antidepressant effect in these affected animals. It is noteworthy that ketamine-induced antidepressant effects could be detected at 46 hours after a single ketamine dose. To the best of our knowledge, this is the first report of antidepressant effects of ketamine in juvenile mice after neonatal DEX exposure, a new animal model of pediatric depression."
+    },
+    {
+      "section": "DISCUSSION",
+      "text": "Very recently, we reported that neonatal DEX exposure caused depression-like behavior in juvenile mice, suggesting that this could represent a new animal model of pediatric depression.5) Furthermore, we found alterations in the levels of the amino acids, glutamate, glutamine, glycine, D-serine, and L-serine in mouse brains after neonatal DEX exposure.5) Therefore, it is likely that the altered glutamatergic transmission via the NMDA receptor induced by neonatal DEX exposure may precipitate depression-like behavior in juvenile mice, as these amino acids are associated with NMDA receptor neurotransmission.8)"
+    },
+    {
+      "section": "DISCUSSION",
+      "text": "The unpredictable chronic mild stress (CMS) model and social defeat model are widely used animal models of depression.21) They are based on stress exposure during brain development or adulthood. In contrast, our model was based solely on neonatal DEX exposure. It is also well known that the HPA axis is hyperactive in patients with major depression.22) We found higher levels of blood corticosterone in juveniles after neonatal DEX exposure, suggesting hyperactivity of the HPA system in these mice.5) Thus, neonatal DEX exposure is able to alter neuroendocrinological stress axis functioning in later life, and this exposure may lead to depression-like behavior during the juvenile stages of development. Thus, it is very feasible that our model can be used as an animal model of depression in childhood and adolescence."
+    },
+    {
+      "section": "DISCUSSION",
+      "text": "In rodents, the paradigm of unpredictable CMS produced anhedonia, the loss of interest in normally pleasurable and rewarding activities, a core symptom of depression.23) Recently, we found that a single dose of ketamine (10 mg/kg) produced long-lasting antidepressant effects (measured by the 1% SPT, TST, and FST) in CMS mice.24) Interestingly, after even a single dose, the ketamine-induced increase in sucrose intake persisted for 8 days.24) In this study, we found that ketamine could ameliorate anhedonia in juvenile mice after neonatal DEX exposure. Our findings provide further evidence of the rapid onset and long-lasting antidepressant effects of ketamine in this new animal model of pediatric depression."
+    },
+    {
+      "section": "DISCUSSION",
+      "text": "In conclusion, neonatal DEX exposure causes depression-like behavior in juvenile mice, and a single dose of ketamine produces a rapid and enduring antidepressant effect in these animals. It is therefore likely that depression-like behavior induced by neonatal DEX exposure in juvenile mice may constitute a potential animal model of pediatric depression."
+    }
+  ]
+}

@@ -1,0 +1,1928 @@
+{
+  "asset_id": "PMC3894182",
+  "doi": "10.1371/journal.pone.0083879",
+  "article_title": "Mice Lacking NMDA Receptors in Parvalbumin Neurons Display Normal Depression-Related Behavior and Response to Antidepressant Action of NMDAR Antagonists",
+  "journal": "PLOS ONE",
+  "belief_weight": 0.4,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Animals",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Genotyping of transgenic animals",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Behavioral experiments",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Forced swimming test",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Experiment 1",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Experiment 2",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Experiment 3",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Experiment 4",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Sucrose preference test",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Open field analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Drugs",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Doses, times and route of administration were selected based on the observations indicating that both drugs significantly reduced the immobility time in the same behavioral paradigm (FST) at different time points (3)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MK801",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Doses, times and route of administration were selected based on the observations indicating that both drugs significantly reduced the immobility time in the same behavioral paradigm (FST) at different time points (3)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Doses, times and route of administration were selected based on the observations indicating that both drugs significantly reduced the immobility time in the same behavioral paradigm (FST) at different time points (3).",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Doses, times and route of administration were selected based on the observations indicating that both drugs significantly reduced the immobility time in the same behavioral paradigm (FST) at different time points (3).",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Statistics",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Establishing a behavioral paradigm of repeated forced swimming test",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Behavioral responses of PV-Cre+/NR1f/f mice in the repeated forced swim test",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Acute and sustained antidepressant effects of ketamine and MK801 in C57 mice",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 16,
+      "section": "Antidepressant responses to ketamine and MK801 in PV-Cre+/NR1f/f mice",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 17,
+      "section": "Behavioral responses of PV-Cre+/NR1f/f mice in the sucrose preference test",
+      "aggregated_relations": [
+        {
+          "subject": "NMDAR",
+          "relation_raw_variants": [
+            "reduces"
+          ],
+          "relation_sign": -1,
+          "object": "anhedonic behavior",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "NMDAR antagonism",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Anhedonia is a diagnostic criterion for major depression in the DSM-IVR, and acute NMDAR antagonism reduces anhedonic behavior [44]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "acute NMDAR antagonism",
+          "relation_raw_variants": [
+            "reduces"
+          ],
+          "relation_sign": -1,
+          "object": "anhedonic behavior",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Anhedonia is a diagnostic criterion for major depression in the DSM-IVR, and acute NMDAR antagonism reduces anhedonic behavior [44]."
+          ],
+          "mean_confidence": 0.82,
+          "predominant_negated": false
+        },
+        {
+          "subject": "Chronic exposure to mild unpredictable stress",
+          "relation_raw_variants": [
+            "reduce"
+          ],
+          "relation_sign": -1,
+          "object": "consumption of highly palatable sucrose solution",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46]."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": false
+        },
+        {
+          "subject": "Chronic exposure to mild unpredictable stress",
+          "relation_raw_variants": [
+            "reduce"
+          ],
+          "relation_sign": -1,
+          "object": "preference for highly palatable sucrose solution",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46]."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": false
+        },
+        {
+          "subject": "antidepressants",
+          "relation_raw_variants": [
+            "reversed"
+          ],
+          "relation_sign": 1,
+          "object": "reduced sucrose preference behavior",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46]."
+          ],
+          "mean_confidence": 0.7,
+          "predominant_negated": false
+        },
+        {
+          "subject": "Chronic exposure to mild unpredictable stress",
+          "relation_raw_variants": [
+            "reduce"
+          ],
+          "relation_sign": -1,
+          "object": "consumption of, and preference for, highly palatable sucrose solution",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "mild unpredictable stress",
+              "localization": "unspecified",
+              "time": "chronic",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "antidepressants",
+          "relation_raw_variants": [
+            "reversed"
+          ],
+          "relation_sign": 1,
+          "object": "consumption of and preference for highly palatable sucrose solution",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "antidepressants",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NMDAR antagonism",
+          "relation_raw_variants": [
+            "reduces"
+          ],
+          "relation_sign": -1,
+          "object": "anhedonic behavior",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "acute NMDAR antagonism reduces anhedonic behavior [44]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "NMDAR",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "anhedonic behavior",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "NMDAR ANTAGONISM",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Anhedonia is a diagnostic criterion for major depression in the DSM-IVR, and acute NMDAR antagonism reduces anhedonic behavior [44].",
+              "confidence": 0.9,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "acute NMDAR antagonism",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "anhedonic behavior",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Anhedonia is a diagnostic criterion for major depression in the DSM-IVR, and acute NMDAR antagonism reduces anhedonic behavior [44].",
+              "confidence": 0.7,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "Chronic exposure to mild unpredictable stress",
+              "relation_raw": "reduce",
+              "relation_sign": -1,
+              "object": "consumption of highly palatable sucrose solution",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "CHRONIC",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46].",
+              "confidence": 0.7,
+              "_source": {
+                "species": "original",
+                "time": "rule",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "Chronic exposure to mild unpredictable stress",
+              "relation_raw": "reduce",
+              "relation_sign": -1,
+              "object": "preference for highly palatable sucrose solution",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "CHRONIC",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46].",
+              "confidence": 0.7,
+              "_source": {
+                "species": "original",
+                "time": "rule",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "antidepressants",
+              "relation_raw": "reversed",
+              "relation_sign": 1,
+              "object": "reduced sucrose preference behavior",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "CHRONIC",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46].",
+              "confidence": 0.7,
+              "_source": {
+                "species": "original",
+                "time": "rule",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "acute NMDAR antagonism",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "anhedonic behavior",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "ACUTE",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Anhedonia is a diagnostic criterion for major depression in the DSM-IVR, and acute NMDAR antagonism reduces anhedonic behavior [44].",
+              "confidence": 0.95,
+              "_source": {
+                "time": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "Chronic exposure to mild unpredictable stress",
+              "relation_raw": "reduce",
+              "relation_sign": -1,
+              "object": "consumption of, and preference for, highly palatable sucrose solution",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "MILD UNPREDICTABLE STRESS",
+                "localization": "unspecified",
+                "time": "CHRONIC",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "time": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "antidepressants",
+              "relation_raw": "reversed",
+              "relation_sign": 1,
+              "object": "consumption of and preference for highly palatable sucrose solution",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "ANTIDEPRESSANTS",
+                "localization": "unspecified",
+                "time": "CHRONIC",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Chronic exposure to mild unpredictable stress has been found to reduce the consumption of, and preference for, highly palatable sucrose solution in rodents, a behavior that is reversed by antidepressants [45], [46].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "time": "rule",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "NMDAR antagonism",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "anhedonic behavior",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "acute NMDAR antagonism reduces anhedonic behavior [44].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 18,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "glutamatergic neurotransmission",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodents",
+              "treatment": "unspecified",
+              "localization": "prefrontal cortex",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodent",
+              "treatment": "ketamine",
+              "localization": "prefrontal cortex",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rodent",
+              "treatment": "ketamine",
+              "localization": "prefrontal cortex",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "acute ketamine administration rapidly increases glutamatergic neurotransmission in the prefrontal cortex of rodents",
+            "In accordance with this theory, acute ketamine administration rapidly increases glutamatergic neurotransmission in the prefrontal cortex of rodents, a process most likely mediated by presynaptic NMDA autoreceptors and/or NMDAR expressed on GABAergic interneurons [40], which are known to shape circuit function by changing the balance between excitation and inhibition [41]."
+          ],
+          "mean_confidence": 0.91,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MK801",
+          "relation_raw_variants": [
+            "increase"
+          ],
+          "relation_sign": 1,
+          "object": "c-fos protein expression",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "MK801",
+              "localization": "subcortical",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "MK801",
+              "localization": "subcortical regions",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression (used as a marker of neuronal activation) in various subcortical regions",
+            "However, although local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression (used as a marker of neuronal activation) in various subcortical regions [42]",
+            "local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression in various subcortical regions"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MK801",
+          "relation_raw_variants": [
+            "increase"
+          ],
+          "relation_sign": 1,
+          "object": "firing of pyramidal neurons",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "pyramidal neurons",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "pyramidal neurons",
+              "species": "rats",
+              "treatment": "unspecified",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "pyramidal neurons",
+              "species": "rat",
+              "treatment": "MK801",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "MK801",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "systemic administration of MK801 is known to increase the firing of pyramidal neurons of the mPFC of awake rats",
+            "and systemic administration of MK801 is known to increase the firing of pyramidal neurons of the mPFC of awake rats [42]"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "produce"
+          ],
+          "relation_sign": -1,
+          "object": "anti-depressant response",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 3,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rats",
+              "treatment": "unspecified",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats",
+            "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats [43]"
+          ],
+          "mean_confidence": 0.88,
+          "predominant_negated": true
+        },
+        {
+          "subject": "MK801",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": -1,
+          "object": "sucrose preference",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NMDAR-dependent activity of PV neurons",
+          "relation_raw_variants": [
+            "regulate"
+          ],
+          "relation_sign": -1,
+          "object": "mood-related behaviors",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "our results suggest that the NMDAR-dependent activity of PV neurons is not the primary target for the rapid and sustained antidepressant effect of NMDAR antagonists, and that NMDAR-dependent activity of PV neurons does not regulate mood-related behaviors."
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": true
+        },
+        {
+          "subject": "MK801",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": 1,
+          "object": "deficit in sucrose preference",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rats",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "MK801",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "MK801",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats [44]",
+            "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "produce"
+          ],
+          "relation_sign": -1,
+          "object": "antidepressant response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "mPFC",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        },
+        {
+          "subject": "repeated testing",
+          "relation_raw_variants": [
+            "result in"
+          ],
+          "relation_sign": -1,
+          "object": "increased depressive behavior",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "repeated testing of mice does not in itself result in increased depressive behavior"
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine and MK801",
+          "relation_raw_variants": [
+            "producing"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant-like activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "ketamine, MK801",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "NR1 knockout in PV cells"
+            }
+          ],
+          "evidence_sentences": [
+            "both ketamine and MK801, at doses producing antidepressant-like activity, had similar behavioral effects in our mutant mice"
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamatergic neurotransmission",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "KETAMINE",
+                "localization": "CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "acute ketamine administration rapidly increases glutamatergic neurotransmission in the prefrontal cortex of rodents",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "localization": "rule",
+                "treatment": "rule",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "c-fos protein expression",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "PFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression (used as a marker of neuronal activation) in various subcortical regions",
+              "confidence": 0.9,
+              "_source": {
+                "localization": "rule",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "firing of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "PYRAMIDAL NEURONS",
+                "species": "RAT",
+                "treatment": "unspecified",
+                "localization": "PFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "systemic administration of MK801 is known to increase the firing of pyramidal neurons of the mPFC of awake rats",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "rule",
+                "cell_line_or_type": "original",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "produce",
+              "relation_sign": -1,
+              "object": "anti-depressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "KETAMINE",
+                "localization": "PFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats",
+              "confidence": 0.85,
+              "_source": {
+                "species": "original",
+                "localization": "rule",
+                "treatment": "rule",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "produces",
+              "relation_sign": -1,
+              "object": "sucrose preference",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NMDAR-dependent activity of PV neurons",
+              "relation_raw": "regulate",
+              "relation_sign": -1,
+              "object": "mood-related behaviors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "MOUSE",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "our results suggest that the NMDAR-dependent activity of PV neurons is not the primary target for the rapid and sustained antidepressant effect of NMDAR antagonists, and that NMDAR-dependent activity of PV neurons does not regulate mood-related behaviors.",
+              "confidence": 0.8,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamatergic neurotransmission",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENTS",
+                "treatment": "KETAMINE",
+                "localization": "PREFRONTAL CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In accordance with this theory, acute ketamine administration rapidly increases glutamatergic neurotransmission in the prefrontal cortex of rodents, a process most likely mediated by presynaptic NMDA autoreceptors and/or NMDAR expressed on GABAergic interneurons [40], which are known to shape circuit function by changing the balance between excitation and inhibition [41].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "rule",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "c-fos protein expression",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "However, although local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression (used as a marker of neuronal activation) in various subcortical regions [42]",
+              "confidence": 0.9,
+              "_source": {
+                "localization": "original",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "firing of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "PYRAMIDAL NEURONS",
+                "species": "RATS",
+                "treatment": "unspecified",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "and systemic administration of MK801 is known to increase the firing of pyramidal neurons of the mPFC of awake rats [42]",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "cell_line_or_type": "original",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "produce",
+              "relation_sign": -1,
+              "object": "anti-depressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RATS",
+                "treatment": "KETAMINE",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats [43]",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "rule",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "deficit in sucrose preference",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RATS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats [44]",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamatergic neurotransmission",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENT",
+                "treatment": "KETAMINE",
+                "localization": "PREFRONTAL CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "acute ketamine administration rapidly increases glutamatergic neurotransmission in the prefrontal cortex of rodents",
+              "confidence": 0.85,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "c-fos protein expression",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "MK801",
+                "localization": "SUBCORTICAL",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression in various subcortical regions",
+              "confidence": 0.9,
+              "_source": {
+                "localization": "original",
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "firing of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "PYRAMIDAL NEURONS",
+                "species": "RAT",
+                "treatment": "MK801",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "systemic administration of MK801 is known to increase the firing of pyramidal neurons of the mPFC of awake rats",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "cell_line_or_type": "original",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "produce",
+              "relation_sign": -1,
+              "object": "antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "KETAMINE",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "deficit in sucrose preference",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "MK801",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamatergic neurotransmission",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RODENT",
+                "treatment": "KETAMINE",
+                "localization": "PREFRONTAL CORTEX",
+                "time": "ACUTE",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "acute ketamine administration rapidly increases glutamatergic neurotransmission in the prefrontal cortex of rodents",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "time": "original",
+                "treatment": "original",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "c-fos protein expression",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "MK801",
+                "localization": "SUBCORTICAL REGIONS",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "local infusion of MK801 into the mPFC is sufficient to increase c-fos protein expression (used as a marker of neuronal activation) in various subcortical regions",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "firing of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "PRIMARY NEURON",
+                "species": "RAT",
+                "treatment": "MK801",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "systemic administration of MK801 is known to increase the firing of pyramidal neurons of the mPFC of awake rats",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "cell_line_or_type": "rule",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "produce",
+              "relation_sign": -1,
+              "object": "anti-depressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "KETAMINE",
+                "localization": "MPFC",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "the direct infusion of ketamine into the mPFC is not sufficient to produce anti-depressant response in rats",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "repeated testing",
+              "relation_raw": "result in",
+              "relation_sign": -1,
+              "object": "increased depressive behavior",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "MOUSE",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "repeated testing of mice does not in itself result in increased depressive behavior",
+              "confidence": 0.8,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "ketamine and MK801",
+              "relation_raw": "producing",
+              "relation_sign": 1,
+              "object": "antidepressant-like activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "MOUSE",
+                "treatment": "KETAMINE, MK801",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "NR1 KNOCKOUT IN PV CELLS"
+              },
+              "negated": false,
+              "evidence_sentence": "both ketamine and MK801, at doses producing antidepressant-like activity, had similar behavioral effects in our mutant mice",
+              "confidence": 0.85,
+              "_source": {
+                "species": "original",
+                "genotype": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "MK801",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "deficit in sucrose preference",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "RAT",
+                "treatment": "MK801",
+                "localization": "unspecified",
+                "time": "ACUTE",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute blockage of NMDA receptors by MK801 produces a deficit in sucrose preference in rats",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "time": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ],
+  "refined_status": "Release_3.2.1_Truth_Locked"
+}

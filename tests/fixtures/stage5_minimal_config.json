@@ -1,0 +1,15 @@
+{
+  "ontology_settings": {
+    "similarity_threshold_theta": 0.7,
+    "marginal_entropy_conflict_gate": 0.1,
+    "type_i_attribution_gate": 0.45
+  },
+  "synonym_map": {
+    "ketamine": "KETAMINE",
+    "bdnf": "BDNF"
+  },
+  "forbidden_object_keywords": [],
+  "weak_supervision_latent_prior": {
+    "latent_variables": ["HYPOXIA", "NORMOXIA", "ACUTE_PHASE", "CHRONIC_PHASE"]
+  }
+}

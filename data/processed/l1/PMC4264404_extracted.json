@@ -1,0 +1,31 @@
+{
+  "asset_id": "PMC4264404",
+  "doi": "10.7554/eLife.05418",
+  "article_title": "How ketamine helps to overcome depression",
+  "journal": "eLife",
+  "belief_weight": 0.8,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Main_Text",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environment
+.env
+.venv/
+venv/
+.DS_Store
+
+# Research runtime artifacts
+data/raw/
+data/interim/
+data/processed/
+logs/
+reports/*.tmp
+reports/run_*/
+.cache/
+
+# Explicitly allow small curated/demo fixtures if added later
+!data/fixtures/
+!data/demo/

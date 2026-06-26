@@ -1,0 +1,1009 @@
+{
+  "asset_id": "PMC3461985",
+  "doi": "10.1371/journal.pone.0044799",
+  "article_title": "Ketamine Decreases Resting State Functional Network Connectivity in Healthy Subjects: Implications for Antidepressant Drug Action",
+  "journal": "PLOS ONE",
+  "belief_weight": 0.4,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "1. The glutamatergic system as a target for antidepressant intervention",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "2. Resting state functional connectivity as a biological marker for antidepressant intervention",
+      "aggregated_relations": [
+        {
+          "subject": "citalopram",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "reboxetine",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "citalopram and reboxetine",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "citalopram",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48].",
+              "confidence": 0.95,
+              "_source": {
+                "localization": "rule",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "reboxetine",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48].",
+              "confidence": 0.95,
+              "_source": {
+                "localization": "rule",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "citalopram and reboxetine",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48].",
+              "confidence": 0.95,
+              "_source": {
+                "localization": "rule",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "citalopram",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48].",
+              "confidence": 0.95,
+              "_source": {
+                "localization": "rule",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "reboxetine",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "CORTEX",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, in another study the SSRI citalopram and the selective norepinephrine reuptake inhibitor (NARI) reboxetine reduced subcortical-cortical connectivities between the amygdala and the medial and orbitofrontal prefrontal cortices [48].",
+              "confidence": 0.95,
+              "_source": {
+                "localization": "rule",
+                "species": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "3. Investigating large-scale neural network dynamics following ketamine administration",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "decreases"
+          ],
+          "relation_sign": -1,
+          "object": "depressive symptomatology",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "1 day post-infusion",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "S-ketamine",
+              "localization": "unspecified",
+              "time": "24 hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "subanaesthetic intravenous ketamine",
+              "localization": "unspecified",
+              "time": "24 hours after a single intravenous infusion",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The 24 h follow-up interval was based on the evidence that ketamine decreases depressive symptomatology most effectively one day after a single intravenous infusion [4]."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "depressive symptomatology",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN",
+                "treatment": "KETAMINE",
+                "localization": "unspecified",
+                "time": "1 DAY POST INFUSION",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The 24 h follow-up interval was based on the evidence that ketamine decreases depressive symptomatology most effectively one day after a single intravenous infusion [4].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "time": "original",
+                "treatment": "rule",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "depressive symptomatology",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "S KETAMINE",
+                "localization": "unspecified",
+                "time": "24 HOURS",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The 24 h follow-up interval was based on the evidence that ketamine decreases depressive symptomatology most effectively one day after a single intravenous infusion [4].",
+              "confidence": 0.9,
+              "_source": {
+                "time": "original",
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "depressive symptomatology",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN",
+                "treatment": "SUBANAESTHETIC INTRAVENOUS KETAMINE",
+                "localization": "unspecified",
+                "time": "24 HOURS AFTER A SINGLE INTRAVENOUS INFUSION",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The 24 h follow-up interval was based on the evidence that ketamine decreases depressive symptomatology most effectively one day after a single intravenous infusion [4].",
+              "confidence": 1.0,
+              "_source": {
+                "species": "original",
+                "time": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Ethics Statement",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Subjects",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Study design",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Psychometric measures",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "fMRI data acquisition and analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Seed region selection",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Statistical analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Psychometric measures",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Default mode network",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Affective network",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Other networks",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Whole brain dorsal nexus connectivity",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 16,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "reduces"
+          ],
+          "relation_sign": -1,
+          "object": "functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN)",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "brain",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "24 hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "healthy human brain",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In the healthy human brain, a single antidepressant dose of ketamine reduces functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN; green)."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "Antagonism at NMDA receptors",
+          "relation_raw_variants": [
+            "induce"
+          ],
+          "relation_sign": 1,
+          "object": "behavioral and neuroplastic changes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "animal",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Antagonism at NMDA receptors has been shown to induce behavioral and neuroplastic changes in animal models relevant to certain aspects of the pathophysiology of depressive disorders [8]–[10]."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "reduces"
+          ],
+          "relation_sign": -1,
+          "object": "DMN-DN functional connectivity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "brain",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In the healthy human brain, a single antidepressant dose of ketamine reduces functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN; green)."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NMDA receptor antagonism",
+          "relation_raw_variants": [
+            "induce"
+          ],
+          "relation_sign": 1,
+          "object": "behavioral and neuroplastic changes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "animal",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Antagonism at NMDA receptors has been shown to induce behavioral and neuroplastic changes in animal models relevant to certain aspects of the pathophysiology of depressive disorders [8]–[10]."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN)",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN",
+                "treatment": "KETAMINE",
+                "localization": "BRAIN",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the healthy human brain, a single antidepressant dose of ketamine reduces functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN; green).",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "localization": "original",
+                "treatment": "original",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "Antagonism at NMDA receptors",
+              "relation_raw": "induce",
+              "relation_sign": 1,
+              "object": "behavioral and neuroplastic changes",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "ANIMAL",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Antagonism at NMDA receptors has been shown to induce behavioral and neuroplastic changes in animal models relevant to certain aspects of the pathophysiology of depressive disorders [8]–[10].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN)",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN",
+                "treatment": "KETAMINE",
+                "localization": "unspecified",
+                "time": "24 HOURS",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the healthy human brain, a single antidepressant dose of ketamine reduces functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN; green).",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "time": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN)",
+              "context": {
+                "cell_line_or_type": "HEALTHY HUMAN BRAIN",
+                "species": "HUMAN",
+                "treatment": "KETAMINE",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the healthy human brain, a single antidepressant dose of ketamine reduces functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN; green).",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "cell_line_or_type": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "reduces",
+              "relation_sign": -1,
+              "object": "DMN-DN functional connectivity",
+              "context": {
+                "cell_line_or_type": "BRAIN",
+                "species": "HUMAN",
+                "treatment": "KETAMINE",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the healthy human brain, a single antidepressant dose of ketamine reduces functional connectivity of the dorsal nexus (DN) to the Default Mode Network (DMN; green).",
+              "confidence": 1.0,
+              "_source": {
+                "species": "original",
+                "cell_line_or_type": "original",
+                "treatment": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "NMDA receptor antagonism",
+              "relation_raw": "induce",
+              "relation_sign": 1,
+              "object": "behavioral and neuroplastic changes",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "ANIMAL",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Antagonism at NMDA receptors has been shown to induce behavioral and neuroplastic changes in animal models relevant to certain aspects of the pathophysiology of depressive disorders [8]–[10].",
+              "confidence": 1.0,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 17,
+      "section": "Discussion",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ],
+  "refined_status": "Release_3.0.0_Truth_Locked"
+}

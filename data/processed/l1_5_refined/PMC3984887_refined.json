@@ -1,0 +1,851 @@
+{
+  "asset_id": "PMC3984887",
+  "doi": "10.31887/DCNS.2014.16.1/rduman",
+  "article_title": "Pathophysiology of depression and innovative treatments: remodeling glutamatergic synaptic connections",
+  "journal": "Dialogues in Clinical Neuroscience",
+  "belief_weight": 0.6,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Disrupted connectivity of cortical and limbic depression circuitry",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Stress and depression cause neuronal atrophy and loss: circuit-specific effects",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Stress decreases neuronal and glial proliferation",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Stress decreases brain-derived neurotrophic factor expression",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "New targets to reverse neuronal atrophy: remodeling synaptic connections",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "NMDA receptor antagonists produce rapid, efficacious antidepressant actions",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Ketamine increases synapse formation in the PFC",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Role of mammalian target of rapamycin complex 1 signaling in the actions of ketamine",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Role of BDNF release in the actions of ketamine",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Novel NMDA receptor antagonists for the treatment of depression: new concepts for development of glutamatergic agents",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": 1,
+          "object": "synaptogenic and antidepressant behavioral response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Importantly, ketamine also produces a relatively long-lasting synaptogenic and antidepressant behavioral response."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "synaptogenic and antidepressant behavioral response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "KETAMINE",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Importantly, ketamine also produces a relatively long-lasting synaptogenic and antidepressant behavioral response.",
+              "confidence": 0.85,
+              "_source": {
+                "treatment": "rule",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "N-methyl-D-aspartate receptor subtype b (NR2b) selective antagonists",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Other NMDA antagonists",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Memantine",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "AZD6765",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "GLYX-13",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 16,
+      "section": "Ketamine stimulates a “glutamate burst”: metabotropic (mGluR) and AMPA receptors as rapid antidepressant targets",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 17,
+      "section": "mGluR2/3 antagonists",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 18,
+      "section": "AMPA receptor potentiating agents",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 19,
+      "section": "Role of glycogen synthase kinase-3 (GSK-3) in the actions of ketamine: GSK-3 antagonists enhance the response to ketamine",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 20,
+      "section": "Scopolamine and muscarinic targets as rapid-acting antidepressants",
+      "aggregated_relations": [
+        {
+          "subject": "scopolamine",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Two recent placebo-controlled crossover studies have demonstrated that the cholinergic antagonist scopolamine produces a rapid antidepressant response in depressed patients."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "scopolamine",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": 1,
+          "object": "rapid antidepressant response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "3 days",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Two recent placebo-controlled crossover studies have demonstrated that the cholinergic antagonist scopolamine produces a rapid antidepressant response in depressed patients."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "scopolamine",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN",
+                "treatment": "SCOPOLAMINE",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Two recent placebo-controlled crossover studies have demonstrated that the cholinergic antagonist scopolamine produces a rapid antidepressant response in depressed patients.",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "treatment": "rule",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "scopolamine",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "rapid antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN",
+                "treatment": "SCOPOLAMINE",
+                "localization": "unspecified",
+                "time": "3 DAYS",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Two recent placebo-controlled crossover studies have demonstrated that the cholinergic antagonist scopolamine produces a rapid antidepressant response in depressed patients.",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "time": "original",
+                "treatment": "rule",
+                "localization": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 21,
+      "section": "Scopolamine increases mTORC1 signaling and synaptogenesis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 22,
+      "section": "Cellular mechanisms and muscarinic receptor subtypes underlying the actions of scopolamine: novel drug targets",
+      "aggregated_relations": [
+        {
+          "subject": "scopolamine",
+          "relation_raw_variants": [
+            "blocks"
+          ],
+          "relation_sign": -1,
+          "object": "muscarinic receptor subtypes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Scopolamine is a nonselective muscarinic (M) receptor antagonist that blocks all 5 receptor subtypes with high affinity."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "telenzapine",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "mTORC1 signaling",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "We have found that telenzapine, an antagonist with limited selectivity for Ml receptors, also increases mTORC1 signaling and produces antidepressant responses in the forced swim test."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "telenzapine",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant responses",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "We have found that telenzapine, an antagonist with limited selectivity for Ml receptors, also increases mTORC1 signaling and produces antidepressant responses in the forced swim test."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "scopolamine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "muscarinic receptor subtypes",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "SCOPOLAMINE",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Scopolamine is a nonselective muscarinic (M) receptor antagonist that blocks all 5 receptor subtypes with high affinity.",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "rule",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "telenzapine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "mTORC1 signaling",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "We have found that telenzapine, an antagonist with limited selectivity for Ml receptors, also increases mTORC1 signaling and produces antidepressant responses in the forced swim test.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "telenzapine",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "antidepressant responses",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "We have found that telenzapine, an antagonist with limited selectivity for Ml receptors, also increases mTORC1 signaling and produces antidepressant responses in the forced swim test.",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 23,
+      "section": "Conclusions and future directions",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ],
+  "refined_status": "Release_3.0.0_Truth_Locked"
+}

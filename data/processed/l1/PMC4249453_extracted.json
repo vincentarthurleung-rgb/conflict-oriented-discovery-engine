@@ -1,0 +1,1689 @@
+{
+  "asset_id": "PMC4249453",
+  "doi": "10.3389/fnmol.2014.00094",
+  "article_title": "Age dependence of the rapid antidepressant and synaptic effects of acute NMDA receptor blockade",
+  "journal": "Frontiers in Molecular Neuroscience",
+  "belief_weight": 0.6,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "INTRODUCTION",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicit"
+          ],
+          "relation_sign": 1,
+          "object": "rapid antidepressant response",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine, a non-competitive N-methyl-D-aspartate receptor (NMDAR) antagonist has been shown to elicit a rapid antidepressant response in patients with MDD (Berman et al., 2000; Zarate et al., 2006; Price et al., 2009) and bipolar depression (Diazgranados et al., 2010a; Zarate et al., 2012)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "enhanced"
+          ],
+          "relation_sign": 1,
+          "object": "postsynaptic responses",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA1",
+              "species": "rat, mouse",
+              "treatment": "unspecified",
+              "localization": "dendritic",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "hippocampal slices",
+              "species": "rat and mouse",
+              "treatment": "ketamine",
+              "localization": "CA1 dendrites",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "These responses were significantly enhanced after ketamine treatment in adult rats and mice (Autry et al., 2011; Nosyreva et al., 2013)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicit"
+          ],
+          "relation_sign": -1,
+          "object": "behavioral response or potentiation",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 2,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "eEF2 kinase null"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "anisomycin",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013)."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "trigger"
+          ],
+          "relation_sign": -1,
+          "object": "behavioral antidepressant response",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 2,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "juvenile animals",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "juvenile animals",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In this study, we report that ketamine does not trigger a behavioral antidepressant response in juvenile animals as it does in adults."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "trigger",
+            "elicit"
+          ],
+          "relation_sign": -1,
+          "object": "synaptic potentiation",
+          "sample_frequency": 4,
+          "consensus_score": 1.0,
+          "negated_votes": 4,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "juvenile animals",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "eEF2 kinase null"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "anisomycin",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "juvenile animals",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "We also find that ketamine does not trigger synaptic potentiation in juvenile animals",
+            "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+            "We also find that ketamine does not trigger synaptic potentiation in juvenile animals, demonstrating that the antidepressant and synaptic effects of ketamine require the establishment of mature synaptic contacts."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "D-AP5",
+          "relation_raw_variants": [
+            "elicits"
+          ],
+          "relation_sign": 1,
+          "object": "synaptic potentiation",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "developmentally mature slices",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "developmentally mature slices",
+              "species": "unspecified",
+              "treatment": "D-AP5",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In addition, we show that the competitive NMDAR antagonist D-AP5, elicits synaptic potentiation in developmentally mature slices complementing the earlier observation that the competitive NMDAR antagonist 3-[(R)-2-Carboxypiperazin-4-yl]-propyl-1-phosphonic acid (CPP) triggers a rapid antidepressant response in vivo (Autry et al., 2011)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "CPP",
+          "relation_raw_variants": [
+            "triggers"
+          ],
+          "relation_sign": 1,
+          "object": "rapid antidepressant response",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "CPP",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In addition, we show that the competitive NMDAR antagonist D-AP5, elicits synaptic potentiation in developmentally mature slices complementing the earlier observation that the competitive NMDAR antagonist 3-[(R)-2-Carboxypiperazin-4-yl]-propyl-1-phosphonic acid (CPP) triggers a rapid antidepressant response in vivo (Autry et al., 2011)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicited"
+          ],
+          "relation_sign": 1,
+          "object": "synaptic potentiation",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slices",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "30 min",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In parallel, in hippocampal slices we have also observed a form of synaptic potentiation elicited after 30-min application of ketamine in the absence of stimulation."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicit"
+          ],
+          "relation_sign": -1,
+          "object": "behavioral response",
+          "sample_frequency": 2,
+          "consensus_score": 0.5,
+          "negated_votes": 2,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "eEF2 kinase null"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "anisomycin",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": 1,
+              "object": "rapid antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine, a non-competitive N-methyl-D-aspartate receptor (NMDAR) antagonist has been shown to elicit a rapid antidepressant response in patients with MDD (Berman et al., 2000; Zarate et al., 2006; Price et al., 2009) and bipolar depression (Diazgranados et al., 2010a; Zarate et al., 2012).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "postsynaptic responses",
+              "context": {
+                "cell_line_or_type": "CA1",
+                "species": "rat, mouse",
+                "treatment": "unspecified",
+                "localization": "dendritic",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "These responses were significantly enhanced after ketamine treatment in adult rats and mice (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "behavioral response or potentiation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "eEF2 kinase null"
+              },
+              "negated": true,
+              "evidence_sentence": "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "behavioral response or potentiation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "anisomycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "trigger",
+              "relation_sign": -1,
+              "object": "behavioral antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "juvenile animals",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "In this study, we report that ketamine does not trigger a behavioral antidepressant response in juvenile animals as it does in adults.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "trigger",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "juvenile animals",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "We also find that ketamine does not trigger synaptic potentiation in juvenile animals",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-AP5",
+              "relation_raw": "elicits",
+              "relation_sign": 1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "developmentally mature slices",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, we show that the competitive NMDAR antagonist D-AP5, elicits synaptic potentiation in developmentally mature slices complementing the earlier observation that the competitive NMDAR antagonist 3-[(R)-2-Carboxypiperazin-4-yl]-propyl-1-phosphonic acid (CPP) triggers a rapid antidepressant response in vivo (Autry et al., 2011).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "CPP",
+              "relation_raw": "triggers",
+              "relation_sign": 1,
+              "object": "rapid antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, we show that the competitive NMDAR antagonist D-AP5, elicits synaptic potentiation in developmentally mature slices complementing the earlier observation that the competitive NMDAR antagonist 3-[(R)-2-Carboxypiperazin-4-yl]-propyl-1-phosphonic acid (CPP) triggers a rapid antidepressant response in vivo (Autry et al., 2011).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": 1,
+              "object": "rapid antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine, a non-competitive N-methyl-D-aspartate receptor (NMDAR) antagonist has been shown to elicit a rapid antidepressant response in patients with MDD (Berman et al., 2000; Zarate et al., 2006; Price et al., 2009) and bipolar depression (Diazgranados et al., 2010a; Zarate et al., 2012).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": 1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slices",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "30 min",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In parallel, in hippocampal slices we have also observed a form of synaptic potentiation elicited after 30-min application of ketamine in the absence of stimulation.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "postsynaptic responses",
+              "context": {
+                "cell_line_or_type": "hippocampal slices",
+                "species": "rat and mouse",
+                "treatment": "ketamine",
+                "localization": "CA1 dendrites",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "These responses were significantly enhanced after ketamine treatment in adult rats and mice (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "behavioral response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "eEF2 kinase null"
+              },
+              "negated": true,
+              "evidence_sentence": "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "eEF2 kinase null"
+              },
+              "negated": true,
+              "evidence_sentence": "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "behavioral response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "anisomycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "anisomycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "The behavioral as well as the synaptic effects of ketamine are dependent on the function of eukaryotic elongation factor 2 (eEF2) kinase and protein synthesis as ketamine failed to elicit a behavioral response or potentiation on the eEF2 kinase null mice as well as after application of protein translation blocker anisomycin (Autry et al., 2011; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "trigger",
+              "relation_sign": -1,
+              "object": "behavioral antidepressant response",
+              "context": {
+                "cell_line_or_type": "juvenile animals",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "In this study, we report that ketamine does not trigger a behavioral antidepressant response in juvenile animals as it does in adults.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "trigger",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "juvenile animals",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "We also find that ketamine does not trigger synaptic potentiation in juvenile animals, demonstrating that the antidepressant and synaptic effects of ketamine require the establishment of mature synaptic contacts.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-AP5",
+              "relation_raw": "elicits",
+              "relation_sign": 1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "developmentally mature slices",
+                "species": "unspecified",
+                "treatment": "D-AP5",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, we show that the competitive NMDAR antagonist D-AP5, elicits synaptic potentiation in developmentally mature slices complementing the earlier observation that the competitive NMDAR antagonist 3-[(R)-2-Carboxypiperazin-4-yl]-propyl-1-phosphonic acid (CPP) triggers a rapid antidepressant response in vivo (Autry et al., 2011).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "CPP",
+              "relation_raw": "triggers",
+              "relation_sign": 1,
+              "object": "rapid antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "CPP",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, we show that the competitive NMDAR antagonist D-AP5, elicits synaptic potentiation in developmentally mature slices complementing the earlier observation that the competitive NMDAR antagonist 3-[(R)-2-Carboxypiperazin-4-yl]-propyl-1-phosphonic acid (CPP) triggers a rapid antidepressant response in vivo (Autry et al., 2011).",
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "ANIMALS",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "DRUG TREATMENT",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Novelty suppressed feeding",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Forced swim test",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "EXTRACELLULAR FIELD POTENTIAL RECORDINGS",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "STATISTICS",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "KETAMINE DOES NOT TRIGGER A RAPID ANTIDEPRESSANT RESPONSE IN JUVENILE ANIMALS",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "triggers"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "ketamine (3 mg/kg i.p.)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "C57BL/6"
+            }
+          ],
+          "evidence_sentences": [
+            "The juvenile mice were treated with 3.0 mg/kg ketamine (i.p.), a dose that triggers a rapid antidepressant response in young adult (6–8 week old) mice (Autry et al., 2011; Nosyreva et al., 2013) and examined 30 min later in the NSF test."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "trigger"
+          ],
+          "relation_sign": -1,
+          "object": "antidepressant response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "ketamine (3 mg/kg i.p.)",
+              "localization": "unspecified",
+              "time": "30 min",
+              "genotype": "C57BL/6"
+            }
+          ],
+          "evidence_sentences": [
+            "We found no difference between the ketamine and vehicle treated mice in the latency to consume the food pellet in the juvenile mice suggesting that ketamine did not trigger an antidepressant response (Figure 1A)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "trigger"
+          ],
+          "relation_sign": -1,
+          "object": "behavioral antidepressant response",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "mouse",
+              "treatment": "ketamine (3 mg/kg i.p.)",
+              "localization": "unspecified",
+              "time": "24 h",
+              "genotype": "C57BL/6"
+            }
+          ],
+          "evidence_sentences": [
+            "We found that ketamine did not alter the immobility time in the FST further suggesting that it does not trigger a behavioral antidepressant response in juvenile mice (Figure 1C)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "triggers",
+              "relation_sign": 1,
+              "object": "antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "ketamine (3 mg/kg i.p.)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "C57BL/6"
+              },
+              "negated": false,
+              "evidence_sentence": "The juvenile mice were treated with 3.0 mg/kg ketamine (i.p.), a dose that triggers a rapid antidepressant response in young adult (6–8 week old) mice (Autry et al., 2011; Nosyreva et al., 2013) and examined 30 min later in the NSF test.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "trigger",
+              "relation_sign": -1,
+              "object": "antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "ketamine (3 mg/kg i.p.)",
+                "localization": "unspecified",
+                "time": "30 min",
+                "genotype": "C57BL/6"
+              },
+              "negated": true,
+              "evidence_sentence": "We found no difference between the ketamine and vehicle treated mice in the latency to consume the food pellet in the juvenile mice suggesting that ketamine did not trigger an antidepressant response (Figure 1A).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "trigger",
+              "relation_sign": -1,
+              "object": "behavioral antidepressant response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "mouse",
+                "treatment": "ketamine (3 mg/kg i.p.)",
+                "localization": "unspecified",
+                "time": "24 h",
+                "genotype": "C57BL/6"
+              },
+              "negated": true,
+              "evidence_sentence": "We found that ketamine did not alter the immobility time in the FST further suggesting that it does not trigger a behavioral antidepressant response in juvenile mice (Figure 1C).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "KETAMINE APPLICATION AT REST DOES NOT ELICIT APPRECIABLE SYNAPTIC POTENTIATION IN SLICES FROM JUVENILE ANIMALS",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicit",
+            "induce"
+          ],
+          "relation_sign": -1,
+          "object": "synaptic potentiation",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 4,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "mouse",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "mouse",
+              "treatment": "ketamine (20 μM)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "These data demonstrate that ketamine does not elicit synaptic potentiation in developmentally immature synaptic contact as it does in mature synapses demonstrating an age dependence for the plasticity mediated processes involved in ketamine action.",
+            "Ketamine application does not induce significant synaptic strength potentiation in juvenile animals."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "triggered"
+          ],
+          "relation_sign": 1,
+          "object": "synaptic potentiation",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "mouse",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "1 h after drug removal",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "To confirm these previous findings, we applied the same experimental protocol in developmentally mature hippocampal slices (6–8 weeks old) and found that ketamine triggered a robust potentiation that reached 44 ± 0.004% within 1 h after drug removal"
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "FP slopes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "(A) Application of ketamine (20 μM) induces significant increase in FP slopes (n = 8, p < 0.05)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-AP5",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "FP slopes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "unspecified",
+              "treatment": "D-AP5",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "(B) Application of D-AP5 (20 μM) induces significant increase in FP slopes (n = 9, p < 0.05)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "induce"
+          ],
+          "relation_sign": -1,
+          "object": "synaptic strength potentiation",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 2,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "90 min",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "rat",
+              "treatment": "ketamine (20 μM)",
+              "localization": "unspecified",
+              "time": "90 min",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine application does not induce significant synaptic strength potentiation in juvenile animals."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "triggered"
+          ],
+          "relation_sign": 1,
+          "object": "robust potentiation",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "mouse",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "1 h after drug removal",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "To confirm these previous findings, we applied the same experimental protocol in developmentally mature hippocampal slices (6–8 weeks old) and found that ketamine triggered a robust potentiation that reached 44 ± 0.004% within 1 h after drug removal (Figure 3A)."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "significant increase in FP slopes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "adult animals",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "(A) Application of ketamine (20 μM) induces significant increase in FP slopes (n = 8, p < 0.05)."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-AP5",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "significant increase in FP slopes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "adult animals",
+              "treatment": "D-AP5",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "(B) Application of D-AP5 (20 μM) induces significant increase in FP slopes (n = 9, p < 0.05)."
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "triggered"
+          ],
+          "relation_sign": 1,
+          "object": "potentiation",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "mouse",
+              "treatment": "ketamine (20 μM)",
+              "localization": "unspecified",
+              "time": "within 1 h after drug removal",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "To confirm these previous findings, we applied the same experimental protocol in developmentally mature hippocampal slices (6–8 weeks old) and found that ketamine triggered a robust potentiation that reached 44 ± 0.004% within 1 h after drug removal (Figure 3A)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "increase in FP slopes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "rat",
+              "treatment": "ketamine (20 μM)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Application of ketamine (20 μM) induces significant increase in FP slopes (n = 8, p < 0.05)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "D-AP5",
+          "relation_raw_variants": [
+            "induces"
+          ],
+          "relation_sign": 1,
+          "object": "increase in FP slopes",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "hippocampal slice",
+              "species": "rat",
+              "treatment": "D-AP5 (20 μM)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Application of D-AP5 (20 μM) induces significant increase in FP slopes (n = 9, p < 0.05)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "mouse",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "These data demonstrate that ketamine does not elicit synaptic potentiation in developmentally immature synaptic contact as it does in mature synapses demonstrating an age dependence for the plasticity mediated processes involved in ketamine action.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "Ketamine",
+              "relation_raw": "induce",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Ketamine application does not induce significant synaptic strength potentiation in juvenile animals.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "triggered",
+              "relation_sign": 1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "mouse",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "1 h after drug removal",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "To confirm these previous findings, we applied the same experimental protocol in developmentally mature hippocampal slices (6–8 weeks old) and found that ketamine triggered a robust potentiation that reached 44 ± 0.004% within 1 h after drug removal",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "FP slopes",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "(A) Application of ketamine (20 μM) induces significant increase in FP slopes (n = 8, p < 0.05).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "D-AP5",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "FP slopes",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "unspecified",
+                "treatment": "D-AP5",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "(B) Application of D-AP5 (20 μM) induces significant increase in FP slopes (n = 9, p < 0.05).",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "mouse",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "These data demonstrate that ketamine does not elicit synaptic potentiation in developmentally immature synaptic contact as it does in mature synapses demonstrating an age dependence for the plasticity mediated processes involved in ketamine action.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induce",
+              "relation_sign": -1,
+              "object": "synaptic strength potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "90 min",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Ketamine application does not induce significant synaptic strength potentiation in juvenile animals.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "triggered",
+              "relation_sign": 1,
+              "object": "robust potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "mouse",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "1 h after drug removal",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "To confirm these previous findings, we applied the same experimental protocol in developmentally mature hippocampal slices (6–8 weeks old) and found that ketamine triggered a robust potentiation that reached 44 ± 0.004% within 1 h after drug removal (Figure 3A).",
+              "confidence": 1.0
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "significant increase in FP slopes",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "adult animals",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "(A) Application of ketamine (20 μM) induces significant increase in FP slopes (n = 8, p < 0.05).",
+              "confidence": 1.0
+            },
+            {
+              "subject": "D-AP5",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "significant increase in FP slopes",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "adult animals",
+                "treatment": "D-AP5",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "(B) Application of D-AP5 (20 μM) induces significant increase in FP slopes (n = 9, p < 0.05).",
+              "confidence": 1.0
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicit",
+              "relation_sign": -1,
+              "object": "synaptic potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "mouse",
+                "treatment": "ketamine (20 μM)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "These data demonstrate that ketamine does not elicit synaptic potentiation in developmentally immature synaptic contact as it does in mature synapses demonstrating an age dependence for the plasticity mediated processes involved in ketamine action.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "triggered",
+              "relation_sign": 1,
+              "object": "potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "mouse",
+                "treatment": "ketamine (20 μM)",
+                "localization": "unspecified",
+                "time": "within 1 h after drug removal",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "To confirm these previous findings, we applied the same experimental protocol in developmentally mature hippocampal slices (6–8 weeks old) and found that ketamine triggered a robust potentiation that reached 44 ± 0.004% within 1 h after drug removal (Figure 3A).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induce",
+              "relation_sign": -1,
+              "object": "synaptic strength potentiation",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "rat",
+                "treatment": "ketamine (20 μM)",
+                "localization": "unspecified",
+                "time": "90 min",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Ketamine application does not induce significant synaptic strength potentiation in juvenile animals.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "increase in FP slopes",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "rat",
+                "treatment": "ketamine (20 μM)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Application of ketamine (20 μM) induces significant increase in FP slopes (n = 8, p < 0.05).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "D-AP5",
+              "relation_raw": "induces",
+              "relation_sign": 1,
+              "object": "increase in FP slopes",
+              "context": {
+                "cell_line_or_type": "hippocampal slice",
+                "species": "rat",
+                "treatment": "D-AP5 (20 μM)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Application of D-AP5 (20 μM) induces significant increase in FP slopes (n = 9, p < 0.05).",
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "APPLICATION OF THE COMPETITIVE NMDAR BLOCKER, D-AP5, AT REST ELICITS SYNAPTIC POTENTIATION IN MATURE SLICES",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "DISCUSSION",
+      "aggregated_relations": [
+        {
+          "subject": "mGluR",
+          "relation_raw_variants": [
+            "elicits"
+          ],
+          "relation_sign": 1,
+          "object": "LTD",
+          "sample_frequency": 2,
+          "consensus_score": 1.0,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "mature",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "mGluR activation",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "However, in mature animals the same mGluR activation protocol elicits LTD in a manner that requires protein translation and a long-term decrease in AMPA receptor (AMPAR) surface expression (Nosyreva and Huber, 2005)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "mGluR",
+              "relation_raw": "elicits",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "mature",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "However, in mature animals the same mGluR activation protocol elicits LTD in a manner that requires protein translation and a long-term decrease in AMPA receptor (AMPAR) surface expression (Nosyreva and Huber, 2005).",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "mGluR",
+              "relation_raw": "elicits",
+              "relation_sign": 1,
+              "object": "LTD",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "mGluR activation",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "However, in mature animals the same mGluR activation protocol elicits LTD in a manner that requires protein translation and a long-term decrease in AMPA receptor (AMPAR) surface expression (Nosyreva and Huber, 2005).",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Conflict of Interest Statement",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ]
+}

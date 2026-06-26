@@ -1,0 +1,1418 @@
+{
+  "asset_id": "PMC4758914",
+  "doi": "10.1038/mp.2015.83",
+  "article_title": "A Pilot In Vivo Proton Magnetic Resonance Spectroscopy Study of Amino Acid Neurotransmitter Response to Ketamine Treatment of Major Depressive Disorder",
+  "journal": "Molecular Psychiatry",
+  "belief_weight": 0.85,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [
+        {
+          "subject": "Ketamine",
+          "relation_raw_variants": [
+            "activates"
+          ],
+          "relation_sign": 1,
+          "object": "mTOR pathway",
+          "sample_frequency": 5,
+          "consensus_score": 1.0,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Ketamine activates the mTOR pathway via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+            "Ketamine activates the mTOR pathway8, 9 via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+            "Ketamine activates the mTOR pathway8,9 via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors."
+          ],
+          "mean_confidence": 0.94,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MTOR",
+          "relation_raw_variants": [
+            "activation increases",
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "synaptic proteins",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "prefrontal cortex",
+              "time": "hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "prefrontal cortex (PFC)",
+              "time": "within hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.",
+            "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MTOR",
+          "relation_raw_variants": [
+            "activation increases",
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "sprouting of new synaptic spines",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "prefrontal cortex",
+              "time": "hours",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "prefrontal cortex (PFC)",
+              "time": "within hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.",
+            "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1"
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "produces"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant effect",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "hours to days",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "hours to days",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "A single subanesthetic dose of ketamine, a glutamate N-methyl-D-aspartate (NMDA) receptor antagonist, based on two meta-analyses3, 4 of ketamine’s antidepressant effect in randomized placebo-controlled trials (10 trials and 246 patients total; 6 trials and 163 patients overlapped; 34 patients had bipolar disorder), produces an antidepressant effect in hours to days with standardized mean differences of −0.91 and 0.9."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "mTOR activation",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "synaptic proteins and sprouting of new synaptic spines",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "prefrontal cortex",
+              "time": "within hours",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours"
+          ],
+          "mean_confidence": 1.0,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "Ketamine",
+              "relation_raw": "activates",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine activates the mTOR pathway via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "MTOR",
+              "relation_raw": "activation increases",
+              "relation_sign": 1,
+              "object": "synaptic proteins",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex",
+                "time": "hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "MTOR",
+              "relation_raw": "activation increases",
+              "relation_sign": 1,
+              "object": "sprouting of new synaptic spines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex",
+                "time": "hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "antidepressant effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "hours to days",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single subanesthetic dose of ketamine, a glutamate N-methyl-D-aspartate (NMDA) receptor antagonist, based on two meta-analyses3, 4 of ketamine’s antidepressant effect in randomized placebo-controlled trials (10 trials and 246 patients total; 6 trials and 163 patients overlapped; 34 patients had bipolar disorder), produces an antidepressant effect in hours to days with standardized mean differences of −0.91 and 0.9.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "activates",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine activates the mTOR pathway8, 9 via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "synaptic proteins",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex (PFC)",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1",
+              "confidence": 0.9
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "sprouting of new synaptic spines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex (PFC)",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "activates",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine activates the mTOR pathway8,9 via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+              "confidence": 1.0
+            },
+            {
+              "subject": "mTOR activation",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "synaptic proteins and sprouting of new synaptic spines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours",
+              "confidence": 1.0
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "produces",
+              "relation_sign": 1,
+              "object": "antidepressant effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "hours to days",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single subanesthetic dose of ketamine, a glutamate N-methyl-D-aspartate (NMDA) receptor antagonist, based on two meta-analyses3, 4 of ketamine’s antidepressant effect in randomized placebo-controlled trials (10 trials and 246 patients total; 6 trials and 163 patients overlapped; 34 patients had bipolar disorder), produces an antidepressant effect in hours to days with standardized mean differences of −0.91 and 0.9.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "activates",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine activates the mTOR pathway8, 9 via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "synaptic proteins",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex (PFC)",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1",
+              "confidence": 0.9
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "sprouting of new synaptic spines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex (PFC)",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "Ketamine",
+              "relation_raw": "activates",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Ketamine activates the mTOR pathway8, 9 via glutamatergic α-amino-3-hydroxy-5-methylisoxazole-4-propionic acid (AMPA) receptors.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "synaptic proteins",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex (PFC)",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1",
+              "confidence": 0.95
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "sprouting of new synaptic spines",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "prefrontal cortex (PFC)",
+                "time": "within hours",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "mTOR activation increases synaptic proteins and sprouting of new synaptic spines in prefrontal cortex (PFC) within hours, consistent with the time-course of its antidepressant effect.1",
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Patients",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Study Design",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "MRI and MRS Data Acquisition",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Plasma Ketamine, Norketamine and Dehydronorketamine",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Statistical Analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Effect of Ketamine on MDD Symptoms",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Response of mPFC Glx and GABA to Ketamine",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "Glx/W",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "For the remaining subjects, there was a main effect of ketamine infusion on Glx/W (F=6.16; df=5,31; p=0.0004), that post-hoc analysis attributed to higher Glx/W in MRS frame 1 (p=0.037), frame 2 (p=0.001), and frame 3 (p=0.027) compared with the baseline frame (Figure 3A)."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "GABA/W",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "For GABA/W there was a main effect of ketamine infusion (F=2.90; df=5,31; p=0.029) and post hoc analysis indicated higher GABA/W in MRS frame 1 (p=0.036) and frame 2 (p=0.031) compared with the baseline frame (Figure 3A)."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "Glx/W",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "For the remaining subjects, there was a main effect of ketamine infusion on Glx/W (F=6.16; df=5,31; p=0.0004), that post-hoc analysis attributed to higher Glx/W in MRS frame 1 (p=0.037), frame 2 (p=0.001), and frame 3 (p=0.027) compared with the baseline frame (Figure 3A).",
+              "confidence": 0.85
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "GABA/W",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "For GABA/W there was a main effect of ketamine infusion (F=2.90; df=5,31; p=0.029) and post hoc analysis indicated higher GABA/W in MRS frame 1 (p=0.036) and frame 2 (p=0.031) compared with the baseline frame (Figure 3A).",
+              "confidence": 0.85
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Vital Signs and Clinical/Imaging/Ketamine Level Correlations",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "AMPA receptor",
+          "relation_raw_variants": [
+            "leads to"
+          ],
+          "relation_sign": 1,
+          "object": "mTOR pathway activation",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MTOR",
+          "relation_raw_variants": [
+            "leading to"
+          ],
+          "relation_sign": 1,
+          "object": "BDNF release",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MTOR",
+          "relation_raw_variants": [
+            "leading to"
+          ],
+          "relation_sign": 1,
+          "object": "dendritic protein synthesis",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MTOR",
+          "relation_raw_variants": [
+            "leading to"
+          ],
+          "relation_sign": 1,
+          "object": "mushroom spine formation",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "causes"
+          ],
+          "relation_sign": 1,
+          "object": "cortical glutamate",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "cortical",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Our findings support the model1 positing that ketamine causes a rapid increase in cortical glutamate through an unknown mechanism that, in combination with blockade of NMDA receptors by ketamine, diverts glutamate signaling to AMPA receptors."
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": false
+        },
+        {
+          "subject": "AMPA",
+          "relation_raw_variants": [
+            "leads to"
+          ],
+          "relation_sign": 1,
+          "object": "mTOR pathway",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "mTOR",
+          "relation_raw_variants": [
+            "leads to"
+          ],
+          "relation_sign": 1,
+          "object": "BDNF",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "monoaminergic antidepressants and modulators of metabotropic glutamatergic receptors",
+          "relation_raw_variants": [
+            "reduce"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA signal transduction",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Other NMDA receptor antagonists exhibit antidepressant effects,55–64 and monoaminergic antidepressants and modulators of metabotropic glutamatergic receptors with antidepressant effects also reduce NMDA signal transduction."
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": false
+        },
+        {
+          "subject": "antidepressant treatment (SSRI or ECT)",
+          "relation_raw_variants": [
+            "normalizes"
+          ],
+          "relation_sign": 1,
+          "object": "GABAergic deficits",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "GABA(B) receptor agonists and positive modulators have antidepressant-like effects in rodent depression models79, 80 and antidepressant treatment (SSRI or ECT) normalizes GABAergic deficits in MDD patients."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "AMPA receptor",
+              "relation_raw": "leads to",
+              "relation_sign": 1,
+              "object": "mTOR pathway activation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "MTOR",
+              "relation_raw": "leading to",
+              "relation_sign": 1,
+              "object": "BDNF release",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "MTOR",
+              "relation_raw": "leading to",
+              "relation_sign": 1,
+              "object": "dendritic protein synthesis",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "MTOR",
+              "relation_raw": "leading to",
+              "relation_sign": 1,
+              "object": "mushroom spine formation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "causes",
+              "relation_sign": 1,
+              "object": "cortical glutamate",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "unspecified",
+                "localization": "cortical",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Our findings support the model1 positing that ketamine causes a rapid increase in cortical glutamate through an unknown mechanism that, in combination with blockade of NMDA receptors by ketamine, diverts glutamate signaling to AMPA receptors.",
+              "confidence": 0.8
+            },
+            {
+              "subject": "AMPA",
+              "relation_raw": "leads to",
+              "relation_sign": 1,
+              "object": "mTOR pathway",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "mTOR",
+              "relation_raw": "leads to",
+              "relation_sign": 1,
+              "object": "BDNF",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "AMPA activation leads to the downstream activation of the mTOR pathway, leading to increased BDNF release,48–51 dendritic protein synthesis,1 mushroom spine formation and associated downstream effects.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "monoaminergic antidepressants and modulators of metabotropic glutamatergic receptors",
+              "relation_raw": "reduce",
+              "relation_sign": -1,
+              "object": "NMDA signal transduction",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Other NMDA receptor antagonists exhibit antidepressant effects,55–64 and monoaminergic antidepressants and modulators of metabotropic glutamatergic receptors with antidepressant effects also reduce NMDA signal transduction.",
+              "confidence": 0.8
+            },
+            {
+              "subject": "antidepressant treatment (SSRI or ECT)",
+              "relation_raw": "normalizes",
+              "relation_sign": 1,
+              "object": "GABAergic deficits",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "human",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "GABA(B) receptor agonists and positive modulators have antidepressant-like effects in rodent depression models79, 80 and antidepressant treatment (SSRI or ECT) normalizes GABAergic deficits in MDD patients.",
+              "confidence": 0.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "gonadal hormones",
+          "relation_raw_variants": [
+            "enhanced"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant-like effects of ketamine",
+          "sample_frequency": 5,
+          "consensus_score": 1.0,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Such a multi-dose study with a larger sample size would also allow for further analyses of covariates in antidepressant response to ketamine such as sex differences, as a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats.",
+            "a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MAOIs",
+          "relation_raw_variants": [
+            "block"
+          ],
+          "relation_sign": -1,
+          "object": "MAO",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "For example, SSRIs require occupancy of at least 80% of transporter sites and MAOIs need to block at least 80% of MAO in order to work."
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": false
+        },
+        {
+          "subject": "AMPA effects of glutamate",
+          "relation_raw_variants": [
+            "initiate"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant cascade",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "animal",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "animal data with mTOR suggest that AMPA effects of glutamate initiate the antidepressant cascade."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "gonadal hormones",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects of ketamine",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Such a multi-dose study with a larger sample size would also allow for further analyses of covariates in antidepressant response to ketamine such as sex differences, as a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "gonadal hormones",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects of ketamine",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Such a multi-dose study with a larger sample size would also allow for further analyses of covariates in antidepressant response to ketamine such as sex differences, as a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats.",
+              "confidence": 1.0
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "gonadal hormones",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects of ketamine",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "MAOIs",
+              "relation_raw": "block",
+              "relation_sign": -1,
+              "object": "MAO",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "For example, SSRIs require occupancy of at least 80% of transporter sites and MAOIs need to block at least 80% of MAO in order to work.",
+              "confidence": 0.8
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "gonadal hormones",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects of ketamine",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "AMPA effects of glutamate",
+              "relation_raw": "initiate",
+              "relation_sign": 1,
+              "object": "antidepressant cascade",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "animal",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "animal data with mTOR suggest that AMPA effects of glutamate initiate the antidepressant cascade.",
+              "confidence": 0.85
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "gonadal hormones",
+              "relation_raw": "enhanced",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects of ketamine",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Such a multi-dose study with a larger sample size would also allow for further analyses of covariates in antidepressant response to ketamine such as sex differences, as a preclinical study93 found gonadal hormones enhanced antidepressant-like effects of ketamine in female rats.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "MAOIs",
+              "relation_raw": "block",
+              "relation_sign": -1,
+              "object": "MAO",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "For example, SSRIs require occupancy of at least 80% of transporter sites and MAOIs need to block at least 80% of MAO in order to work.",
+              "confidence": 0.8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Conclusion",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    }
+  ]
+}

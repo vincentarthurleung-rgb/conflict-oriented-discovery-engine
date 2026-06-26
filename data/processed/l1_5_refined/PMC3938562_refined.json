@@ -1,0 +1,2047 @@
+{
+  "asset_id": "PMC3938562",
+  "doi": "10.1371/journal.pone.0089985",
+  "article_title": "Involvement of Sigma-1 Receptors in the Antidepressant-like Effects of Dextromethorphan",
+  "journal": "PLOS ONE",
+  "belief_weight": 0.4,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "inhibits",
+            "inhibition"
+          ],
+          "relation_sign": -1,
+          "object": "CYP2D6",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan in combination with quinidine, which raises the plasma concentration and bioavailability of dextromethorphan through the inhibition of CYP2D6 metabolism [12], is approved by the U.S. Food and Drug Administration (FDA) and European Medicines Agency (EMA) for the treatment of pseudobulbar affect and is thought to produce part of its therapeutic effects through σ1 receptors [13]."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "σ1 receptor agonists",
+          "relation_raw_variants": [
+            "produce"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant effects",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "human and experimental animals",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "experimental animals and humans",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "The potential clinical relevance of these observations is further supported by reports that σ1 receptor agonists produce antidepressant effects in experimental animals and humans [17], [18], [19], [20], [21], [22]."
+          ],
+          "mean_confidence": 0.91,
+          "predominant_negated": false
+        },
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "raises"
+          ],
+          "relation_sign": 1,
+          "object": "plasma concentration and bioavailability of dextromethorphan",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan in combination with quinidine, which raises the plasma concentration and bioavailability of dextromethorphan through the inhibition of CYP2D6 metabolism [12], is approved by the U.S. Food and Drug Administration (FDA) and European Medicines Agency (EMA) for the treatment of pseudobulbar affect and is thought to produce part of its therapeutic effects through σ1 receptors [13]."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "CYP2D6",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan in combination with quinidine, which raises the plasma concentration and bioavailability of dextromethorphan through the inhibition of CYP2D6 metabolism [12], is approved by the U.S. Food and Drug Administration (FDA) and European Medicines Agency (EMA) for the treatment of pseudobulbar affect and is thought to produce part of its therapeutic effects through σ1 receptors [13].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "σ1 receptor agonists",
+              "relation_raw": "produce",
+              "relation_sign": 1,
+              "object": "antidepressant effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN AND EXPERIMENTAL ANIMALS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The potential clinical relevance of these observations is further supported by reports that σ1 receptor agonists produce antidepressant effects in experimental animals and humans [17], [18], [19], [20], [21], [22].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "raises",
+              "relation_sign": 1,
+              "object": "plasma concentration and bioavailability of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan in combination with quinidine, which raises the plasma concentration and bioavailability of dextromethorphan through the inhibition of CYP2D6 metabolism [12], is approved by the U.S. Food and Drug Administration (FDA) and European Medicines Agency (EMA) for the treatment of pseudobulbar affect and is thought to produce part of its therapeutic effects through σ1 receptors [13].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "σ1 receptor agonists",
+              "relation_raw": "produce",
+              "relation_sign": 1,
+              "object": "antidepressant effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "EXPERIMENTAL ANIMALS AND HUMANS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The potential clinical relevance of these observations is further supported by reports that σ1 receptor agonists produce antidepressant effects in experimental animals and humans [17], [18], [19], [20], [21], [22].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "inhibition",
+              "relation_sign": -1,
+              "object": "CYP2D6",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan in combination with quinidine, which raises the plasma concentration and bioavailability of dextromethorphan through the inhibition of CYP2D6 metabolism [12], is approved by the U.S. Food and Drug Administration (FDA) and European Medicines Agency (EMA) for the treatment of pseudobulbar affect and is thought to produce part of its therapeutic effects through σ1 receptors [13].",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "σ1 receptor agonists",
+              "relation_raw": "produce",
+              "relation_sign": 1,
+              "object": "antidepressant effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "EXPERIMENTAL ANIMALS AND HUMANS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The potential clinical relevance of these observations is further supported by reports that σ1 receptor agonists produce antidepressant effects in experimental animals and humans [17], [18], [19], [20], [21], [22].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "σ1 receptor agonists",
+              "relation_raw": "produce",
+              "relation_sign": 1,
+              "object": "antidepressant effects",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "HUMAN AND EXPERIMENTAL ANIMALS",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "The potential clinical relevance of these observations is further supported by reports that σ1 receptor agonists produce antidepressant effects in experimental animals and humans [17], [18], [19], [20], [21], [22].",
+              "confidence": 0.9,
+              "_source": {
+                "species": "original",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Animals",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Drugs and Chemicals",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "Drug Treatments",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Locomotor Activity",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Forced Swim Test",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Saturation Binding Assays",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Data Analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Conventional Antidepressants Dose Response",
+      "aggregated_relations": [
+        {
+          "subject": "imipramine",
+          "relation_raw_variants": [
+            "decreased"
+          ],
+          "relation_sign": -1,
+          "object": "immobility time",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "20 mg/kg",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "0-20 mg/kg, i.p.",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Post-hoc Dunnett's test showed that imipramine at 20 mg/kg significantly decreased immobility time when compared to saline (q = 4.52, P<0.001).",
+            "Imipramine (0–20 mg/kg, i.p.) significantly decreased immobility time (A), but had no significant effects on locomotor activity (B)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "decreased"
+          ],
+          "relation_sign": -1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "0-30 mg/kg, i.p.",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan (0–30 mg/kg, i.p.) significantly decreased immobility time (C), and significantly increased locomotor activity (D)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "locomotor activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "0-30 mg/kg, i.p.",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan (0–30 mg/kg, i.p.) significantly decreased immobility time (C), and significantly increased locomotor activity (D)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "fluoxetine",
+          "relation_raw_variants": [
+            "reduce"
+          ],
+          "relation_sign": 1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Consistent with earlier reports that the forced swim test does not reliably detect the effects of SSRIs, the SSRI fluoxetine did not significantly reduce immobility time in the forced swim test under the conditions used by our laboratory (F [2], [32] = 1.97, n.s.)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "imipramine",
+              "relation_raw": "decreased",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "20 MG/KG",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Post-hoc Dunnett's test showed that imipramine at 20 mg/kg significantly decreased immobility time when compared to saline (q = 4.52, P<0.001).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "imipramine",
+              "relation_raw": "decreased",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "0 20 MG/KG, I.P.",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Imipramine (0–20 mg/kg, i.p.) significantly decreased immobility time (A), but had no significant effects on locomotor activity (B).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "decreased",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "0 30 MG/KG, I.P.",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan (0–30 mg/kg, i.p.) significantly decreased immobility time (C), and significantly increased locomotor activity (D).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "locomotor activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "0 30 MG/KG, I.P.",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan (0–30 mg/kg, i.p.) significantly decreased immobility time (C), and significantly increased locomotor activity (D).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "fluoxetine",
+              "relation_raw": "reduce",
+              "relation_sign": 1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Consistent with earlier reports that the forced swim test does not reliably detect the effects of SSRIs, the SSRI fluoxetine did not significantly reduce immobility time in the forced swim test under the conditions used by our laboratory (F [2], [32] = 1.97, n.s.).",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Dextromethorphan Dose Response",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Sigma-1 Receptor Antagonists Dose Response",
+      "aggregated_relations": [
+        {
+          "subject": "BD1063",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "30 mg/kg BD1063",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Post-hoc Dunnett's tests showed that BD1063 significantly reduced immobility time at 30 mg/kg (q = 3.41, P<0.01), but not at 10 mg/kg (q = 1.82, n.s.)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "BD1063",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": 1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "10 mg/kg BD1063",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Post-hoc Dunnett's tests showed that BD1063 significantly reduced immobility time at 30 mg/kg (q = 3.41, P<0.01), but not at 10 mg/kg (q = 1.82, n.s.)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": true
+        },
+        {
+          "subject": "BD1063",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "locomotor activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "3 mg/kg BD1063 i.p.",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Post-hoc Dunnett's tests revealed that only the low 3 mg/kg, i.p. dose caused a significant increase in activity for BD1063 (q = 2.73, P<0.05), thereby indicating that the alterations in locomotor behavior did not account for the changes observed in the forced swim tests."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "BD1047",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "locomotor activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "3 mg/kg BD1047 i.p.",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Post-hoc Dunnett's tests revealed that only the low 3 mg/kg, i.p. dose caused a significant increase in activity for BD1047 (q = 3.70, P<0.01)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "BD1063",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "30 MG/KG BD1063",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Post-hoc Dunnett's tests showed that BD1063 significantly reduced immobility time at 30 mg/kg (q = 3.41, P<0.01), but not at 10 mg/kg (q = 1.82, n.s.).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "BD1063",
+              "relation_raw": "reduced",
+              "relation_sign": 1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "10 MG/KG BD1063",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Post-hoc Dunnett's tests showed that BD1063 significantly reduced immobility time at 30 mg/kg (q = 3.41, P<0.01), but not at 10 mg/kg (q = 1.82, n.s.).",
+              "confidence": 0.9,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "BD1063",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "locomotor activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "3 MG/KG BD1063 I.P.",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Post-hoc Dunnett's tests revealed that only the low 3 mg/kg, i.p. dose caused a significant increase in activity for BD1063 (q = 2.73, P<0.05), thereby indicating that the alterations in locomotor behavior did not account for the changes observed in the forced swim tests.",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "BD1047",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "locomotor activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "3 MG/KG BD1047 I.P.",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Post-hoc Dunnett's tests revealed that only the low 3 mg/kg, i.p. dose caused a significant increase in activity for BD1047 (q = 3.70, P<0.01).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Effects of Sigma Receptor Antagonists in the Presence of Dextromethorphan or Imipramine",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Effects of Sigma Antagonist BD1063 on Dextromethorphan Dose Response",
+      "aggregated_relations": [
+        {
+          "subject": "BD1063",
+          "relation_raw_variants": [
+            "blocked"
+          ],
+          "relation_sign": -1,
+          "object": "dextromethorphan-induced stimulatory effect",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "BD1063 (10 mg/kg, i.p.)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "BD1063 (10 mg/kg, i.p.) pretreatment",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "dextromethorphan",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "A single dose of BD1063 (10 mg/kg, i.p.) pretreatment shifted the dextromethorphan (0–50 mg/kg, i.p.) dose response curve to the right in the forced swim test (A), and blocked the dextromethorphan-induced stimulatory effect in the locomotor study (B)."
+          ],
+          "mean_confidence": 0.94,
+          "predominant_negated": false
+        },
+        {
+          "subject": "BD1063",
+          "relation_raw_variants": [
+            "appeared to block"
+          ],
+          "relation_sign": -1,
+          "object": "dextromethorphan-induced locomotor activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "BD1063 (10 mg/kg) + dextromethorphan",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In locomotor studies, when testing the single dose of BD1063 (10 mg/kg) against increasing doses of dextromethorphan, BD1063 appeared to block the dextromethorphan-induced locomotor activity (Figure 3B)."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "BD1063",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "dextromethorphan-induced stimulatory effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "BD1063 (10 MG/KG, I.P.)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single dose of BD1063 (10 mg/kg, i.p.) pretreatment shifted the dextromethorphan (0–50 mg/kg, i.p.) dose response curve to the right in the forced swim test (A), and blocked the dextromethorphan-induced stimulatory effect in the locomotor study (B).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "BD1063",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "dextromethorphan-induced stimulatory effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "BD1063 (10 MG/KG, I.P.) PRETREATMENT",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single dose of BD1063 (10 mg/kg, i.p.) pretreatment shifted the dextromethorphan (0–50 mg/kg, i.p.) dose response curve to the right in the forced swim test (A), and blocked the dextromethorphan-induced stimulatory effect in the locomotor study (B).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "BD1063",
+              "relation_raw": "appeared to block",
+              "relation_sign": -1,
+              "object": "dextromethorphan-induced locomotor activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "BD1063 (10 MG/KG) + DEXTROMETHORPHAN",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In locomotor studies, when testing the single dose of BD1063 (10 mg/kg) against increasing doses of dextromethorphan, BD1063 appeared to block the dextromethorphan-induced locomotor activity (Figure 3B).",
+              "confidence": 0.85,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "BD1063",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "dextromethorphan-induced stimulatory effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "BD1063 (10 MG/KG, I.P.) PRETREATMENT",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single dose of BD1063 (10 mg/kg, i.p.) pretreatment shifted the dextromethorphan (0–50 mg/kg, i.p.) dose response curve to the right in the forced swim test (A), and blocked the dextromethorphan-induced stimulatory effect in the locomotor study (B).",
+              "confidence": 0.9,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "BD1063",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "dextromethorphan-induced stimulatory effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "DEXTROMETHORPHAN",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single dose of BD1063 (10 mg/kg, i.p.) pretreatment shifted the dextromethorphan (0–50 mg/kg, i.p.) dose response curve to the right in the forced swim test (A), and blocked the dextromethorphan-induced stimulatory effect in the locomotor study (B).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Effects of CYP2D6 Inhibitor Quinidine on Dextromethorphan Dose Response",
+      "aggregated_relations": [
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "blocks"
+          ],
+          "relation_sign": -1,
+          "object": "CYP2D6 metabolism of dextromethorphan",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "quinidine (30 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "quinidine (30 mg/kg) and dextromethorphan (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "potentiated"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant-like effect of dextromethorphan",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "quinidine (30 mg/kg) and dextromethorphan (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "dextromethorphan (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "produced a significant decrease in"
+          ],
+          "relation_sign": -1,
+          "object": "immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "quinidine (30 mg/kg) and dextromethorphan (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Importantly, while dextromethorphan at 10 mg/kg alone was not significantly different from saline (q = 3.19, n.s.), it produced a significant decrease in immobility time when combined with quinidine (q = 6.78, P<0.001)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "potentiated"
+          ],
+          "relation_sign": 1,
+          "object": "the decrease in immobility time for dextromethorphan",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "quinidine (30 mg/kg) and dextromethorphan (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "A single dose of the CYP2D6 inhibitor quinidine (30 mg/kg, i.p.) administered concomitantly with dextromethorphan (0–30 mg/kg, i.p.) significantly potentiated the decrease in immobility time for dextromethorphan at 10 mg/kg (A)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "blocks"
+          ],
+          "relation_sign": -1,
+          "object": "CYP2D6 metabolism",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "CYP2D6 metabolism of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "QUINIDINE (30 MG/KG)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "quinidine",
+              "relation_raw": "potentiated",
+              "relation_sign": 1,
+              "object": "antidepressant-like effect of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "QUINIDINE (30 MG/KG) AND DEXTROMETHORPHAN (10 MG/KG)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "produced a significant decrease in",
+              "relation_sign": -1,
+              "object": "immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "QUINIDINE (30 MG/KG) AND DEXTROMETHORPHAN (10 MG/KG)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Importantly, while dextromethorphan at 10 mg/kg alone was not significantly different from saline (q = 3.19, n.s.), it produced a significant decrease in immobility time when combined with quinidine (q = 6.78, P<0.001).",
+              "confidence": 0.9,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "quinidine",
+              "relation_raw": "potentiated",
+              "relation_sign": 1,
+              "object": "the decrease in immobility time for dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "QUINIDINE (30 MG/KG) AND DEXTROMETHORPHAN (10 MG/KG)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A single dose of the CYP2D6 inhibitor quinidine (30 mg/kg, i.p.) administered concomitantly with dextromethorphan (0–30 mg/kg, i.p.) significantly potentiated the decrease in immobility time for dextromethorphan at 10 mg/kg (A).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "potentiated",
+              "relation_sign": 1,
+              "object": "antidepressant-like effect of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "DEXTROMETHORPHAN (10 MG/KG)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A).",
+              "confidence": 0.95,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "quinidine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "CYP2D6 metabolism of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A).",
+              "confidence": 0.9,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "CYP2D6 metabolism",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A).",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "quinidine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "CYP2D6 metabolism of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "QUINIDINE (30 MG/KG) AND DEXTROMETHORPHAN (10 MG/KG)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Concurrent administration of quinidine (30 mg/kg), which blocks the CYP2D6 metabolism of dextromethorphan [12], potentiated the antidepressant-like effect of dextromethorphan (10 mg/kg) (Figure 4A).",
+              "confidence": 1.0,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Dextromethorphan Binding to Sigma-1 Receptors",
+      "aggregated_relations": [
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "produced a significant decrease"
+          ],
+          "relation_sign": -1,
+          "object": "σ1 receptor Kd",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "brain homogenate",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan produced a significant decrease in Kd and Bmax."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "produced a significant decrease"
+          ],
+          "relation_sign": -1,
+          "object": "σ1 receptor Bmax",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "brain homogenate",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan produced a significant decrease in Kd and Bmax."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "produced a significant decrease"
+          ],
+          "relation_sign": -1,
+          "object": "Kd",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "brain homogenate",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan produced a significant decrease in Kd and Bmax."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "dextromethorphan",
+          "relation_raw_variants": [
+            "produced a significant decrease"
+          ],
+          "relation_sign": -1,
+          "object": "Bmax",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "brain homogenate",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Dextromethorphan produced a significant decrease in Kd and Bmax."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "produced a significant decrease",
+              "relation_sign": -1,
+              "object": "σ1 receptor Kd",
+              "context": {
+                "cell_line_or_type": "BRAIN HOMOGENATE",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan produced a significant decrease in Kd and Bmax.",
+              "confidence": 0.95,
+              "_source": {
+                "cell_line_or_type": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "produced a significant decrease",
+              "relation_sign": -1,
+              "object": "σ1 receptor Bmax",
+              "context": {
+                "cell_line_or_type": "BRAIN HOMOGENATE",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan produced a significant decrease in Kd and Bmax.",
+              "confidence": 0.95,
+              "_source": {
+                "cell_line_or_type": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "produced a significant decrease",
+              "relation_sign": -1,
+              "object": "Kd",
+              "context": {
+                "cell_line_or_type": "BRAIN HOMOGENATE",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan produced a significant decrease in Kd and Bmax.",
+              "confidence": 0.95,
+              "_source": {
+                "cell_line_or_type": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "dextromethorphan",
+              "relation_raw": "produced a significant decrease",
+              "relation_sign": -1,
+              "object": "Bmax",
+              "context": {
+                "cell_line_or_type": "BRAIN HOMOGENATE",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Dextromethorphan produced a significant decrease in Kd and Bmax.",
+              "confidence": 0.95,
+              "_source": {
+                "cell_line_or_type": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "σ1 receptors",
+          "relation_raw_variants": [
+            "contributing to"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant actions",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "dextromethorphan",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "This study is the first to show that dextromethorphan has antidepressant-like effects in vivo, in addition to implicating σ1 receptors as a mechanism contributing to its antidepressant actions."
+          ],
+          "mean_confidence": 0.8,
+          "predominant_negated": false
+        },
+        {
+          "subject": "BD1063 and BD1047",
+          "relation_raw_variants": [
+            "reduced"
+          ],
+          "relation_sign": -1,
+          "object": "antidepressant-like actions of dextromethorphan",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In the current study, two well-established σ1 receptor antagonists (BD1063 and BD1047) reduced the antidepressant-like actions of dextromethorphan in vivo."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "quinidine",
+          "relation_raw_variants": [
+            "enhances"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant-like effects of dextromethorphan",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Second, quinidine enhances the antidepressant-like effects of dextromethorphan without producing an increase in locomotor activity."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "potentiate"
+          ],
+          "relation_sign": 1,
+          "object": "nerve growth factor (NGF)-induced neurite outgrowth",
+          "sample_frequency": 1,
+          "consensus_score": 0.25,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "the fast-acting antidepressant drug ketamine has recently been shown to potentiate nerve growth factor (NGF)-induced neurite outgrowth through a σ1-dependent mechanism"
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "σ1 receptors",
+              "relation_raw": "contributing to",
+              "relation_sign": 1,
+              "object": "antidepressant actions",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "DEXTROMETHORPHAN",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "This study is the first to show that dextromethorphan has antidepressant-like effects in vivo, in addition to implicating σ1 receptors as a mechanism contributing to its antidepressant actions.",
+              "confidence": 0.8,
+              "_source": {
+                "treatment": "original",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "BD1063 and BD1047",
+              "relation_raw": "reduced",
+              "relation_sign": -1,
+              "object": "antidepressant-like actions of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the current study, two well-established σ1 receptor antagonists (BD1063 and BD1047) reduced the antidepressant-like actions of dextromethorphan in vivo.",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "quinidine",
+              "relation_raw": "enhances",
+              "relation_sign": 1,
+              "object": "antidepressant-like effects of dextromethorphan",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Second, quinidine enhances the antidepressant-like effects of dextromethorphan without producing an increase in locomotor activity.",
+              "confidence": 0.95,
+              "_source": {
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified",
+                "treatment": "failed_unspecified"
+              }
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "potentiate",
+              "relation_sign": 1,
+              "object": "nerve growth factor (NGF)-induced neurite outgrowth",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "KETAMINE",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "the fast-acting antidepressant drug ketamine has recently been shown to potentiate nerve growth factor (NGF)-induced neurite outgrowth through a σ1-dependent mechanism",
+              "confidence": 0.9,
+              "_source": {
+                "treatment": "rule",
+                "species": "failed_unspecified",
+                "localization": "failed_unspecified",
+                "time": "failed_unspecified",
+                "cell_line_or_type": "failed_unspecified",
+                "genotype": "failed_unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "refined_status": "Release_3.0.0_Truth_Locked"
+}

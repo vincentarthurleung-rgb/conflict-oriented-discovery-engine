@@ -1,0 +1,11 @@
+{
+  "report_timestamp": "2026-06-27 02:55:12",
+  "evaluated_candidates_count": 3,
+  "status_counts": {
+    "Sign_Consistent_Under_Curated_Index": 1,
+    "Sign_Inconsistent_Under_Curated_Index": 1,
+    "Unresolved_No_Coverage": 1
+  },
+  "retained_after_validation_count": 1,
+  "validator_note": "Curated omics index only; unresolved coverage is not treated as passed."
+}

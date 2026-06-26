@@ -1,0 +1,2619 @@
+{
+  "asset_id": "PMC4469544",
+  "doi": "10.1177/0269881115573809",
+  "article_title": "Impact of subanesthetic doses of ketamine on AMPA-mediated responses in rats: An in vivo electrophysiological study on monoaminergic and glutamatergic neurons",
+  "journal": "Journal of Psychopharmacology",
+  "belief_weight": 0.5,
+  "chunks_extracted": [
+    {
+      "chunk_index": 0,
+      "section": "Introduction",
+      "aggregated_relations": [
+        {
+          "subject": "PCP",
+          "relation_raw_variants": [
+            "decreases"
+          ],
+          "relation_sign": -1,
+          "object": "firing rate of locus coeruleus norepinephrine neurons",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "locus coeruleus norepinephrine neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "LC NE neurons",
+              "species": "unspecified",
+              "treatment": "PCP",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "locus coeruleus norepinephrine neurons",
+              "species": "unspecified",
+              "treatment": "PCP",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Intravenous injection of PCP decreases firing rate of locus coeruleus (LC) norepinephrine (NE) neurons (Raja and Guyenet, 1980), while not modifying the firing activity of 5-HT neurons (Aghajanian et al., 1970; Raja and Guyenet, 1980).",
+            "Intravenous injection of PCP decreases firing rate of locus coeruleus (LC) norepinephrine (NE) neurons (Raja and Guyenet, 1980)"
+          ],
+          "mean_confidence": 0.92,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "firing of ventral tegmental area dopamine neurons",
+          "sample_frequency": 4,
+          "consensus_score": 0.8,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "ventral tegmental area dopamine neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "VTA DA neurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "ventral tegmental area dopamine neurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Another study demonstrated that intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons with potency 19 times weaker than the NMDA antagonist MK-801 (French and Ceci, 1990).",
+            "intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons (French and Ceci, 1990)",
+            "Another study demonstrated that intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons with potency 19 times weaker than the NMDA antagonist MK-801."
+          ],
+          "mean_confidence": 0.92,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "blocks"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA receptors",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "GABA interneurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "GABA interneurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation.",
+            "ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007)."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increases"
+          ],
+          "relation_sign": 1,
+          "object": "glutamate",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "GABA interneurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation.",
+            "ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+            "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007)."
+          ],
+          "mean_confidence": 0.88,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "leads to",
+            "leads to an increase",
+            "leads to an increase in"
+          ],
+          "relation_sign": 1,
+          "object": "AMPA receptors activation",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "GABA interneurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation.",
+            "ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+            "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007)."
+          ],
+          "mean_confidence": 0.88,
+          "predominant_negated": false
+        },
+        {
+          "subject": "rapamycin",
+          "relation_raw_variants": [
+            "blocked"
+          ],
+          "relation_sign": -1,
+          "object": "ketamine-mediated decrease in immobility time",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "rapamycin",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Li et al. (2010) showed that pre-administration of rapamycin blocked the ketamine-mediated decrease in immobility time in the forced swim test (FST)",
+            "pre-administration of rapamycin blocked the ketamine-mediated decrease in immobility time in the forced swim test (FST)"
+          ],
+          "mean_confidence": 0.88,
+          "predominant_negated": false
+        },
+        {
+          "subject": "rapamycin",
+          "relation_raw_variants": [
+            "reverse"
+          ],
+          "relation_sign": 1,
+          "object": "ketamine-mediated decrease in immobility time",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "rapamycin",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Autry et al. (2011) revealed that rapamycin failed to reverse such an effect."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "blocks"
+          ],
+          "relation_sign": -1,
+          "object": "NMDA receptors on GABA interneurons",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "GABA interneurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "rapamycin",
+          "relation_raw_variants": [
+            "reverse"
+          ],
+          "relation_sign": -1,
+          "object": "ketamine-mediated decrease in immobility time in the forced swim test",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "rapamycin",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "investigations by Autry et al. (2011) revealed that rapamycin failed to reverse such an effect."
+          ],
+          "mean_confidence": 0.85,
+          "predominant_negated": true
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "PCP",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "firing rate of locus coeruleus norepinephrine neurons",
+              "context": {
+                "cell_line_or_type": "locus coeruleus norepinephrine neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Intravenous injection of PCP decreases firing rate of locus coeruleus (LC) norepinephrine (NE) neurons (Raja and Guyenet, 1980), while not modifying the firing activity of 5-HT neurons (Aghajanian et al., 1970; Raja and Guyenet, 1980).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "firing of ventral tegmental area dopamine neurons",
+              "context": {
+                "cell_line_or_type": "ventral tegmental area dopamine neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Another study demonstrated that intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons with potency 19 times weaker than the NMDA antagonist MK-801 (French and Ceci, 1990).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "GABA interneurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation.",
+              "confidence": 0.8
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamate",
+              "context": {
+                "cell_line_or_type": "GABA interneurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation.",
+              "confidence": 0.8
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "leads to",
+              "relation_sign": 1,
+              "object": "AMPA receptors activation",
+              "context": {
+                "cell_line_or_type": "GABA interneurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation.",
+              "confidence": 0.8
+            },
+            {
+              "subject": "PCP",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "firing rate of locus coeruleus norepinephrine neurons",
+              "context": {
+                "cell_line_or_type": "locus coeruleus norepinephrine neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Intravenous injection of PCP decreases firing rate of locus coeruleus (LC) norepinephrine (NE) neurons (Raja and Guyenet, 1980), while not modifying the firing activity of 5-HT neurons (Aghajanian et al., 1970; Raja and Guyenet, 1980).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "firing of ventral tegmental area dopamine neurons",
+              "context": {
+                "cell_line_or_type": "ventral tegmental area dopamine neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Another study demonstrated that intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons with potency 19 times weaker than the NMDA antagonist MK-801 (French and Ceci, 1990).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "NMDA receptors",
+              "context": {
+                "cell_line_or_type": "GABA interneurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamate",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "leads to an increase",
+              "relation_sign": 1,
+              "object": "AMPA receptors activation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "rapamycin",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "ketamine-mediated decrease in immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "rapamycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Li et al. (2010) showed that pre-administration of rapamycin blocked the ketamine-mediated decrease in immobility time in the forced swim test (FST)",
+              "confidence": 0.85
+            },
+            {
+              "subject": "rapamycin",
+              "relation_raw": "reverse",
+              "relation_sign": 1,
+              "object": "ketamine-mediated decrease in immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "rapamycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "Autry et al. (2011) revealed that rapamycin failed to reverse such an effect.",
+              "confidence": 0.85
+            },
+            {
+              "subject": "PCP",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "firing rate of locus coeruleus norepinephrine neurons",
+              "context": {
+                "cell_line_or_type": "LC NE neurons",
+                "species": "unspecified",
+                "treatment": "PCP",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Intravenous injection of PCP decreases firing rate of locus coeruleus (LC) norepinephrine (NE) neurons (Raja and Guyenet, 1980)",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "firing of ventral tegmental area dopamine neurons",
+              "context": {
+                "cell_line_or_type": "VTA DA neurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons (French and Ceci, 1990)",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "blocks",
+              "relation_sign": -1,
+              "object": "NMDA receptors on GABA interneurons",
+              "context": {
+                "cell_line_or_type": "GABA interneurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "glutamate",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "leads to an increase in",
+              "relation_sign": 1,
+              "object": "AMPA receptors activation",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Specifically, ketamine, by directly blocking NMDA receptors on gamma-aminobutyric acid (GABA) interneurons increases glutamate and leads to an increase in AMPA receptors activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "rapamycin",
+              "relation_raw": "blocked",
+              "relation_sign": -1,
+              "object": "ketamine-mediated decrease in immobility time",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "rapamycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "pre-administration of rapamycin blocked the ketamine-mediated decrease in immobility time in the forced swim test (FST)",
+              "confidence": 0.9
+            },
+            {
+              "subject": "rapamycin",
+              "relation_raw": "reverse",
+              "relation_sign": -1,
+              "object": "ketamine-mediated decrease in immobility time in the forced swim test",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "rapamycin",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "investigations by Autry et al. (2011) revealed that rapamycin failed to reverse such an effect.",
+              "confidence": 0.85
+            },
+            {
+              "subject": "PCP",
+              "relation_raw": "decreases",
+              "relation_sign": -1,
+              "object": "firing rate of locus coeruleus norepinephrine neurons",
+              "context": {
+                "cell_line_or_type": "locus coeruleus norepinephrine neurons",
+                "species": "unspecified",
+                "treatment": "PCP",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Intravenous injection of PCP decreases firing rate of locus coeruleus (LC) norepinephrine (NE) neurons (Raja and Guyenet, 1980)",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increases",
+              "relation_sign": 1,
+              "object": "firing of ventral tegmental area dopamine neurons",
+              "context": {
+                "cell_line_or_type": "ventral tegmental area dopamine neurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Another study demonstrated that intravenous ketamine increases firing of ventral tegmental area (VTA) dopamine (DA) neurons with potency 19 times weaker than the NMDA antagonist MK-801.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 1,
+      "section": "Animals",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        }
+      ]
+    },
+    {
+      "chunk_index": 2,
+      "section": "Drug administration",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 3,
+      "section": "In vivo electrophysiological experiments",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 4,
+      "section": "Recording of DRN 5-HT neurons",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 5,
+      "section": "Recording of VTA DA neurons",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 6,
+      "section": "Recording of LC NE neurons",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 7,
+      "section": "Bursts analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 8,
+      "section": "Microiontophoresis and extracellular recording of dorsal hippocampus CA3 pyramidal neurons",
+      "aggregated_relations": [
+        {
+          "subject": "AMPA",
+          "relation_raw_variants": [
+            "activate"
+          ],
+          "relation_sign": 1,
+          "object": "CA3 pyramidal neurons",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA3 pyramidal neuron",
+              "species": "rat",
+              "treatment": "AMPA microiontophoresis",
+              "localization": "dorsal CA3 region of hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "CA3 pyramidal neurons",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "dorsal CA3 region of hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "CA3 pyramidal neuron",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "dorsal CA3 hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Since pyramidal neurons do not discharge spontaneously in chloral hydrate anesthetized rats, a small current of AMPA (-2 to -5 nA) was constantly applied to locate those neurons, and activate them within their physiological firing range (10–15 Hz; Rank, 1975)."
+          ],
+          "mean_confidence": 0.97,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NMDA",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "excitation of pyramidal neurons",
+          "sample_frequency": 2,
+          "consensus_score": 0.4,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA3 pyramidal neuron",
+              "species": "rat",
+              "treatment": "NMDA microiontophoresis",
+              "localization": "dorsal CA3 region of hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "CA3 pyramidal neurons",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "dorsal CA3 region of hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "AMPA",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "excitation of pyramidal neurons",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA3 pyramidal neurons",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "dorsal CA3 region of hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NMDA",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "excitation of CA3 pyramidal neurons",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA3 pyramidal neuron",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "dorsal CA3 hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "AMPA",
+          "relation_raw_variants": [
+            "induced"
+          ],
+          "relation_sign": 1,
+          "object": "excitation of CA3 pyramidal neurons",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA3 pyramidal neuron",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "dorsal CA3 hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "AMPA",
+              "relation_raw": "activate",
+              "relation_sign": 1,
+              "object": "CA3 pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neuron",
+                "species": "rat",
+                "treatment": "AMPA microiontophoresis",
+                "localization": "dorsal CA3 region of hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Since pyramidal neurons do not discharge spontaneously in chloral hydrate anesthetized rats, a small current of AMPA (-2 to -5 nA) was constantly applied to locate those neurons, and activate them within their physiological firing range (10–15 Hz; Rank, 1975).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NMDA",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "excitation of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neuron",
+                "species": "rat",
+                "treatment": "NMDA microiontophoresis",
+                "localization": "dorsal CA3 region of hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "AMPA",
+              "relation_raw": "activate",
+              "relation_sign": 1,
+              "object": "CA3 pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neurons",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "dorsal CA3 region of hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Since pyramidal neurons do not discharge spontaneously in chloral hydrate anesthetized rats, a small current of AMPA (-2 to -5 nA) was constantly applied to locate those neurons, and activate them within their physiological firing range (10–15 Hz; Rank, 1975).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NMDA",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "excitation of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neurons",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "dorsal CA3 region of hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "AMPA",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "excitation of pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neurons",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "dorsal CA3 region of hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "AMPA",
+              "relation_raw": "activate",
+              "relation_sign": 1,
+              "object": "CA3 pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neuron",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "dorsal CA3 hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Since pyramidal neurons do not discharge spontaneously in chloral hydrate anesthetized rats, a small current of AMPA (-2 to -5 nA) was constantly applied to locate those neurons, and activate them within their physiological firing range (10–15 Hz; Rank, 1975).",
+              "confidence": 1.0
+            },
+            {
+              "subject": "NMDA",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "excitation of CA3 pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neuron",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "dorsal CA3 hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "AMPA",
+              "relation_raw": "induced",
+              "relation_sign": 1,
+              "object": "excitation of CA3 pyramidal neurons",
+              "context": {
+                "cell_line_or_type": "CA3 pyramidal neuron",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "dorsal CA3 hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Drug effect was assessed by measuring the degree of excitation of pyramidal neurons (measured as number of spikes generated for 60 s ejection) induced by NMDA and AMPA applications following the acute administration of ketamine or saline.",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 9,
+      "section": "Statistical analysis",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "pipeline_error": "Malformed_JSON_Response"
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 10,
+      "section": "Drugs",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 11,
+      "section": "Effects of acute and two-day administration of ketamine on the firing activity of DRN 5-HT neurons",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicited"
+          ],
+          "relation_sign": 1,
+          "object": "antidepressant-like effect",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine 25 mg/kg",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine (25 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine 25 mg/kg",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited and antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+            "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited an antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010)."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "elicited"
+          ],
+          "relation_sign": -1,
+          "object": "antidepressant-like effect",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 3,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine 10 mg/kg",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "unspecified",
+              "treatment": "ketamine 10 mg/kg",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited and antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+            "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited an antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010)."
+          ],
+          "mean_confidence": 0.93,
+          "predominant_negated": true
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": 1,
+              "object": "antidepressant-like effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine 25 mg/kg",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited and antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+              "confidence": 0.85
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": -1,
+              "object": "antidepressant-like effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine 10 mg/kg",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited and antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+              "confidence": 0.85
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": 1,
+              "object": "antidepressant-like effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine (25 mg/kg)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited an antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": -1,
+              "object": "antidepressant-like effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine (10 mg/kg)",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited an antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": 1,
+              "object": "antidepressant-like effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine 25 mg/kg",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited and antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+              "confidence": 1.0
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "elicited",
+              "relation_sign": -1,
+              "object": "antidepressant-like effect",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "unspecified",
+                "treatment": "ketamine 10 mg/kg",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "A previous study showed that 25 mg/kg but not 10 mg/kg of ketamine elicited and antidepressant-like effect in the FST model (Gigliucci et al., 2013; Li et al., 2010).",
+              "confidence": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chunk_index": 12,
+      "section": "Effects of acute and two-day administration of ketamine on the firing activity of VTA DA neurons",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increased"
+          ],
+          "relation_sign": 1,
+          "object": "population activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "dopamine neurons",
+              "species": "rat",
+              "treatment": "ketamine (10 mg/kg)",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Despite an absence of effect of acute administration of ketamine on the rate of DA neuronal firing and bursting, the number of neurons encountered per electrode descent (population activity) increased by 113% (one-way ANOVA; F(3, 16)=5.4; p<0.01; Tukey post hoc test; n=5; Figure 2(b)) compared to vehicle-treated rats."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increased",
+              "relation_sign": 1,
+              "object": "population activity",
+              "context": {
+                "cell_line_or_type": "dopamine neurons",
+                "species": "rat",
+                "treatment": "ketamine (10 mg/kg)",
+                "localization": "unspecified",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Despite an absence of effect of acute administration of ketamine on the rate of DA neuronal firing and bursting, the number of neurons encountered per electrode descent (population activity) increased by 113% (one-way ANOVA; F(3, 16)=5.4; p<0.01; Tukey post hoc test; n=5; Figure 2(b)) compared to vehicle-treated rats.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 13,
+      "section": "Effects of acute and two-day administration of ketamine on the firing activity of LC NE neurons",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in a significant elevation",
+            "resulted in"
+          ],
+          "relation_sign": 1,
+          "object": "firing activity of NE neurons",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "unspecified",
+              "treatment": "ketamine (acute)",
+              "localization": "LC",
+              "time": "acute",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "LC",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Acute administration of ketamine resulted in a significant elevation of the average rate of firing activity of NE neurons in the LC by 21% when compared to the vehicle-administered group (one-way ANOVA; F(3, 375)=4.5; p<0.05; Tukey post hoc test; n=6; Figure 3(a))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "nearly doubled",
+            "doubled"
+          ],
+          "relation_sign": 1,
+          "object": "burst activity of NE neurons",
+          "sample_frequency": 3,
+          "consensus_score": 0.6,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "unspecified",
+              "treatment": "ketamine (acute)",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            },
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "LC",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In addition, acute administration of ketamine nearly doubled the proportion of NE neurons displaying burst activity (control: 17% versus ketamine: 30%; one-way ANOVA; p<0.01; F(3, 20)=9; Bonferroni post hoc test; n=6; Figure 3(b))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "resulted in a dampening"
+          ],
+          "relation_sign": -1,
+          "object": "ketamine-induced increase in burst activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "unspecified",
+              "treatment": "NBQX (3 mg/kg) pre-treatment + ketamine",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "resulted in"
+          ],
+          "relation_sign": -1,
+          "object": "ketamine-induced burst activity increase",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "rat",
+              "treatment": "NBQX pre-treatment",
+              "localization": "LC",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b))."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in a significant elevation of"
+          ],
+          "relation_sign": 1,
+          "object": "firing rate of NE neurons",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "LC",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Acute administration of ketamine resulted in a significant elevation of the average rate of firing activity of NE neurons in the LC by 21% when compared to the vehicle-administered group (one-way ANOVA; F(3, 375)=4.5; p<0.05; Tukey post hoc test; n=6; Figure 3(a))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "nearly doubled"
+          ],
+          "relation_sign": 1,
+          "object": "proportion of NE neurons displaying burst activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "unspecified",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In addition, acute administration of ketamine nearly doubled the proportion of NE neurons displaying burst activity (control: 17% versus ketamine: 30%; one-way ANOVA; p<0.01; F(3, 20)=9; Bonferroni post hoc test; n=6; Figure 3(b))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "resulted in a dampening in"
+          ],
+          "relation_sign": -1,
+          "object": "increase in burst activity induced by ketamine",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "unspecified",
+              "treatment": "NBQX (pre-treatment)",
+              "localization": "unspecified",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b))."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "NBQX",
+          "relation_raw_variants": [
+            "resulted in a dampening"
+          ],
+          "relation_sign": -1,
+          "object": "increase in burst activity of NE neurons",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "NE neurons",
+              "species": "rat",
+              "treatment": "NBQX + ketamine",
+              "localization": "LC",
+              "time": "acute",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in a significant elevation",
+              "relation_sign": 1,
+              "object": "firing activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "unspecified",
+                "treatment": "ketamine (acute)",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute administration of ketamine resulted in a significant elevation of the average rate of firing activity of NE neurons in the LC by 21% when compared to the vehicle-administered group (one-way ANOVA; F(3, 375)=4.5; p<0.05; Tukey post hoc test; n=6; Figure 3(a)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "nearly doubled",
+              "relation_sign": 1,
+              "object": "burst activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "unspecified",
+                "treatment": "ketamine (acute)",
+                "localization": "unspecified",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, acute administration of ketamine nearly doubled the proportion of NE neurons displaying burst activity (control: 17% versus ketamine: 30%; one-way ANOVA; p<0.01; F(3, 20)=9; Bonferroni post hoc test; n=6; Figure 3(b)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "resulted in a dampening",
+              "relation_sign": -1,
+              "object": "ketamine-induced increase in burst activity",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "unspecified",
+                "treatment": "NBQX (3 mg/kg) pre-treatment + ketamine",
+                "localization": "unspecified",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b)).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in",
+              "relation_sign": 1,
+              "object": "firing activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute administration of ketamine resulted in a significant elevation of the average rate of firing activity of NE neurons in the LC by 21% when compared to the vehicle-administered group (one-way ANOVA; F(3, 375)=4.5; p<0.05; Tukey post hoc test; n=6; Figure 3(a)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "doubled",
+              "relation_sign": 1,
+              "object": "burst activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, acute administration of ketamine nearly doubled the proportion of NE neurons displaying burst activity (control: 17% versus ketamine: 30%; one-way ANOVA; p<0.01; F(3, 20)=9; Bonferroni post hoc test; n=6; Figure 3(b)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "resulted in",
+              "relation_sign": -1,
+              "object": "ketamine-induced burst activity increase",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "rat",
+                "treatment": "NBQX pre-treatment",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b)).",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in a significant elevation of",
+              "relation_sign": 1,
+              "object": "firing rate of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute administration of ketamine resulted in a significant elevation of the average rate of firing activity of NE neurons in the LC by 21% when compared to the vehicle-administered group (one-way ANOVA; F(3, 375)=4.5; p<0.05; Tukey post hoc test; n=6; Figure 3(a)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "nearly doubled",
+              "relation_sign": 1,
+              "object": "proportion of NE neurons displaying burst activity",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "unspecified",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, acute administration of ketamine nearly doubled the proportion of NE neurons displaying burst activity (control: 17% versus ketamine: 30%; one-way ANOVA; p<0.01; F(3, 20)=9; Bonferroni post hoc test; n=6; Figure 3(b)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "resulted in a dampening in",
+              "relation_sign": -1,
+              "object": "increase in burst activity induced by ketamine",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "unspecified",
+                "treatment": "NBQX (pre-treatment)",
+                "localization": "unspecified",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b)).",
+              "confidence": 0.9
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in a significant elevation",
+              "relation_sign": 1,
+              "object": "firing activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Acute administration of ketamine resulted in a significant elevation of the average rate of firing activity of NE neurons in the LC by 21% when compared to the vehicle-administered group (one-way ANOVA; F(3, 375)=4.5; p<0.05; Tukey post hoc test; n=6; Figure 3(a)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "nearly doubled",
+              "relation_sign": 1,
+              "object": "burst activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In addition, acute administration of ketamine nearly doubled the proportion of NE neurons displaying burst activity (control: 17% versus ketamine: 30%; one-way ANOVA; p<0.01; F(3, 20)=9; Bonferroni post hoc test; n=6; Figure 3(b)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "NBQX",
+              "relation_raw": "resulted in a dampening",
+              "relation_sign": -1,
+              "object": "increase in burst activity of NE neurons",
+              "context": {
+                "cell_line_or_type": "NE neurons",
+                "species": "rat",
+                "treatment": "NBQX + ketamine",
+                "localization": "LC",
+                "time": "acute",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "At this dose, pre-treatment with NBQX resulted in a dampening in the increase of the number of neurons with burst activity induced by acute ketamine administration (Figure 3(b)).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 14,
+      "section": "Effects of acute ketamine administration on the responsiveness of hippocampus pyramidal neurons",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increase"
+          ],
+          "relation_sign": 1,
+          "object": "AMPA-induced firing activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "dorsal hippocampus CA3 pyramidal neurons",
+              "species": "rat",
+              "treatment": "ketamine (10 and 25 mg/kg)",
+              "localization": "unspecified",
+              "time": "30 minutes",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "However, a significant time interaction was obtained 30 minutes following ketamine administration (using 10 or 25 mg/kg, showing a 64% increase in AMPA-induced firing activity of pyramidal neurons compared to control rat that received saline (two-way ANOVA with repeated measures followed by Bonferroni post hoc test; F(2, 48)=6; P<0.05; Figure 4(a), (c))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "increase"
+          ],
+          "relation_sign": 1,
+          "object": "AMPA-evoked firing",
+          "sample_frequency": 1,
+          "consensus_score": 0.2,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "dorsal hippocampus CA3 pyramidal neurons",
+              "species": "rat",
+              "treatment": "ketamine (25 mg/kg)",
+              "localization": "unspecified",
+              "time": "30 minutes",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "However, a significant increase in AMPA-evoked firing was observed 30 minutes following the higher ketamine administration compared to control rats that received saline (55% increase; two-way ANOVA followed by Bonferroni post hoc test; p<0.05; Figure 4(b), (c))."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "AMPA-induced firing activity",
+              "context": {
+                "cell_line_or_type": "dorsal hippocampus CA3 pyramidal neurons",
+                "species": "rat",
+                "treatment": "ketamine (10 and 25 mg/kg)",
+                "localization": "unspecified",
+                "time": "30 minutes",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "However, a significant time interaction was obtained 30 minutes following ketamine administration (using 10 or 25 mg/kg, showing a 64% increase in AMPA-induced firing activity of pyramidal neurons compared to control rat that received saline (two-way ANOVA with repeated measures followed by Bonferroni post hoc test; F(2, 48)=6; P<0.05; Figure 4(a), (c)).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "increase",
+              "relation_sign": 1,
+              "object": "AMPA-evoked firing",
+              "context": {
+                "cell_line_or_type": "dorsal hippocampus CA3 pyramidal neurons",
+                "species": "rat",
+                "treatment": "ketamine (25 mg/kg)",
+                "localization": "unspecified",
+                "time": "30 minutes",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "However, a significant increase in AMPA-evoked firing was observed 30 minutes following the higher ketamine administration compared to control rats that received saline (55% increase; two-way ANOVA followed by Bonferroni post hoc test; p<0.05; Figure 4(b), (c)).",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        },
+        {
+          "causal_tuples": []
+        }
+      ]
+    },
+    {
+      "chunk_index": 15,
+      "section": "Discussion",
+      "aggregated_relations": [],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        }
+      ]
+    },
+    {
+      "chunk_index": 16,
+      "section": "Discussion",
+      "aggregated_relations": [
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in an enhancement"
+          ],
+          "relation_sign": 1,
+          "object": "AMPA-evoked response",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In the present study ketamine administration resulted in an enhancement of AMPA- but not NMDA-evoked response in the hippocampus, suggesting that ketamine may exert a direct effect on AMPA receptors."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in a significant increase"
+          ],
+          "relation_sign": 1,
+          "object": "AMPA receptor density",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "chronic ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "Wistar-Kyoto"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, chronic administration of ketamine resulted in a significant increase in AMPA but not NMDA receptor density in Wistar–Kyoto rats (a model for depression), whereas basal densities of these receptors were not significantly different when compared to Wistar rats (Tizabi et al., 2012)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "DNQX",
+          "relation_raw_variants": [
+            "inhibited"
+          ],
+          "relation_sign": -1,
+          "object": "surface expression of GluA1 and GluA2",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA1 hippocampal slices",
+              "species": "rat",
+              "treatment": "unspecified",
+              "localization": "hippocampal CA1",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, this was coupled with an increase in surface expression of both GluA1 and GluA2 subunits of AMPA receptors, which was inhibited by an AMPA receptor antagonist 6,7-dinitroquinoxaline-2,3-dione (DNQX; Nosyreva et al., 2013)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "MK-801",
+          "relation_raw_variants": [
+            "leads to decreased"
+          ],
+          "relation_sign": -1,
+          "object": "inhibition",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "GABA neurons",
+              "species": "unspecified",
+              "treatment": "unspecified",
+              "localization": "GABA neurons",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Indeed, blockade by MK-801 of NMDA receptors located on GABA neurons leads to decreased inhibition (disinhibition) following a surge in glutamate, thus resulting in an enhancement of AMPA activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in an increase"
+          ],
+          "relation_sign": 1,
+          "object": "catecholamine activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In summary, ketamine administration resulted in an increase in catecholamine activity, and this increase was AMPA-dependent."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in"
+          ],
+          "relation_sign": 1,
+          "object": "enhancement of AMPA-evoked response",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In the present study ketamine administration resulted in an enhancement of AMPA- but not NMDA-evoked response in the hippocampus, suggesting that ketamine may exert a direct effect on AMPA receptors."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in"
+          ],
+          "relation_sign": -1,
+          "object": "enhancement of NMDA-evoked response",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "hippocampus",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In the present study ketamine administration resulted in an enhancement of AMPA- but not NMDA-evoked response in the hippocampus, suggesting that ketamine may exert a direct effect on AMPA receptors."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in"
+          ],
+          "relation_sign": 1,
+          "object": "increase in AMPA receptor density",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "chronic ketamine",
+              "localization": "unspecified",
+              "time": "chronic",
+              "genotype": "Wistar-Kyoto"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, chronic administration of ketamine resulted in a significant increase in AMPA but not NMDA receptor density in Wistar–Kyoto rats (a model for depression), whereas basal densities of these receptors were not significantly different when compared to Wistar rats (Tizabi et al., 2012)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in"
+          ],
+          "relation_sign": -1,
+          "object": "increase in NMDA receptor density",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 1,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "chronic ketamine",
+              "localization": "unspecified",
+              "time": "chronic",
+              "genotype": "Wistar-Kyoto"
+            }
+          ],
+          "evidence_sentences": [
+            "Interestingly, chronic administration of ketamine resulted in a significant increase in AMPA but not NMDA receptor density in Wistar–Kyoto rats (a model for depression), whereas basal densities of these receptors were not significantly different when compared to Wistar rats (Tizabi et al., 2012)."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": true
+        },
+        {
+          "subject": "DNQX",
+          "relation_raw_variants": [
+            "inhibited"
+          ],
+          "relation_sign": -1,
+          "object": "increase in surface expression of GluA1 and GluA2",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "CA1 hippocampal slices",
+              "species": "rat",
+              "treatment": "DNQX",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Furthermore, this was coupled with an increase in surface expression of both GluA1 and GluA2 subunits of AMPA receptors, which was inhibited by an AMPA receptor antagonist 6,7-dinitroquinoxaline-2,3-dione (DNQX; Nosyreva et al., 2013)."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "chloral hydrate",
+          "relation_raw_variants": [
+            "inhibits"
+          ],
+          "relation_sign": -1,
+          "object": "glutamatergic receptors",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "chloral hydrate",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "Moreover, since chloral hydrate inhibits different types of glutamatergic receptors, it is possible that effects studied under this anesthetic are rather underestimated."
+          ],
+          "mean_confidence": 0.9,
+          "predominant_negated": false
+        },
+        {
+          "subject": "ketamine",
+          "relation_raw_variants": [
+            "resulted in"
+          ],
+          "relation_sign": 1,
+          "object": "increase in catecholamine activity",
+          "sample_frequency": 1,
+          "consensus_score": 0.5,
+          "negated_votes": 0,
+          "contexts": [
+            {
+              "cell_line_or_type": "unspecified",
+              "species": "rat",
+              "treatment": "ketamine",
+              "localization": "unspecified",
+              "time": "unspecified",
+              "genotype": "unspecified"
+            }
+          ],
+          "evidence_sentences": [
+            "In summary, ketamine administration resulted in an increase in catecholamine activity, and this increase was AMPA-dependent."
+          ],
+          "mean_confidence": 0.95,
+          "predominant_negated": false
+        }
+      ],
+      "raw_samples": [
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in an enhancement",
+              "relation_sign": 1,
+              "object": "AMPA-evoked response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the present study ketamine administration resulted in an enhancement of AMPA- but not NMDA-evoked response in the hippocampus, suggesting that ketamine may exert a direct effect on AMPA receptors.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in a significant increase",
+              "relation_sign": 1,
+              "object": "AMPA receptor density",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "chronic ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "Wistar-Kyoto"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, chronic administration of ketamine resulted in a significant increase in AMPA but not NMDA receptor density in Wistar–Kyoto rats (a model for depression), whereas basal densities of these receptors were not significantly different when compared to Wistar rats (Tizabi et al., 2012).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "DNQX",
+              "relation_raw": "inhibited",
+              "relation_sign": -1,
+              "object": "surface expression of GluA1 and GluA2",
+              "context": {
+                "cell_line_or_type": "CA1 hippocampal slices",
+                "species": "rat",
+                "treatment": "unspecified",
+                "localization": "hippocampal CA1",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, this was coupled with an increase in surface expression of both GluA1 and GluA2 subunits of AMPA receptors, which was inhibited by an AMPA receptor antagonist 6,7-dinitroquinoxaline-2,3-dione (DNQX; Nosyreva et al., 2013).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "MK-801",
+              "relation_raw": "leads to decreased",
+              "relation_sign": -1,
+              "object": "inhibition",
+              "context": {
+                "cell_line_or_type": "GABA neurons",
+                "species": "unspecified",
+                "treatment": "unspecified",
+                "localization": "GABA neurons",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Indeed, blockade by MK-801 of NMDA receptors located on GABA neurons leads to decreased inhibition (disinhibition) following a surge in glutamate, thus resulting in an enhancement of AMPA activation (Abdallah et al., 2014; Homayoun and Moghaddam, 2007).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in an increase",
+              "relation_sign": 1,
+              "object": "catecholamine activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In summary, ketamine administration resulted in an increase in catecholamine activity, and this increase was AMPA-dependent.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "causal_tuples": [
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in",
+              "relation_sign": 1,
+              "object": "enhancement of AMPA-evoked response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In the present study ketamine administration resulted in an enhancement of AMPA- but not NMDA-evoked response in the hippocampus, suggesting that ketamine may exert a direct effect on AMPA receptors.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in",
+              "relation_sign": -1,
+              "object": "enhancement of NMDA-evoked response",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "hippocampus",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": true,
+              "evidence_sentence": "In the present study ketamine administration resulted in an enhancement of AMPA- but not NMDA-evoked response in the hippocampus, suggesting that ketamine may exert a direct effect on AMPA receptors.",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in",
+              "relation_sign": 1,
+              "object": "increase in AMPA receptor density",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "chronic ketamine",
+                "localization": "unspecified",
+                "time": "chronic",
+                "genotype": "Wistar-Kyoto"
+              },
+              "negated": false,
+              "evidence_sentence": "Interestingly, chronic administration of ketamine resulted in a significant increase in AMPA but not NMDA receptor density in Wistar–Kyoto rats (a model for depression), whereas basal densities of these receptors were not significantly different when compared to Wistar rats (Tizabi et al., 2012).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in",
+              "relation_sign": -1,
+              "object": "increase in NMDA receptor density",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "chronic ketamine",
+                "localization": "unspecified",
+                "time": "chronic",
+                "genotype": "Wistar-Kyoto"
+              },
+              "negated": true,
+              "evidence_sentence": "Interestingly, chronic administration of ketamine resulted in a significant increase in AMPA but not NMDA receptor density in Wistar–Kyoto rats (a model for depression), whereas basal densities of these receptors were not significantly different when compared to Wistar rats (Tizabi et al., 2012).",
+              "confidence": 0.95
+            },
+            {
+              "subject": "DNQX",
+              "relation_raw": "inhibited",
+              "relation_sign": -1,
+              "object": "increase in surface expression of GluA1 and GluA2",
+              "context": {
+                "cell_line_or_type": "CA1 hippocampal slices",
+                "species": "rat",
+                "treatment": "DNQX",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Furthermore, this was coupled with an increase in surface expression of both GluA1 and GluA2 subunits of AMPA receptors, which was inhibited by an AMPA receptor antagonist 6,7-dinitroquinoxaline-2,3-dione (DNQX; Nosyreva et al., 2013).",
+              "confidence": 0.9
+            },
+            {
+              "subject": "chloral hydrate",
+              "relation_raw": "inhibits",
+              "relation_sign": -1,
+              "object": "glutamatergic receptors",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "chloral hydrate",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "Moreover, since chloral hydrate inhibits different types of glutamatergic receptors, it is possible that effects studied under this anesthetic are rather underestimated.",
+              "confidence": 0.9
+            },
+            {
+              "subject": "ketamine",
+              "relation_raw": "resulted in",
+              "relation_sign": 1,
+              "object": "increase in catecholamine activity",
+              "context": {
+                "cell_line_or_type": "unspecified",
+                "species": "rat",
+                "treatment": "ketamine",
+                "localization": "unspecified",
+                "time": "unspecified",
+                "genotype": "unspecified"
+              },
+              "negated": false,
+              "evidence_sentence": "In summary, ketamine administration resulted in an increase in catecholamine activity, and this increase was AMPA-dependent.",
+              "confidence": 0.95
+            }
+          ]
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        },
+        {
+          "pipeline_error": "Exception_Raised: TimeoutError"
+        }
+      ]
+    }
+  ]
+}
