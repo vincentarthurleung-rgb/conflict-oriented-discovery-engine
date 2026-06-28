@@ -23,9 +23,17 @@ class WorkflowStepName(str, Enum):
     SEARCH = "search"
     ACQUISITION = "acquisition"
     PAYLOAD = "payload"
+    ABSTRACT_L1 = "abstract_l1"
+    L2_ABSTRACT = "l2_abstract"
+    ABSTRACT_CONFLICT_SCREENING = "abstract_conflict_screening"
+    FULLTEXT_ESCALATION = "fulltext_escalation"
+    FULLTEXT_L1 = "fulltext_l1"
+    L2_FULLTEXT = "l2_fulltext"
+    FULLTEXT_CONFLICT_CONFIRMATION = "fulltext_conflict_confirmation"
     L1 = "l1"
     L1_5 = "l1_5"
     L2 = "l2"
+    MECHANISM = "mechanism"
     CONFLICT = "conflict"
     HYPOTHESIS = "hypothesis"
     VALIDATION = "validation"
@@ -71,6 +79,27 @@ class RunState:
     semantic_mode: str | None = None
     semantic_confidence: float | None = None
     requires_manual_review: bool = False
+    entity_network_lookup_enabled: bool = False
+    entity_llm_proposer_enabled: bool = False
+    entity_resolution_policy: str | None = None
+    l1_mode: str = "legacy"
+    fulltext_escalation_enabled: bool = False
+    l1_estimated_cost_usd: float = 0.0
+    l1_actual_cost_usd: float | None = None
+    validation_anchor_count: int = 0
+    validation_question_count: int = 0
+    validation_route_count: int = 0
+    validation_query_plan_count: int = 0
+    validation_allowed_query_count: int = 0
+    validation_blocked_query_count: int = 0
+    validation_estimated_records: int = 0
+    validation_actual_evidence_count: int = 0
+    validation_signal_count: int = 0
+    validation_cache_hit_count: int = 0
+    validation_cache_miss_count: int = 0
+    validation_estimated_memory_mb: float = 0.0
+    validation_result_count: int = 0
+    validation_aggregate_status: str = "not_run"
     steps: dict[str, WorkflowStepRecord] = field(default_factory=dict)
     artifacts: dict[str, str] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
@@ -89,8 +118,12 @@ class RunState:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "RunState":
         payload = dict(data)
-        payload["steps"] = {
+        existing_steps = {
             name: record if isinstance(record, WorkflowStepRecord) else WorkflowStepRecord(**record)
             for name, record in payload.get("steps", {}).items()
+        }
+        payload["steps"] = {
+            name: existing_steps.get(name, WorkflowStepRecord(step_name=name))
+            for name in STEP_ORDER
         }
         return cls(**payload)

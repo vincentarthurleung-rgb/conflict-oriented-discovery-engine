@@ -77,6 +77,25 @@ Scientific encoders remain limited to parsing, extraction, and suggestion;
 L2/L3/L5 status logic and scoring remain deterministic. See
 `DOMAIN_ADAPTIVE_WORKFLOW.md` and `DOMAIN_ADAPTIVE_VALIDATION.md`.
 
+## Abstract-First And Progressive Full Text
+
+Abstract entropy and full-text entropy are separate evidence tiers. Abstract
+claims support scalable conflict screening only. Full-text confirmation ranks
+sections, selects evidence spans, restores context, and calculates both global
+and context-conditioned entropy. Only full-text evidence and confirmed or
+context-resolved conflicts are eligible for high-confidence mechanism work.
+Budget and cache guards are mandatory for both L1 phases.
+
+## Resource-Aware Layer 6
+
+Layer 6 remains under `code_engine.validation`. ValidationAnchor generalizes
+triples to hypotheses, conflicts, mechanism paths/gaps, pathways, gene sets,
+clinical contexts, and entities. Capability routing is followed by mandatory
+query planning and a 32 GB-oriented ResourceGuard. Execution is sequential and
+streams evidence/signals to JSONL. Recommended stores are DuckDB, SQLite,
+indexed Parquet, and small JSONL; full matrices/graphs and pandas loading of
+large CSV exports are outside the supported boundary.
+
 ## Current Limits
 
 - The omics index is not full LINCS.
@@ -174,11 +193,10 @@ claims write through the cache and also produce a legacy Stage3-compatible file.
 
 ## Type-Aware Resolver Cascade
 
-`code_engine.normalization` replaces alias-map/uppercase-only normalization with
-lexical cleanup, entity typing, local registry lookup, candidate scoring, typed
-relations, deterministic decision status, and audit output. The preferred
-registry is `configs/normalization/entity_registry.json`; the synchronized
-legacy path remains under `config/schemas/`.
+`code_engine.normalization` uses EntityResolutionHub for lexical cleanup,
+multi-provider candidate collection, generic weak type hints, deterministic
+adjudication, caching, and run-scoped audit output. The old registry path is a
+compatibility stub; the ketamine dictionary is an explicit pilot fixture only.
 
 Resolved entities carry canonical IDs, semantic levels, external-ID placeholders,
 relations, match type, candidates, confidence, warnings, and an explicit
@@ -195,3 +213,5 @@ candidate proposer is disabled and cannot select final canonical entities.
 `code_engine.workflow` owns sequencing, RunState persistence, isolation, resume, and permission gates. Scientific formulas remain in their layer modules. `code_engine.cli.run` is the main entry point; Stage scripts are retained for legacy/debug use.
 
 `code_engine.encoder` owns LLM-first semantic encoding and format-only repair. `semantic_verifier` is deterministic and non-semantic. DomainRouter is a DomainProfile registry/validator. The legacy deterministic parsers and configuration-backed keyword router are degraded compatibility boundaries, not production semantic classifiers.
+
+`code_engine.mechanism` is the evidence-grounded organization boundary between L2 and L3/hypothesis search. It builds canonical nodes, provenance-preserving edges, bounded paths, and mappings to existing ConflictEdges. It does not infer scientific truth or modify L3. `code_engine.storage.mechanism_index` supplies local JSON queries; external graph databases remain future adapters.

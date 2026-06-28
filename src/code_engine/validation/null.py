@@ -6,6 +6,9 @@ from code_engine.schemas.validation import ValidationQuestion, ValidationResult
 
 class NullValidator(AbstractValidator):
     name = "NullValidator"
+    supported_anchor_types = ()
+    supported_validation_intents = ()
+    supports_cache_only = False
 
     def can_validate(self, hypothesis: dict) -> bool:
         return True

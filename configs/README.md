@@ -12,5 +12,6 @@
 Falling back from a preferred path to `config/schemas/` is recorded in
 `reports/config_fallback_audit.json`.
 
-`normalization/entity_registry.json` is the preferred local curated biomedical
-registry. Its legacy copy exists only for compatibility.
+`normalization/entity_registry.json` is a zero-entity compatibility stub, not a
+production registry. The ketamine dictionary is an explicit pilot fixture under
+`normalization/fixtures/`. Production Layer 2 uses EntityResolutionHub providers.

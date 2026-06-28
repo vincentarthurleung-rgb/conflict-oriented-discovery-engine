@@ -13,9 +13,21 @@ from code_engine.validation.null import NullValidator
 from code_engine.validation.pubmed_clinical import PubMedClinicalEvidenceValidator
 from code_engine.validation.reactome import PathwayValidator, ReactomeValidator
 from code_engine.validation.stringdb import STRINGValidator
+from code_engine.validation.lincs import LINCSValidator
+from code_engine.validation.depmap import DepMapValidator
+from code_engine.validation.pubchem import PubChemValidator
+from code_engine.validation.uniprot import UniProtValidator
+from code_engine.validation.opentargets import OpenTargetsValidator
+from code_engine.schemas.validation import ValidatorCapability
 
 
-DEFAULT_VALIDATORS = (CuratedOmicsValidator, GEOValidator, DrugBankValidator, ChEMBLValidator, BindingDBValidator, ReactomeValidator, PathwayValidator, STRINGValidator, ClinicalTrialsValidator, PubMedClinicalEvidenceValidator, NullValidator)
+DEFAULT_VALIDATORS = (
+    CuratedOmicsValidator, GEOValidator, LINCSValidator, DepMapValidator,
+    DrugBankValidator, ChEMBLValidator, BindingDBValidator, PubChemValidator,
+    ReactomeValidator, PathwayValidator, STRINGValidator, UniProtValidator,
+    ClinicalTrialsValidator, PubMedClinicalEvidenceValidator, OpenTargetsValidator,
+    NullValidator,
+)
 
 
 class ValidatorRegistry:
@@ -23,9 +35,11 @@ class ValidatorRegistry:
         self.configured_resources = set(configured_resources or ())
         self.resource_paths = resource_paths or {}
         self._classes = {}
+        self._capabilities: dict[str, ValidatorCapability] = {}
 
-    def register(self, validator_class) -> None:
+    def register(self, validator_class, capability: ValidatorCapability | None = None) -> None:
         self._classes[validator_class.name] = validator_class
+        self._capabilities[validator_class.name] = capability or validator_class.capability()
 
     def register_defaults(self) -> "ValidatorRegistry":
         for validator in DEFAULT_VALIDATORS:
@@ -40,16 +54,30 @@ class ValidatorRegistry:
             return True
         return all(resource in self.configured_resources or (resource in self.resource_paths and Path(self.resource_paths[resource]).exists()) for resource in cls.required_resources)
 
+    def list_capabilities(self) -> list[ValidatorCapability]:
+        return [self._capabilities[name] for name in sorted(self._capabilities)]
+
+    def get_capability(self, name: str) -> ValidatorCapability:
+        return self._capabilities[name]
+
+    def names(self) -> list[str]:
+        return sorted(self._classes)
+
     def create(self, name: str):
         cls = self._classes[name]
-        if name in {"NullValidator", "CuratedOmicsValidator"}:
+        if name == "NullValidator":
             return cls()
+        if name == "CuratedOmicsValidator":
+            return cls(lincs_index_path=self.resource_paths.get("curated_omics_registry", "configs/validators/curated_omics_registry.json"))
         available_paths = {
             resource
             for resource, path in self.resource_paths.items()
             if Path(path).exists()
         }
-        return cls(configured_resources=self.configured_resources | available_paths)
+        return cls(
+            configured_resources=self.configured_resources | available_paths,
+            resource_paths=self.resource_paths,
+        )
 
     def applicable(self, question: ValidationQuestion) -> list[str]:
         return [

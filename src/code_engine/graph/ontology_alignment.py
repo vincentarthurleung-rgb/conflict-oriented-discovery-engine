@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Tuple
 from code_engine.schemas import NormalizedEntity
 from code_engine.normalization.lexical import normalize_lexical_surface
 from code_engine.normalization.models import NormalizationDecision
-from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
 from code_engine.normalization.resolver import ResolverCascade
 from code_engine.domain.router import default_domain_router
 
@@ -46,6 +45,12 @@ def _decision_to_entity(decision: NormalizationDecision) -> NormalizedEntity:
         resolver_policy_id=decision.resolver_policy_id,
         domain_specific_resolution_used=decision.domain_specific_resolution_used,
         domain_resolution_warnings=decision.domain_resolution_warnings,
+        candidate_count=decision.candidate_count,
+        candidate_provider_names=decision.candidate_provider_names,
+        selected_candidate_id=decision.selected_candidate_id,
+        entity_resolution_status=decision.entity_resolution_status,
+        requires_manual_review=decision.requires_manual_review,
+        audit_ref=decision.audit_ref,
     )
 
 
@@ -88,12 +93,13 @@ def clean_semantic_token(
     *,
     resolver: ResolverCascade | None = None,
     legacy_synonym_only: bool = False,
+    context: dict[str, Any] | None = None,
 ) -> NormalizedEntity:
     """Normalize one token; ResolverCascade is the default mainline path."""
 
     if legacy_synonym_only:
         return _legacy_synonym_entity(token, synonym_map)
-    decision = (resolver or ResolverCascade()).resolve_entity(str(token or ""))
+    decision = (resolver or ResolverCascade()).resolve_entity(str(token or ""), context=context)
     entity = _decision_to_entity(decision)
     if synonym_map and decision.normalization_status == "unresolved_fallback" and decision.normalized_surface in synonym_map:
         entity.warnings.append("legacy_synonym_available_but_not_accepted_as_registry_identity")
@@ -112,7 +118,14 @@ def extract_normalized_observations(
     resolver: ResolverCascade | None = None,
     resolver_cascade: bool = True,
     legacy_synonym_only: bool = False,
-    registry_path: str = str(DEFAULT_REGISTRY_PATH),
+    registry_path: str | None = None,
+    run_dir: str | None = None,
+    execute: bool = False,
+    network_enabled: bool = False,
+    api_enabled: bool = False,
+    entity_network_lookup: bool = False,
+    entity_llm_proposer: bool = False,
+    domain_profile: dict[str, Any] | None = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Load L1.5 tuples and attach complete subject/object decisions."""
 
@@ -122,7 +135,7 @@ def extract_normalized_observations(
         raise ValueError("Resolver cascade may only be disabled with legacy_synonym_only=True")
     active_resolver = resolver
     if resolver_cascade and active_resolver is None:
-        active_resolver = ResolverCascade(registry_path=registry_path)
+        active_resolver = ResolverCascade(registry_path=registry_path, run_dir=run_dir, execute=execute, network_enabled=network_enabled, api_enabled=api_enabled, entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer, domain_id=(domain_profile or {}).get("domain_id", "general_biomedical"), entity_registry_profile=(domain_profile or {}).get("entity_registry_profile", "general_entity_resolution_hub"), resolver_policy_id=(domain_profile or {}).get("resolver_policy_id", "conservative_resolver_v2"))
 
     observations: List[Dict[str, Any]] = []
     audit: List[Dict[str, Any]] = []
@@ -165,18 +178,23 @@ def extract_normalized_observations(
                             domain_id=domain_profile.domain_id,
                             entity_registry_profile=domain_profile.entity_registry_profile,
                             resolver_policy_id=domain_profile.resolver_policy_id,
+                            run_dir=run_dir, execute=execute, network_enabled=network_enabled,
+                            api_enabled=api_enabled, entity_network_lookup=entity_network_lookup,
+                            entity_llm_proposer=entity_llm_proposer,
                         )
                     sub_norm = clean_semantic_token(
                         sub_raw,
                         synonym_map,
                         resolver=node_resolver,
                         legacy_synonym_only=legacy_synonym_only,
+                        context={"expected_entity_type": node.get("subject_type"), "context_text": evidence, "paper_id": asset_id, "claim_id": node.get("claim_id")},
                     )
                     obj_norm = clean_semantic_token(
                         obj_raw,
                         synonym_map,
                         resolver=node_resolver,
                         legacy_synonym_only=legacy_synonym_only,
+                        context={"expected_entity_type": node.get("object_type"), "context_text": evidence, "paper_id": asset_id, "claim_id": node.get("claim_id")},
                     )
                     audit.extend([
                         {**sub_norm.model_dump(), "role": "subject", "source_asset": asset_id},
@@ -231,6 +249,10 @@ def extract_normalized_observations(
                             "entity_registry_profile": sub_norm.entity_registry_profile,
                             "resolver_policy_id": sub_norm.resolver_policy_id,
                             "relation_raw": node.get("relation_raw", ""),
+                            "relation_family": node.get("relation_family", "unknown"),
+                            "polarity_type": node.get("polarity_type", "unknown"),
+                            "direction": node.get("direction", "unknown"),
+                            "direction_confidence": float(node.get("direction_confidence", 0.0)),
                             "relation_sign": sign,
                             "evidence_sentence": evidence,
                             "evidence_id": evidence_id,
@@ -245,6 +267,14 @@ def extract_normalized_observations(
                                 "object": obj_norm.model_dump(),
                             },
                             "allow_high_confidence_graph_use": graph_usable,
+                            "subject_entity_resolution_status": sub_norm.entity_resolution_status,
+                            "object_entity_resolution_status": obj_norm.entity_resolution_status,
+                            "subject_candidate_provider_names": sub_norm.candidate_provider_names,
+                            "object_candidate_provider_names": obj_norm.candidate_provider_names,
+                            "subject_requires_manual_review": sub_norm.requires_manual_review,
+                            "object_requires_manual_review": obj_norm.requires_manual_review,
+                            "subject_audit_ref": sub_norm.audit_ref,
+                            "object_audit_ref": obj_norm.audit_ref,
                         }
                     )
 
@@ -281,17 +311,7 @@ def write_normalization_audit(
         "high_confidence_usable_count": high_confidence_usable,
         "low_confidence_excluded_count": len(audit) - high_confidence_usable,
     }
-    reference_resolver = ResolverCascade()
-    reference_examples = []
-    for term in ("GluA1", "AMPA receptor", "norketamine", "forced swim test"):
-        decision = reference_resolver.resolve_entity(term)
-        reference_examples.append({
-            "raw_term": term,
-            "canonical_id": decision.canonical_id,
-            "canonical_name": decision.canonical_name,
-            "entity_type": decision.entity_type,
-            "relations": [relation.model_dump() for relation in decision.relations],
-        })
+    reference_examples = []  # Pilot-specific examples were removed from the production audit.
     payload = {
         "summary": summary,
         "top_unresolved_terms": [{"term": term, "count": count} for term, count in unresolved.most_common(20)],

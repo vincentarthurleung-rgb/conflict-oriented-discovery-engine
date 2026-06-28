@@ -40,6 +40,10 @@ def refine_l1_claims(claims: list[L1ExtractedClaim]) -> dict[str, Any]:
             "evidence_sentence": claim.evidence_sentence,
             "subject_raw": claim.subject_raw,
             "relation_raw": claim.relation_raw,
+            "relation_family": claim.relation_family,
+            "polarity_type": claim.polarity_type,
+            "direction": claim.direction,
+            "direction_confidence": claim.direction_confidence,
             "object_raw": claim.object_raw,
             "direct_relation_sign": claim.direct_relation_sign,
             "refined_context": {

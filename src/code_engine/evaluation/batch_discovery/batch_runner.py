@@ -1,0 +1,128 @@
+"""Offline-first batch runner for conflict discovery evaluation."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from code_engine.evaluation.batch_discovery.annotation_schema import write_annotation_schema
+from code_engine.evaluation.batch_discovery.conflict_aggregator import aggregate_conflict_candidates
+from code_engine.evaluation.batch_discovery.metrics import compute_batch_metrics
+from code_engine.evaluation.batch_discovery.prompt_bank import build_prompt_bank_manifest, load_prompt_bank
+from code_engine.evaluation.batch_discovery.reports import render_batch_discovery_report
+from code_engine.evaluation.batch_discovery.sampling import sample_conflicts
+from code_engine.graph.abstract_conflict_screening import build_abstract_conflict_candidates
+from code_engine.extraction.l1_budget import estimate_l1_cost
+
+
+def _write_json(path: Path, payload: Any) -> None:
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _write_jsonl(path: Path, records: list[dict]) -> None:
+    path.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in records), encoding="utf-8")
+
+
+def run_batch_discovery(
+    prompt_bank: str | Path,
+    *,
+    run_dir: str | Path | None = None,
+    max_prompts: int | None = None,
+    l1_mode: str = "abstract_screening",
+    sample_conflict_count: int = 300,
+    dry_run: bool = True,
+    api_enabled: bool = False,
+    network_enabled: bool = False,
+    resume: bool = False,
+    min_evidence_count: int = 3,
+    min_entropy: float = 0.65,
+    annotations_path: str | Path | None = None,
+    per_prompt_budget: dict | None = None,
+    external_validation: bool = False,
+    validation_query_mode: str = "auto",
+    validation_index_dir: str | None = None,
+    validation_cache_dir: str | None = None,
+) -> dict[str, Any]:
+    prompts = load_prompt_bank(prompt_bank, max_prompts)
+    batch_hash = hashlib.sha256("|".join(str(item["prompt_id"]) for item in prompts).encode()).hexdigest()[:10]
+    directory = Path(run_dir) if run_dir is not None else Path("runs") / f"batch_{batch_hash}"
+    directory.mkdir(parents=True, exist_ok=True)
+    if resume and (directory / "batch_run_manifest.json").exists() and (directory / "batch_metrics_summary.json").exists():
+        manifest = json.loads((directory / "batch_run_manifest.json").read_text(encoding="utf-8"))
+        metrics = json.loads((directory / "batch_metrics_summary.json").read_text(encoding="utf-8"))
+        candidates_path = directory / "abstract_conflict_candidates.jsonl"
+        candidates = [json.loads(line) for line in candidates_path.read_text(encoding="utf-8").splitlines() if line.strip()] if candidates_path.exists() else []
+        sample_path = directory / "conflict_annotation_sample.jsonl"
+        sample = [json.loads(line) for line in sample_path.read_text(encoding="utf-8").splitlines() if line.strip()] if sample_path.exists() else []
+        return {"run_dir": str(directory), "manifest": {**manifest, "resumed": True}, "metrics": metrics, "candidates": candidates, "annotation_sample": sample}
+    per_prompt_results = []
+    run_summaries = []
+    for prompt in prompts:
+        claims = [{**item, "prompt_id": prompt["prompt_id"]} for item in prompt.get("abstract_claims", [])]
+        observations = list(prompt.get("normalized_observations", []))
+        result = build_abstract_conflict_candidates(
+            claims, observations, min_evidence_count=min_evidence_count,
+            min_entropy=min_entropy,
+        )
+        per_prompt_results.append({"prompt_id": prompt["prompt_id"], "candidates": result["candidates"]})
+        run_summaries.append({
+            "retrieved_paper_count": len(prompt.get("papers", [])),
+            "abstract_processed_paper_count": len({item.get("paper_id") for item in claims}),
+            "abstract_claim_count": len(claims),
+            "normalized_observation_count": len(observations),
+        })
+    candidates = aggregate_conflict_candidates(per_prompt_results)
+    focus_set = [item for item in candidates if item.get("recommended_for_fulltext_escalation")]
+    sample = sample_conflicts(candidates, sample_conflict_count)
+    annotations = []
+    if annotations_path and Path(annotations_path).exists():
+        annotations = [json.loads(line) for line in Path(annotations_path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    hypothesis_statistics = {"hypothesis_count": 0, "traceable_hypothesis_count": 0, "note": "hypothesis accuracy is not the primary batch endpoint"}
+    abstract_inputs = [
+        str(paper.get("abstract") or paper.get("abstract_text") or "")
+        for prompt in prompts for paper in prompt.get("papers", [])
+        if paper.get("abstract") or paper.get("abstract_text")
+    ]
+    cost_estimate = estimate_l1_cost(abstract_inputs)
+    metrics = compute_batch_metrics(
+        prompts=prompts, candidates=candidates, annotations=annotations,
+        run_summaries=run_summaries, hypothesis_statistics=hypothesis_statistics,
+        estimated_cost_usd=cost_estimate["estimated_cost_usd"], actual_cost_usd=0.0,
+    )
+    manifest = {
+        "batch_id": f"batch_{batch_hash}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "l1_mode": l1_mode,
+        "dry_run": bool(dry_run),
+        "api_enabled": bool(api_enabled and not dry_run),
+        "network_enabled": bool(network_enabled and not dry_run),
+        "api_calls_made": 0,
+        "network_calls_made": 0,
+        "resume": bool(resume),
+        "per_prompt_budget": per_prompt_budget or {},
+        "external_validation": {
+            "enabled": bool(external_validation),
+            "query_mode": validation_query_mode,
+            "index_dir": validation_index_dir,
+            "cache_dir": validation_cache_dir,
+            "execution": "planned_only",
+        },
+        "l1_cost_estimate": cost_estimate,
+        "processed_prompt_ids": [item["prompt_id"] for item in prompts],
+    }
+    _write_json(directory / "prompt_bank_manifest.json", build_prompt_bank_manifest(prompts, prompt_bank))
+    _write_json(directory / "batch_run_manifest.json", manifest)
+    _write_jsonl(directory / "abstract_conflict_candidates.jsonl", candidates)
+    _write_jsonl(directory / "conflict_focus_set.jsonl", focus_set)
+    _write_jsonl(directory / "conflict_annotation_sample.jsonl", sample)
+    write_annotation_schema(directory / "conflict_annotation_schema.json")
+    _write_json(directory / "hypothesis_statistics.json", hypothesis_statistics)
+    _write_json(directory / "batch_metrics_summary.json", metrics)
+    render_batch_discovery_report(metrics, directory / "batch_discovery_report.md")
+    return {"run_dir": str(directory), "manifest": manifest, "metrics": metrics, "candidates": candidates, "annotation_sample": sample}
+
+
+__all__ = ["run_batch_discovery"]

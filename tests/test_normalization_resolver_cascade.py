@@ -9,7 +9,7 @@ from code_engine.cli.normalize import main as normalize_main
 from code_engine.config.validation import validate_entity_registry
 from code_engine.normalization.llm_candidate_proposer import LLMCandidateProposer
 from code_engine.normalization.lexical import normalize_lexical_surface
-from code_engine.normalization.registry import LocalBiomedicalRegistry
+from code_engine.normalization.registry import LocalBiomedicalRegistry, PILOT_REGISTRY_PATH
 from code_engine.normalization.resolver import ResolverCascade
 from code_engine.graph.ontology_alignment import clean_semantic_token
 
@@ -17,7 +17,7 @@ from code_engine.graph.ontology_alignment import clean_semantic_token
 class NormalizationResolverCascadeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.resolver = ResolverCascade()
+        cls.resolver = ResolverCascade(LocalBiomedicalRegistry(PILOT_REGISTRY_PATH))
 
     def assert_relation(self, decision, predicate, object_id):
         self.assertIn((predicate, object_id), [(item.predicate, item.object) for item in decision.relations])
@@ -97,7 +97,7 @@ class NormalizationResolverCascadeTests(unittest.TestCase):
 
     def test_explicit_registry_fallback_is_audited(self):
         registry = LocalBiomedicalRegistry("definitely_missing_registry.json", allow_fallback=True)
-        self.assertIn("registry_missing_builtin_demo_fallback_used", registry.warnings)
+        self.assertIn("registry_missing_explicit_pilot_fixture_fallback_used", registry.warnings)
         self.assertEqual(ResolverCascade(registry).resolve_entity("ketamine").canonical_id, "CHEM:KETAMINE")
 
     def test_lexical_receptor_and_greek_normalization(self):
@@ -106,7 +106,7 @@ class NormalizationResolverCascadeTests(unittest.TestCase):
         self.assertIn("beta", normalize_lexical_surface("CaMKII-β").normalized_surface)
 
     def test_ontology_adapter_retains_new_audit_fields(self):
-        resolved = clean_semantic_token("GluA1")
+        resolved = clean_semantic_token("GluA1", resolver=self.resolver)
         unknown = clean_semantic_token("unknown kinase X")
         self.assertEqual(resolved.canonical_id, "GENE:GRIA1")
         self.assertTrue(resolved.allow_high_confidence_graph_use)
@@ -115,17 +115,19 @@ class NormalizationResolverCascadeTests(unittest.TestCase):
         self.assertFalse(unknown.allow_high_confidence_graph_use)
 
     def test_llm_proposer_is_disabled_and_unvalidated(self):
-        proposer = LLMCandidateProposer()
+        class Fake:
+            def extract_json(self, prompt): return {"candidate_type": "unknown"}
+        proposer = LLMCandidateProposer(Fake())
         self.assertEqual(proposer.propose("novel entity"), [])
         proposer.enabled = True
         candidate = proposer.propose("novel entity")[0]
-        self.assertEqual(candidate.match_type, "llm_suggestion_unvalidated")
-        self.assertIn("requires_deterministic_validation", candidate.warnings)
+        self.assertEqual(candidate.match_type, "llm_type_suggestion")
+        self.assertFalse(candidate.is_grounded)
 
     def test_cli_smoke(self):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            status = normalize_main(["--term", "GluA1", "--json", "--show-candidates"])
+            status = normalize_main(["--term", "GluA1", "--registry-path", str(PILOT_REGISTRY_PATH), "--json", "--show-candidates"])
         payload = json.loads(output.getvalue())
         self.assertEqual(status, 0)
         self.assertEqual(payload["canonical_id"], "GENE:GRIA1")

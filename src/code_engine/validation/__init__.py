@@ -14,6 +14,11 @@ from code_engine.validation.reactome import ReactomeValidator, PathwayValidator
 from code_engine.validation.stringdb import STRINGValidator
 from code_engine.validation.clinical_trials import ClinicalTrialsValidator
 from code_engine.validation.pubmed_clinical import PubMedClinicalEvidenceValidator
+from code_engine.validation.lincs import LINCSValidator
+from code_engine.validation.depmap import DepMapValidator
+from code_engine.validation.pubchem import PubChemValidator
+from code_engine.validation.uniprot import UniProtValidator
+from code_engine.validation.opentargets import OpenTargetsValidator
 
 __all__ = [
     "AbstractValidator", "CuratedOmicsValidator", "NullValidator",
@@ -21,4 +26,6 @@ __all__ = [
     "GEOValidator", "DrugBankValidator", "ChEMBLValidator", "BindingDBValidator",
     "ReactomeValidator", "PathwayValidator", "STRINGValidator",
     "ClinicalTrialsValidator", "PubMedClinicalEvidenceValidator",
+    "LINCSValidator", "DepMapValidator", "PubChemValidator",
+    "UniProtValidator", "OpenTargetsValidator",
 ]

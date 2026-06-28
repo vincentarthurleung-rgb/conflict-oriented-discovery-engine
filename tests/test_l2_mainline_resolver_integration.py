@@ -8,7 +8,7 @@ from code_engine.graph.ontology_alignment import (
     extract_normalized_observations,
     write_normalization_audit,
 )
-from code_engine.normalization.registry import LocalBiomedicalRegistry
+from code_engine.normalization.registry import LocalBiomedicalRegistry, PILOT_REGISTRY_PATH
 from code_engine.normalization.resolver import ResolverCascade
 from src.pipelines.stage5_shannon_matrix import build_arg_parser
 
@@ -66,6 +66,7 @@ class L2MainlineResolverIntegrationTests(unittest.TestCase):
             synonym_map={"glua1": "LEGACY_GLUA1"},
             forbidden_keywords=[],
             legacy_synonym_only=legacy_synonym_only,
+            resolver=None if legacy_synonym_only else ResolverCascade(LocalBiomedicalRegistry(PILOT_REGISTRY_PATH)),
         )
 
     def test_resolver_cascade_is_default_and_preserves_distinct_identities(self):
@@ -77,7 +78,7 @@ class L2MainlineResolverIntegrationTests(unittest.TestCase):
         self.assertEqual(glua1["subject_canonical_id"], "GENE:GRIA1")
         self.assertEqual(glua1["object_canonical_id"], "COMPLEX:AMPA_RECEPTOR")
         self.assertNotEqual(glua1["subject_canonical_id"], glua1["object_canonical_id"])
-        self.assertEqual(glua1["subject_resolver"], "resolver_cascade_v1")
+        self.assertEqual(glua1["subject_resolver"], "entity_resolution_hub_v1")
         self.assertIn(
             ("subunit_of", "COMPLEX:AMPA_RECEPTOR"),
             [(relation["predicate"], relation["object"]) for relation in glua1["subject_relations"]],
@@ -175,11 +176,7 @@ class L2MainlineResolverIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["unresolved_fallback_count"], 1)
         self.assertEqual(payload["summary"]["empty_or_invalid_count"], 1)
         self.assertEqual(payload["summary"]["low_confidence_excluded_count"], 2)
-        examples = {item["raw_term"]: item for item in payload["reference_examples"]}
-        self.assertEqual(examples["GluA1"]["canonical_id"], "GENE:GRIA1")
-        self.assertEqual(examples["AMPA receptor"]["canonical_id"], "COMPLEX:AMPA_RECEPTOR")
-        self.assertEqual(examples["norketamine"]["canonical_id"], "CHEM:NORKETAMINE")
-        self.assertEqual(examples["forced swim test"]["canonical_id"], "ASSAY:FORCED_SWIM_TEST")
+        self.assertEqual(payload["reference_examples"], [])
 
 
 if __name__ == "__main__":

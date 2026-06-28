@@ -16,7 +16,7 @@ class DomainProfile:
     prompt_version: str = "2.0"
     output_schema_version: str = "l1_v2_evidence_mechanism_schema"
     extraction_policy_version: str = "evidence_grounded_v2"
-    entity_registry_profile: str = "general_biomedical_registry"
+    entity_registry_profile: str = "general_entity_resolution_hub"
     resolver_policy_id: str = "conservative_resolver_v2"
     validator_profile_id: str = "general_validation"
     preferred_validators: tuple[str, ...] = field(default_factory=tuple)
@@ -64,7 +64,7 @@ def default_domain_profiles() -> list[DomainProfile]:
             "neuropharmacology", aliases=("ketamine", "depression"), prompt_id="neuropharmacology_l1_v2",
             subdomain_id="antidepressant_mechanism", display_name="Neuropharmacology",
             search_profile_id="neuropharmacology_search", prompt_profile_id="neuropharmacology_l1_v2",
-            entity_registry_profile="neuropharmacology_registry", resolver_policy_id="neuropharmacology_resolver_v2",
+            entity_registry_profile="biomedical_entity_resolution_hub", resolver_policy_id="neuropharmacology_resolver_v2",
             validator_profile_id="neuropharmacology_validation",
             preferred_validators=("CuratedOmicsValidator", "GEOValidator", "PathwayValidator"),
             required_context_slots=neuro_slots,
@@ -75,7 +75,7 @@ def default_domain_profiles() -> list[DomainProfile]:
         DomainProfile(
             "drug_target_binding", prompt_id="drug_target_binding_l1_v2", subdomain_id="receptor_modulation",
             display_name="Drug Target Binding", search_profile_id="drug_target_binding_search",
-            prompt_profile_id="drug_target_binding_l1_v2", entity_registry_profile="drug_target_registry",
+            prompt_profile_id="drug_target_binding_l1_v2", entity_registry_profile="chemical_target_provider_policy",
             resolver_policy_id="binding_resolver_v2", validator_profile_id="drug_target_validation",
             preferred_validators=("DrugBankValidator", "ChEMBLValidator", "BindingDBValidator"),
             required_context_slots=("drug", "target", "binding_affinity", "assay_type", "species", "experimental_system"),
@@ -84,14 +84,14 @@ def default_domain_profiles() -> list[DomainProfile]:
         DomainProfile(
             "pathway_biology", prompt_id="pathway_biology_l1_v2", display_name="Pathway Biology",
             search_profile_id="pathway_search", prompt_profile_id="pathway_biology_l1_v2",
-            entity_registry_profile="pathway_registry", resolver_policy_id="pathway_resolver_v2",
+            entity_registry_profile="pathway_resolution_provider_policy", resolver_policy_id="pathway_resolver_v2",
             validator_profile_id="pathway_validation", preferred_validators=("ReactomeValidator", "PathwayValidator"),
             key_relation_types=("pathway_mechanism", "pathway_activation"),
         ),
         DomainProfile(
             "clinical_outcome", prompt_id="clinical_outcome_l1_v2", subdomain_id="treatment_outcome",
             display_name="Clinical Outcome", search_profile_id="clinical_outcome_search",
-            prompt_profile_id="clinical_outcome_l1_v2", entity_registry_profile="clinical_registry",
+            prompt_profile_id="clinical_outcome_l1_v2", entity_registry_profile="clinical_resolution_provider_policy",
             resolver_policy_id="clinical_resolver_v2", validator_profile_id="clinical_outcome_validation",
             preferred_validators=("ClinicalTrialsValidator", "PubMedClinicalEvidenceValidator"),
             required_context_slots=("population", "intervention", "comparator", "clinical_outcome", "timepoint", "sample_size", "adverse_events"),
@@ -100,7 +100,7 @@ def default_domain_profiles() -> list[DomainProfile]:
         DomainProfile(
             "protein_interaction", prompt_id="protein_interaction_l1_v2", display_name="Protein Interaction",
             search_profile_id="protein_interaction_search", prompt_profile_id="protein_interaction_l1_v2",
-            entity_registry_profile="protein_registry", resolver_policy_id="protein_resolver_v2",
+            entity_registry_profile="protein_resolution_provider_policy", resolver_policy_id="protein_resolver_v2",
             validator_profile_id="protein_interaction_validation",
             preferred_validators=("STRINGValidator", "ReactomeValidator"),
             key_relation_types=("protein_interaction", "ligand_receptor"),

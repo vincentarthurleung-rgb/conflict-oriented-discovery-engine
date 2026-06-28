@@ -1,0 +1,52 @@
+{
+  "version": "ketamine_pilot_registry_v1",
+  "registry_status": "pilot_fixture_only",
+  "do_not_use_as_production_general_registry": true,
+  "description": "Explicit ketamine-depression pilot fixture; configure manually for tests or pilot replay.",
+  "entities": [
+    {"canonical_id":"CHEM:KETAMINE","canonical_name":"ketamine","entity_type":"compound","semantic_level":"parent_compound","aliases":["ketamine","racemic ketamine","(R,S)-ketamine","racemic-ketamine"],"external_ids":{"PubChem":null,"ChEMBL":null},"relations":[]},
+    {"canonical_id":"CHEM:ESKETAMINE","canonical_name":"esketamine","entity_type":"drug","semantic_level":"stereoisomer","aliases":["esketamine","S-ketamine","(S)-ketamine"],"external_ids":{"PubChem":null,"ChEMBL":null},"relations":[{"predicate":"stereoisomer_of","object":"CHEM:KETAMINE","confidence":0.95}]},
+    {"canonical_id":"CHEM:ARKETAMINE","canonical_name":"arketamine","entity_type":"drug","semantic_level":"stereoisomer","aliases":["arketamine","R-ketamine","(R)-ketamine"],"external_ids":{"PubChem":null,"ChEMBL":null},"relations":[{"predicate":"stereoisomer_of","object":"CHEM:KETAMINE","confidence":0.95}]},
+    {"canonical_id":"CHEM:KETAMINE_HCL","canonical_name":"ketamine hydrochloride","entity_type":"compound","semantic_level":"salt_form","aliases":["ketamine hydrochloride","ketamine HCl"],"external_ids":{"PubChem":null,"ChEMBL":null},"relations":[{"predicate":"salt_form_of","object":"CHEM:KETAMINE","confidence":0.95}]},
+    {"canonical_id":"CHEM:NORKETAMINE","canonical_name":"norketamine","entity_type":"metabolite","semantic_level":"metabolite","aliases":["norketamine","nor-ketamine"],"external_ids":{"PubChem":null,"ChEMBL":null},"relations":[{"predicate":"metabolite_of","object":"CHEM:KETAMINE","confidence":0.95}]},
+    {"canonical_id":"CHEM:HYDROXYNORKETAMINE","canonical_name":"hydroxynorketamine","entity_type":"metabolite","semantic_level":"metabolite","aliases":["hydroxynorketamine","hydroxy-norketamine","HNK"],"external_ids":{"PubChem":null,"ChEMBL":null},"relations":[{"predicate":"metabolite_of","object":"CHEM:KETAMINE","confidence":0.95}]},
+
+    {"canonical_id":"GENE:BDNF","canonical_name":"BDNF","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["BDNF","brain-derived neurotrophic factor","brain derived neurotrophic factor"],"external_ids":{"UniProt":null},"relations":[]},
+    {"canonical_id":"GENE:NTRK2","canonical_name":"NTRK2","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["NTRK2","TrkB","tropomyosin receptor kinase B"],"external_ids":{"UniProt":null},"relations":[]},
+    {"canonical_id":"GENE:GRIA1","canonical_name":"GRIA1","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["GRIA1","GluA1","GluR1","AMPA receptor subunit 1"],"external_ids":{"UniProt":null},"relations":[{"predicate":"subunit_of","object":"COMPLEX:AMPA_RECEPTOR","confidence":0.95}]},
+    {"canonical_id":"GENE:GRIN2B","canonical_name":"GRIN2B","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["GRIN2B","GluN2B","NR2B","NMDA receptor subunit 2B"],"external_ids":{"UniProt":null},"relations":[{"predicate":"subunit_of","object":"COMPLEX:NMDA_RECEPTOR","confidence":0.95}]},
+    {"canonical_id":"GENE:GRIN1","canonical_name":"GRIN1","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["GRIN1","GluN1","NR1","NMDA receptor subunit 1"],"external_ids":{"UniProt":null},"relations":[{"predicate":"subunit_of","object":"COMPLEX:NMDA_RECEPTOR","confidence":0.95}]},
+    {"canonical_id":"GENE:MTOR","canonical_name":"MTOR","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["MTOR","mTOR","mechanistic target of rapamycin"],"external_ids":{"UniProt":null},"relations":[]},
+    {"canonical_id":"GENE:CAMK2A","canonical_name":"CAMK2A","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["CAMK2A","CaMKII","CaMKII alpha"],"external_ids":{"UniProt":null},"relations":[]},
+    {"canonical_id":"GENE:EIF4EBP1","canonical_name":"EIF4EBP1","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["EIF4EBP1","4E-BP1","4EBP1"],"external_ids":{"UniProt":null},"relations":[]},
+    {"canonical_id":"GENE:RPS6KB1","canonical_name":"RPS6KB1","entity_type":"gene","semantic_level":"gene_or_protein","aliases":["RPS6KB1","p70S6K","S6K1"],"external_ids":{"UniProt":null},"relations":[]},
+
+    {"canonical_id":"COMPLEX:AMPA_RECEPTOR","canonical_name":"AMPA receptor","entity_type":"receptor_complex","semantic_level":"receptor_complex","aliases":["AMPA receptor","AMPAR","AMPA-type glutamate receptor"],"external_ids":{},"relations":[]},
+    {"canonical_id":"COMPLEX:NMDA_RECEPTOR","canonical_name":"NMDA receptor","entity_type":"receptor_complex","semantic_level":"receptor_complex","aliases":["NMDA receptor","NMDAR","NMDA-type glutamate receptor"],"external_ids":{},"relations":[]},
+    {"canonical_id":"COMPLEX:MTORC1","canonical_name":"mTORC1","entity_type":"protein_complex","semantic_level":"protein_complex","aliases":["mTORC1","mTOR complex 1"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PATHWAY:BDNF_TRKB_SIGNALING","canonical_name":"BDNF-TrkB signaling","entity_type":"pathway","semantic_level":"signaling_pathway","aliases":["BDNF-TrkB signaling","BDNF TrkB pathway"],"external_ids":{},"relations":[]},
+
+    {"canonical_id":"PATHWAY:MTOR_SIGNALING","canonical_name":"mTOR signaling","entity_type":"pathway","semantic_level":"signaling_pathway","aliases":["mTOR signaling","mTOR pathway"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PATHWAY:BDNF_SIGNALING","canonical_name":"BDNF signaling","entity_type":"pathway","semantic_level":"signaling_pathway","aliases":["BDNF signaling","BDNF pathway"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PATHWAY:GLUTAMATERGIC_SIGNALING","canonical_name":"glutamatergic signaling","entity_type":"pathway","semantic_level":"signaling_pathway","aliases":["glutamatergic signaling","glutamate signaling"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PROCESS:SYNAPTOGENESIS","canonical_name":"synaptogenesis","entity_type":"biological_process","semantic_level":"biological_process","aliases":["synaptogenesis","synapse formation"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PROCESS:SYNAPTIC_PLASTICITY","canonical_name":"synaptic plasticity","entity_type":"biological_process","semantic_level":"biological_process","aliases":["synaptic plasticity"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PROCESS:DENDRITIC_SPINE_FORMATION","canonical_name":"dendritic spine formation","entity_type":"biological_process","semantic_level":"biological_process","aliases":["dendritic spine formation","spine formation"],"external_ids":{},"relations":[]},
+
+    {"canonical_id":"PHENOTYPE:ANTIDEPRESSANT_RESPONSE","canonical_name":"antidepressant response","entity_type":"phenotype","semantic_level":"clinical_outcome","aliases":["antidepressant response","antidepressant effect","antidepressant effects"],"external_ids":{},"relations":[]},
+    {"canonical_id":"DISEASE:DEPRESSION","canonical_name":"depression","entity_type":"disease","semantic_level":"disease","aliases":["depression","major depressive disorder","MDD"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PHENOTYPE:DEPRESSION_LIKE_BEHAVIOR","canonical_name":"depression-like behavior","entity_type":"phenotype","semantic_level":"behavioral_phenotype","aliases":["depression-like behavior","depressive-like behavior"],"external_ids":{},"relations":[]},
+    {"canonical_id":"ASSAY:FORCED_SWIM_TEST","canonical_name":"forced swim test","entity_type":"behavioral_assay","semantic_level":"assay","aliases":["forced swim test","FST"],"external_ids":{},"relations":[{"predicate":"measures","object":"PHENOTYPE:DEPRESSION_LIKE_BEHAVIOR","confidence":0.85}]},
+    {"canonical_id":"ASSAY:TAIL_SUSPENSION_TEST","canonical_name":"tail suspension test","entity_type":"behavioral_assay","semantic_level":"assay","aliases":["tail suspension test","TST"],"external_ids":{},"relations":[{"predicate":"measures","object":"PHENOTYPE:DEPRESSION_LIKE_BEHAVIOR","confidence":0.85}]},
+    {"canonical_id":"ASSAY:SUCROSE_PREFERENCE_TEST","canonical_name":"sucrose preference test","entity_type":"behavioral_assay","semantic_level":"assay","aliases":["sucrose preference test","SPT"],"external_ids":{},"relations":[{"predicate":"measures","object":"PHENOTYPE:SUCROSE_PREFERENCE","confidence":0.85}]},
+    {"canonical_id":"PHENOTYPE:IMMOBILITY","canonical_name":"immobility","entity_type":"phenotype","semantic_level":"behavioral_measure","aliases":["immobility","immobility time"],"external_ids":{},"relations":[]},
+    {"canonical_id":"PHENOTYPE:SUCROSE_PREFERENCE","canonical_name":"sucrose preference","entity_type":"phenotype","semantic_level":"behavioral_measure","aliases":["sucrose preference"],"external_ids":{},"relations":[]},
+
+    {"canonical_id":"CONTEXT:HYPOXIA","canonical_name":"hypoxia","entity_type":"context","semantic_level":"oxygen_condition","aliases":["hypoxia","hypoxic"],"external_ids":{},"relations":[]},
+    {"canonical_id":"CONTEXT:NORMOXIA","canonical_name":"normoxia","entity_type":"context","semantic_level":"oxygen_condition","aliases":["normoxia","normoxic"],"external_ids":{},"relations":[]},
+    {"canonical_id":"CONTEXT:ACUTE_TREATMENT","canonical_name":"acute treatment","entity_type":"context","semantic_level":"treatment_duration","aliases":["acute treatment","acute"],"external_ids":{},"relations":[]},
+    {"canonical_id":"CONTEXT:CHRONIC_TREATMENT","canonical_name":"chronic treatment","entity_type":"context","semantic_level":"treatment_duration","aliases":["chronic treatment","chronic"],"external_ids":{},"relations":[]},
+    {"canonical_id":"REGION:PREFRONTAL_CORTEX","canonical_name":"prefrontal cortex","entity_type":"brain_region","semantic_level":"anatomical_region","aliases":["prefrontal cortex","PFC","mPFC"],"external_ids":{},"relations":[]},
+    {"canonical_id":"REGION:HIPPOCAMPUS","canonical_name":"hippocampus","entity_type":"brain_region","semantic_level":"anatomical_region","aliases":["hippocampus","hippocampal formation"],"external_ids":{},"relations":[]}
+  ]
+}

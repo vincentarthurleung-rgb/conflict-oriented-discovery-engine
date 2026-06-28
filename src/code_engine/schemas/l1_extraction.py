@@ -38,6 +38,9 @@ class L1ExtractedClaim(CODEBaseModel):
     subject_type: str = "unknown"
     relation_raw: str = ""
     relation_family: str = "unknown"
+    polarity_type: str = "unknown"
+    direction: str = "unknown"
+    direction_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     direct_relation_sign: DirectRelationSign = "unknown"
     therapeutic_direction: Literal["beneficial", "adverse", "mixed", "not_applicable", "unknown"] = "unknown"
     object_raw: str

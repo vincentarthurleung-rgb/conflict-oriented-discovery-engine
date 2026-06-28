@@ -7,6 +7,8 @@ from tempfile import TemporaryDirectory
 from src.config.loader import load_pipeline_config
 from src.pipelines.conflict_discovery import build_conflict_graph
 from src.pipelines.ontology_alignment import extract_normalized_observations
+from code_engine.normalization.registry import LocalBiomedicalRegistry, PILOT_REGISTRY_PATH
+from code_engine.normalization.resolver import ResolverCascade
 
 
 FIXTURE_DIR = Path("tests/fixtures")
@@ -24,6 +26,7 @@ class Stage5DeterministicOutputTests(unittest.TestCase):
                 str(input_dir),
                 synonym_map=config.synonym_map,
                 forbidden_keywords=config.forbidden_object_keywords,
+                resolver=ResolverCascade(LocalBiomedicalRegistry(PILOT_REGISTRY_PATH)),
             )
             self.assertTrue(audit)
             self.assertEqual({(obs["subject"], obs["object"]) for obs in observations}, {("KETAMINE", "BDNF")})

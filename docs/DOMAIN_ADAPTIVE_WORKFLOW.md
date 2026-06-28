@@ -16,6 +16,7 @@ natural-language query
 -> domain-specific search plan
 -> domain-specific L1 prompt and context contract
 -> domain-specific L2 registry/policy selection
+-> evidence-grounded MechanismGraph
 -> domain-adaptive validation plan
 ```
 
@@ -38,11 +39,14 @@ version, schema and extraction-policy versions, model identity, and the
 compiled prompt hash. Historical L1 records without domain-profile metadata
 are incompatible by default.
 
-L2 chooses a local registry and resolver policy from the profile. If a
-domain-specific registry is absent, the general local registry is used with an
-explicit warning. Ambiguous, unresolved, or low-confidence entities remain
-excluded from the high-confidence conflict graph. L3 pair identity continues
+L2 chooses an EntityResolutionHub provider/resolver policy from the profile;
+profiles no longer imply hand-written domain dictionaries. Curated anchors,
+cache, and optional guarded providers contribute candidates. Ambiguous,
+unresolved, LLM-only, or low-confidence entities remain excluded from the
+high-confidence conflict graph. L3 pair identity continues
 to use canonical IDs and its scientific thresholds are unchanged.
+
+MechanismGraph preserves the DomainProfile metadata while organizing only grounded L2 observations. It does not accept semantic-intake seed triples. L3 remains the conflict adjudicator; its ConflictEdges are attached as annotations rather than recomputed by the mechanism layer.
 
 ## Execution Guards
 
@@ -53,6 +57,14 @@ aggregation, and scoring remain deterministic code boundaries.
 
 See [DOMAIN_ADAPTIVE_VALIDATION.md](DOMAIN_ADAPTIVE_VALIDATION.md) for the
 validation plugin contract.
+
+## Progressive Evidence Scope
+
+DomainProfile continues to select search, prompt, resolver, and validator
+policies, but evidence scope is now explicit. Abstract L1 supports broad
+screening; full-text L1 is restricted to conflict-focused sections/spans.
+Structured relation family, polarity type, and direction are propagated across
+both scopes. The deterministic L2/L3/L5 boundaries remain unchanged.
 # End-to-end propagation
 
 The recommended `code_engine.cli.run` entry point records DomainProfile identifiers at intake and propagates them through search, L1 planning, ResolverCascade policy, and validator routing. ValidationRouter routes; validators validate. User-intent seed triples remain non-evidence planning objects.

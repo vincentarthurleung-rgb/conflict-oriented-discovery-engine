@@ -227,6 +227,39 @@ layer and not full LINCS. Unconfigured external validator skeletons return
 structured no-coverage/not-configured results. See
 `docs/DOMAIN_ADAPTIVE_WORKFLOW.md` and `docs/DOMAIN_ADAPTIVE_VALIDATION.md`.
 
+## Abstract-First Conflict Discovery
+
+Large runs now use abstracts for low-cost claim screening, L2 normalization,
+pharmacological direction normalization, and abstract-level Shannon entropy.
+These outputs are conflict candidates, not final conflicts and not
+high-confidence mechanism evidence. Full text is escalated only for papers in
+the conflict focus set; ranked sections and bounded spans are extracted instead
+of processing every full-text chunk.
+
+Missing full text is recorded as a coverage gap, not a contradiction.
+Mechanistic inhibition is distinct from therapeutic harm. Large-scale batch
+evaluation measures problem-discovery yield, actionability, traceability, and
+cost efficiency rather than treating hypothesis accuracy as the main endpoint.
+See `docs/PROGRESSIVE_FULLTEXT_L1.md`,
+`docs/ABSTRACT_FIRST_CONFLICT_SCREENING.md`, and
+`docs/BATCH_DISCOVERY_EVALUATION.md`.
+
+## Anchor-Based External Validation
+
+Layer 6 extends the existing `code_engine.validation` package. Hypotheses,
+conflicts, mechanism paths/gaps, gene sets, clinical contexts, entities, and
+triples become provenance-preserving ValidationAnchors. Capability metadata
+routes semantic questions to validators; QueryPlanner and ResourceGuard decide
+whether each bounded query uses a local index, remote provider, cache, or is
+blocked.
+
+Large evidence and signal outputs are streaming JSONL. DuckDB, SQLite, indexed
+Parquet, and small JSONL indexes are supported; unindexed large scans and
+in-memory full databases are not. External evidence/signals are not proof, no
+record is not contradiction, and cache miss is not no coverage. See
+`docs/EXTERNAL_VALIDATION_ANCHORS.md` and
+`docs/RESOURCE_AWARE_EXTERNAL_VALIDATION.md`.
+
 ## L1 v2 Extraction Consistency
 
 L1 prompt planning uses fixed `temperature=0.0` and `top_p=1.0`; chunk index
@@ -293,3 +326,7 @@ See `docs/BIOMEDICAL_ENTITY_NORMALIZATION.md`.
 Use `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report` for new research runs. It creates an isolated `runs/<run_id>/` RunState and report. Dry-run, no-API, and no-network are defaults; execution permissions must be explicit. See [End-to-End Workflow](docs/END_TO_END_WORKFLOW.md) and [RunState and Reproducibility](docs/RUN_STATE_AND_REPRODUCIBILITY.md). Stage scripts remain legacy/debug entry points.
 
 Natural-language understanding is [LLM-first](docs/LLM_FIRST_SEMANTIC_INTAKE.md). Deterministic parsing is a semantically degraded no-API fallback; rules are limited to schema checks, allowed-domain validation, sanitization, evidence boundaries, and external-call guards. Low-confidence intake blocks execute mode unless explicitly allowed.
+
+C.O.D.E. now includes an evidence-grounded [MechanismGraph MVP](docs/MECHANISM_GRAPH.md), moving the workflow toward `Paper → Evidence → Mechanism → Conflict → Hypothesis → Validation`. Mechanism edges come only from L2 paper observations; seed/user-intent triples never enter the graph. L3 remains unchanged and annotates matching mechanism edges after conflict discovery. Storage remains local JSON; see [Mechanism-Centered Knowledge Store](docs/MECHANISM_CENTERED_KNOWLEDGE_STORE.md).
+
+Layer 2 uses the [Entity Resolution Hub](docs/ENTITY_RESOLUTION_HUB.md), combining explicit curated anchors, an audited cache, guarded external provider skeletons, and an optional ungrounded LLM proposer. A deterministic adjudicator makes every canonical decision. The old ketamine registry is a pilot fixture only; no API or network provider is enabled by default. See [L2 audit artifacts](docs/L2_ENTITY_RESOLUTION_AUDIT.md).

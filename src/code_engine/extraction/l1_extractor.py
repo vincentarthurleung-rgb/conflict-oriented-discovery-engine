@@ -22,6 +22,7 @@ from code_engine.query.prompt_compatibility import (
     compute_l1_cache_key,
 )
 from code_engine.extraction.converters import l1_claim_to_legacy_tuple
+from code_engine.extraction.polarity import normalize_directional_relation
 from code_engine.schemas.l1_extraction import L1ExtractedClaim
 
 
@@ -191,6 +192,13 @@ def execute_l1_extraction(
                 if isinstance(sign, int):
                     sign = {1: "positive", -1: "negative", 0: "neutral_or_association"}.get(sign, "unknown")
                 context = dict(raw_claim.get("context") or {})
+                directional = normalize_directional_relation(
+                    str(raw_claim.get("relation_raw") or ""),
+                    raw_claim.get("subject_type"),
+                    raw_claim.get("object_type"),
+                    str(raw_claim.get("evidence_sentence") or ""),
+                    plan["domain_id"],
+                )
                 claim = L1ExtractedClaim(
                     claim_id=str(raw_claim.get("claim_id") or f"{paper_id}_{chunk_id}_{claim_index}"),
                     paper_id=paper_id, chunk_id=chunk_id, chunk_hash=plan["chunk_hash"],
@@ -206,7 +214,10 @@ def execute_l1_extraction(
                     subject_raw=str(raw_claim.get("subject_raw") or raw_claim.get("subject") or ""),
                     subject_type=str(raw_claim.get("subject_type") or "unknown"),
                     relation_raw=str(raw_claim.get("relation_raw") or ""),
-                    relation_family=str(raw_claim.get("relation_family") or "unknown"),
+                    relation_family=str(raw_claim.get("relation_family") or directional.relation_family),
+                    polarity_type=str(raw_claim.get("polarity_type") or directional.polarity_type),
+                    direction=str(raw_claim.get("direction") or directional.direction),
+                    direction_confidence=float(raw_claim.get("direction_confidence", directional.confidence)),
                     direct_relation_sign=sign,
                     therapeutic_direction=raw_claim.get("therapeutic_direction", "unknown"),
                     object_raw=str(raw_claim.get("object_raw") or raw_claim.get("object") or ""),
@@ -220,6 +231,7 @@ def execute_l1_extraction(
                     negated=bool(raw_claim.get("negated", False)), speculative=bool(raw_claim.get("speculative", False)),
                     subject_span=str(raw_claim.get("subject_span") or ""), relation_span=str(raw_claim.get("relation_span") or ""), object_span=str(raw_claim.get("object_span") or ""),
                     context_spans=dict(raw_claim.get("context_spans") or {}),
+                    domain_specific_warnings=list(directional.warnings),
                     **{field: str(raw_claim.get(field) or context.get(field) or "") for field in (
                         "species", "sex", "age", "disease_model", "brain_region", "cell_type", "treatment", "dose", "route", "treatment_duration", "time_after_treatment", "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype", "oxygen_condition", "localization", "drug", "target", "binding_affinity", "assay_type", "experimental_system", "population", "intervention", "comparator", "trial_phase", "sample_size", "response_rate", "remission_rate", "adverse_events", "timepoint"
                     )},

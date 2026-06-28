@@ -25,6 +25,14 @@ data/index/*
 !data/index/README.md
 data/query/*
 !data/query/README.md
+data/validation/indexes/
+data/validation/cache/
+data/layer6/indexes/
+data/layer6/cache/
+*.duckdb
+*.parquet
+*.sqlite
+*.db
 logs/
 logs/**
 runs/*
@@ -32,6 +40,7 @@ runs/*
 reports/*
 !reports/.gitkeep
 !reports/README.md
+!reports/l2_entity_resolution_cleanup_report.md
 artifacts/legacy/
 quarantine/
 .cache/

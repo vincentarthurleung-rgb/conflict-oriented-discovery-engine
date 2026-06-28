@@ -36,9 +36,9 @@ For natural-language intake, review:
 
 For Layer 2 normalization, review:
 
-1. `configs/normalization/entity_registry.json`
-2. `code_engine.normalization.lexical` and `entity_type`
-3. `code_engine.normalization.registry` and `resolver`
+1. `code_engine.normalization.hub`, providers, adjudicator, cache, and audit
+2. the explicit pilot fixture and compatibility registry stub
+3. `code_engine.normalization.lexical`, `entity_type`, and `resolver`
 4. `code_engine.graph.ontology_alignment`
 5. `tests/test_normalization_resolver_cascade.py`
 
@@ -84,6 +84,18 @@ New code and reports should prefer current fields and treat legacy fields as com
 - Old L1 without domain-profile metadata must remain incompatible by default.
 - ValidationRouter returns a plan only; support/contradiction comes from validators.
 - Missing validator indexes return structured no coverage/not configured results.
+- Abstract conflict signals must never be reported as final L3 conflicts.
+- `source_scope=abstract` must remain ineligible for high-confidence MechanismGraph edges.
+- Unknown polarity must be excluded from primary entropy.
+- Full-text escalation must operate only on the conflict focus set and selected spans.
+- Missing full text is a coverage gap, never a contradiction.
+- Execute-mode L1 must remain cache- and budget-guarded.
+- Layer 6 changes must extend `code_engine.validation`, not create a parallel system.
+- Every validator execution must have an anchor, question, route, query plan, and resource check.
+- Remote validation requires execute + network + external-validation permission.
+- Missing local indexes must remain `no_index`/`external_index_not_configured`; no full scan fallback.
+- Cache miss must not become `no_coverage`; no record must not become contradiction.
+- Evidence/signals and binding/pathway/trial/dependency records must retain interpretation limits.
 - Query modes must remain offline by default and report `api_calls_made=0`.
 - Insufficient coverage must not generate an unsupported hypothesis.
 - `update` currently means dry-run planning only, not paper retrieval or LLM execution.
@@ -131,3 +143,5 @@ Review `docs/LEGACY_CODE_POLICY.md` and
 Review new workflow paths for run-local artifacts, step-level external-call accounting, explicit API/network gates, DomainProfile propagation, non-evidence seed triples, and persisted failures. A partial report is a valid output. ValidationRouter must not manufacture a supported verdict.
 
 For semantic intake, reject Python keyword classifiers added to the main path. Domain semantics belong in the Scientific Encoder; deterministic code may validate allowed IDs, sanitize content, enforce schema/evidence boundaries, and provide generic degraded fallback only. Verify that uncertain execute runs block by default.
+
+For MechanismGraph changes, verify paper provenance on every edge, canonical-ID grouping, exclusion of planning/seed triples, explicit treatment of low-confidence normalization, bounded path enumeration, and run-local writes. Conflict annotations must preserve L3 output exactly; mechanism code must not reclassify Type I/II/III. Stage6 must not be invoked through global runtime paths.

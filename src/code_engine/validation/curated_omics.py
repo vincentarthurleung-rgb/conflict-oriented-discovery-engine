@@ -9,22 +9,33 @@ from __future__ import annotations
 
 import json
 import os
+import hashlib
+from collections.abc import Iterator
 from typing import Dict
 
 from .base import AbstractValidator
-from code_engine.schemas.validation import ValidationQuestion, ValidationResult
+from .skeleton import ExternalIndexValidator
+from code_engine.schemas.validation import ExternalEvidenceRecord, ValidationExecutionContext, ValidationQueryPlan, ValidationQuestion, ValidationResult
 
 
 UNRESPONSIVE_Z_THRESHOLD = 0.50
 MIN_PEDIGREE_VOTE_THRESHOLD = 0.60
 
 
-class CuratedOmicsValidator(AbstractValidator):
+class CuratedOmicsValidator(ExternalIndexValidator):
     name = "CuratedOmicsValidator"
     supported_domains = ("neuropharmacology",)
     supported_relation_types = ("drug_gene_expression", "pathway_expression")
     supported_entity_types = ("compound", "gene", "protein", "pathway")
     required_resources = ("curated_omics_registry",)
+    supported_anchor_types = ("triple_anchor", "gene_set_anchor", "hypothesis_anchor", "conflict_anchor")
+    supported_validation_intents = ("expression_direction_check",)
+    supports_local_index = True
+    index_name = "curated_omics"
+    source_database = "curated_omics_registry"
+    evidence_type = "curated_expression_direction"
+    default_signal_type = "expression_support"
+    interpretation_limits = ("Curated/demo omics index; not full LINCS validation.", "External evidence is not proof.")
 
     def __init__(
         self,
@@ -65,6 +76,35 @@ class CuratedOmicsValidator(AbstractValidator):
         if isinstance(hypothesis, ValidationQuestion):
             return AbstractValidator.can_validate(self, hypothesis)
         return self._target_entity(hypothesis) in self.registry
+
+    def stream_evidence(self, query_plan: ValidationQueryPlan, context: ValidationExecutionContext) -> Iterator[ExternalEvidenceRecord]:
+        terms = {
+            str(value).upper()
+            for entity in query_plan.query_entities
+            for value in (entity.get("canonical_name"), entity.get("name"), entity.get("canonical_id"))
+            if value
+        }
+        emitted = 0
+        for target, profile in self.registry.items():
+            if target.upper() not in terms and not any(target.upper() in term for term in terms):
+                continue
+            for cell, metrics in profile.get("cell_lines", {}).items():
+                z_score = float(metrics.get("z_score", 0.0))
+                direction = "increase" if z_score > 0 else "decrease" if z_score < 0 else "no_effect"
+                stable = f"{query_plan.query_plan_id}|{target}|{cell}"
+                yield ExternalEvidenceRecord(
+                    evidence_id=hashlib.sha256(stable.encode()).hexdigest()[:16],
+                    validator_name=self.name, source_database=self.source_database,
+                    query_plan_id=query_plan.query_plan_id, anchor_id=query_plan.anchor_id,
+                    evidence_type=self.evidence_type,
+                    target_entity={"name": target, "registry_anchor_gene": self._resolve_anchor_gene(profile)},
+                    context={"cell_line": cell, "expected_direction": query_plan.query_context.get("expected_direction")},
+                    record_id=f"{target}:{cell}", direction=direction, score=abs(z_score), effect_size=z_score,
+                    interpretation_limits=list(self.interpretation_limits),
+                )
+                emitted += 1
+                if emitted >= query_plan.max_records:
+                    return
 
     def _resolve_anchor_gene(self, entity_profile: dict) -> str:
         """Resolve anchor gene using current fields before legacy target_gene."""

@@ -43,7 +43,8 @@ class DomainProfilePropagationTests(unittest.TestCase):
         self.assertEqual(claim.validator_profile_id, profile.validator_profile_id)
         self.assertTrue(claim.missing_required_context_slots)
         self.assertEqual(decision.entity_registry_profile, profile.entity_registry_profile)
-        self.assertIn("domain_registry_missing_general_registry_used", decision.domain_resolution_warnings)
+        self.assertEqual(decision.entity_resolution_status, "unresolved")
+        self.assertFalse(decision.allow_high_confidence_graph_use)
         self.assertEqual(validation.validator_profile_id, profile.validator_profile_id)
 
 

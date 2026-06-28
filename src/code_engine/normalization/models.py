@@ -52,7 +52,13 @@ class NormalizationDecision(CODEBaseModel):
     allow_high_confidence_graph_use: bool = False
     warnings: list[str] = Field(default_factory=list)
     domain_id: str = "general_biomedical"
-    entity_registry_profile: str = "general_biomedical_registry"
+    entity_registry_profile: str = "general_entity_resolution_hub"
     resolver_policy_id: str = "conservative_resolver_v2"
     domain_specific_resolution_used: bool = False
     domain_resolution_warnings: list[str] = Field(default_factory=list)
+    candidate_count: int = 0
+    candidate_provider_names: list[str] = Field(default_factory=list)
+    selected_candidate_id: str | None = None
+    entity_resolution_status: str = "unresolved"
+    requires_manual_review: bool = False
+    audit_ref: str | None = None

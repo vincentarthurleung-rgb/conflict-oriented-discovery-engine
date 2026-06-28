@@ -76,7 +76,7 @@ class ResearchIntent(CODEBaseModel):
     subdomain_id: str | None = None
     domain_profile_id: str = "general_biomedical"
     prompt_profile_id: str = "general_biomedical_l1_v2"
-    entity_registry_profile: str = "general_biomedical_registry"
+    entity_registry_profile: str = "general_entity_resolution_hub"
     validator_profile_id: str = "general_validation"
     domain_confidence: float = 0.0
     domain_warnings: list[str] = Field(default_factory=list)

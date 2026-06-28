@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -36,6 +37,58 @@ def _write(run_dir: Path, name: str, payload: Any) -> str:
 def _read(run_dir: Path, name: str, default: Any = None) -> Any:
     path = run_dir / "artifacts" / name
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[str, Any], run_dir: Path) -> list[dict[str, Any]]:
+    """Normalize progressive claims while preserving evidence scope."""
+
+    from code_engine.normalization.resolver import ResolverCascade
+
+    resolver = ResolverCascade(
+        domain_id=profile.get("domain_id", "general_biomedical"),
+        entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"),
+        resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"),
+        run_dir=run_dir,
+    )
+    observations = []
+    for item in records:
+        subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {"expected_entity_type": item.get("subject_type") or ""})
+        obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {"expected_entity_type": item.get("object_type") or ""})
+        usable = bool(subject.allow_high_confidence_graph_use and obj.allow_high_confidence_graph_use)
+        observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
+        observations.append({
+            **item,
+            "observation_id": observation_id,
+            "triple_id": observation_id,
+            "claim_id": item.get("claim_id"),
+            "evidence_id": item.get("evidence_id") or item.get("claim_id"),
+            "paper_id": item.get("paper_id"),
+            "subject": subject.canonical_name or item.get("subject_raw"),
+            "object": obj.canonical_name or item.get("object_raw"),
+            "normalized_subject": subject.canonical_name,
+            "normalized_object": obj.canonical_name,
+            "subject_canonical_id": subject.canonical_id,
+            "object_canonical_id": obj.canonical_id,
+            "subject_canonical_name": subject.canonical_name,
+            "object_canonical_name": obj.canonical_name,
+            "subject_entity_type": subject.entity_type,
+            "object_entity_type": obj.entity_type,
+            "subject_normalization_status": subject.normalization_status,
+            "object_normalization_status": obj.normalization_status,
+            "normalization_status": "resolved" if usable else "low_confidence",
+            "normalization_quality": "resolved_or_acceptable" if usable else "low_confidence",
+            "allow_high_confidence_graph_use": usable,
+            "exclude_from_high_confidence_conflict": not usable,
+            "context": dict(item.get("context_slots") or item.get("context_mentions") or {}),
+            "normalization": {"subject": subject.model_dump(), "object": obj.model_dump()},
+        })
+    return observations
 
 
 def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
@@ -133,7 +186,237 @@ def run_payload_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
     return StepResult(status=status, summary=report, artifacts={"payload_report": path}, counts={"payload_count": report["payload_count"], "chunk_count": report["chunk_count"]}, warnings=warnings, skipped_reason=reason)
 
 
-def run_l1_step(*, run_dir: Path, execute: bool, api: bool, **kwargs: Any) -> StepResult:
+def run_abstract_l1_step(
+    *, run_dir: Path, execute: bool, api: bool, max_papers: int | None,
+    l1_mode: str = "abstract_screening", l1_budget_policy: dict | None = None,
+    allow_budget_overrun: bool = False, l1_llm_client=None, **_: Any,
+) -> StepResult:
+    if l1_mode == "legacy":
+        summary = {"l1_mode": l1_mode, "abstract_claim_count": 0, "reason": "legacy_l1_mode"}
+        path = _write(run_dir, "abstract_l1_summary.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"abstract_l1_summary": path}, skipped_reason="legacy_l1_mode")
+    from code_engine.extraction.abstract_screening import run_abstract_l1_screening
+
+    acquisition = _read(run_dir, "acquisition_report.json", {})
+    papers = []
+    seen = set()
+    for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
+        for paper in acquisition.get(field, []):
+            paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
+            if paper_id and paper_id not in seen:
+                seen.add(paper_id)
+                papers.append(paper)
+    output = run_abstract_l1_screening(
+        papers, _read(run_dir, "domain_profile.json", {}), run_dir / "artifacts",
+        execute=execute, api_enabled=api,
+        max_papers=max_papers or (l1_budget_policy or {}).get("max_papers_per_prompt", 100),
+        max_l1_calls=(l1_budget_policy or {}).get("max_l1_calls_per_prompt"),
+        budget_policy=l1_budget_policy, llm_client=l1_llm_client,
+        allow_budget_overrun=allow_budget_overrun,
+    )
+    summary = {"l1_mode": l1_mode, **output["summary"]}
+    if summary["budget_report"].get("budget_status") == "blocked" or "llm_client_not_configured" in summary.get("warnings", []):
+        status = "blocked"
+    else:
+        status = "completed" if execute and api else "planned"
+    artifacts = {
+        "abstract_l1_claims": output["artifacts"].get("claims", ""),
+        "abstract_l1_summary": output["artifacts"].get("summary", ""),
+        "paper_processing_records": output["artifacts"].get("paper_records", ""),
+    }
+    return StepResult(
+        status=status, summary=summary, artifacts=artifacts,
+        counts={"abstract_claim_count": len(output["claims"]), "abstract_processed_paper_count": summary["abstract_available_count"]},
+        warnings=list(summary.get("warnings", [])), api_calls_made=int(summary["api_calls_made"]),
+        skipped_reason=("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "llm_client_not_configured") if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
+    )
+
+
+def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening", **_: Any) -> StepResult:
+    if l1_mode == "legacy":
+        summary = {"normalized_observation_count": 0, "reason": "legacy_l1_mode"}
+        path = _write(run_dir, "l2_abstract_summary.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"l2_abstract_summary": path}, skipped_reason="legacy_l1_mode")
+    claims = _read_jsonl(run_dir / "artifacts" / "abstract_l1_claims.jsonl")
+    observations = _normalize_progressive_records(claims, _read(run_dir, "domain_profile.json", {}), run_dir)
+    observations_path = _write(run_dir, "l2_abstract_observations.json", observations)
+    summary = {
+        "normalized_observation_count": len(observations),
+        "high_confidence_observation_count": sum(bool(item.get("allow_high_confidence_graph_use")) for item in observations),
+        "excluded_low_confidence_count": sum(not bool(item.get("allow_high_confidence_graph_use")) for item in observations),
+        "source_scope": "abstract",
+    }
+    summary_path = _write(run_dir, "l2_abstract_summary.json", summary)
+    return StepResult(
+        status="completed" if observations else "planned", summary=summary,
+        artifacts={"l2_abstract_observations": observations_path, "l2_abstract_summary": summary_path},
+        counts={key: value for key, value in summary.items() if key.endswith("_count")},
+        warnings=[] if observations else ["no_abstract_claims_to_normalize"],
+    )
+
+
+def run_abstract_conflict_screening_step(
+    *, run_dir: Path, l1_mode: str = "abstract_screening",
+    min_abstract_conflict_entropy: float = 0.65,
+    min_abstract_evidence_count: int = 3, **_: Any,
+) -> StepResult:
+    if l1_mode == "legacy":
+        summary = {"candidate_count": 0, "focus_set_count": 0, "reason": "legacy_l1_mode"}
+        path = _write(run_dir, "abstract_conflict_summary.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"abstract_conflict_summary": path}, skipped_reason="legacy_l1_mode")
+    from code_engine.graph.abstract_conflict_screening import build_abstract_conflict_candidates
+
+    claims = _read_jsonl(run_dir / "artifacts" / "abstract_l1_claims.jsonl")
+    observations = _read(run_dir, "l2_abstract_observations.json", [])
+    output = build_abstract_conflict_candidates(
+        claims, observations, min_evidence_count=min_abstract_evidence_count,
+        min_entropy=min_abstract_conflict_entropy, run_dir=run_dir / "artifacts",
+    )
+    artifacts = {
+        "abstract_conflict_candidates": output["artifacts"]["candidates"],
+        "conflict_focus_set": output["artifacts"]["focus_set"],
+        "abstract_conflict_summary": output["artifacts"]["summary"],
+    }
+    return StepResult(
+        status="completed" if claims else "planned", summary=output["summary"], artifacts=artifacts,
+        counts={"abstract_conflict_candidate_count": len(output["candidates"])},
+        warnings=[] if claims else ["abstract_conflict_screening_planned_no_claims"],
+    )
+
+
+def run_fulltext_escalation_step(
+    *, run_dir: Path, l1_mode: str = "abstract_screening",
+    enable_fulltext_escalation: bool = False,
+    max_fulltext_papers_per_conflict: int = 5, **_: Any,
+) -> StepResult:
+    enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
+    from code_engine.extraction.fulltext_escalation import plan_fulltext_escalation
+
+    candidates = _read_jsonl(run_dir / "artifacts" / "conflict_focus_set.jsonl") if enabled else []
+    records = _read_jsonl(run_dir / "artifacts" / "paper_processing_records.jsonl")
+    output = plan_fulltext_escalation(
+        candidates, records, max_papers_per_conflict=max_fulltext_papers_per_conflict,
+        run_dir=run_dir / "artifacts",
+    )
+    summary = {**output["summary"], "enabled": enabled, "l1_mode": l1_mode}
+    status = "planned" if enabled else "skipped"
+    reason = None if enabled else "fulltext_escalation_not_enabled"
+    return StepResult(
+        status=status, summary=summary,
+        artifacts={"fulltext_escalation_plan": output["artifacts"]["plan"], "fulltext_escalation_papers": output["artifacts"]["papers"]},
+        counts={
+            "fulltext_escalation_candidate_count": len(output["selected_papers"]),
+            "fulltext_available_paper_count": summary["selected_paper_count"],
+            "fulltext_unavailable_paper_count": summary["coverage_gap_count"],
+        },
+        warnings=[reason] if reason else [], skipped_reason=reason,
+    )
+
+
+def run_fulltext_l1_step(
+    *, run_dir: Path, execute: bool, api: bool, repository_root: Path,
+    l1_mode: str = "abstract_screening", enable_fulltext_escalation: bool = False,
+    max_sections_per_paper: int = 5, max_spans_per_paper: int = 8,
+    l1_budget_policy: dict | None = None, allow_budget_overrun: bool = False,
+    l1_llm_client=None, **_: Any,
+) -> StepResult:
+    enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
+    selected = _read_jsonl(run_dir / "artifacts" / "fulltext_escalation_papers.jsonl") if enabled else []
+    candidates = {str(item.get("candidate_id")): item for item in _read_jsonl(run_dir / "artifacts" / "abstract_conflict_candidates.jsonl")}
+    acquisition = _read(run_dir, "acquisition_report.json", {})
+    papers = {}
+    for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
+        for paper in acquisition.get(field, []):
+            paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
+            if paper_id:
+                papers[paper_id] = paper
+    from code_engine.extraction.evidence_span_selector import select_evidence_spans
+    from code_engine.extraction.progressive_l1 import run_fulltext_evidence_l1
+    from code_engine.extraction.section_ranker import rank_fulltext_sections_for_conflict
+
+    spans = []
+    for item in selected:
+        paper = dict(papers.get(str(item.get("paper_id")), {}))
+        path = paper.get("full_text_path") or paper.get("raw_path")
+        if path and not paper.get("full_text") and not paper.get("sections"):
+            source = Path(path)
+            if not source.is_absolute():
+                source = repository_root / source
+            if source.exists():
+                paper["full_text"] = source.read_text(encoding="utf-8")
+        candidate = candidates.get(str(item.get("candidate_id")), item)
+        ranked = rank_fulltext_sections_for_conflict(paper, candidate, _read(run_dir, "domain_profile.json", {}), max_sections_per_paper)
+        spans.extend(select_evidence_spans(ranked, candidate, max_spans_per_paper=max_spans_per_paper))
+    spans_path = run_dir / "artifacts" / "selected_fulltext_spans.jsonl"
+    spans_path.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in spans), encoding="utf-8")
+    output = run_fulltext_evidence_l1(
+        spans, list(candidates.values()), _read(run_dir, "domain_profile.json", {}),
+        run_dir / "artifacts", execute=execute and enabled, api_enabled=api and enabled,
+        budget_policy=l1_budget_policy, llm_client=l1_llm_client,
+        allow_budget_overrun=allow_budget_overrun,
+    )
+    summary = {**output["summary"], "enabled": enabled, "ranked_span_count": len(spans), "l1_mode": l1_mode}
+    budget_blocked = summary["budget_report"].get("budget_status") == "blocked"
+    client_missing = "llm_client_not_configured" in summary.get("warnings", [])
+    return StepResult(
+        status="blocked" if budget_blocked or client_missing else ("completed" if enabled and execute and api and spans else ("planned" if enabled else "skipped")),
+        summary=summary,
+        artifacts={
+            "selected_fulltext_spans": str(spans_path),
+            "fulltext_evidence_records": output["artifacts"].get("evidence_records", ""),
+            "fulltext_l1_claims": output["artifacts"].get("claims", ""),
+            "fulltext_l1_summary": output["artifacts"].get("summary", ""),
+        },
+        counts={"fulltext_evidence_count": len(output["evidence_records"])},
+        warnings=list(summary.get("warnings", [])) + ([] if enabled else ["fulltext_escalation_not_enabled"]),
+        api_calls_made=int(summary["api_calls_made"]),
+        skipped_reason="l1_budget_exceeded" if budget_blocked else ("llm_client_not_configured" if client_missing else (None if enabled else "fulltext_escalation_not_enabled")),
+    )
+
+
+def run_l2_fulltext_step(*, run_dir: Path, l1_mode: str = "abstract_screening", **_: Any) -> StepResult:
+    enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"}
+    evidence = _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl") if enabled else []
+    observations = _normalize_progressive_records(evidence, _read(run_dir, "domain_profile.json", {}), run_dir)
+    path = _write(run_dir, "l2_fulltext_observations.json", observations)
+    summary = {
+        "normalized_fulltext_observation_count": len(observations),
+        "high_confidence_fulltext_observation_count": sum(bool(item.get("allow_high_confidence_graph_use")) for item in observations),
+        "source_scope": "full_text",
+    }
+    summary_path = _write(run_dir, "l2_fulltext_summary.json", summary)
+    return StepResult(
+        status="completed" if observations else ("planned" if enabled else "skipped"),
+        summary=summary, artifacts={"l2_fulltext_observations": path, "l2_fulltext_summary": summary_path},
+        counts={key: value for key, value in summary.items() if key.endswith("_count")},
+        warnings=[] if observations or not enabled else ["no_fulltext_evidence_to_normalize"],
+        skipped_reason=None if enabled else "progressive_fulltext_not_selected",
+    )
+
+
+def run_fulltext_conflict_confirmation_step(*, run_dir: Path, l1_mode: str = "abstract_screening", **_: Any) -> StepResult:
+    from code_engine.graph.fulltext_conflict_confirmation import confirm_conflicts_with_fulltext_evidence
+
+    enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"}
+    candidates = _read_jsonl(run_dir / "artifacts" / "abstract_conflict_candidates.jsonl") if enabled else []
+    evidence = _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl") if enabled else []
+    observations = _read(run_dir, "l2_fulltext_observations.json", []) if enabled else []
+    output = confirm_conflicts_with_fulltext_evidence(candidates, evidence, observations, run_dir=run_dir / "artifacts")
+    return StepResult(
+        status="completed" if evidence else ("planned" if enabled else "skipped"),
+        summary=output["summary"],
+        artifacts={"fulltext_conflict_confirmation": output["artifacts"]["confirmations"], "fulltext_conflict_summary": output["artifacts"]["summary"]},
+        counts={key: value for key, value in output["summary"].items() if key.endswith("_count")},
+        warnings=[] if evidence or not enabled else ["fulltext_confirmation_planned_insufficient_coverage"],
+        skipped_reason=None if enabled else "progressive_fulltext_not_selected",
+    )
+
+
+def run_l1_step(*, run_dir: Path, execute: bool, api: bool, l1_mode: str = "legacy", **kwargs: Any) -> StepResult:
+    if l1_mode != "legacy":
+        summary = {"l1_mode": l1_mode, "extracted_claim_count": 0, "outputs": [], "reason": "progressive_l1_mode_uses_separate_steps"}
+        path = _write(run_dir, "l1_summary.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"l1_summary": path}, skipped_reason="progressive_l1_mode")
     profile = _read(run_dir, "domain_profile.json", {})
     payload = _read(run_dir, "payload_report.json", {})
     chunks = list(payload.get("chunks", []))
@@ -162,7 +445,11 @@ def _blocked_summary_step(filename: str, artifact_key: str, reason: str, summary
     return run
 
 
-def run_l1_5_step(*, run_dir: Path, execute: bool, repository_root: Path, **_: Any) -> StepResult:
+def run_l1_5_step(*, run_dir: Path, execute: bool, repository_root: Path, l1_mode: str = "legacy", **_: Any) -> StepResult:
+    if l1_mode != "legacy":
+        summary = {"refined_claim_count": 0, "outputs": [], "reason": "progressive_l1_has_direct_scope_specific_l2"}
+        path = _write(run_dir, "l1_5_summary.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"l1_5_summary": path}, skipped_reason="progressive_l1_mode")
     l1 = _read(run_dir, "l1_summary.json", {})
     outputs = [repository_root / item["output_path"] for item in l1.get("outputs", []) if item.get("output_path")]
     refined = []
@@ -179,28 +466,55 @@ def run_l1_5_step(*, run_dir: Path, execute: bool, repository_root: Path, **_: A
     return StepResult(status="completed" if refined else "blocked", summary=summary, artifacts={"l1_5_summary": path}, counts={"refined_claim_count": summary["refined_claim_count"]}, warnings=[reason] if reason else [], skipped_reason=reason)
 
 
-def run_l2_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
+def run_l2_step(*, run_dir: Path, execute: bool, network: bool = False, api: bool = False,
+                entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
+                entity_resolution_policy=None, entity_external_clients=None,
+                entity_llm_client=None, l1_mode: str = "legacy", **_: Any) -> StepResult:
+    if l1_mode != "legacy":
+        summary = {"resolved_count": 0, "reason": "progressive_l1_uses_l2_abstract_and_l2_fulltext"}
+        observations_path = _write(run_dir, "l2_observations.json", [])
+        summary_path = _write(run_dir, "l2_normalization_audit.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"l2_observations": observations_path, "l2_normalization_audit": summary_path}, skipped_reason="progressive_l1_mode")
     refined_dir = run_dir / "artifacts" / "l1_5_data"
     observations, audit = [], []
+    artifacts_dir = run_dir / "artifacts"
+    candidates_path = artifacts_dir / "entity_resolution_candidates.jsonl"
+    decisions_path = artifacts_dir / "entity_resolution_decisions.jsonl"
+    entity_audit_path = artifacts_dir / "entity_resolution_audit.json"
+    policy = None
+    if entity_resolution_policy:
+        if isinstance(entity_resolution_policy, dict):
+            policy = entity_resolution_policy
+        else:
+            policy_path = Path(entity_resolution_policy)
+            if policy_path.exists():
+                policy = json.loads(policy_path.read_text(encoding="utf-8"))
     if execute and refined_dir.exists():
         from code_engine.graph.ontology_alignment import extract_normalized_observations
         from code_engine.normalization.resolver import ResolverCascade
         profile = _read(run_dir, "domain_profile.json", {})
-        resolver = ResolverCascade(domain_id=profile.get("domain_id", "general_biomedical"), entity_registry_profile=profile.get("entity_registry_profile", "general_biomedical_registry"), resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"))
+        resolver = ResolverCascade(domain_id=profile.get("domain_id", "general_biomedical"), entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"), resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"), run_dir=run_dir, execute=execute, network_enabled=network, api_enabled=api, entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer, external_clients=entity_external_clients, llm_client=entity_llm_client, adjudicator_policy=policy)
         observations, audit = extract_normalized_observations(str(refined_dir), None, [], resolver=resolver)
+    candidates_path.touch(exist_ok=True)
+    decisions_path.touch(exist_ok=True)
+    if not entity_audit_path.exists():
+        entity_audit_path.write_text(json.dumps({"total_mentions": 0, "status_counts": {}, "provider_usage_counts": {}, "network_calls_made": 0, "api_calls_made": 0}, indent=2), encoding="utf-8")
+    entity_audit = json.loads(entity_audit_path.read_text(encoding="utf-8"))
     statuses: dict[str, int] = {}
     for item in audit:
         status = str(item.get("normalization_status", "unknown"))
         statuses[status] = statuses.get(status, 0) + 1
-    summary = {"resolved_count": statuses.get("resolved", 0), "ambiguous_count": statuses.get("ambiguous", 0), "unresolved_fallback_count": statuses.get("unresolved_fallback", 0), "excluded_low_confidence_count": sum(not item.get("allow_high_confidence_graph_use", False) for item in audit), "normalization_records": audit}
+    hub_statuses = entity_audit.get("status_counts", {})
+    summary = {"total_mentions": int(entity_audit.get("total_mentions", 0)), "resolved_curated_count": hub_statuses.get("resolved_curated", 0), "resolved_external_grounded_count": hub_statuses.get("resolved_external_grounded", 0), "resolved_cache_count": hub_statuses.get("resolved_cache", 0), "ambiguous_count": hub_statuses.get("ambiguous", statuses.get("ambiguous", 0)), "unresolved_count": hub_statuses.get("unresolved", 0), "manual_review_required_count": hub_statuses.get("manual_review_required", 0), "llm_suggestion_ungrounded_count": hub_statuses.get("llm_suggestion_ungrounded", 0), "provider_usage_counts": entity_audit.get("provider_usage_counts", {}), "resolved_count": statuses.get("resolved", 0), "unresolved_fallback_count": statuses.get("unresolved_fallback", 0), "excluded_low_confidence_count": sum(not item.get("allow_high_confidence_graph_use", False) for item in audit), "normalization_records": audit}
     path = _write(run_dir, "l2_normalization_audit.json", summary)
     observations_path = _write(run_dir, "l2_observations.json", observations)
     reason = None if observations else "no_l1_5_claims_in_run"
-    return StepResult(status="completed" if observations else "blocked", summary=summary, artifacts={"l2_normalization_audit": path, "l2_observations": observations_path}, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=[reason] if reason else [], skipped_reason=reason)
+    hub_artifacts = {"entity_resolution_candidates": str(candidates_path), "entity_resolution_decisions": str(decisions_path), "entity_resolution_audit": str(entity_audit_path)}
+    return StepResult(status="completed" if observations else "blocked", summary=summary, artifacts={"l2_normalization_audit": path, "l2_observations": observations_path, **hub_artifacts}, counts={key: value for key, value in summary.items() if key.endswith("_count") or key == "total_mentions"}, warnings=[reason] if reason else [], api_calls_made=int(entity_audit.get("api_calls_made", 0)), network_calls_made=int(entity_audit.get("network_calls_made", 0)), skipped_reason=reason)
 
 
-def run_conflict_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
-    observations = _read(run_dir, "l2_observations.json", [])
+def run_conflict_step(*, run_dir: Path, execute: bool, l1_mode: str = "legacy", **_: Any) -> StepResult:
+    observations = _read(run_dir, "l2_observations.json", []) if l1_mode == "legacy" else _read(run_dir, "l2_fulltext_observations.json", [])
     edges, graph, attributions, audit = [], [], [], {}
     if execute and observations:
         from code_engine.graph.conflict_discovery import build_conflict_graph
@@ -211,46 +525,255 @@ def run_conflict_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
         types[key] = types.get(key, 0) + 1
     summary = {"conflict_edge_count": len(edges), "uncontested_count": types["Uncontested"], "type_i_count": types["Type I"], "type_ii_count": types["Type II"], "type_iii_count": types["Type III"], "skipped_low_confidence_observation_count": int(audit.get("skipped_low_confidence_observation_count", 0)), "conflict_edges": edges, "context_attributions": attributions}
     path = _write(run_dir, "conflict_graph_summary.json", summary)
+    artifacts = {"conflict_graph_summary": path}
+    mechanism_path = run_dir / "artifacts" / "mechanism_graph.json"
+    if mechanism_path.exists():
+        from code_engine.mechanism.conflict_annotator import annotate_mechanism_graph_with_conflicts
+        from code_engine.mechanism.io import load_mechanism_graph, save_mechanism_graph
+        graph = annotate_mechanism_graph_with_conflicts(load_mechanism_graph(mechanism_path), edges, attributions)
+        save_mechanism_graph(graph, mechanism_path)
+        annotated_path = save_mechanism_graph(graph, run_dir / "artifacts" / "mechanism_graph_annotated.json")
+        annotation_path = _write(run_dir, "mechanism_conflict_annotations.json", [item.model_dump() for item in graph.conflict_annotations])
+        artifacts.update({"mechanism_graph": str(mechanism_path), "mechanism_graph_annotated": str(annotated_path), "mechanism_conflict_annotations": annotation_path})
+        summary["mechanism_conflict_annotation_count"] = len(graph.conflict_annotations)
+        summary["mechanism_graph_annotated"] = True
     reason = None if observations else "no_normalized_observations_in_run"
-    return StepResult(status="completed" if observations else "blocked", summary=summary, artifacts={"conflict_graph_summary": path}, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=[reason] if reason else [], skipped_reason=reason)
-run_hypothesis_step = _blocked_summary_step("hypothesis_summary.json", "hypothesis_summary", "no_conflict_graph_in_run", {"hypothesis_count": 0}, {"hypothesis_count": 0})
+    return StepResult(status="completed" if observations else "blocked", summary=summary, artifacts=artifacts, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=[reason] if reason else [], skipped_reason=reason)
+def run_mechanism_step(*, run_dir: Path, execute: bool, l1_mode: str = "legacy", **_: Any) -> StepResult:
+    observations = _read(run_dir, "l2_observations.json", []) if l1_mode == "legacy" else _read(run_dir, "l2_fulltext_observations.json", [])
+    if not observations:
+        summary = {"mechanism_node_count": 0, "mechanism_edge_count": 0, "mechanism_path_count": 0, "mechanism_conflict_annotation_count": 0, "reason": "no_l2_observations_in_run"}
+        path = _write(run_dir, "mechanism_graph_summary.json", summary)
+        return StepResult(status="blocked", summary=summary, artifacts={"mechanism_graph_summary": path}, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=["mechanism_build_blocked_no_l2_observations"], skipped_reason="no_l2_observations_in_run")
+    if not execute:
+        summary = {"mechanism_node_count": 0, "mechanism_edge_count": 0, "mechanism_path_count": 0, "mechanism_conflict_annotation_count": 0, "candidate_observation_count": len(observations), "reason": "execute_required_for_mechanism_build"}
+        path = _write(run_dir, "mechanism_graph_summary.json", summary)
+        return StepResult(status="planned", summary=summary, artifacts={"mechanism_graph_summary": path}, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=["mechanism_graph_planned_execution_disabled"], skipped_reason="execute_required_for_mechanism_build")
+    from code_engine.mechanism.graph_builder import build_mechanism_graph
+    from code_engine.mechanism.io import save_mechanism_graph
+    from code_engine.mechanism.reports import mechanism_graph_summary, render_mechanism_graph_report
+    profile = _read(run_dir, "domain_profile.json", {})
+    evidence = _read(run_dir, "evidence_records.json", []) if l1_mode == "legacy" else _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl")
+    claims = []
+    if l1_mode == "legacy":
+        for item in _read(run_dir, "l1_summary.json", {}).get("outputs", []):
+            source = Path(_["repository_root"]) / item.get("output_path", "")
+            if source.is_file():
+                payload = json.loads(source.read_text(encoding="utf-8"))
+                claims.extend(payload if isinstance(payload, list) else [payload])
+    else:
+        claims = _read_jsonl(run_dir / "artifacts" / "fulltext_l1_claims.jsonl")
+    graph = build_mechanism_graph(observations, evidence, claims, profile)
+    graph_path = save_mechanism_graph(graph, run_dir / "artifacts" / "mechanism_graph.json")
+    report_payload = mechanism_graph_summary(graph)
+    summary_path = _write(run_dir, "mechanism_graph_summary.json", report_payload)
+    annotation_path = _write(run_dir, "mechanism_conflict_annotations.json", [])
+    report_path = render_mechanism_graph_report(graph, run_dir / "artifacts" / "mechanism_graph_report.md")
+    counts = {"mechanism_node_count": len(graph.nodes), "mechanism_edge_count": len(graph.edges), "mechanism_path_count": len(graph.paths), "mechanism_conflict_annotation_count": 0}
+    return StepResult(status="completed", summary={**report_payload, **counts}, artifacts={"mechanism_graph": str(graph_path), "mechanism_graph_summary": summary_path, "mechanism_conflict_annotations": annotation_path, "mechanism_graph_report": str(report_path)}, counts=counts, warnings=graph.warnings)
 
 
-def run_validation_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
-    from code_engine.domain.models import DomainProfile
-    from code_engine.validation.router import DomainAdaptiveValidationRouter
-    profile_data = _read(run_dir, "domain_profile.json", {})
-    for key in ("aliases", "preferred_validators", "fallback_validators", "required_context_slots", "optional_context_slots", "key_entity_types", "key_relation_types", "key_evidence_types", "warnings"):
-        if key in profile_data:
-            profile_data[key] = tuple(profile_data[key])
-    profile = DomainProfile(**profile_data)
-    hypothesis_data = _read(run_dir, "hypothesis_summary.json", {})
-    hypotheses = hypothesis_data.get("hypotheses", [])
-    placeholder = {"hypothesis_id": "PLANNED", "seed_pair": "", "relation_type": profile.key_relation_types[0] if profile.key_relation_types else "unknown"}
-    plans = [DomainAdaptiveValidationRouter().create_plan(item, profile) for item in (hypotheses or [placeholder])]
-    plan_payload = {"domain_id": profile.domain_id, "validator_profile_id": profile.validator_profile_id, "plans": [item.model_dump() for item in plans], "planning_only": not bool(execute and hypotheses)}
-    plan_path = _write(run_dir, "validation_plan.json", plan_payload)
-    selected = list(dict.fromkeys(name for plan in plans for name in plan.selected_validators))
-    results = []
-    coverage = []
-    if execute and hypotheses:
-        from code_engine.validation.registry import ValidatorRegistry
-        from code_engine.validation.result_aggregator import ValidationResultAggregator
-        registry = ValidatorRegistry().register_defaults()
-        for plan in plans:
-            plan_results = [registry.validate(name, question) for question in plan.questions for name in plan.selected_validators]
-            results.extend(plan_results)
-            coverage.append(ValidationResultAggregator().aggregate(plan_results).model_dump())
-    coverage_summary = {"overall_status": "no_coverage", "reason": "no_candidate_hypotheses" if not hypotheses else "validation_execution_not_requested"}
-    if coverage:
-        coverage_summary = {"reports": coverage, "overall_status": coverage[0]["overall_status"] if len(coverage) == 1 else "multiple_hypotheses"}
-    summary = {"validation_question_count": sum(len(plan.questions) for plan in plans), "selected_validators": selected, "validation_result_count": len(results), "validation_results": [item.model_dump() for item in results], "coverage_summary": coverage_summary}
+def run_hypothesis_step(*, run_dir: Path, execute: bool, max_papers: int | None = None, **_: Any) -> StepResult:
+    from code_engine.hypothesis.search import run_hypothesis_search_for_run
+    conflict = _read(run_dir, "conflict_graph_summary.json")
+    mechanism = _read(run_dir, "mechanism_graph.json")
+    profile = _read(run_dir, "domain_profile.json")
+    result = run_hypothesis_search_for_run(conflict, mechanism, profile, run_dir, dry_run=not execute, max_hypotheses=max_papers)
+    path = _write(run_dir, "hypothesis_summary.json", result)
+    return StepResult(status=result["status"], summary=result, artifacts={"hypothesis_summary": path}, counts={"hypothesis_count": int(result.get("hypothesis_count", 0))}, warnings=list(result.get("warnings", [])), skipped_reason=result.get("reason"))
+
+
+def run_validation_step(
+    *, run_dir: Path, execute: bool, network: bool = False, query: str = "",
+    external_validation: bool = False, validation_query_mode: str = "auto",
+    validation_index_dir: str | None = None, validation_cache_dir: str | None = None,
+    validation_disable_cache: bool = False, validation_validators: list[str] | None = None,
+    max_validation_validators_per_question: int = 4,
+    validation_max_memory_mb: int = 4096,
+    validation_max_records_per_validator: int = 100,
+    validation_max_records_per_anchor: int = 200,
+    validation_max_signals_per_validator: int = 30,
+    validation_max_signals_per_run: int = 200,
+    validation_max_query_seconds: int = 30,
+    validation_max_raw_payload_bytes: int = 5_000_000,
+    validation_allow_large_local_scan: bool = False,
+    validation_provider_clients: dict | None = None, **_: Any,
+) -> StepResult:
+    from code_engine.schemas.validation import ValidationResourcePolicy
+    from code_engine.validation.anchors import (
+        build_validation_anchors_from_conflicts,
+        build_validation_anchors_from_hypotheses,
+        build_validation_anchors_from_mechanism_graph,
+        build_validation_anchors_from_observations,
+        write_validation_anchors,
+    )
+    from code_engine.validation.execution import execute_validation_query_plans
+    from code_engine.validation.query_planner import plan_validation_queries, write_validation_query_plans
+    from code_engine.validation.question_builder import build_validation_questions_from_anchors, write_validation_questions
+    from code_engine.validation.registry import ValidatorRegistry
+    from code_engine.validation.result_aggregator import aggregate_validation_signals
+    from code_engine.validation.router import route_validation_questions, write_validation_routes
+
+    profile = _read(run_dir, "domain_profile.json", {})
+    hypothesis_payload = _read(run_dir, "hypothesis_summary.json", {})
+    hypotheses = list(hypothesis_payload.get("hypotheses", []))
+    if not hypotheses:
+        lowered_query = query.casefold()
+        fallback_relation = (profile.get("key_relation_types") or ["identity_lookup"])[0]
+        if any(term in lowered_query for term in ("signaling", "pathway", "通路", "信号")):
+            fallback_relation = "pathway_mechanism"
+        elif any(term in lowered_query for term in ("binding", "receptor", "affinity", "结合", "受体")):
+            fallback_relation = "drug_target_binding"
+        elif any(term in lowered_query for term in ("expression", "upregulat", "downregulat", "表达", "上调", "下调")):
+            fallback_relation = "gene_expression"
+        elif any(term in lowered_query for term in ("clinical", "trial", "patient", "临床", "患者")):
+            fallback_relation = "clinical_outcome"
+        hypotheses = [{
+            "hypothesis_id": "PLANNED",
+            "entities": [{"name": query, "entity_type": "unknown"}],
+            "relation_family": fallback_relation,
+            "context": {"planning_only": True},
+        }]
+    conflict_payload = _read(run_dir, "conflict_graph_summary.json", {})
+    conflicts = list(conflict_payload.get("conflict_edges", []))
+    conflicts.extend(_read_jsonl(run_dir / "artifacts" / "fulltext_conflict_confirmation.jsonl"))
+    mechanism = _read(run_dir, "mechanism_graph.json", {})
+    observations = _read(run_dir, "l2_fulltext_observations.json", []) or _read(run_dir, "l2_observations.json", [])
+    anchors = []
+    anchors.extend(build_validation_anchors_from_hypotheses(hypotheses))
+    anchors.extend(build_validation_anchors_from_conflicts(conflicts))
+    if mechanism:
+        anchors.extend(build_validation_anchors_from_mechanism_graph(mechanism))
+    anchors.extend(build_validation_anchors_from_observations(observations))
+    anchors = list({item.anchor_id: item for item in anchors}.values())
+    anchor_artifacts = write_validation_anchors(anchors, run_dir / "artifacts")
+    questions = build_validation_questions_from_anchors(anchors, profile)
+    question_artifacts = write_validation_questions(questions, run_dir / "artifacts")
+
+    registry = ValidatorRegistry().register_defaults()
+    routes = route_validation_questions(questions, registry, profile, max_validation_validators_per_question)
+    warnings = []
+    if validation_validators:
+        allowed = set(validation_validators)
+        unknown = allowed - set(registry.names())
+        if unknown:
+            warnings.append(f"unknown_validation_validators:{','.join(sorted(unknown))}")
+        routes = [item for item in routes if item.validator_name in allowed or item.validator_name == "NullValidator"]
+    route_artifacts = write_validation_routes(routes, run_dir / "artifacts")
+    resource_policy = ValidationResourcePolicy(
+        max_memory_mb=validation_max_memory_mb,
+        max_records_per_validator=validation_max_records_per_validator,
+        max_records_per_anchor=validation_max_records_per_anchor,
+        max_signals_per_validator=validation_max_signals_per_validator,
+        max_signals_per_run=validation_max_signals_per_run,
+        max_raw_payload_bytes_per_validator=validation_max_raw_payload_bytes,
+        max_query_seconds=validation_max_query_seconds,
+        allow_large_local_scan=validation_allow_large_local_scan,
+        external_validation_enabled=external_validation,
+        network_enabled=network,
+        cache_enabled=not validation_disable_cache,
+        execution_enabled=bool(execute and external_validation),
+        index_dir=validation_index_dir,
+        cache_dir=validation_cache_dir,
+    )
+    query_plans = plan_validation_queries(routes, questions, anchors, registry, resource_policy, validation_query_mode)
+    query_artifacts = write_validation_query_plans(query_plans, run_dir / "artifacts")
+    execution = execute_validation_query_plans(
+        query_plans, registry, resource_policy,
+        execute=bool(execute and external_validation), network_enabled=network,
+        cache_enabled=not validation_disable_cache,
+        run_dir=run_dir / "artifacts", provider_clients=validation_provider_clients,
+    )
+    aggregate = aggregate_validation_signals(
+        Path(execution.artifact_refs["signals"]), anchors, query_plans,
+        resource_policy, output_dir=run_dir / "artifacts",
+    )
+    allowed_count = sum(item.status == "allowed" for item in query_plans)
+    blocked_count = len(query_plans) - allowed_count
+    estimated_records = sum(int(item.estimated_records or 0) for item in query_plans)
+    estimated_memory = round(sum(float(item.estimated_memory_mb or 0.0) for item in query_plans), 4)
+    selected = sorted({item.validator_name for item in routes})
+    summary = {
+        "stages": {
+            "anchor_building": len(anchors), "question_building": len(questions),
+            "validator_routing": len(routes), "query_planning": len(query_plans),
+            "resource_check": {"allowed": allowed_count, "blocked": blocked_count},
+            "external_evidence_retrieval": execution.evidence_count,
+            "validation_signal_building": execution.signal_count,
+            "result_aggregation": aggregate.result_count,
+        },
+        "external_validation_enabled": external_validation,
+        "validation_query_mode": validation_query_mode,
+        "selected_validators": selected,
+        "validation_anchor_count": len(anchors),
+        "validation_question_count": len(questions),
+        "validation_route_count": len(routes),
+        "validation_query_plan_count": len(query_plans),
+        "validation_allowed_query_count": allowed_count,
+        "validation_blocked_query_count": blocked_count,
+        "validation_execution_mode_counts": dict(Counter(item.execution_mode for item in query_plans)),
+        "validation_estimated_records": estimated_records,
+        "validation_estimated_memory_mb": estimated_memory,
+        "validation_actual_evidence_count": execution.evidence_count,
+        "validation_signal_count": execution.signal_count,
+        "validation_cache_hit_count": execution.cache_hit_count,
+        "validation_cache_miss_count": execution.cache_miss_count,
+        "validation_result_count": aggregate.result_count,
+        "validation_aggregate_status": aggregate.aggregate_status,
+        "result_status_counts": aggregate.status_counts,
+        "local_indexes_used": sorted({item.index_name for item in query_plans if item.execution_mode == "local_index" and item.status == "allowed" and item.index_name}),
+        "remote_validators_planned": sorted({item.validator_name for item in query_plans if item.execution_mode in {"remote_api", "blocked"} and "remote" in item.reason}),
+        "remote_query_count_executed": execution.network_calls_made,
+        "resource_usage": execution.model_dump(mode="json", exclude={"artifact_refs"}),
+        "blocked_reasons": dict(Counter(item.reason for item in query_plans if item.status != "allowed")),
+        "interpretation_warnings": [
+            "External evidence is not proof.", "Validation signal is not proof.",
+            "No record found is not contradiction.", "Cache miss is not no_coverage.",
+            "Clinical trial existence is not efficacy support.",
+            "Binding/activity record is not mechanism proof.",
+            "Pathway membership is not causality proof.",
+            "Cancer cell-line dependency is not clinical efficacy.",
+        ],
+    }
     summary_path = _write(run_dir, "validation_summary.json", summary)
-    return StepResult(status="completed" if execute and hypotheses else "planned", summary=summary, artifacts={"validation_plan": plan_path, "validation_summary": summary_path}, counts={"validation_question_count": summary["validation_question_count"], "validation_result_count": len(results)}, warnings=["validation_plan_generated_without_candidate_hypotheses"] if not hypotheses else [])
+    plan_path = _write(run_dir, "validation_plan.json", {
+        "domain_id": profile.get("domain_id"),
+        "validator_profile_id": profile.get("validator_profile_id", "general_validation"),
+        "anchor_refs": anchor_artifacts, "question_refs": question_artifacts,
+        "route_refs": route_artifacts, "query_plan_refs": query_artifacts,
+        "planning_only": not bool(execute and external_validation),
+    })
+    artifacts = {
+        "validation_plan": plan_path, "validation_summary": summary_path,
+        "validation_anchors": anchor_artifacts["anchors"], "validation_anchor_summary": anchor_artifacts["summary"],
+        "validation_questions": question_artifacts["questions"], "validation_question_summary": question_artifacts["summary"],
+        "validation_routes": route_artifacts["routes"], "validation_route_summary": route_artifacts["summary"],
+        "validation_query_plan": query_artifacts["plans"], "validation_query_plan_summary": query_artifacts["summary"],
+        "external_validation_evidence": execution.artifact_refs["evidence"],
+        "external_validation_signals": execution.artifact_refs["signals"],
+        "external_validation_execution_summary": execution.artifact_refs["summary"],
+        "external_validation_results": aggregate.artifact_refs.get("results", ""),
+        "external_validation_aggregate_summary": aggregate.artifact_refs.get("summary", ""),
+    }
+    counts = {key: value for key, value in summary.items() if key.startswith("validation_") and isinstance(value, int)}
+    return StepResult(
+        status="completed" if execute and external_validation else "planned",
+        summary=summary, artifacts=artifacts, counts=counts,
+        warnings=warnings + aggregate.warnings,
+        network_calls_made=execution.network_calls_made,
+    )
 
 
 STEP_RUNNERS = {
     "intake": run_intake_step, "search": run_search_step, "acquisition": run_acquisition_step,
-    "payload": run_payload_step, "l1": run_l1_step, "l1_5": run_l1_5_step, "l2": run_l2_step,
-    "conflict": run_conflict_step, "hypothesis": run_hypothesis_step, "validation": run_validation_step,
+    "payload": run_payload_step,
+    "abstract_l1": run_abstract_l1_step,
+    "l2_abstract": run_l2_abstract_step,
+    "abstract_conflict_screening": run_abstract_conflict_screening_step,
+    "fulltext_escalation": run_fulltext_escalation_step,
+    "fulltext_l1": run_fulltext_l1_step,
+    "l2_fulltext": run_l2_fulltext_step,
+    "fulltext_conflict_confirmation": run_fulltext_conflict_confirmation_step,
+    "l1": run_l1_step, "l1_5": run_l1_5_step, "l2": run_l2_step,
+    "mechanism": run_mechanism_step, "conflict": run_conflict_step, "hypothesis": run_hypothesis_step, "validation": run_validation_step,
 }

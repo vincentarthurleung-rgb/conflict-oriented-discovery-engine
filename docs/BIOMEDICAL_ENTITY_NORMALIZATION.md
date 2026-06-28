@@ -1,78 +1,13 @@
 # Biomedical Entity Normalization
 
-## L2 Resolver Cascade Is Now The Default Mainline Normalizer
+`ResolverCascade` remains the public Layer 2 entry point, but delegates candidate collection and selection to `EntityResolutionHub`. The hub combines explicitly configured curated anchors, previously accepted local-cache mappings, optional external candidate providers, and an optional LLM proposer.
 
-Layer 2 observations are produced by `ResolverCascade.resolve_entity()` by
-default. Canonical ID/name, entity type, semantic level, biological relations,
-decision status, confidence, resolver, match type, warnings, and graph-use
-permission are carried into Layer 3.
+The ketamine-depression dictionary is a pilot fixture, not a production general registry. Curated anchors provide high-confidence identities where explicitly configured; they are not the only possible source and are not intended to cover every domain. DomainProfile `entity_registry_profile` values select provider/resolver policies, not hand-written domain dictionaries.
 
-The previous synonym-map/uppercase path remains available only through the
-explicit `--legacy-synonym-only` compatibility flag. Without the diagnostic
-`--include-low-confidence` flag, ambiguous and `unresolved_fallback`
-observations remain in the L2 audit but are excluded from high-confidence
-conflict entropy and Type I/II/III statistics.
+Entity typing prioritizes L1 hints and grounded provider candidates. Universal lexical rules emit weak type candidates only; there is no ketamine-specific `TYPE_RULES`. Weak hints cannot establish canonical identity.
 
-Layer 3 groups by subject/object canonical IDs when present and falls back to
-legacy normalized names for old records. This keeps receptor complexes separate
-from gene subunits and metabolites separate from parent compounds.
+PubChem, ChEMBL, MyGene, and UniProt providers are optional guarded skeletons. Network access requires execute, global network permission, and entity-network permission. The LLM proposer similarly requires execute, global API permission, and entity-LLM permission. It proposes type/resource candidates only and is always ungrounded.
 
-## Resolver Boundary
+The deterministic adjudicator selects curated, external-grounded, or accepted-cache candidates only when score and margin policies pass. Ambiguous, unresolved, low-confidence, manual-review, and LLM-only suggestions remain excluded from high-confidence ConflictGraph use. Resolver decisions preserve legacy fields while adding provider names, candidate count, selected candidate ID, external IDs, status, manual-review state, and audit reference.
 
-Layer 2 uses a deterministic resolver cascade by default:
-
-```text
-raw term
-  -> lexical normalization
-  -> local curated registry lookup
-  -> entity-type classification
-  -> exact/alias/lexical/fuzzy candidates
-  -> deterministic resolved, ambiguous, or unresolved decision
-```
-
-The current registry is a local curated MVP for the ketamine pilot. It does not
-provide comprehensive external ontology coverage. Future work includes online
-resolvers, ontology-backed identifier mapping, and human review of registry
-patches.
-
-`ResolverCascade` accepts `domain_id`, `entity_registry_profile`, and
-`resolver_policy_id` from L1 domain metadata. A missing domain-specific
-registry falls back to the general local registry with
-`domain_registry_missing_general_registry_used`; this is an audited resolution
-fallback, not validation success. L3 continues to key pairs by canonical ID.
-
-## Identity Versus Biological Relation
-
-The resolver does not treat biological relationships as equality merges:
-
-- GluA1 is `same_as` GRIA1 at the alias-identity level; GRIA1 is `subunit_of` the AMPA receptor complex.
-- GluN2B is an alias of GRIN2B; GRIN2B is `subunit_of` the NMDA receptor complex.
-- Norketamine is `metabolite_of` ketamine.
-- Ketamine hydrochloride is `salt_form_of` ketamine.
-- Forced swim test `measures` depression-like behavior.
-
-Receptor complexes, genes, metabolites, parent compounds, phenotypes, diseases,
-assays, pathways, regions, and contexts retain separate canonical IDs and types.
-
-## Confidence And Audit
-
-Exact local-registry decisions may be used by the high-confidence graph. Fuzzy
-or duplicate-alias candidates are ambiguous and require review. Unknown terms
-retain an uppercase traceability label with status `unresolved_fallback`,
-confidence at most `0.35`, and `allow_high_confidence_graph_use=false`.
-Uppercase fallback is no longer treated as high-quality normalization.
-
-Every decision records the canonical ID/name, type, semantic level, relations,
-resolver, match type, candidates, reason, confidence, graph-use permission, and
-warnings. Layer 2 writes JSON and Markdown audits.
-
-The audit includes raw-term, resolved, ambiguous, unresolved, invalid,
-high-confidence usable, and low-confidence excluded counts; top unresolved and
-ambiguous terms; dangerous warning counts; and four reference examples.
-
-## Optional Candidate Suggestions
-
-The LLM candidate proposer is disabled by default and contains no API client.
-When explicitly exercised as a dry-run stub, it returns only unvalidated
-candidates marked `requires_deterministic_validation`. Suggestions cannot write
-final graph decisions or bypass the registry resolver.
+Every run writes candidate JSONL, decision JSONL, and an aggregate audit. Accepted cache mappings are written only for explicit high-confidence execution. L3 continues to group by canonical IDs and its conflict formulas are unchanged.

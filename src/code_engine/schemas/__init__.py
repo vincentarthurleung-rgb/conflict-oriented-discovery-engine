@@ -11,13 +11,22 @@ from code_engine.schemas.hypothesis_hyperedge import HypothesisHyperedge
 from code_engine.schemas.mechanism_edge import MechanismEdge
 from code_engine.schemas.reasoning_record import ReasoningRecord
 from code_engine.schemas.triples import ScientificTriple
-from code_engine.schemas.validation import FinalReportItem, ValidationPlan, ValidationQuestion, ValidationResult, validate_json_list
+from code_engine.schemas.validation import (
+    AggregatedValidationResult, ExternalEvidenceRecord, FinalReportItem,
+    ValidationAnchor, ValidationExecutionContext, ValidationExecutionResult,
+    ValidationPlan, ValidationQueryPlan, ValidationQuestion, ValidationResourcePolicy,
+    ValidationResult, ValidationSignal, ValidatorCapability, ValidatorRoute,
+    validate_json_list,
+)
 
 __all__ = [
     "PaperDocument", "ManifestAudit", "ManifestPaperEntry", "PayloadAudit",
     "ScientificTriple", "NormalizedEntity", "ConflictEdge", "ContextMention",
     "ContextAttribution", "CandidateHypothesis", "ValidationResult",
     "FinalReportItem", "ValidationQuestion", "ValidationPlan", "validate_json_list",
+    "ValidationAnchor", "ValidationQueryPlan", "ExternalEvidenceRecord",
+    "ValidationSignal", "ValidationExecutionContext", "ValidationResourcePolicy",
+    "ValidationExecutionResult", "AggregatedValidationResult", "ValidatorCapability", "ValidatorRoute",
     "EvidenceRecord", "build_minimal_evidence_record", "MechanismEdge",
     "HypothesisHyperedge", "ReasoningRecord", "L1ExtractedClaim",
 ]

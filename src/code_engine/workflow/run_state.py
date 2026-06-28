@@ -32,12 +32,14 @@ def make_run_id(query: str) -> str:
 def create_run_state(
     query: str, *, execute: bool = False, api: bool = False, network: bool = False,
     until: str = "report", max_papers: int | None = None, run_id: str | None = None,
+    l1_mode: str = "legacy", fulltext_escalation_enabled: bool = False,
 ) -> RunState:
     now = utc_now()
     return RunState(
         run_id=run_id or make_run_id(query), created_at=now, updated_at=now, query=query,
         mode="execute" if execute else "dry_run", api_enabled=bool(api),
         network_enabled=bool(network), until=until, max_papers=max_papers,
+        l1_mode=l1_mode, fulltext_escalation_enabled=fulltext_escalation_enabled,
         steps={name: WorkflowStepRecord(step_name=name) for name in STEP_ORDER},
         summary={"using_legacy_data": False, "runtime_data_status": "planning", "external_calls_enabled": {"api": bool(execute and api), "network": bool(execute and network)}},
     )

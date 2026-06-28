@@ -72,10 +72,16 @@ class NormalizedEntity(CODEBaseModel):
     mapping_method: str = "uppercase_fallback"
     confidence: float = 0.3
     domain_id: str = "general_biomedical"
-    entity_registry_profile: str = "general_biomedical_registry"
+    entity_registry_profile: str = "general_entity_resolution_hub"
     resolver_policy_id: str = "conservative_resolver_v2"
     domain_specific_resolution_used: bool = False
     domain_resolution_warnings: List[str] = Field(default_factory=list)
+    candidate_count: int = 0
+    candidate_provider_names: List[str] = Field(default_factory=list)
+    selected_candidate_id: str | None = None
+    entity_resolution_status: str = "unresolved"
+    requires_manual_review: bool = False
+    audit_ref: str | None = None
 
 
 class ConflictEdge(CODEBaseModel):

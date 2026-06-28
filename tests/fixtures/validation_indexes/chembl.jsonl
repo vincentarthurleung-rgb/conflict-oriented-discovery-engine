@@ -1,0 +1,1 @@
+{"record_id":"CHEMBL_TEST_1","compound_id":"CHEM:SIROLIMUS","compound_name":"sirolimus","target_id":"GENE:MTOR","target_name":"MTOR","standard_type":"IC50","standard_value":5.0,"standard_units":"nM","pchembl_value":8.3,"direction":"inhibit","score":0.9}

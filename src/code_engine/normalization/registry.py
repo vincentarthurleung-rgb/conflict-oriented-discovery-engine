@@ -1,4 +1,4 @@
-"""Local curated biomedical registry with deterministic candidate lookup."""
+"""Compatibility local-curated anchor loader used by LocalCuratedProvider."""
 
 from __future__ import annotations
 
@@ -12,18 +12,8 @@ from code_engine.normalization.lexical import normalize_lexical_surface
 from code_engine.normalization.models import EntityRelation, NormalizationCandidate
 
 
-DEFAULT_REGISTRY_PATH = Path("configs/normalization/entity_registry.json")
-LEGACY_REGISTRY_PATH = Path("config/schemas/entity_registry.json")
-
-
-BUILTIN_DEMO_REGISTRY = {
-    "version": "entity_registry_demo_fallback_v1",
-    "description": "Explicit fallback containing only minimal demo entities.",
-    "entities": [
-        {"canonical_id": "CHEM:KETAMINE", "canonical_name": "ketamine", "entity_type": "compound", "semantic_level": "parent_compound", "aliases": ["ketamine"], "external_ids": {}, "relations": []},
-        {"canonical_id": "GENE:BDNF", "canonical_name": "BDNF", "entity_type": "gene", "semantic_level": "gene_or_protein", "aliases": ["BDNF"], "external_ids": {}, "relations": []},
-    ],
-}
+DEFAULT_REGISTRY_PATH = Path("configs/normalization/entity_registry.json")  # compatibility stub only
+PILOT_REGISTRY_PATH = Path("configs/normalization/fixtures/ketamine_pilot_registry.json")
 
 
 class LocalBiomedicalRegistry:
@@ -33,20 +23,19 @@ class LocalBiomedicalRegistry:
         if requested.exists():
             active_path = requested
             payload = json.loads(active_path.read_text(encoding="utf-8"))
-        elif requested == DEFAULT_REGISTRY_PATH and LEGACY_REGISTRY_PATH.exists():
-            active_path = LEGACY_REGISTRY_PATH
-            payload = json.loads(active_path.read_text(encoding="utf-8"))
-            self.warnings.append("preferred_registry_missing_legacy_registry_used")
         elif allow_fallback:
-            active_path = Path("builtin_demo_registry")
-            payload = BUILTIN_DEMO_REGISTRY
-            self.warnings.append("registry_missing_builtin_demo_fallback_used")
+            active_path = PILOT_REGISTRY_PATH
+            payload = json.loads(active_path.read_text(encoding="utf-8"))
+            self.warnings.append("registry_missing_explicit_pilot_fixture_fallback_used")
         else:
             raise FileNotFoundError(f"Biomedical entity registry missing: {requested}")
         self.path = active_path
         self.payload = payload
-        self.warnings.extend(validate_entity_registry(payload))
-        self.entities = list(payload["entities"])
+        if payload.get("do_not_use_as_production_general_registry") and not payload.get("entities"):
+            self.warnings.append("legacy_registry_stub_no_curated_entities")
+        else:
+            self.warnings.extend(validate_entity_registry(payload))
+        self.entities = list(payload.get("entities", []))
         self.canonical_index: dict[str, list[dict[str, Any]]] = {}
         self.alias_index: dict[str, list[dict[str, Any]]] = {}
         for entity in self.entities:
@@ -93,4 +82,3 @@ class LocalBiomedicalRegistry:
             if candidate.canonical_id not in by_id or candidate.score > by_id[candidate.canonical_id].score:
                 by_id[candidate.canonical_id] = candidate
         return sorted(by_id.values(), key=lambda item: (-item.score, item.canonical_id))[:5]
-

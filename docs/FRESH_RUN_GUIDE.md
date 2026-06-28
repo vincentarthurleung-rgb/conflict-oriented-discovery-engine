@@ -62,6 +62,8 @@ Execution requires explicit paired gates: `--execute --network` for NCBI and
 
 Layer 2 uses ResolverCascade by default:
 
+ResolverCascade now delegates to EntityResolutionHub. External entity lookup is disabled unless `--execute --network --entity-network-lookup` is explicit; the LLM proposer is disabled unless `--execute --api --entity-llm-proposer` is explicit. L2 candidate and decision audits are always run-scoped.
+
 ```bash
 python scripts/stage4_l2_normalize.py --resolver-cascade --strict-config
 ```
@@ -82,6 +84,19 @@ Before validation, preview the domain-specific plan with
 --domain <domain> --relation-type <relation> --dry-run`. Missing local external
 indexes are expected to report structured no coverage; they must not be treated
 as scientific support.
+
+For broad discovery, start with `--l1-mode abstract_screening --until
+abstract_conflict_screening`. Review the focus set before enabling
+`--l1-mode progressive_fulltext --enable-fulltext-escalation`, and always set
+paper/call/token or USD limits. Use `--l1-mode legacy` only for compatibility
+runs. Abstract candidates are not final conflicts and cannot be used as
+high-confidence mechanism evidence.
+
+Preview Layer 6 with `--external-validation --validation-query-mode auto
+--until validation`; dry-run still performs no provider calls. For local work,
+point `--validation-index-dir` at bounded indexes and set memory/record/signal
+limits. Use `cache_only` when reproducibility requires zero provider access.
+Never enable large local scans merely to compensate for a missing index.
 # Unified entry point
 
 Prefer `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report`. RunState isolates artifacts and records every warning, error, and external-call count. Resume never restores API/network permission implicitly. Partial reports are normal when runtime inputs are absent.

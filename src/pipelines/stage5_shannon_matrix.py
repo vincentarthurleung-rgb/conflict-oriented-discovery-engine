@@ -16,7 +16,7 @@ from typing import Optional
 from src.config.loader import DEFAULT_CONFIG_PATH, load_pipeline_config
 from src.pipelines.conflict_discovery import build_conflict_graph
 from src.pipelines.ontology_alignment import extract_normalized_observations, write_normalization_audit
-from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH, LocalBiomedicalRegistry
+from code_engine.normalization.registry import LocalBiomedicalRegistry
 from code_engine.normalization.resolver import ResolverCascade
 
 
@@ -71,7 +71,7 @@ def execute_l2_l3_unified_pipeline(
     resolver_cascade: bool = True,
     legacy_synonym_only: bool = False,
     include_low_confidence: bool = False,
-    entity_registry_path: str = str(DEFAULT_REGISTRY_PATH),
+    entity_registry_path: str | None = None,
 ) -> None:
     """Load L1.5 data, normalize entities, discover conflicts, and write L3 outputs."""
 
@@ -92,9 +92,13 @@ def execute_l2_l3_unified_pipeline(
     resolver = None
     active_registry_path = "not_used_in_legacy_synonym_only_mode"
     if resolver_cascade:
-        registry = LocalBiomedicalRegistry(entity_registry_path, allow_fallback=allow_fallback)
-        resolver = ResolverCascade(registry)
-        active_registry_path = str(registry.path)
+        if entity_registry_path:
+            registry = LocalBiomedicalRegistry(entity_registry_path, allow_fallback=allow_fallback)
+            resolver = ResolverCascade(registry)
+            active_registry_path = str(registry.path)
+        else:
+            resolver = ResolverCascade()
+            active_registry_path = "EntityResolutionHub"
     elif not legacy_synonym_only:
         raise ValueError("Resolver cascade may only be disabled with --legacy-synonym-only")
 
@@ -199,7 +203,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Include unresolved/ambiguous observations in conflict statistics.",
     )
-    parser.add_argument("--entity-registry-path", default=str(DEFAULT_REGISTRY_PATH))
+    parser.add_argument("--entity-registry-path", default=None, help="Explicit curated anchor fixture/path; no registry is loaded by default.")
     return parser
 
 
