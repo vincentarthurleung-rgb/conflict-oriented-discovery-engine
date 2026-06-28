@@ -291,3 +291,5 @@ See `docs/BIOMEDICAL_ENTITY_NORMALIZATION.md`.
 # Recommended workflow entry point
 
 Use `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report` for new research runs. It creates an isolated `runs/<run_id>/` RunState and report. Dry-run, no-API, and no-network are defaults; execution permissions must be explicit. See [End-to-End Workflow](docs/END_TO_END_WORKFLOW.md) and [RunState and Reproducibility](docs/RUN_STATE_AND_REPRODUCIBILITY.md). Stage scripts remain legacy/debug entry points.
+
+Natural-language understanding is [LLM-first](docs/LLM_FIRST_SEMANTIC_INTAKE.md). Deterministic parsing is a semantically degraded no-API fallback; rules are limited to schema checks, allowed-domain validation, sanitization, evidence boundaries, and external-call guards. Low-confidence intake blocks execute mode unless explicitly allowed.

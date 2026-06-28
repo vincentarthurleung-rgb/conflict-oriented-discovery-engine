@@ -68,6 +68,9 @@ class RunState:
     prompt_profile_id: str | None = None
     entity_registry_profile: str | None = None
     validator_profile_id: str | None = None
+    semantic_mode: str | None = None
+    semantic_confidence: float | None = None
+    requires_manual_review: bool = False
     steps: dict[str, WorkflowStepRecord] = field(default_factory=dict)
     artifacts: dict[str, str] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)

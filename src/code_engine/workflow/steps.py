@@ -38,10 +38,11 @@ def _read(run_dir: Path, name: str, default: Any = None) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
 
 
-def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool, **_: Any) -> StepResult:
-    # No client is injected here: the workflow must never construct an implicit API client.
-    intake = parse_research_intake(query, use_api=False)
-    profile = default_domain_router().resolve(intake.research_intent.domain_id) or default_domain_router().route_text(query)
+def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
+                    allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
+                    semantic_llm_client: Any | None = None, **_: Any) -> StepResult:
+    intake = parse_research_intake(query, use_api=api, execute=execute, llm_client=semantic_llm_client)
+    profile = default_domain_router().get_or_default(intake.research_intent.domain_id)
     intake_path = _write(run_dir, "intake.json", intake)
     profile_path = _write(run_dir, "domain_profile.json", profile.to_dict())
     summary = {
@@ -50,11 +51,18 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool, **_:
         "entity_registry_profile": profile.entity_registry_profile,
         "validator_profile_id": profile.validator_profile_id,
         "seed_triple_count": len(intake.seed_triples),
+        "semantic_mode": intake.semantic_mode, "semantic_confidence": intake.semantic_confidence,
+        "requires_manual_review": intake.requires_manual_review,
+        "alternative_domains": intake.semantic_intake.get("domain_routing", {}).get("alternative_domains", []),
+        "warning_count": len(intake.semantic_warnings),
     }
     warnings = list(intake.ambiguities)
-    if execute and api:
-        warnings.append("api_enabled_but_no_intake_client_configured_deterministic_parser_used")
-    return StepResult(summary=summary, artifacts={"intake": intake_path, "domain_profile": profile_path}, counts={"seed_triple_count": len(intake.seed_triples)}, warnings=warnings)
+    warnings.extend(intake.semantic_warnings)
+    uncertain = intake.semantic_confidence < semantic_confidence_threshold or intake.requires_manual_review
+    blocked = bool(execute and uncertain and not allow_uncertain_intake)
+    if blocked:
+        warnings.append("semantic_intake_below_confidence_threshold_execute_blocked")
+    return StepResult(status="blocked" if blocked else "completed", summary=summary, artifacts={"intake": intake_path, "domain_profile": profile_path}, counts={"seed_triple_count": len(intake.seed_triples)}, warnings=warnings, api_calls_made=intake.api_calls_made, skipped_reason="uncertain_semantic_intake" if blocked else None)
 
 
 def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int | None, **_: Any) -> StepResult:
@@ -70,7 +78,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
         if key in profile_data:
             profile_data[key] = tuple(profile_data[key])
     profile = DomainProfile(**profile_data)
-    plan = build_literature_search_plan(intake.research_intent, seed_triples=intake.seed_triples, domain_profile=profile, use_llm=False)
+    plan = build_literature_search_plan(intake.research_intent, seed_triples=intake.seed_triples, domain_profile=profile, use_llm=False, semantic_intake=intake.semantic_intake)
     if max_papers is not None:
         plan.max_total_results = max_papers
         for query in plan.pubmed_queries + plan.pmc_queries:
@@ -80,7 +88,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
     warnings = list(plan.warnings)
     if execute and api:
         warnings.append("api_enabled_but_search_query_generation_remains_deterministic")
-    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
+    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
 
 
 def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None, **_: Any) -> StepResult:

@@ -2,15 +2,17 @@
 
 ## Boundary
 
-`DomainRouter` is a first-class deterministic component. It converts bounded
-Chinese or English query cues into a complete `DomainProfile`; it does not use
-an LLM and does not decide scientific truth. The supported profiles are
+`DomainRouter` is a deterministic registry component. It validates an
+encoder-provided domain ID and returns a complete `DomainProfile`; it does not
+classify natural language or decide scientific truth. The supported profiles are
 `general_biomedical`, `neuropharmacology`, `drug_target_binding`,
 `pathway_biology`, `clinical_outcome`, and `protein_interaction`.
 
 ```text
 natural-language query
--> DomainProfile
+-> Scientific Encoder / deterministic degraded fallback
+-> verified DomainRoutingDecision
+-> DomainProfile registry lookup
 -> domain-specific search plan
 -> domain-specific L1 prompt and context contract
 -> domain-specific L2 registry/policy selection
@@ -25,8 +27,9 @@ normalization decisions, and validation plans preserve the relevant fields.
 
 ## Deterministic Responsibilities
 
-Search templates and L1 prompt compilation are deterministic. An explicitly
-enabled LLM may parse or extract structured candidates, but paper-grounded text
+Semantic intake and recommended search queries are LLM-first. Generic search
+composition, query sanitization, and L1 prompt compilation are deterministic.
+An explicitly enabled LLM may encode or extract structured candidates, but paper-grounded text
 is required before a claim can become evidence. User-intent seed triples only
 expand search queries; they have `is_evidence=false` and cannot enter L3.
 
@@ -53,3 +56,5 @@ validation plugin contract.
 # End-to-end propagation
 
 The recommended `code_engine.cli.run` entry point records DomainProfile identifiers at intake and propagates them through search, L1 planning, ResolverCascade policy, and validator routing. ValidationRouter routes; validators validate. User-intent seed triples remain non-evidence planning objects.
+
+Domain selection is LLM-first. DomainRouter validates the encoder-provided ID and retrieves its DomainProfile; it is not the primary semantic classifier. Its deterministic keyword route is compatibility-only and configuration-backed. No-API intake selects the general profile unless an allowed domain is explicitly provided.

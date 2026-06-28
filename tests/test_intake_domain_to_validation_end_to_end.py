@@ -29,10 +29,10 @@ class IntakeDomainToValidationEndToEndTests(unittest.TestCase):
             for name in plan.selected_validators
         ]
 
-        self.assertEqual(search.domain_id, "neuropharmacology")
-        self.assertEqual(l1["prompt_profile_id"], "neuropharmacology_l1_v2")
+        self.assertEqual(search.domain_id, "general_biomedical")
+        self.assertEqual(l1["prompt_profile_id"], "general_biomedical_l1_v2")
         self.assertEqual(l1["api_calls_made"], 0)
-        self.assertEqual(plan.validator_profile_id, "neuropharmacology_validation")
+        self.assertEqual(plan.validator_profile_id, "general_validation")
         self.assertTrue(all(item.validation_status != "supported" for item in previews))
 
 

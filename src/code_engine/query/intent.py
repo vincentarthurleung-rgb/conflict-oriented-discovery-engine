@@ -1,4 +1,8 @@
-"""Deterministic bilingual research-intent parsing for natural-language intake."""
+"""Legacy deterministic intent parsing and SemanticResearchIntent compatibility.
+
+The deterministic parser is a degraded compatibility API, not the workflow's
+primary natural-language understanding path.
+"""
 
 from __future__ import annotations
 
@@ -197,3 +201,37 @@ def parse_research_intent(
     if write_output:
         write_json(Path(output_root) / f"data/query/intent_{intent.intent_id}.json", intent.model_dump())
     return intent
+
+
+def research_intent_from_semantic(semantic_intent) -> ResearchIntent:
+    """Compatibility conversion from the LLM-first semantic contract.
+
+    ``parse_research_intent`` above remains the degraded legacy parser; new
+    intake orchestration should use this conversion instead of keyword parsing.
+    """
+
+    routing = semantic_intent.domain_routing
+    profile = default_domain_router().get_or_default(routing.domain_id)
+    task_type = str(semantic_intent.task_type or "unknown")
+    supported = {"mechanism_overview", "entity_relation_query", "comparative_mechanism_query", "hypothesis_generation", "literature_update", "coverage_check", "unknown"}
+    intent_type = task_type if task_type in supported else "unknown"
+    primary = semantic_intent.primary_entities[0] if semantic_intent.primary_entities else ""
+    diseases = list(semantic_intent.disease_or_condition)
+    return ResearchIntent(
+        intent_id=hashlib.sha256(semantic_intent.raw_user_input.casefold().encode()).hexdigest()[:16],
+        raw_user_input=semantic_intent.raw_user_input, language=semantic_intent.language,
+        intent_type=intent_type, task_goal=semantic_intent.research_goal or "semantic encoding",
+        primary_entity=primary, primary_entities=list(semantic_intent.primary_entities),
+        secondary_entities=list(semantic_intent.secondary_entities), disease_or_condition=diseases[0] if diseases else "",
+        mechanism_entities=list(semantic_intent.mechanism_entities), comparison_entities=list(semantic_intent.comparison_entities),
+        outcome_entities=list(semantic_intent.outcome_entities), domain_candidates=[routing.domain_id] + [str(item.get("domain_id")) for item in routing.alternative_domains if item.get("domain_id")],
+        selected_domain=routing.domain_id, domain_id=routing.domain_id, research_goal=semantic_intent.research_goal,
+        confidence=semantic_intent.confidence, warnings=list(semantic_intent.warnings),
+        task_type=task_type, subdomain_id=profile.subdomain_id, domain_profile_id=profile.profile_id,
+        prompt_profile_id=profile.prompt_profile_id, entity_registry_profile=profile.entity_registry_profile,
+        validator_profile_id=profile.validator_profile_id, domain_confidence=routing.confidence,
+        domain_warnings=list(routing.warnings), needs_comparison=bool(semantic_intent.comparison_entities),
+        needs_hypothesis_generation=task_type == "hypothesis_generation",
+        needs_mechanism_summary=task_type in {"mechanism_overview", "comparative_mechanism_query"},
+        needs_literature_search=True, needs_l1_extraction=True, needs_coverage_check=True,
+    )

@@ -6,8 +6,10 @@ from typing import Any, Protocol
 
 from pydantic import Field
 
-from code_engine.query.intent import ResearchIntent, parse_research_intent
-from code_engine.query.seed_triples import SeedResearchTriple, build_seed_triples
+from code_engine.encoder.models import SemanticIntakeResult, SemanticSearchConcept, SemanticSeedTriple
+from code_engine.encoder.semantic_intake import run_semantic_intake
+from code_engine.query.intent import ResearchIntent, research_intent_from_semantic
+from code_engine.domain.models import default_domain_profiles
 from code_engine.schemas.models import CODEBaseModel
 
 
@@ -23,13 +25,20 @@ class JSONExtractionClient(Protocol):
 
 class ResearchIntakeResult(CODEBaseModel):
     research_intent: ResearchIntent
-    seed_triples: list[SeedResearchTriple] = Field(default_factory=list)
+    seed_triples: list[SemanticSeedTriple] = Field(default_factory=list)
     search_concepts: list[str] = Field(default_factory=list)
     recommended_domains: list[str] = Field(default_factory=list)
     negative_filters: list[str] = Field(default_factory=list)
     ambiguities: list[str] = Field(default_factory=list)
     parser_mode: str = "deterministic_fallback"
     api_calls_made: int = 0
+    semantic_mode: str = "deterministic_degraded"
+    semantic_confidence: float = 0.0
+    requires_manual_review: bool = True
+    semantic_warnings: list[str] = Field(default_factory=list)
+    recommended_search_queries: list[str] = Field(default_factory=list)
+    semantic_search_concepts: list[SemanticSearchConcept] = Field(default_factory=list)
+    semantic_intake: dict[str, Any] = Field(default_factory=dict)
 
 
 def parse_research_intake(
@@ -37,34 +46,23 @@ def parse_research_intake(
     *,
     llm_client: JSONExtractionClient | None = None,
     use_api: bool = False,
+    execute: bool | None = None,
+    model_name: str | None = None,
 ) -> ResearchIntakeResult:
-    fallback = parse_research_intent(raw_query)
-    if not use_api or llm_client is None:
-        concepts = list(dict.fromkeys(
-            fallback.primary_entities + fallback.secondary_entities
-            + fallback.mechanism_entities + fallback.outcome_entities
-            + ([fallback.disease_or_condition] if fallback.disease_or_condition else [])
-        ))
-        return ResearchIntakeResult(
-            research_intent=fallback,
-            seed_triples=build_seed_triples(fallback),
-            search_concepts=concepts,
-            recommended_domains=[fallback.domain_id],
-            negative_filters=["editorial", "retracted publication"],
-        )
-    payload = llm_client.extract_json(f"{INTAKE_SYSTEM_PROMPT}\nUser request: {raw_query}")
-    intent_data = {**fallback.model_dump(), **dict(payload.get("research_intent") or {})}
-    intent = ResearchIntent.model_validate(intent_data)
-    seeds = [SeedResearchTriple.model_validate(item) for item in payload.get("seed_triples", [])]
-    if not seeds:
-        seeds = build_seed_triples(intent)
+    # ``execute=None`` preserves the old direct-test client injection contract;
+    # workflow callers always pass an explicit execution decision.
+    active_execute = bool(use_api and llm_client is not None) if execute is None else execute
+    semantic = run_semantic_intake(raw_query, default_domain_profiles(), api=use_api, execute=active_execute, model_name=model_name, llm_client=llm_client)
+    intent = research_intent_from_semantic(semantic.research_intent)
     return ResearchIntakeResult(
-        research_intent=intent,
-        seed_triples=seeds,
-        search_concepts=list(payload.get("search_concepts") or []),
-        recommended_domains=list(payload.get("recommended_domains") or [intent.domain_id]),
-        negative_filters=list(payload.get("negative_filters") or []),
-        ambiguities=list(payload.get("ambiguities") or []),
-        parser_mode="llm_assisted",
-        api_calls_made=1,
+        research_intent=intent, seed_triples=semantic.seed_triples,
+        search_concepts=[item.text for item in semantic.search_concepts],
+        recommended_domains=[semantic.domain_routing.domain_id], negative_filters=semantic.negative_filters,
+        ambiguities=semantic.ambiguities, parser_mode="llm_assisted" if semantic.semantic_mode == "llm_semantic" else "deterministic_fallback",
+        api_calls_made=semantic.api_calls_made, semantic_mode=semantic.semantic_mode,
+        semantic_confidence=min(semantic.research_intent.confidence, semantic.domain_routing.confidence),
+        requires_manual_review=semantic.domain_routing.requires_manual_review,
+        semantic_warnings=list(dict.fromkeys(semantic.warnings + semantic.verification_warnings)),
+        recommended_search_queries=semantic.recommended_search_queries,
+        semantic_search_concepts=semantic.search_concepts, semantic_intake=semantic.model_dump(),
     )

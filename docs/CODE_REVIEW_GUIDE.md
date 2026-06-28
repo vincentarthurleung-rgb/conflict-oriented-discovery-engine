@@ -129,3 +129,5 @@ Review `docs/LEGACY_CODE_POLICY.md` and
 # Workflow review checks
 
 Review new workflow paths for run-local artifacts, step-level external-call accounting, explicit API/network gates, DomainProfile propagation, non-evidence seed triples, and persisted failures. A partial report is a valid output. ValidationRouter must not manufacture a supported verdict.
+
+For semantic intake, reject Python keyword classifiers added to the main path. Domain semantics belong in the Scientific Encoder; deterministic code may validate allowed IDs, sanitize content, enforce schema/evidence boundaries, and provide generic degraded fallback only. Verify that uncertain execute runs block by default.

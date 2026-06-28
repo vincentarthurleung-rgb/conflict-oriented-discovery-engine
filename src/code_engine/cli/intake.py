@@ -31,8 +31,8 @@ def run_intake_workflow(
     if execute and api and active_llm is None:
         from code_engine.extraction.deepseek_client import DeepSeekClient
         active_llm = DeepSeekClient()
-    intake = parse_research_intake(query, llm_client=active_llm, use_api=execute and api)
-    domain_profile = default_domain_router().resolve(intake.research_intent.domain_id)
+    intake = parse_research_intake(query, llm_client=active_llm, use_api=execute and api, execute=execute)
+    domain_profile = default_domain_router().get_or_default(intake.research_intent.domain_id)
     search_plan = build_literature_search_plan(
         intake.research_intent,
         seed_triples=intake.seed_triples,
@@ -41,6 +41,7 @@ def run_intake_workflow(
         use_llm=execute and api,
         output_root=root,
         write_outputs=True,
+        semantic_intake=intake.semantic_intake,
     )
     acquisition = execute_acquisition_plan(
         search_plan, repository_root=root, execute=execute,

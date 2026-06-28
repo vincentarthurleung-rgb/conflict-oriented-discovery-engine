@@ -68,3 +68,5 @@ historical domain-profile metadata invalidate reuse by default.
 # Production orchestration
 
 `python -m code_engine.cli.run --query "..."` is the recommended natural-language entry point. It defaults to dry-run/no-API/no-network and writes a resumable RunState. LLM/scientific encoders encode; deterministic modules adjudicate. Legacy Stage scripts remain debug entry points.
+
+Semantic intake is LLM-first and emits structured intent, DomainRoutingDecision, search concepts, planning queries, and seed triples. Deterministic rules only verify schema/domain legality, sanitize queries, enforce the evidence boundary, and provide a deliberately weak no-API fallback. Search queries and seed triples are never evidence.

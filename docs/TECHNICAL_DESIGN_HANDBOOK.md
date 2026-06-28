@@ -193,3 +193,5 @@ candidate proposer is disabled and cannot select final canonical entities.
 # Workflow orchestration boundary
 
 `code_engine.workflow` owns sequencing, RunState persistence, isolation, resume, and permission gates. Scientific formulas remain in their layer modules. `code_engine.cli.run` is the main entry point; Stage scripts are retained for legacy/debug use.
+
+`code_engine.encoder` owns LLM-first semantic encoding and format-only repair. `semantic_verifier` is deterministic and non-semantic. DomainRouter is a DomainProfile registry/validator. The legacy deterministic parsers and configuration-backed keyword router are degraded compatibility boundaries, not production semantic classifiers.

@@ -1,0 +1,10 @@
+{
+  "warning": "degraded_domain_keyword_fallback_used",
+  "routes": [
+    {"domain_id": "clinical_outcome", "terms": ["clinical", "trial", "efficacy", "safety", "remission", "response rate", "treatment-resistant", "临床", "疗效", "缓解率"]},
+    {"domain_id": "drug_target_binding", "terms": ["binding", "affinity", " ki ", "ic50", "ec50", "antagonist", "agonist", "blockade", "receptor blockade", "结合", "阻断"]},
+    {"domain_id": "protein_interaction", "terms": ["protein interaction", "protein-protein", "ppi", "ligand receptor"]},
+    {"domain_id": "pathway_biology", "terms": ["pathway", "signaling cascade", "通路"]},
+    {"domain_id": "neuropharmacology", "terms": ["ketamine", "esketamine", "氯胺酮", "艾司氯胺酮", "depression", "抑郁", "bdnf", "mtor", "ampa", "nmda"]}
+  ]
+}

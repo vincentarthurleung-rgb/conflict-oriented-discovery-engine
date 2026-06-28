@@ -32,9 +32,13 @@ def run_workflow(
     query: str = "", run_dir: Path | None = None, until: str = "report", execute: bool = False,
     api: bool = False, network: bool = False, max_papers: int | None = None,
     resume: Path | None = None, allow_legacy: bool = False,
+    allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
+    semantic_llm_client=None,
 ) -> RunState:
     if until not in STEP_ORDER:
         raise WorkflowConfigurationError(f"Unknown --until step: {until}")
+    if not 0.0 <= semantic_confidence_threshold <= 1.0:
+        raise WorkflowConfigurationError("semantic confidence threshold must be between 0 and 1")
     root = _repository_root()
     if resume:
         directory = Path(resume).resolve()
@@ -88,7 +92,7 @@ def run_workflow(
                 update_step_status(state, name, result_status, summary={"partial": any(item.status in {"blocked", "failed", "pending"} for key, item in state.steps.items() if key != "report")}, input_refs=report_inputs, output_refs=[str(directory / "final_report.md"), str(directory / "artifacts" / "final_report.json")])
                 record_artifact(state, "final_report_markdown", directory / "final_report.md")
             else:
-                result = STEP_RUNNERS[name](query=state.query, run_dir=directory, repository_root=root, execute=execute, api=bool(execute and api), network=bool(execute and network), max_papers=state.max_papers, allow_legacy=allow_legacy)
+                result = STEP_RUNNERS[name](query=state.query, run_dir=directory, repository_root=root, execute=execute, api=bool(execute and api), network=bool(execute and network), max_papers=state.max_papers, allow_legacy=allow_legacy, allow_uncertain_intake=allow_uncertain_intake, semantic_confidence_threshold=semantic_confidence_threshold, semantic_llm_client=semantic_llm_client)
                 for artifact_name, artifact_path in result.artifacts.items():
                     record_artifact(state, artifact_name, artifact_path)
                 state.counts.update(result.counts)
@@ -99,9 +103,14 @@ def run_workflow(
                 if name == "intake":
                     for field in ("domain_id", "subdomain_id", "domain_profile_id", "prompt_profile_id", "entity_registry_profile", "validator_profile_id"):
                         setattr(state, field, result.summary.get(field))
+                    state.semantic_mode = result.summary.get("semantic_mode")
+                    state.semantic_confidence = result.summary.get("semantic_confidence")
+                    state.requires_manual_review = bool(result.summary.get("requires_manual_review"))
             save_run_state(state, directory)
             render_run_report(state, directory)
             save_run_state(state, directory)
+            if name == "intake" and state.steps[name].status == "blocked":
+                break
         blocked = any(record.status == "blocked" for record in state.steps.values())
         mark_run_completed(state, partial=bool(execute and (until != "report" or blocked)))
         state.summary["runtime_data_status"] = "partial" if blocked else ("executed" if execute else "planned")

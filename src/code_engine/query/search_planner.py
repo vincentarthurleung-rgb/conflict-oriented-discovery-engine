@@ -15,6 +15,8 @@ from code_engine.query.seed_triples import SeedResearchTriple
 from code_engine.domain.models import DomainProfile
 from code_engine.domain.router import default_domain_router
 from code_engine.schemas.models import CODEBaseModel
+from code_engine.encoder.models import SemanticIntakeResult
+from code_engine.encoder.semantic_verifier import sanitize_semantic_query
 
 
 class LiteratureSearchQuery(CODEBaseModel):
@@ -60,6 +62,10 @@ class LiteratureSearchPlan(CODEBaseModel):
     prompt_profile_id: str = "general_biomedical_l1_v2"
     validator_profile_id: str = "general_validation"
     source_domain_profile: dict[str, Any] = Field(default_factory=dict)
+    query_generation_mode: str = "deterministic_fallback"
+    sanitizer_warnings: list[str] = Field(default_factory=list)
+    semantic_confidence: float = 0.0
+    manual_review_required: bool = False
 
 
 def sanitize_query(query: str) -> tuple[str, list[str]]:
@@ -108,15 +114,47 @@ def build_literature_search_plan(
     candidate_papers: list[dict[str, Any]] | None = None,
     output_root: str | Path = ".",
     write_outputs: bool = False,
+    semantic_intake: SemanticIntakeResult | dict[str, Any] | None = None,
 ) -> LiteratureSearchPlan:
     profile = domain_profile or default_domain_router().resolve(intent.domain_id) or default_domain_router().route_text(intent.raw_user_input)
     primary = intent.primary_entities[0] if intent.primary_entities else intent.primary_entity
     disease = intent.disease_or_condition
     seed_ids = [item.triple_id for item in seed_triples or []]
     primary_texts, secondary_texts, mechanism_texts, comparison_texts, clinical_texts = [], [], [], [], []
-    if primary and disease:
+    semantic = SemanticIntakeResult.model_validate(semantic_intake) if isinstance(semantic_intake, dict) else semantic_intake
+    query_generation_mode = "deterministic_fallback"
+    sanitizer_warnings: list[str] = [
+        warning for warning in (semantic.verification_warnings if semantic else [])
+        if "query" in warning
+    ]
+    if semantic and semantic.recommended_search_queries:
+        query_generation_mode = "llm_semantic" if semantic.semantic_mode == "llm_semantic" else "deterministic_fallback"
+        for candidate in semantic.recommended_search_queries:
+            cleaned, item_warnings = sanitize_semantic_query(candidate)
+            sanitizer_warnings.extend(item_warnings)
+            if cleaned:
+                primary_texts.append(cleaned)
+    elif semantic:
+        # Domain-agnostic fallback composition only.
+        semantic_intent = semantic.research_intent
+        primaries = semantic_intent.primary_entities or semantic_intent.intervention_entities
+        diseases = semantic_intent.disease_or_condition
+        outcomes = semantic_intent.outcome_entities
+        mechanisms = semantic_intent.mechanism_entities
+        if primaries and (outcomes or diseases):
+            primary_texts.append(" ".join([primaries[0], *(outcomes[:1] or diseases[:1])]))
+        if primaries and mechanisms:
+            mechanism_texts.append(f"{primaries[0]} {mechanisms[0]}")
+        if diseases and semantic_intent.intervention_entities:
+            primary_texts.append(f"{diseases[0]} {semantic_intent.intervention_entities[0]}")
+        if len(semantic_intent.comparison_entities) >= 2:
+            comparison_texts.append(" ".join(semantic_intent.comparison_entities[:2]))
+        if not (primary_texts or mechanism_texts or comparison_texts):
+            primary_texts.extend(item.text for item in semantic.search_concepts[:3])
+    elif primary and disease:
+        # Legacy direct-call compatibility path. New workflow calls pass semantic_intake.
         primary_texts += [f"{primary} {disease}", f"{primary} antidepressant response"]
-    if profile.domain_id == "neuropharmacology" and primary == "ketamine" and disease == "depression":
+    if semantic is None and profile.domain_id == "neuropharmacology" and primary == "ketamine" and disease == "depression":
         mechanism_texts += [
             "ketamine BDNF depression",
             "ketamine NMDA receptor antidepressant",
@@ -135,7 +173,7 @@ def build_literature_search_plan(
             f"{left} {right} antidepressant response comparison",
         ]
         primary_texts.append(f"{left} {right} {disease} comparison")
-    if profile.domain_id == "drug_target_binding":
+    if semantic is None and profile.domain_id == "drug_target_binding":
         subject = primary or "drug"
         target = intent.mechanism_entities[0] if intent.mechanism_entities else "target receptor"
         mechanism_texts += [
@@ -143,16 +181,16 @@ def build_literature_search_plan(
             f"{subject} receptor antagonist agonist modulator",
             f"{subject} {target} ChEMBL DrugBank BindingDB",
         ]
-    if profile.domain_id == "clinical_outcome":
+    if semantic is None and profile.domain_id == "clinical_outcome":
         subject = primary or "intervention"
         condition = disease or "treatment-resistant depression"
         clinical_texts += [
             f"{subject} {condition} randomized controlled trial efficacy safety",
             f"{subject} {condition} response remission adverse events",
         ]
-    if profile.domain_id == "pathway_biology":
+    if semantic is None and profile.domain_id == "pathway_biology":
         mechanism_texts.append(f"{primary or 'biomedical'} pathway activation mechanism")
-    if profile.domain_id == "protein_interaction":
+    if semantic is None and profile.domain_id == "protein_interaction":
         mechanism_texts.append(f"{primary or 'protein'} protein interaction ligand receptor")
     for triple in seed_triples or []:
         mechanism_texts.append(f"{triple.subject} {triple.object} mechanism")
@@ -192,7 +230,10 @@ def build_literature_search_plan(
         search_profile_id=profile.search_profile_id,
         prompt_profile_id=profile.prompt_profile_id,
         validator_profile_id=profile.validator_profile_id,
-        source_domain_profile=profile.to_dict(),
+        source_domain_profile=profile.to_dict(), query_generation_mode=query_generation_mode,
+        sanitizer_warnings=list(dict.fromkeys(sanitizer_warnings)),
+        semantic_confidence=min(semantic.research_intent.confidence, semantic.domain_routing.confidence) if semantic else intent.confidence,
+        manual_review_required=semantic.domain_routing.requires_manual_review if semantic else False,
     )
     if write_outputs:
         root = Path(output_root)

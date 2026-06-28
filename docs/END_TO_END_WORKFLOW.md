@@ -10,6 +10,8 @@ python -m code_engine.cli.run \
   --dry-run --no-api --no-network --until report
 ```
 
+This no-API mode is fully operational but semantically degraded. The Scientific Encoder is the primary natural-language path when `--execute --api` is explicit. Low-confidence execute runs stop after intake unless `--allow-uncertain-intake` is supplied; dry-runs continue to a sanitized search plan.
+
 Execution and external access are independent permissions. `--execute` never enables API or network access. Use `--execute --api` for configured LLM extraction or `--execute --network` for configured literature acquisition. Resume is also deny-by-default:
 
 ```bash

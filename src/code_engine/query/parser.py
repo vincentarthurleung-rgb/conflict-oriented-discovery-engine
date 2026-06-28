@@ -1,4 +1,7 @@
-"""Rule-based bilingual parser for local research queries."""
+"""Legacy rule-based query parser retained for degraded compatibility only.
+
+New natural-language intake uses :mod:`code_engine.encoder.semantic_intake`.
+"""
 
 from __future__ import annotations
 
