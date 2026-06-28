@@ -1,6 +1,7 @@
 """Null validator for hypotheses with no external coverage."""
 
 from .base import AbstractValidator
+from code_engine.schemas.validation import ValidationQuestion, ValidationResult
 
 
 class NullValidator(AbstractValidator):
@@ -10,6 +11,16 @@ class NullValidator(AbstractValidator):
         return True
 
     def validate(self, hypothesis: dict) -> dict:
+        if isinstance(hypothesis, ValidationQuestion):
+            return ValidationResult(
+                hypothesis_id=hypothesis.hypothesis_id,
+                validator_name=self.name,
+                domain_id=hypothesis.domain_id,
+                validator_profile_id=hypothesis.validator_profile_id,
+                validation_status="no_coverage",
+                coverage_status="none",
+                limitations=["No applicable validator coverage for this question."],
+            )
         return {
             "hypothesis_id": hypothesis.get("hypothesis_id", "UNKNOWN"),
             "validator": self.name,

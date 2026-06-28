@@ -12,6 +12,7 @@ import os
 from typing import Dict
 
 from .base import AbstractValidator
+from code_engine.schemas.validation import ValidationQuestion, ValidationResult
 
 
 UNRESPONSIVE_Z_THRESHOLD = 0.50
@@ -20,6 +21,10 @@ MIN_PEDIGREE_VOTE_THRESHOLD = 0.60
 
 class CuratedOmicsValidator(AbstractValidator):
     name = "CuratedOmicsValidator"
+    supported_domains = ("neuropharmacology",)
+    supported_relation_types = ("drug_gene_expression", "pathway_expression")
+    supported_entity_types = ("compound", "gene", "protein", "pathway")
+    required_resources = ("curated_omics_registry",)
 
     def __init__(
         self,
@@ -57,6 +62,8 @@ class CuratedOmicsValidator(AbstractValidator):
         return tokens[1].strip().upper() if len(tokens) >= 2 else ""
 
     def can_validate(self, hypothesis: dict) -> bool:
+        if isinstance(hypothesis, ValidationQuestion):
+            return AbstractValidator.can_validate(self, hypothesis)
         return self._target_entity(hypothesis) in self.registry
 
     def _resolve_anchor_gene(self, entity_profile: dict) -> str:
@@ -70,6 +77,26 @@ class CuratedOmicsValidator(AbstractValidator):
         )
 
     def validate(self, hypothesis: dict) -> dict:
+        if isinstance(hypothesis, ValidationQuestion):
+            if not self.registry:
+                return ValidationResult(
+                    hypothesis_id=hypothesis.hypothesis_id,
+                    validator_name=self.name,
+                    domain_id=hypothesis.domain_id,
+                    validator_profile_id=hypothesis.validator_profile_id,
+                    validation_status="external_index_not_configured",
+                    coverage_status="none",
+                    limitations=["Curated omics registry is not configured."],
+                )
+            return ValidationResult(
+                hypothesis_id=hypothesis.hypothesis_id,
+                validator_name=self.name,
+                domain_id=hypothesis.domain_id,
+                validator_profile_id=hypothesis.validator_profile_id,
+                validation_status="no_coverage",
+                coverage_status="curated_registry",
+                limitations=["Question-level curated lookup requires a mapped registry anchor."],
+            )
         h_id = hypothesis.get("hypothesis_id", "UNKNOWN")
         target_entity = self._target_entity(hypothesis)
         if target_entity not in self.registry:

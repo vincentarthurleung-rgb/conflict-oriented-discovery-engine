@@ -11,14 +11,14 @@ class L1PromptCompilerIntegrationTests(unittest.TestCase):
             cache_path="definitely_missing_cache.json",
         )
         self.assertEqual(plan["domain_id"], "neuropharmacology")
-        self.assertEqual(plan["prompt_profile_id"], "neuropharmacology")
+        self.assertEqual(plan["prompt_profile_id"], "neuropharmacology_l1_v2")
         self.assertIn("behavioral_assay", plan["context_slots"])
         self.assertIn("oxygen_condition", plan["context_slots"])
 
     def test_general_biomedical_is_default(self):
         plan = build_l1_dry_run_plan("A generic biomedical statement.", cache_path="missing.json")
         self.assertEqual(plan["domain_id"], "general_biomedical")
-        self.assertEqual(plan["prompt_profile_id"], "general_biomedical")
+        self.assertEqual(plan["prompt_profile_id"], "general_biomedical_l1_v2")
 
     def test_compiled_prompt_hash_is_stable(self):
         kwargs = {"paper_id": "P", "chunk_id": "c", "cache_path": "missing.json"}

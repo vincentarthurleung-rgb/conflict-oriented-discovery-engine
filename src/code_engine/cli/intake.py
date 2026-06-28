@@ -12,6 +12,7 @@ from code_engine.extraction.l1_extractor import execute_l1_extraction
 from code_engine.preprocessing.payload_builder import build_payloads_for_downloads
 from code_engine.query.intake import parse_research_intake
 from code_engine.query.search_planner import build_literature_search_plan
+from code_engine.domain.router import default_domain_router
 
 
 def run_intake_workflow(
@@ -31,9 +32,11 @@ def run_intake_workflow(
         from code_engine.extraction.deepseek_client import DeepSeekClient
         active_llm = DeepSeekClient()
     intake = parse_research_intake(query, llm_client=active_llm, use_api=execute and api)
+    domain_profile = default_domain_router().resolve(intake.research_intent.domain_id)
     search_plan = build_literature_search_plan(
         intake.research_intent,
         seed_triples=intake.seed_triples,
+        domain_profile=domain_profile,
         llm_client=active_llm,
         use_llm=execute and api,
         output_root=root,
@@ -47,11 +50,18 @@ def run_intake_workflow(
     chunks = build_payloads_for_downloads(acquisition["downloaded_papers"], root) if execute and network else []
     l1 = execute_l1_extraction(
         chunks, repository_root=str(root), execute=execute, api=api,
-        client=active_llm, domain=intake.research_intent.domain_id,
+        client=active_llm, domain_profile=domain_profile,
     ) if chunks else {"chunks_reused": [], "chunks_extracted": [], "extraction_needed": [], "errors": [], "api_calls_made": 0}
     report = {
         "intent_id": intake.research_intent.intent_id,
         "parsed_intent": intake.research_intent.model_dump(),
+        "domain_profile": domain_profile.to_dict(),
+        "domain_id": domain_profile.domain_id,
+        "subdomain_id": domain_profile.subdomain_id,
+        "prompt_profile_id": domain_profile.prompt_profile_id,
+        "entity_registry_profile": domain_profile.entity_registry_profile,
+        "validator_profile_id": domain_profile.validator_profile_id,
+        "preferred_validators": list(domain_profile.preferred_validators),
         "seed_triples": [item.model_dump() for item in intake.seed_triples],
         "search_queries": [item.model_dump() for item in search_plan.pubmed_queries + search_plan.pmc_queries],
         "candidate_papers": acquisition["candidate_papers"],
@@ -75,6 +85,10 @@ def run_intake_workflow(
     md_path.write_text(
         "# Intake Run Report\n\n"
         f"- Intent: {intake.research_intent.research_goal}\n"
+        f"- Domain: {domain_profile.domain_id} / {domain_profile.subdomain_id}\n"
+        f"- Prompt profile: {domain_profile.prompt_profile_id}\n"
+        f"- Registry profile: {domain_profile.entity_registry_profile}\n"
+        f"- Validator profile: {domain_profile.validator_profile_id}\n"
         f"- Seed triples (not evidence): {len(intake.seed_triples)}\n"
         f"- Search queries: {len(report['search_queries'])}\n"
         f"- Downloaded papers: {len(report['downloaded_papers'])}\n"

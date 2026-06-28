@@ -7,6 +7,7 @@ from typing import Any
 from code_engine.domain.prompt_compiler import compile_l1_prompt
 from code_engine.domain.prompt_registry import default_prompt_registry
 from code_engine.domain.router import default_domain_router
+from code_engine.domain.models import DomainProfile
 from code_engine.extraction.llm_cache import compute_chunk_hash, load_llm_cache_index
 from code_engine.extraction.llm_cache import record_cached_extraction
 from code_engine.extraction.policy import (
@@ -31,6 +32,7 @@ def build_l1_dry_run_plan(
     chunk_id: str = "chunk_0",
     chunk_index: int = 0,
     domain: str | None = None,
+    domain_profile: DomainProfile | None = None,
     auto_domain: bool = False,
     prompt_profile: str | None = None,
     prompt_version: str = "2.0",
@@ -43,17 +45,16 @@ def build_l1_dry_run_plan(
     """Compile prompt metadata, fingerprint, and cache decision without API use."""
 
     router = default_domain_router()
-    selected_domain = domain
-    if not selected_domain and auto_domain:
-        selected_domain = router.route_text(chunk_text).name
-    selected_domain = selected_domain or "general_biomedical"
-    profile_id = prompt_profile or (
-        "neuropharmacology" if selected_domain == "neuropharmacology"
-        else "general_biomedical"
-    )
+    selected_profile = domain_profile or (router.resolve(domain) if domain else None)
+    if selected_profile is None and auto_domain:
+        selected_profile = router.route_text(chunk_text)
+    selected_profile = selected_profile or router.resolve("general_biomedical")
+    selected_domain = selected_profile.domain_id
+    profile_id = prompt_profile or selected_profile.prompt_profile_id
     profile = default_prompt_registry().get_profile(profile_id)
     if prompt_profile and not domain and not auto_domain:
-        selected_domain = profile.domain_id
+        selected_profile = router.resolve(profile.domain_id) or selected_profile
+        selected_domain = selected_profile.domain_id
     if profile.domain_id != selected_domain:
         raise ValueError(
             f"Prompt profile {profile.profile_id} belongs to {profile.domain_id}, "
@@ -77,6 +78,8 @@ def build_l1_dry_run_plan(
         extraction_policy_version=DEFAULT_L1_POLICY_VERSION,
         model_name=model_name,
         model_family=model_family,
+        subdomain_id=selected_profile.subdomain_id or "",
+        compiled_prompt_hash=compiled.compiled_prompt_hash,
     )
     cache_key = compute_l1_cache_key(fingerprint)
     cache = load_llm_cache_index(cache_path)
@@ -91,6 +94,10 @@ def build_l1_dry_run_plan(
         "chunk_id": chunk_id,
         "chunk_hash": chunk_hash,
         "domain_id": selected_domain,
+        "subdomain_id": selected_profile.subdomain_id,
+        "domain_profile_id": selected_profile.profile_id,
+        "selected_domain_profile": selected_profile.to_dict(),
+        "validator_profile_id": selected_profile.validator_profile_id,
         "prompt_profile_id": profile.profile_id,
         "prompt_version": compiled.prompt_version,
         "compiled_prompt_hash": compiled.compiled_prompt_hash,
@@ -103,6 +110,7 @@ def build_l1_dry_run_plan(
         "max_retries": sampling.max_retries,
         "experimental_temperature_schedule": sampling.experimental_temperature_schedule,
         "context_slots": list(profile.context_slots),
+        "required_context_slots": list(selected_profile.required_context_slots),
         "prompt_fingerprint": fingerprint.model_dump(),
         "cache_key": cache_key,
         "cache_compatible": cache_key in cache.get("entries", {}),
@@ -127,6 +135,7 @@ def execute_l1_extraction(
     api: bool = False,
     client: Any | None = None,
     domain: str | None = None,
+    domain_profile: DomainProfile | None = None,
     auto_domain: bool = True,
     prompt_profile: str | None = None,
     prompt_version: str = "2.0",
@@ -153,7 +162,7 @@ def execute_l1_extraction(
         chunk_id = str(chunk.get("chunk_id") or f"chunk_{index}")
         plan = build_l1_dry_run_plan(
             text, paper_id=paper_id, chunk_id=chunk_id, chunk_index=index,
-            domain=domain, auto_domain=auto_domain, prompt_profile=prompt_profile,
+            domain=domain, domain_profile=domain_profile, auto_domain=auto_domain, prompt_profile=prompt_profile,
             prompt_version=prompt_version, schema_version=schema_version,
             model_name=model_name, model_family=model_family,
             experimental_temperature_schedule=experimental_temperature_schedule,
@@ -186,6 +195,10 @@ def execute_l1_extraction(
                     claim_id=str(raw_claim.get("claim_id") or f"{paper_id}_{chunk_id}_{claim_index}"),
                     paper_id=paper_id, chunk_id=chunk_id, chunk_hash=plan["chunk_hash"],
                     domain_id=plan["domain_id"], prompt_profile_id=plan["prompt_profile_id"],
+                    subdomain_id=plan.get("subdomain_id") or "",
+                    domain_profile_id=plan["domain_profile_id"],
+                    validator_profile_id=plan["validator_profile_id"],
+                    required_context_slots=plan["required_context_slots"],
                     prompt_version=prompt_version, output_schema_version=schema_version,
                     extraction_policy_version=plan["extraction_policy_version"],
                     model_name=model_name, model_family=model_family,
@@ -195,6 +208,7 @@ def execute_l1_extraction(
                     relation_raw=str(raw_claim.get("relation_raw") or ""),
                     relation_family=str(raw_claim.get("relation_family") or "unknown"),
                     direct_relation_sign=sign,
+                    therapeutic_direction=raw_claim.get("therapeutic_direction", "unknown"),
                     object_raw=str(raw_claim.get("object_raw") or raw_claim.get("object") or ""),
                     object_type=str(raw_claim.get("object_type") or "unknown"),
                     evidence_sentence=str(raw_claim.get("evidence_sentence") or ""),
@@ -207,7 +221,7 @@ def execute_l1_extraction(
                     subject_span=str(raw_claim.get("subject_span") or ""), relation_span=str(raw_claim.get("relation_span") or ""), object_span=str(raw_claim.get("object_span") or ""),
                     context_spans=dict(raw_claim.get("context_spans") or {}),
                     **{field: str(raw_claim.get(field) or context.get(field) or "") for field in (
-                        "species", "sex", "age", "disease_model", "brain_region", "cell_type", "treatment", "dose", "route", "treatment_duration", "time_after_treatment", "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype", "oxygen_condition", "localization"
+                        "species", "sex", "age", "disease_model", "brain_region", "cell_type", "treatment", "dose", "route", "treatment_duration", "time_after_treatment", "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype", "oxygen_condition", "localization", "drug", "target", "binding_affinity", "assay_type", "experimental_system", "population", "intervention", "comparator", "trial_phase", "sample_size", "response_rate", "remission_rate", "adverse_events", "timepoint"
                     )},
                 )
                 suffix = "" if claim_index == 0 else f"_{claim_index}"

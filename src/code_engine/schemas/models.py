@@ -71,6 +71,11 @@ class NormalizedEntity(CODEBaseModel):
     candidates: List[Dict[str, Any]] = Field(default_factory=list)
     mapping_method: str = "uppercase_fallback"
     confidence: float = 0.3
+    domain_id: str = "general_biomedical"
+    entity_registry_profile: str = "general_biomedical_registry"
+    resolver_policy_id: str = "conservative_resolver_v2"
+    domain_specific_resolution_used: bool = False
+    domain_resolution_warnings: List[str] = Field(default_factory=list)
 
 
 class ConflictEdge(CODEBaseModel):

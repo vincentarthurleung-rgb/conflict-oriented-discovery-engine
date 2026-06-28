@@ -35,6 +35,12 @@ provide comprehensive external ontology coverage. Future work includes online
 resolvers, ontology-backed identifier mapping, and human review of registry
 patches.
 
+`ResolverCascade` accepts `domain_id`, `entity_registry_profile`, and
+`resolver_policy_id` from L1 domain metadata. A missing domain-specific
+registry falls back to the general local registry with
+`domain_registry_missing_general_registry_used`; this is an audited resolution
+fallback, not validation success. L3 continues to key pairs by canonical ID.
+
 ## Identity Versus Biological Relation
 
 The resolver does not treat biological relationships as equality merges:

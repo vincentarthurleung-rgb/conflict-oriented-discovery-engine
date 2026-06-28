@@ -82,7 +82,12 @@ def execute_acquisition_plan(
     papers = manifest.setdefault("papers", {})
     existing_keys = set()
     for paper_id, metadata in papers.items():
-        existing_keys.update(_dedup_values({"paper_id": paper_id, "pmcid": paper_id if str(paper_id).startswith("PMC") else None, **metadata}))
+        existing_keys.update(_dedup_values({
+            "paper_id": paper_id,
+            "pmcid": paper_id if str(paper_id).startswith("PMC") else None,
+            "pmid": paper_id if str(paper_id).isdigit() else None,
+            **metadata,
+        }))
     selected_queries = []
     if source in {"pmc", "both"}:
         selected_queries.extend(plan.pmc_queries)

@@ -12,6 +12,8 @@ from pydantic import Field
 from code_engine.common.json_io import write_json
 from code_engine.query.intent import ResearchIntent
 from code_engine.query.seed_triples import SeedResearchTriple
+from code_engine.domain.models import DomainProfile
+from code_engine.domain.router import default_domain_router
 from code_engine.schemas.models import CODEBaseModel
 
 
@@ -30,7 +32,7 @@ class LiteratureSearchQuery(CODEBaseModel):
     expected_domain: str = "general_biomedical"
     from_seed_triples: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
-    expected_prompt_profile: str = "general_biomedical"
+    expected_prompt_profile: str = "general_biomedical_l1_v2"
 
 
 SearchQuery = LiteratureSearchQuery
@@ -52,6 +54,12 @@ class LiteratureSearchPlan(CODEBaseModel):
     candidate_papers: list[dict[str, Any]] = Field(default_factory=list)
     exclusion_terms: list[str] = Field(default_factory=list)
     priority: str = "normal"
+    domain_id: str = "general_biomedical"
+    subdomain_id: str | None = None
+    search_profile_id: str = "general_biomedical_search"
+    prompt_profile_id: str = "general_biomedical_l1_v2"
+    validator_profile_id: str = "general_validation"
+    source_domain_profile: dict[str, Any] = Field(default_factory=dict)
 
 
 def sanitize_query(query: str) -> tuple[str, list[str]]:
@@ -70,7 +78,7 @@ def _query(text: str, purpose: str, intent: ResearchIntent, *, source: str = "pu
     cleaned, warnings = sanitize_query(text)
     if not cleaned:
         return None
-    profile = "neuropharmacology" if intent.domain_id == "neuropharmacology" else "general_biomedical"
+    profile = intent.prompt_profile_id
     return LiteratureSearchQuery(
         query_id=hashlib.sha256(f"{source}|{cleaned}".encode()).hexdigest()[:16],
         query_string=cleaned,
@@ -94,29 +102,32 @@ def build_literature_search_plan(
     intent: ResearchIntent,
     *,
     seed_triples: list[SeedResearchTriple] | None = None,
+    domain_profile: DomainProfile | None = None,
     llm_client: Any | None = None,
     use_llm: bool = False,
     candidate_papers: list[dict[str, Any]] | None = None,
     output_root: str | Path = ".",
     write_outputs: bool = False,
 ) -> LiteratureSearchPlan:
+    profile = domain_profile or default_domain_router().resolve(intent.domain_id) or default_domain_router().route_text(intent.raw_user_input)
     primary = intent.primary_entities[0] if intent.primary_entities else intent.primary_entity
     disease = intent.disease_or_condition
     seed_ids = [item.triple_id for item in seed_triples or []]
     primary_texts, secondary_texts, mechanism_texts, comparison_texts, clinical_texts = [], [], [], [], []
     if primary and disease:
         primary_texts += [f"{primary} {disease}", f"{primary} antidepressant response"]
-    if primary == "ketamine" and disease == "depression":
+    if profile.domain_id == "neuropharmacology" and primary == "ketamine" and disease == "depression":
         mechanism_texts += [
             "ketamine BDNF depression",
             "ketamine NMDA receptor antidepressant",
-            "ketamine AMPA receptor antidepressant",
+            "ketamine AMPA receptor BDNF mTOR depression",
             "ketamine mTOR BDNF depression",
             "ketamine synaptic plasticity antidepressant",
             "ketamine depression behavioral assay",
         ]
         secondary_texts.append("esketamine depression mechanism")
         clinical_texts.append("ketamine depression clinical trial antidepressant response")
+        mechanism_texts.append("ketamine chronic stress mouse prefrontal cortex BDNF")
     if intent.needs_comparison and len(intent.comparison_entities) >= 2:
         left, right = intent.comparison_entities[:2]
         comparison_texts += [
@@ -124,6 +135,25 @@ def build_literature_search_plan(
             f"{left} {right} antidepressant response comparison",
         ]
         primary_texts.append(f"{left} {right} {disease} comparison")
+    if profile.domain_id == "drug_target_binding":
+        subject = primary or "drug"
+        target = intent.mechanism_entities[0] if intent.mechanism_entities else "target receptor"
+        mechanism_texts += [
+            f"{subject} {target} binding affinity Ki IC50",
+            f"{subject} receptor antagonist agonist modulator",
+            f"{subject} {target} ChEMBL DrugBank BindingDB",
+        ]
+    if profile.domain_id == "clinical_outcome":
+        subject = primary or "intervention"
+        condition = disease or "treatment-resistant depression"
+        clinical_texts += [
+            f"{subject} {condition} randomized controlled trial efficacy safety",
+            f"{subject} {condition} response remission adverse events",
+        ]
+    if profile.domain_id == "pathway_biology":
+        mechanism_texts.append(f"{primary or 'biomedical'} pathway activation mechanism")
+    if profile.domain_id == "protein_interaction":
+        mechanism_texts.append(f"{primary or 'protein'} protein interaction ligand receptor")
     for triple in seed_triples or []:
         mechanism_texts.append(f"{triple.subject} {triple.object} mechanism")
     warnings = []
@@ -157,6 +187,12 @@ def build_literature_search_plan(
         priority="high" if intent.time_scope == "current" or intent.needs_comparison else "normal",
         candidate_papers=candidate_papers or [],
         warnings=list(dict.fromkeys(warnings)),
+        domain_id=profile.domain_id,
+        subdomain_id=profile.subdomain_id,
+        search_profile_id=profile.search_profile_id,
+        prompt_profile_id=profile.prompt_profile_id,
+        validator_profile_id=profile.validator_profile_id,
+        source_domain_profile=profile.to_dict(),
     )
     if write_outputs:
         root = Path(output_root)

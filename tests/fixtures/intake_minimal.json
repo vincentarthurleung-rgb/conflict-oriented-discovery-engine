@@ -30,7 +30,8 @@
             "l1_5_output": "",
             "l1_record": {
               "paper_id": "P1", "chunk_id": "c1", "chunk_hash": "hash1", "l1_output_path": "runs/r1/l1/P1_c1.json",
-              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "2.0",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology_l1_v2", "prompt_version": "2.0",
+              "subdomain_id": "antidepressant_mechanism", "domain_profile_id": "neuropharmacology", "validator_profile_id": "neuropharmacology_validation", "compiled_prompt_hash": "compiled_hash_v2",
               "output_schema_version": "l1_v2_evidence_mechanism_schema", "extraction_policy_version": "evidence_grounded_v2",
               "model_name": "deepseek-v4-pro", "model_family": "deepseek", "processed_at": "2026-01-01"
             }
@@ -40,7 +41,8 @@
             "chunk_hash": "hash2",
             "l1_record": {
               "paper_id": "P1", "chunk_id": "c2", "chunk_hash": "hash2", "l1_output_path": "runs/r1/l1/P1_c2.json",
-              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "1.0",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology_l1_v2", "prompt_version": "1.0",
+              "subdomain_id": "antidepressant_mechanism", "domain_profile_id": "neuropharmacology", "validator_profile_id": "neuropharmacology_validation", "compiled_prompt_hash": "compiled_hash_v1",
               "output_schema_version": "l1_v2_evidence_mechanism_schema", "extraction_policy_version": "evidence_grounded_v2",
               "model_name": "deepseek-v4-pro", "model_family": "deepseek"
             }
@@ -50,7 +52,8 @@
             "chunk_hash": "hash3",
             "l1_record": {
               "paper_id": "P1", "chunk_id": "c3", "chunk_hash": "hash3", "l1_output_path": "runs/r1/l1/P1_c3.json",
-              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "2.0",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology_l1_v2", "prompt_version": "2.0",
+              "subdomain_id": "antidepressant_mechanism", "domain_profile_id": "neuropharmacology", "validator_profile_id": "neuropharmacology_validation", "compiled_prompt_hash": "compiled_hash_schema_v1",
               "output_schema_version": "l1_output_v1", "extraction_policy_version": "evidence_grounded_v2",
               "model_name": "deepseek-v4-pro", "model_family": "deepseek"
             }
@@ -60,7 +63,8 @@
             "chunk_hash": "new_hash4",
             "l1_record": {
               "paper_id": "P1", "chunk_id": "c4", "chunk_hash": "old_hash4", "l1_output_path": "runs/r1/l1/P1_c4.json",
-              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "2.0",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology_l1_v2", "prompt_version": "2.0",
+              "subdomain_id": "antidepressant_mechanism", "domain_profile_id": "neuropharmacology", "validator_profile_id": "neuropharmacology_validation", "compiled_prompt_hash": "compiled_hash_old_chunk",
               "output_schema_version": "l1_v2_evidence_mechanism_schema", "extraction_policy_version": "evidence_grounded_v2",
               "model_name": "deepseek-v4-pro", "model_family": "deepseek"
             }

@@ -1,0 +1,12 @@
+{
+  "profile_id": "clinical_outcome_l1_v2",
+  "domain_id": "clinical_outcome",
+  "prompt_version": "2.0",
+  "output_schema_version": "l1_v2_evidence_mechanism_schema",
+  "extraction_policy_version": "evidence_grounded_v2",
+  "context_slots": [
+    "population", "intervention", "comparator", "clinical_outcome",
+    "trial_phase", "sample_size", "response_rate", "remission_rate",
+    "adverse_events", "timepoint"
+  ]
+}

@@ -20,8 +20,40 @@ DANGEROUS_WARNINGS = {
 
 
 class ResolverCascade:
-    def __init__(self, registry: LocalBiomedicalRegistry | None = None, *, registry_path: str | Path = DEFAULT_REGISTRY_PATH, allow_fallback: bool = False):
-        self.registry = registry or LocalBiomedicalRegistry(registry_path, allow_fallback=allow_fallback)
+    def __init__(
+        self,
+        registry: LocalBiomedicalRegistry | None = None,
+        *,
+        registry_path: str | Path = DEFAULT_REGISTRY_PATH,
+        allow_fallback: bool = False,
+        domain_id: str = "general_biomedical",
+        entity_registry_profile: str = "general_biomedical_registry",
+        resolver_policy_id: str = "conservative_resolver_v2",
+    ):
+        self.domain_id = domain_id
+        self.entity_registry_profile = entity_registry_profile
+        self.resolver_policy_id = resolver_policy_id
+        self.domain_resolution_warnings: list[str] = []
+        requested = Path(registry_path)
+        domain_specific_used = False
+        if registry is None and entity_registry_profile != "general_biomedical_registry":
+            profile_path = Path("configs/normalization/registries") / f"{entity_registry_profile}.json"
+            if profile_path.exists():
+                requested = profile_path
+                domain_specific_used = True
+            else:
+                self.domain_resolution_warnings.append("domain_registry_missing_general_registry_used")
+        self.registry = registry or LocalBiomedicalRegistry(requested, allow_fallback=allow_fallback)
+        self.domain_specific_resolution_used = domain_specific_used
+
+    def _domain_metadata(self) -> dict[str, Any]:
+        return {
+            "domain_id": self.domain_id,
+            "entity_registry_profile": self.entity_registry_profile,
+            "resolver_policy_id": self.resolver_policy_id,
+            "domain_specific_resolution_used": self.domain_specific_resolution_used,
+            "domain_resolution_warnings": list(self.domain_resolution_warnings),
+        }
 
     @staticmethod
     def _danger_warnings(surface: str, candidate: NormalizationCandidate) -> list[str]:
@@ -47,6 +79,7 @@ class ResolverCascade:
                 match_type="uppercase_fallback",
                 decision_reason="empty_invalid_or_placeholder_input",
                 warnings=lexical.warnings,
+                **self._domain_metadata(),
             )
         candidates = self.registry.lookup(lexical.raw_text, lexical.normalized_surface)
         expected_type = str((context or {}).get("expected_entity_type") or "")
@@ -70,6 +103,7 @@ class ResolverCascade:
                 decision_reason="no_registry_candidate_uppercase_retained_for_traceability_only",
                 allow_high_confidence_graph_use=False,
                 warnings=[*lexical.warnings, *self.registry.warnings, "uppercase_fallback_low_confidence"],
+                **self._domain_metadata(),
             )
         top = candidates[0]
         close_candidates = [candidate for candidate in candidates if top.score - candidate.score <= 0.05]
@@ -88,6 +122,7 @@ class ResolverCascade:
                 decision_reason="multiple_close_candidates_or_non_exact_match_requires_review",
                 allow_high_confidence_graph_use=False,
                 warnings=list(dict.fromkeys([*lexical.warnings, *self.registry.warnings, *danger, *top.warnings])),
+                **self._domain_metadata(),
             )
         return NormalizationDecision(
             raw_text=lexical.raw_text,
@@ -106,9 +141,9 @@ class ResolverCascade:
             decision_reason="unique_exact_local_registry_candidate",
             allow_high_confidence_graph_use=True,
             warnings=list(dict.fromkeys([*lexical.warnings, *self.registry.warnings, *top.warnings])),
+            **self._domain_metadata(),
         )
 
 
-def resolve_entity(raw_text: str, context: dict[str, Any] | None = None, allow_fallback: bool = False) -> NormalizationDecision:
-    return ResolverCascade(allow_fallback=allow_fallback).resolve_entity(raw_text, context=context, allow_fallback=allow_fallback)
-
+def resolve_entity(raw_text: str, context: dict[str, Any] | None = None, allow_fallback: bool = False, **resolver_kwargs: Any) -> NormalizationDecision:
+    return ResolverCascade(allow_fallback=allow_fallback, **resolver_kwargs).resolve_entity(raw_text, context=context, allow_fallback=allow_fallback)

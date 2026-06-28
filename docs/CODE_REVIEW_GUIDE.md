@@ -79,6 +79,11 @@ New code and reports should prefer current fields and treat legacy fields as com
 - Missing validation coverage must remain `Unresolved_No_Coverage`, not passed.
 - Reports should avoid over-strong validation language.
 - The curated omics registry must not be described as full LINCS validation.
+- Domain routing selects configuration only; it must not assign scientific truth.
+- Seed triples must remain planning-only and absent from EvidenceRecord/L3.
+- Old L1 without domain-profile metadata must remain incompatible by default.
+- ValidationRouter returns a plan only; support/contradiction comes from validators.
+- Missing validator indexes return structured no coverage/not configured results.
 - Query modes must remain offline by default and report `api_calls_made=0`.
 - Insufficient coverage must not generate an unsupported hypothesis.
 - `update` currently means dry-run planning only, not paper retrieval or LLM execution.
@@ -110,6 +115,8 @@ New code and reports should prefer current fields and treat legacy fields as com
 - Historical replay is still a skeleton benchmark.
 - Full ontology lookup is not implemented.
 - Full LINCS parsing and validation are not implemented.
+- Domain-specific entity registries beyond the general local registry are not populated.
+- External validation plugins remain skeletons until local indexes are configured.
 - Full downstream L1.5-L8 orchestration from intake is not yet automatic.
 - Query candidate-paper search is local metadata matching, not an online literature search.
 - The knowledge store is local JSON/in-memory indexing, not a graph database.
@@ -119,3 +126,6 @@ New code and reports should prefer current fields and treat legacy fields as com
 
 Review `docs/LEGACY_CODE_POLICY.md` and
 `cleanup_reports/legacy_code_scan.md` before removing compatibility code.
+# Workflow review checks
+
+Review new workflow paths for run-local artifacts, step-level external-call accounting, explicit API/network gates, DomainProfile propagation, non-evidence seed triples, and persisted failures. A partial report is a valid output. ValidationRouter must not manufacture a supported verdict.

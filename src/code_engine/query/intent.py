@@ -10,8 +10,7 @@ from typing import Literal
 from pydantic import Field
 
 from code_engine.common.json_io import write_json
-from code_engine.domain.models import DomainProfile
-from code_engine.domain.router import DomainRouter
+from code_engine.domain.router import default_domain_router
 from code_engine.normalization.normalizer import normalize_entity
 from code_engine.schemas.models import CODEBaseModel
 
@@ -70,6 +69,13 @@ class ResearchIntent(CODEBaseModel):
     domain_id: str = "unknown"
     research_goal: str = ""
     needs_l1_extraction: bool = True
+    subdomain_id: str | None = None
+    domain_profile_id: str = "general_biomedical"
+    prompt_profile_id: str = "general_biomedical_l1_v2"
+    entity_registry_profile: str = "general_biomedical_registry"
+    validator_profile_id: str = "general_validation"
+    domain_confidence: float = 0.0
+    domain_warnings: list[str] = Field(default_factory=list)
 
 
 def _extract_entities(raw: str) -> list[str]:
@@ -83,18 +89,9 @@ def _extract_entities(raw: str) -> list[str]:
     return list(dict.fromkeys(canonical for _, canonical in sorted(hits)))
 
 
-def _select_domain(entities: list[str]) -> tuple[list[str], str]:
-    candidates = []
-    if any(entity in DRUG_ENTITIES | MECHANISM_ENTITIES for entity in entities):
-        candidates.append("neuropharmacology")
-    if any(entity in DISEASE_ENTITIES for entity in entities):
-        candidates.append("psychiatry")
-    router = DomainRouter([
-        DomainProfile("neuropharmacology", aliases=("ketamine", "NMDA receptor"), prompt_id="neuropharmacology"),
-        DomainProfile("psychiatry", aliases=("depression",), prompt_id="psychiatry_outcomes_v2"),
-    ])
-    selected = router.resolve(candidates[0]).name if candidates and router.resolve(candidates[0]) else "unknown"
-    return candidates, selected
+def _select_domain(raw: str):
+    profile = default_domain_router().route_text(raw)
+    return [profile.domain_id], profile
 
 
 def parse_research_intent(
@@ -146,7 +143,8 @@ def parse_research_intent(
     if disease == "depression" and (mechanism or primary in DRUG_ENTITIES) and "antidepressant response" not in outcomes:
         outcomes.append("antidepressant response")
     secondary = [entity for entity in entities if entity not in {primary, disease} and entity not in mechanisms]
-    domains, selected_domain = _select_domain(entities)
+    domains, domain_profile = _select_domain(raw)
+    selected_domain = domain_profile.domain_id
     warnings = []
     if intent_type == "unknown":
         warnings.append("unable_to_resolve_research_intent")
@@ -188,6 +186,13 @@ def parse_research_intent(
         domain_id=selected_domain,
         research_goal=task_goal,
         needs_l1_extraction=intent_type != "unknown",
+        subdomain_id=domain_profile.subdomain_id,
+        domain_profile_id=domain_profile.profile_id,
+        prompt_profile_id=domain_profile.prompt_profile_id,
+        entity_registry_profile=domain_profile.entity_registry_profile,
+        validator_profile_id=domain_profile.validator_profile_id,
+        domain_confidence=0.9 if domain_profile.domain_id != "general_biomedical" else 0.5,
+        domain_warnings=list(domain_profile.warnings),
     )
     if write_output:
         write_json(Path(output_root) / f"data/query/intent_{intent.intent_id}.json", intent.model_dump())

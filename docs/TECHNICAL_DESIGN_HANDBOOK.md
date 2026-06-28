@@ -61,6 +61,22 @@ The old pass-by-fallback behavior is removed from the new validation path. New o
 
 Skeleton validators exist for LINCS, GEO, DrugBank, and ChEMBL. They do not perform real external validation yet.
 
+Validation is planned through `DomainAdaptiveValidationRouter` and executed
+through `ValidatorRegistry` plugins. CuratedOmics is one curated/demo plugin,
+not the complete validation layer. The router cannot mark support; the
+deterministic aggregator combines plugin results. GEO, binding, pathway,
+interaction, and clinical plugins return structured not-configured/no-coverage
+results until local indexes exist.
+
+## Domain-Adaptive Workflow
+
+A first-class `DomainProfile` propagates from ResearchIntent through search,
+L1 prompt/context selection, L2 registry/policy selection, and validation
+planning. The six current profiles are rules-based and deterministic.
+Scientific encoders remain limited to parsing, extraction, and suggestion;
+L2/L3/L5 status logic and scoring remain deterministic. See
+`DOMAIN_ADAPTIVE_WORKFLOW.md` and `DOMAIN_ADAPTIVE_VALIDATION.md`.
+
 ## Current Limits
 
 - The omics index is not full LINCS.
@@ -174,3 +190,6 @@ Layer 3 thresholds are unchanged. Observation and conflict traceability now
 retain normalization graph-use permission so a later filtering policy can
 separate registry-resolved evidence from unresolved legacy terms. The optional
 candidate proposer is disabled and cannot select final canonical entities.
+# Workflow orchestration boundary
+
+`code_engine.workflow` owns sequencing, RunState persistence, isolation, resume, and permission gates. Scientific formulas remain in their layer modules. `code_engine.cli.run` is the main entry point; Stage scripts are retained for legacy/debug use.

@@ -213,13 +213,27 @@ contract are compatible. Actual API calls remain zero.
 
 See `docs/NATURAL_LANGUAGE_INTAKE_DESIGN.md`.
 
+## Domain-Adaptive Scientific Workflow
+
+`DomainRouter` now emits a complete `DomainProfile` for six supported domain
+families. The profile controls literature-search templates, the L1 prompt and
+required contexts, the L2 registry/resolver policy, and L5 validator planning.
+Downstream normalization, conflict classification, result aggregation, and
+scientific scoring remain deterministic. Scientific encoders may extract or
+suggest structured information but do not adjudicate truth.
+
+CuratedOmics is one curated/demo validator plugin, not the whole validation
+layer and not full LINCS. Unconfigured external validator skeletons return
+structured no-coverage/not-configured results. See
+`docs/DOMAIN_ADAPTIVE_WORKFLOW.md` and `docs/DOMAIN_ADAPTIVE_VALIDATION.md`.
+
 ## L1 v2 Extraction Consistency
 
 L1 prompt planning uses fixed `temperature=0.0` and `top_p=1.0`; chunk index
-does not change default sampling. Domain Router selects `general_biomedical` or
-`neuropharmacology`, Prompt Compiler records a stable prompt hash, and complete
+does not change default sampling. Domain Router selects one of six domain
+profiles, Prompt Compiler records a stable prompt hash, and complete
 fingerprints determine cache compatibility. Old L1 files without fingerprint
-metadata are not reusable unless explicitly allowed.
+and domain-profile metadata are not reusable unless explicitly allowed.
 
 `L1ExtractedClaim` is EvidenceRecord-ready and retains fields needed for a
 MechanismEdge after L2 normalization. `python -m code_engine.cli.extract
@@ -274,3 +288,6 @@ python -m code_engine.cli.normalize --term "norketamine" --show-candidates
 ```
 
 See `docs/BIOMEDICAL_ENTITY_NORMALIZATION.md`.
+# Recommended workflow entry point
+
+Use `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report` for new research runs. It creates an isolated `runs/<run_id>/` RunState and report. Dry-run, no-API, and no-network are defaults; execution permissions must be explicit. See [End-to-End Workflow](docs/END_TO_END_WORKFLOW.md) and [RunState and Reproducibility](docs/RUN_STATE_AND_REPRODUCIBILITY.md). Stage scripts remain legacy/debug entry points.

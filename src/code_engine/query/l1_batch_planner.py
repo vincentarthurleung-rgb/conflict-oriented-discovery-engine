@@ -64,7 +64,7 @@ def _paper_chunks(paper: dict[str, Any]) -> list[dict[str, Any]]:
 REQUIRED_RECORD_FINGERPRINT_FIELDS = {
     "paper_id", "chunk_id", "chunk_hash", "domain_id", "prompt_profile_id",
     "prompt_version", "output_schema_version", "extraction_policy_version",
-    "model_name", "model_family",
+    "model_name", "model_family", "domain_profile_id", "compiled_prompt_hash",
 }
 
 

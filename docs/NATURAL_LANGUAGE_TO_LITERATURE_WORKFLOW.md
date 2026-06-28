@@ -53,3 +53,18 @@ under `data/processed/l1/` for Stage3.
 Failures are structured and do not create synthetic claims. Stage3 accepts both
 formats and retains claim IDs, fingerprints, evidence sentences, refined
 contexts, and EvidenceRecord-ready fields.
+
+## Domain-Adaptive Propagation
+
+The selected `DomainProfile` is retained in the search plan.
+Neuropharmacology, binding, pathway, protein-interaction, and clinical profiles
+use distinct deterministic query templates. Any LLM-proposed query still passes
+through the sanitizer. Seed triples remain query-planning metadata and are
+never retrieval evidence.
+
+L1 claims retain domain/subdomain, domain and validator profile IDs, required
+and missing context slots, and domain warnings. Domain changes or missing
+historical domain-profile metadata invalidate reuse by default.
+# Production orchestration
+
+`python -m code_engine.cli.run --query "..."` is the recommended natural-language entry point. It defaults to dry-run/no-API/no-network and writes a resumable RunState. LLM/scientific encoders encode; deterministic modules adjudicate. Legacy Stage scripts remain debug entry points.

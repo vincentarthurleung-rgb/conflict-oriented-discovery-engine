@@ -1,0 +1,11 @@
+{
+  "profile_id": "protein_interaction_l1_v2",
+  "domain_id": "protein_interaction",
+  "prompt_version": "2.0",
+  "output_schema_version": "l1_v2_evidence_mechanism_schema",
+  "extraction_policy_version": "evidence_grounded_v2",
+  "context_slots": [
+    "species", "cell_type", "assay_type", "experimental_system",
+    "localization"
+  ]
+}

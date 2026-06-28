@@ -1,6 +1,7 @@
 """Versioned local prompt profiles for deterministic L1 planning."""
 
 from code_engine.domain.models import PromptProfile
+from code_engine.domain.models import default_domain_profiles
 
 
 GENERAL_CONTEXT_SLOTS = (
@@ -30,6 +31,33 @@ Text chunk:
 {chunk_text}
 """
 
+DOMAIN_INSTRUCTIONS = {
+    "neuropharmacology": """
+Domain focus: preserve species, sex, age, disease model, brain region, cell type,
+genotype, treatment, dose, route, duration, post-treatment time, assay/readout,
+behavioral assay, clinical outcome, receptor target, and pathway. Distinguish
+BDNF, mTOR, AMPAR, and NMDAR mechanisms; do not infer an unstated mechanism.
+""",
+    "drug_target_binding": """
+Domain focus: preserve drug, target receptor/protein, binding affinity, Ki, IC50,
+EC50, antagonist/agonist/modulator role, assay type, species, and experimental
+system. Do not convert functional modulation into direct binding without text.
+""",
+    "clinical_outcome": """
+Domain focus: preserve population, intervention, comparator, outcome, trial
+phase, sample size, response rate, remission rate, adverse events, and timepoint.
+Do not infer efficacy from a study objective or protocol statement.
+""",
+    "pathway_biology": """
+Domain focus: preserve pathway identity, activation direction, upstream and
+downstream entities, perturbation, experimental system, assay, and timepoint.
+""",
+    "protein_interaction": """
+Domain focus: preserve both proteins, interaction type, directness, assay,
+species, experimental system, and interaction context.
+""",
+}
+
 
 class PromptRegistry:
     def __init__(self):
@@ -51,18 +79,19 @@ class PromptRegistry:
 
 def default_prompt_registry() -> PromptRegistry:
     registry = PromptRegistry()
-    registry.register_profile(PromptProfile(
-        profile_id="general_biomedical",
-        domain_id="general_biomedical",
-        version="2.0",
-        template=BASE_TEMPLATE,
-        context_slots=GENERAL_CONTEXT_SLOTS,
-    ))
-    registry.register_profile(PromptProfile(
-        profile_id="neuropharmacology",
-        domain_id="neuropharmacology",
-        version="2.0",
-        template=BASE_TEMPLATE,
-        context_slots=NEUROPHARMACOLOGY_CONTEXT_SLOTS,
-    ))
+    for domain in default_domain_profiles():
+        slots = domain.required_context_slots + domain.optional_context_slots
+        template = BASE_TEMPLATE + DOMAIN_INSTRUCTIONS.get(domain.domain_id, "")
+        registry.register_profile(PromptProfile(
+            profile_id=domain.prompt_profile_id,
+            domain_id=domain.domain_id,
+            version=domain.prompt_version,
+            template=template,
+            context_slots=slots or GENERAL_CONTEXT_SLOTS,
+            output_schema_version=domain.output_schema_version,
+            extraction_policy_version=domain.extraction_policy_version,
+        ))
+    # Legacy aliases remain readable, but new selection emits *_l1_v2 IDs.
+    registry.register_profile(PromptProfile("general_biomedical", "general_biomedical", "2.0", BASE_TEMPLATE, GENERAL_CONTEXT_SLOTS))
+    registry.register_profile(PromptProfile("neuropharmacology", "neuropharmacology", "2.0", BASE_TEMPLATE, NEUROPHARMACOLOGY_CONTEXT_SLOTS))
     return registry

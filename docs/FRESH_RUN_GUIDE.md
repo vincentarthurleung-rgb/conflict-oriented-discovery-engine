@@ -31,7 +31,8 @@ outputs into `runs/<run_id>/` until every stage supports a run root directly.
    `python scripts/stage0_5_fetch_abstracts.py` to rebuild the raw download cache.
 3. Run the reviewed Stage1 preprocessing wrapper.
 4. Compile L1 v2 extraction inputs through Domain Router, Prompt Registry, and
-   Prompt Compiler. Do not reuse prompt-v1 outputs as current graph evidence.
+   Prompt Compiler. Record the full DomainProfile. Do not reuse prompt-v1 or
+   domain-metadata-free outputs as current graph evidence.
 5. Run deterministic normalization, conflict, context, hypothesis, validation,
    and reporting stages after inspecting each command with `--help` where
    available.
@@ -75,3 +76,12 @@ by default and return explicit insufficient-coverage status in a clean workspace
 
 `--legacy-source` is not part of a fresh run. It exists only for an explicit
 compatibility audit and causes query reports to declare `using_legacy_data: true`.
+
+Before validation, preview the domain-specific plan with
+`python -m code_engine.cli.validate_hypothesis --hypothesis-file <path>
+--domain <domain> --relation-type <relation> --dry-run`. Missing local external
+indexes are expected to report structured no coverage; they must not be treated
+as scientific support.
+# Unified entry point
+
+Prefer `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report`. RunState isolates artifacts and records every warning, error, and external-call count. Resume never restores API/network permission implicitly. Partial reports are normal when runtime inputs are absent.

@@ -87,3 +87,16 @@ prefers canonical IDs while preserving normalized names for compatibility.
 Unknown uppercase fallback stays in the audit but is excluded from
 high-confidence conflict statistics by default. Synonym-only behavior requires
 `--legacy-synonym-only`; the optional LLM candidate proposer remains disabled.
+
+## Domain-Adaptive Control Path
+
+The deterministic `DomainRouter` now returns a full `DomainProfile` rather than
+only a label. That contract drives search templates, L1 prompt/context
+selection, L2 registry/policy selection, and validation routing. It does not
+change L3 conflict rules or permit an LLM to assign validation status or
+scientific scores. See `DOMAIN_ADAPTIVE_WORKFLOW.md`.
+
+Validation is plugin-oriented. CuratedOmics remains a compatible curated/demo
+plugin; other external-resource validators are structured skeletons until
+local indexes are configured. Missing resources produce no coverage, not
+validation success. See `DOMAIN_ADAPTIVE_VALIDATION.md`.

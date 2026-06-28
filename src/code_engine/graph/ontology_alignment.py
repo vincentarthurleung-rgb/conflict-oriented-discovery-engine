@@ -13,6 +13,7 @@ from code_engine.normalization.lexical import normalize_lexical_surface
 from code_engine.normalization.models import NormalizationDecision
 from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
 from code_engine.normalization.resolver import ResolverCascade
+from code_engine.domain.router import default_domain_router
 
 
 def _decision_to_entity(decision: NormalizationDecision) -> NormalizedEntity:
@@ -40,6 +41,11 @@ def _decision_to_entity(decision: NormalizationDecision) -> NormalizedEntity:
         candidates=[candidate.model_dump() for candidate in decision.candidates],
         mapping_method=decision.match_type,
         confidence=decision.confidence,
+        domain_id=decision.domain_id,
+        entity_registry_profile=decision.entity_registry_profile,
+        resolver_policy_id=decision.resolver_policy_id,
+        domain_specific_resolution_used=decision.domain_specific_resolution_used,
+        domain_resolution_warnings=decision.domain_resolution_warnings,
     )
 
 
@@ -148,16 +154,28 @@ def extract_normalized_observations(
                     if sign not in (-1, 0, 1):
                         continue
 
+                    fingerprint = dict(node.get("prompt_fingerprint") or {})
+                    node_domain = str(node.get("domain_id") or fingerprint.get("domain_id") or "general_biomedical")
+                    domain_profile = default_domain_router().resolve(node_domain)
+                    node_resolver = active_resolver
+                    if resolver_cascade and domain_profile and (
+                        node_resolver is None or node_resolver.domain_id != domain_profile.domain_id
+                    ):
+                        node_resolver = ResolverCascade(
+                            domain_id=domain_profile.domain_id,
+                            entity_registry_profile=domain_profile.entity_registry_profile,
+                            resolver_policy_id=domain_profile.resolver_policy_id,
+                        )
                     sub_norm = clean_semantic_token(
                         sub_raw,
                         synonym_map,
-                        resolver=active_resolver,
+                        resolver=node_resolver,
                         legacy_synonym_only=legacy_synonym_only,
                     )
                     obj_norm = clean_semantic_token(
                         obj_raw,
                         synonym_map,
-                        resolver=active_resolver,
+                        resolver=node_resolver,
                         legacy_synonym_only=legacy_synonym_only,
                     )
                     audit.extend([
@@ -209,6 +227,9 @@ def extract_normalized_observations(
                             "object_normalization_warnings": obj_norm.warnings,
                             "normalization_quality": normalization_quality,
                             "exclude_from_high_confidence_conflict": not graph_usable,
+                            "domain_id": node_domain,
+                            "entity_registry_profile": sub_norm.entity_registry_profile,
+                            "resolver_policy_id": sub_norm.resolver_policy_id,
                             "relation_raw": node.get("relation_raw", ""),
                             "relation_sign": sign,
                             "evidence_sentence": evidence,

@@ -20,14 +20,17 @@ identity, and reports what would be extracted. DeepSeek is called only when both
 
 ## Domain And Prompt Profiles
 
-`general_biomedical` is the default. With `--auto-domain`, supported ketamine,
-depression, BDNF, NMDA, AMPA, and mTOR terms select `neuropharmacology`. The
+`general_biomedical` is the default. `--auto-domain` can select
+`neuropharmacology`, `drug_target_binding`, `pathway_biology`,
+`clinical_outcome`, or `protein_interaction`. The
 neuropharmacology profile includes species, sex, age, disease model, brain
 region, cell type, treatment, dose, route, duration, post-treatment time,
 readout, behavioral assay, clinical outcome, genotype, oxygen, and localization.
 
-Prompt compilation records domain ID, profile ID/version, compiled prompt hash,
-output schema version, and extraction policy version.
+Binding prompts preserve affinity/assay terms; clinical prompts preserve PICO,
+trial, outcome, safety, and timepoint terms. Prompt compilation records domain
+and subdomain IDs, profile ID/version, compiled prompt hash, output schema
+version, and extraction policy version.
 
 ## Fingerprint And Reuse
 
@@ -36,7 +39,8 @@ profile ID/version, output schema and extraction policy versions, model name,
 and model family. Every field participates in the cache key. Model-name changes
 are incompatible unless same-family reuse is explicitly enabled in planning.
 
-Historical L1 without complete fingerprint metadata is incompatible by default;
+Historical L1 without complete fingerprint and domain-profile metadata is
+incompatible by default;
 `--allow-legacy-l1-reuse` is an explicit audit-marked exception.
 
 ## Output Contract

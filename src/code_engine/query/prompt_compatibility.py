@@ -34,6 +34,8 @@ class L1PromptFingerprint(CODEBaseModel):
     extraction_policy_version: str
     model_name: str
     model_family: str
+    subdomain_id: str = ""
+    compiled_prompt_hash: str = ""
     fingerprint_hash: str
 
 
@@ -49,6 +51,10 @@ class ChunkProcessingRecord(CODEBaseModel):
     extraction_policy_version: str
     model_name: str
     model_family: str = "unknown"
+    subdomain_id: str = ""
+    domain_profile_id: str = ""
+    validator_profile_id: str = ""
+    compiled_prompt_hash: str = ""
     fingerprint_hash: str = ""
     prompt_fingerprint: dict[str, Any] = Field(default_factory=dict)
     processed_at: str = ""
@@ -71,9 +77,9 @@ FINGERPRINT_FIELDS = (
     "extraction_policy_version", "model_name", "model_family",
 )
 L1_FINGERPRINT_FIELDS = (
-    "paper_id", "chunk_id", "chunk_hash", "domain_id", "prompt_profile_id",
+    "paper_id", "chunk_id", "chunk_hash", "domain_id", "subdomain_id", "prompt_profile_id",
     "prompt_version", "output_schema_version", "extraction_policy_version",
-    "model_name", "model_family",
+    "model_name", "model_family", "compiled_prompt_hash",
 )
 
 
@@ -108,6 +114,8 @@ def build_l1_prompt_fingerprint(
     extraction_policy_version: str,
     model_name: str,
     model_family: str,
+    subdomain_id: str = "",
+    compiled_prompt_hash: str = "",
 ) -> L1PromptFingerprint:
     """Build the canonical chunk-level L1 extraction identity."""
 
@@ -122,6 +130,8 @@ def build_l1_prompt_fingerprint(
         "extraction_policy_version": extraction_policy_version,
         "model_name": model_name,
         "model_family": model_family,
+        "subdomain_id": subdomain_id,
+        "compiled_prompt_hash": compiled_prompt_hash,
     }
     digest = hashlib.sha256(
         json.dumps(values, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -188,6 +198,13 @@ def compare_prompt_compatibility(
 
     if not record.l1_output_path:
         return decision(False, "missing_l1_output", False)
+    if not record.domain_profile_id or not record.compiled_prompt_hash:
+        return decision(
+            False,
+            "missing_domain_profile_metadata",
+            False,
+            ["legacy_l1_record_requires_reextraction"],
+        )
     chunk_same = required_chunk_hash is None or record.chunk_hash == required_chunk_hash
     if not chunk_same:
         return decision(False, "chunk_hash_changed", False)
@@ -211,7 +228,7 @@ def compare_prompt_compatibility(
 
 def build_required_fingerprint_for_intent(intent: ResearchIntent) -> PromptProfileFingerprint:
     domain = intent.selected_domain if intent.selected_domain != "unknown" else "general_biomedical"
-    profile = "neuropharmacology" if domain == "neuropharmacology" else "general_biomedical"
+    profile = intent.prompt_profile_id or f"{domain}_l1_v2"
     return build_prompt_fingerprint(
         domain_id=domain,
         prompt_profile_id=profile,

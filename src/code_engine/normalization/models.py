@@ -51,4 +51,8 @@ class NormalizationDecision(CODEBaseModel):
     decision_reason: str = ""
     allow_high_confidence_graph_use: bool = False
     warnings: list[str] = Field(default_factory=list)
-
+    domain_id: str = "general_biomedical"
+    entity_registry_profile: str = "general_biomedical_registry"
+    resolver_policy_id: str = "conservative_resolver_v2"
+    domain_specific_resolution_used: bool = False
+    domain_resolution_warnings: list[str] = Field(default_factory=list)
