@@ -1,0 +1,107 @@
+{
+  "protected_paths": [
+    {
+      "path": ".gitignore",
+      "bytes": 816
+    },
+    {
+      "path": "README.md",
+      "bytes": 10130
+    },
+    {
+      "path": "config",
+      "bytes": 36576
+    },
+    {
+      "path": "configs",
+      "bytes": 42961
+    },
+    {
+      "path": "data/metadata/global_manifest.json",
+      "bytes": 6177
+    },
+    {
+      "path": "data/metadata/literature_quality_audit.csv",
+      "bytes": 3381
+    },
+    {
+      "path": "docs",
+      "bytes": 40678
+    },
+    {
+      "path": "environment.yml",
+      "bytes": 4215
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 2633
+    },
+    {
+      "path": "scripts",
+      "bytes": 66940
+    },
+    {
+      "path": "src",
+      "bytes": 367403
+    },
+    {
+      "path": "tests/fixtures",
+      "bytes": 7947
+    }
+  ],
+  "planned_deletions": [
+    {
+      "path": "scripts/__pycache__",
+      "bytes": 3190
+    },
+    {
+      "path": "tests/__pycache__",
+      "bytes": 10528
+    },
+    {
+      "path": "src/pipelines/__pycache__",
+      "bytes": 11787
+    },
+    {
+      "path": "src/code_engine/graph/__pycache__",
+      "bytes": 31346
+    }
+  ],
+  "deleted_paths": [
+    {
+      "path": "scripts/__pycache__",
+      "bytes": 3190
+    },
+    {
+      "path": "tests/__pycache__",
+      "bytes": 10528
+    },
+    {
+      "path": "src/pipelines/__pycache__",
+      "bytes": 11787
+    },
+    {
+      "path": "src/code_engine/graph/__pycache__",
+      "bytes": 31346
+    }
+  ],
+  "planned_quarantine": [],
+  "quarantined_paths": [],
+  "skipped_paths": [],
+  "warnings": [],
+  "schema_version": "legacy_cleanup_audit_v1",
+  "generated_at": "2026-06-28T04:44:00.932418+00:00",
+  "mode": "apply",
+  "status": "cleanup_applied",
+  "next_commands": [
+    "python scripts/maintenance/cleanup_legacy_artifacts.py --dry-run",
+    "python scripts/maintenance/cleanup_legacy_artifacts.py --apply",
+    "python -m unittest discover -s tests"
+  ],
+  "current_clean_workspace_status": {
+    "clean": true,
+    "remaining_runtime_paths": [],
+    "manifest_retained": true,
+    "fixtures_retained": true
+  }
+}

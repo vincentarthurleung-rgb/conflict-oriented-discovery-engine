@@ -1,0 +1,64 @@
+{
+  "evidence": {
+    "evidence_id": "ev1",
+    "paper_id": "PMC1",
+    "sentence": "Ketamine increased BDNF in mouse hippocampus.",
+    "quote": "Ketamine increased BDNF",
+    "subject_span": "Ketamine",
+    "relation_span": "increased",
+    "object_span": "BDNF",
+    "statement_type": "direct_experimental_result",
+    "evidence_type": "animal_model",
+    "claim_role": "supports_edge",
+    "extraction_prompt_profile": "l1_v2_test",
+    "domain_id": "ketamine_depression",
+    "confidence": 0.9
+  },
+  "conflict_edge": {
+    "edge_id": "KETAMINE->BDNF",
+    "source": "KETAMINE",
+    "target": "BDNF",
+    "positive_count": 3,
+    "negative_count": 2,
+    "evidence_count": 5,
+    "independent_labs_count": 3,
+    "conflict_status": "conflicting",
+    "conflict_type": "Type I",
+    "context_attribution_score": 0.8,
+    "supporting_triples": ["t1", "t2", "t3"],
+    "contradicting_triples": ["t4", "t5"]
+  },
+  "hypothesis": {
+    "hypothesis_id": "H1",
+    "seed_pair": "KETAMINE -> BDNF",
+    "core_path": ["KETAMINE", "NMDAR", "MTOR", "BDNF"],
+    "separating_contexts": [{"axis": "species", "values": ["mouse", "human"]}],
+    "whitebox_traceability": [{"evidence_id": "ev1", "source_asset": "PMC1", "evidence_sentence": "Ketamine increased BDNF in mouse hippocampus.", "relation_sign": 1}],
+    "novelty_score": 0.6,
+    "feasibility_score": 0.7,
+    "significance_score": 0.8,
+    "global_ranking_score": 0.72
+  },
+  "validation": {
+    "hypothesis_id": "H1",
+    "status": "Unresolved_No_Coverage",
+    "coverage": "none"
+  },
+  "inventory": {
+    "papers": [{"paper_id": "PMC1", "year": 2024, "raw_available": false, "stage1_payload_available": false, "l1_extracted": false, "l1_5_refined": false}],
+    "duplicate_groups": []
+  },
+  "knowledge_store": {
+    "pairs": {"KETAMINE␟BDNF": {"subject": "KETAMINE", "object": "BDNF", "triple_ids": ["t1", "t2"]}},
+    "triples": [
+      {"triple_id": "t1", "subject": "KETAMINE", "object": "BDNF", "relation_sign": 1},
+      {"triple_id": "t2", "subject": "KETAMINE", "object": "BDNF", "relation_sign": -1}
+    ],
+    "conflict_edges": [{"edge_id": "KETAMINE->BDNF", "pair_key": "KETAMINE␟BDNF", "positive_count": 1, "negative_count": 1, "conflict_status": "conflicting", "conflict_type": "Type I"}],
+    "context_mentions": [{"triple_id": "t1", "axis": "species", "value": "mouse"}],
+    "validation_results": [{"hypothesis_id": "H1", "status": "Unresolved_No_Coverage", "coverage": "none"}],
+    "hypotheses": [{"hypothesis_id": "H1", "seed_pair": "KETAMINE -> BDNF", "core_path": ["KETAMINE", "NMDAR", "BDNF"]}],
+    "hypothesis_pairs": {"H1": "KETAMINE␟BDNF"},
+    "warnings": []
+  }
+}

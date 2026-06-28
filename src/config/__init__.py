@@ -1,21 +1,4 @@
-"""Configuration loading and section-level validation for C.O.D.E."""
+"""Legacy compatibility exports; prefer :mod:`code_engine.config`."""
 
-from .loader import (
-    DEFAULT_CONFIG_PATH,
-    FALLBACK_AUDIT_PATH,
-    ConfigValidationError,
-    PipelineConfig,
-    load_json_config,
-    load_pipeline_config,
-    write_fallback_audit,
-)
-
-__all__ = [
-    "DEFAULT_CONFIG_PATH",
-    "FALLBACK_AUDIT_PATH",
-    "ConfigValidationError",
-    "PipelineConfig",
-    "load_json_config",
-    "load_pipeline_config",
-    "write_fallback_audit",
-]
+from code_engine.config import *  # noqa: F401,F403
+from code_engine.config import __all__

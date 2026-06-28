@@ -16,6 +16,8 @@ from typing import Optional
 from src.config.loader import DEFAULT_CONFIG_PATH, load_pipeline_config
 from src.pipelines.conflict_discovery import build_conflict_graph
 from src.pipelines.ontology_alignment import extract_normalized_observations, write_normalization_audit
+from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH, LocalBiomedicalRegistry
+from code_engine.normalization.resolver import ResolverCascade
 
 
 L1_5_INPUT_DIR = "./data/processed/l1_5_refined"
@@ -44,6 +46,7 @@ def _write_summary_markdown(path: str, report: dict, config_path: str, fallback_
         f"- Config: `{config_path}`",
         f"- Fallback events: {len(fallback_events)}",
         f"- Total pairs evaluated: {report['total_pairs_evaluated']}",
+        f"- Low-confidence observations skipped: {report.get('skipped_low_confidence_observation_count', 0)}",
         "",
         "## Conflict Counts",
     ]
@@ -65,6 +68,10 @@ def execute_l2_l3_unified_pipeline(
     *,
     allow_fallback: bool = False,
     strict_config: bool = True,
+    resolver_cascade: bool = True,
+    legacy_synonym_only: bool = False,
+    include_low_confidence: bool = False,
+    entity_registry_path: str = str(DEFAULT_REGISTRY_PATH),
 ) -> None:
     """Load L1.5 data, normalize entities, discover conflicts, and write L3 outputs."""
 
@@ -79,18 +86,67 @@ def execute_l2_l3_unified_pipeline(
         required_modules=["ontology_alignment", "conflict_discovery", "context_attribution"],
     )
 
+    if legacy_synonym_only:
+        resolver_cascade = False
+    resolver_mode = "legacy_synonym_only" if legacy_synonym_only else "resolver_cascade"
+    resolver = None
+    active_registry_path = "not_used_in_legacy_synonym_only_mode"
+    if resolver_cascade:
+        registry = LocalBiomedicalRegistry(entity_registry_path, allow_fallback=allow_fallback)
+        resolver = ResolverCascade(registry)
+        active_registry_path = str(registry.path)
+    elif not legacy_synonym_only:
+        raise ValueError("Resolver cascade may only be disabled with --legacy-synonym-only")
+
+    print(f"[L2] Resolver mode: {resolver_mode}")
+    print(f"[L2] Entity registry: {active_registry_path}")
+
     observations, normalization_audit = extract_normalized_observations(
         L1_5_INPUT_DIR,
         synonym_map=config.synonym_map,
         forbidden_keywords=config.forbidden_object_keywords,
+        resolver=resolver,
+        resolver_cascade=resolver_cascade,
+        legacy_synonym_only=legacy_synonym_only,
+        registry_path=entity_registry_path,
     )
-    print(f"[L2] Normalized observations: {len(observations)}")
+    resolved_observations = sum(
+        obs.get("subject_normalization_status") == "resolved"
+        and obs.get("object_normalization_status") == "resolved"
+        for obs in observations
+    )
+    ambiguous_observations = sum(
+        "ambiguous" in {
+            obs.get("subject_normalization_status"),
+            obs.get("object_normalization_status"),
+        }
+        for obs in observations
+    )
+    unresolved_observations = sum(
+        "unresolved_fallback" in {
+            obs.get("subject_normalization_status"),
+            obs.get("object_normalization_status"),
+        }
+        for obs in observations
+    )
+    excluded_observations = sum(
+        bool(obs.get("exclude_from_high_confidence_conflict")) for obs in observations
+    )
+    print(f"[L2] Total observations: {len(observations)}")
+    print(f"[L2] Resolved observations: {resolved_observations}")
+    print(f"[L2] Ambiguous observations: {ambiguous_observations}")
+    print(f"[L2] Unresolved fallback observations: {unresolved_observations}")
+    print(
+        "[L2] Excluded low-confidence observations: "
+        f"{0 if include_low_confidence else excluded_observations}"
+    )
     write_normalization_audit(normalization_audit, L2_NORMALIZATION_AUDIT_PATH)
 
     legacy_graph, conflict_edges, context_attribution, report = build_conflict_graph(
         observations,
         latent_pool=config.latent_pool,
         thresholds=config.thresholds,
+        include_low_confidence=include_low_confidence,
     )
 
     _write_json(L3_GRAPH_PATH, legacy_graph)
@@ -103,6 +159,8 @@ def execute_l2_l3_unified_pipeline(
             **report,
             "config_path": config.source_path,
             "fallback_events": config.fallback_events,
+            "resolver_mode": resolver_mode,
+            "entity_registry_path": active_registry_path,
             "l2_l3_pipeline_status": "SUCCESS",
         },
     )
@@ -123,6 +181,25 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-fallback", action="store_true", help="Allow demo fallback config and write audit.")
     parser.add_argument("--strict-config", action="store_true", default=True, help="Fail if required config is missing.")
     parser.add_argument("--no-strict-config", dest="strict_config", action="store_false")
+    resolver_group = parser.add_mutually_exclusive_group()
+    resolver_group.add_argument(
+        "--resolver-cascade",
+        dest="resolver_cascade",
+        action="store_true",
+        default=True,
+        help="Use the type/relation-aware resolver cascade (default).",
+    )
+    resolver_group.add_argument(
+        "--legacy-synonym-only",
+        action="store_true",
+        help="Explicitly use the legacy synonym-map/uppercase normalizer.",
+    )
+    parser.add_argument(
+        "--include-low-confidence",
+        action="store_true",
+        help="Include unresolved/ambiguous observations in conflict statistics.",
+    )
+    parser.add_argument("--entity-registry-path", default=str(DEFAULT_REGISTRY_PATH))
     return parser
 
 
@@ -132,6 +209,10 @@ def main(argv: Optional[list[str]] = None) -> None:
         config_path=args.config_path,
         allow_fallback=args.allow_fallback,
         strict_config=args.strict_config,
+        resolver_cascade=args.resolver_cascade and not args.legacy_synonym_only,
+        legacy_synonym_only=args.legacy_synonym_only,
+        include_low_confidence=args.include_low_confidence,
+        entity_registry_path=args.entity_registry_path,
     )
 
 

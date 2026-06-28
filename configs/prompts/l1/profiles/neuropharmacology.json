@@ -1,0 +1,13 @@
+{
+  "profile_id": "neuropharmacology",
+  "domain_id": "neuropharmacology",
+  "prompt_version": "2.0",
+  "output_schema_version": "l1_v2_evidence_mechanism_schema",
+  "extraction_policy_version": "evidence_grounded_v2",
+  "context_slots": [
+    "species", "sex", "age", "disease_model", "brain_region", "cell_type",
+    "treatment", "dose", "route", "treatment_duration", "time_after_treatment",
+    "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype",
+    "oxygen_condition", "localization"
+  ]
+}

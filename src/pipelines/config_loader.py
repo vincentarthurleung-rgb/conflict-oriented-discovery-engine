@@ -1,6 +1,6 @@
 """Compatibility wrapper for the relocated config loader.
 
-New code should import from `src.config.loader`. This module remains so older
+New code should import from `code_engine.config.loader`. This module remains so older
 pipeline imports continue to work.
 """
 

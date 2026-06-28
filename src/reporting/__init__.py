@@ -1,13 +1,4 @@
-"""Report export helpers for C.O.D.E."""
+"""Legacy compatibility exports; prefer :mod:`code_engine.reporting`."""
 
-from .blueprint import build_report_blueprints, resolve_anchor_gene
-from .markdown import render_markdown_report
-from .ranking import compute_ranking_score, rank_hypotheses
-
-__all__ = [
-    "compute_ranking_score",
-    "rank_hypotheses",
-    "resolve_anchor_gene",
-    "build_report_blueprints",
-    "render_markdown_report",
-]
+from code_engine.reporting import *  # noqa: F401,F403
+from code_engine.reporting import __all__

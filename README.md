@@ -11,10 +11,10 @@ C.O.D.E. is an agent-assisted, conflict-oriented scientific discovery system for
 
 - Layer 0: Literature Acquisition via `scripts/stage0_fetch_pmc.py` and `scripts/stage0_5_fetch_abstracts.py`.
 - Layer 1: Scientific Fact Extraction via `scripts/stage2_l1_extract.py`.
-- Layer 2: Ontology Alignment via `src/pipelines/ontology_alignment.py`.
-- Layer 3: Conflict Discovery via `src/pipelines/conflict_discovery.py`.
-- Layer 4: Context Mining via `python -m src.pipelines.context_mining`.
-- Layer 5: Context Attribution via `src/pipelines/context_attribution.py`.
+- Layer 2: Ontology Alignment via `code_engine.graph.ontology_alignment`.
+- Layer 3: Conflict Discovery via `code_engine.graph.conflict_discovery`.
+- Layer 4: Context Mining via `python -m code_engine.graph.context_mining`.
+- Layer 5: Context Attribution via `code_engine.graph.context_attribution`.
 - Layer 6: Mechanism Graph Search via `scripts/stage6_l4_infer.py`.
 - Layer 7: External Validation via `scripts/stage7_l5_verify.py`.
 - Layer 8: Scientific Report Generation via `scripts/stage8_l6_results.py`.
@@ -22,19 +22,19 @@ C.O.D.E. is an agent-assisted, conflict-oriented scientific discovery system for
 ## Important Limits
 
 - The current omics registry is curated/demo scale and is not full LINCS validation.
-- Ontology alignment is a conservative MVP: alias map plus uppercase fallback.
-- LLM extraction still requires `DEEPSEEK_API_KEY` unless cached L1/L1.5 outputs are reused.
+- Ontology alignment uses a local curated resolver cascade; unknown terms remain low-confidence unresolved records.
+- L1 v2 is offline by default; API execution requires explicit `--execute --api`.
 - Agents generate configuration and critique only; they are not scientific judges.
 - Hypotheses with no validator coverage are `Unresolved_No_Coverage` and are not treated as passed.
 
 ## Current Clean Architecture Boundary
 
-- `scripts/` contains CLI wrappers and legacy compatibility entrypoints.
-- `src/pipelines/` contains core pipeline orchestration and deterministic processing.
-- `src/reporting/` contains report-export ranking, blueprint construction, and markdown rendering.
-- `src/validators/` contains validation plugins and validator skeletons.
+- `src/code_engine/` is the primary package and the starting point for new code.
+- `src.*` legacy namespaces re-export `code_engine.*` implementations.
+- `src/pipelines/stage*.py` retains legacy orchestration and API-dependent stages.
+- `scripts/` contains legacy compatibility entrypoints.
+- `configs/` is preferred; `config/schemas/` remains a legacy config path.
 - `src/agents/` is a config-generation/control plane; agents are not scientific judges and do not change final scores.
-- `src/evaluation/` contains benchmark scaffolding.
 - Legacy stage names remain for compatibility. New documentation explains the system as Layer 0-8 in `docs/STAGE_LAYER_MAPPING.md`.
 
 See also:
@@ -42,6 +42,15 @@ See also:
 - `docs/STAGE_LAYER_MAPPING.md`
 - `docs/ARTIFACT_POLICY.md`
 - `docs/CODE_REVIEW_GUIDE.md`
+- `docs/PACKAGE_ARCHITECTURE.md`
+
+Install the package in editable mode for development, or run commands directly
+from the repository checkout through the source-tree bootstrap:
+
+```bash
+python -m pip install -e .
+python -m code_engine.cli.query --help
+```
 
 ## Review-Readiness Audits
 
@@ -72,7 +81,7 @@ python scripts/stage4_l2_normalize.py --config-path missing.json --allow-fallbac
 Mine span-grounded context mentions:
 
 ```bash
-python -m src.pipelines.context_mining
+python -m code_engine.graph.context_mining
 ```
 
 Run L4 graph search:
@@ -105,5 +114,163 @@ python -m src.agents.hypothesis_critic_agent
 Run historical replay skeleton:
 
 ```bash
-python -m src.evaluation.historical_replay --cutoff-year 2010 --future-start 2011 --future-end 2015
+python -m code_engine.evaluation.historical_replay --cutoff-year 2010 --future-start 2011 --future-end 2015
 ```
+
+## Query-Driven Incremental Discovery
+
+The query layer sits above Layer 0-8. It normalizes a relation or topic, checks
+the local knowledge graph first, and either assembles an evidence-bounded answer
+or writes a delta ingestion plan. Its default behavior is offline and makes zero
+LLM API calls.
+
+```bash
+python -m code_engine.cli.query --query "氯胺酮 - 抑郁症" --mode parse
+python -m code_engine.cli.query --query "ketamine -> BDNF" --mode coverage
+python -m code_engine.cli.query --query "ketamine -> synaptogenesis" --mode plan --dry-run
+python -m code_engine.cli.query --query "ketamine -> BDNF" --mode answer --no-api
+python -m code_engine.cli.query --query "esketamine -> depression" --mode update --dry-run --max-api-calls 50
+```
+
+Coverage verdicts use a fixed MVP score: exact pair `0.3`, conflict edge `0.2`,
+context mentions `0.2`, validation result `0.1`, and sufficient neighbor evidence
+`0.2`. Scores at least `0.65` need no update, scores from `0.30` to below `0.65`
+recommend a delta update, and lower scores recommend a new corpus search plan.
+
+L1 v2 defines one SHA-256 fingerprint over paper/chunk identity, domain, prompt
+profile/version, output schema, extraction policy, and model name/family. Stage2
+is a guarded wrapper around prompt compilation, cache planning, and explicit execution.
+
+The current `update` mode only produces a dry-run plan. It does not fetch papers,
+search the web, or call DeepSeek. The local JSON/in-memory knowledge store is an
+MVP index, not a production graph database.
+
+## Repository Data Policy
+
+This repository does not treat raw PMC XML, PubMed abstract downloads, L1
+outputs, processed graphs, query outputs, or generated reports as source code.
+Raw literature is regenerable using the retained
+`data/metadata/global_manifest.json` and the reviewed Stage0 acquisition
+wrappers.
+
+Current experimental outputs should be isolated under `runs/<run_id>/`. Old L1
+prompt v1 outputs have been intentionally removed from the active workspace and
+are not a current knowledge graph source. New L1 v2 runs should use the Domain
+Router, Prompt Registry, and Prompt Compiler once their extraction integration
+is complete. Tests use `tests/fixtures/`, not historical runtime artifacts.
+
+See `docs/CLEANUP_POLICY.md` and `docs/ARTIFACT_POLICY.md`.
+
+## Safe Legacy Cleanup And Fresh Runs
+
+Runtime cleanup is inventory-first and dry-run by default:
+
+```bash
+python scripts/maintenance/cleanup_legacy_artifacts.py --dry-run
+python scripts/maintenance/cleanup_legacy_artifacts.py --apply
+```
+
+Audits are written under `cleanup_reports/`. Missing current inventory,
+knowledge-store, or LLM-cache files produce explicit empty states; query reports
+include `runtime_data_status`, `knowledge_store_status`, and
+`using_legacy_data`. Archived paths are never implicit inputs.
+
+See `docs/FRESH_RUN_GUIDE.md` and `docs/LEGACY_CODE_POLICY.md`.
+
+## C.O.D.E. v4.2 Research Architecture
+
+The v4.2 layer extends pair-based graph records with first-class
+`EvidenceRecord`, typed `MechanismEdge`, posterior-like uncertainty-aware
+conflict state, and `HypothesisHyperedge`. A deterministic dry-lab loop checks
+coverage before proposing delta ingestion, while heuristic policy scoring ranks
+mechanism paths using fixed documented weights.
+
+Agentic KG enrichment components return suggestions only. They cannot change
+graph truth, validation status, conflict probabilities, coverage verdicts, or
+scientific scores without deterministic validation. All v4.2 tests use local
+fixtures and make zero API calls.
+
+See `docs/V4_2_ARCHITECTURE.md` and `docs/RELATED_SYSTEMS_DESIGN_MATRIX.md`.
+
+## Natural Language Research Intake
+
+Natural-language requests are parsed into a `ResearchIntent` before any
+extraction planning. The system selects a biomedical domain and prompt profile,
+generates PubMed/PMC query strings, matches fixture/mock candidates against the
+manifest inventory, checks each old L1 chunk fingerprint, and produces a dry-run
+L1 batch plan.
+
+```bash
+python -m code_engine.cli.query \
+  --query "我想了解一下当前氯胺酮在抑郁症的作用" \
+  --mode intake --dry-run --no-api
+```
+
+Additional modes are `intent`, `search-plan`, and `l1-plan`. Search plans do not
+perform online retrieval. Old L1 output is reusable only when chunk hash,
+domain, prompt profile/version, output schema, extraction policy, and model
+contract are compatible. Actual API calls remain zero.
+
+See `docs/NATURAL_LANGUAGE_INTAKE_DESIGN.md`.
+
+## L1 v2 Extraction Consistency
+
+L1 prompt planning uses fixed `temperature=0.0` and `top_p=1.0`; chunk index
+does not change default sampling. Domain Router selects `general_biomedical` or
+`neuropharmacology`, Prompt Compiler records a stable prompt hash, and complete
+fingerprints determine cache compatibility. Old L1 files without fingerprint
+metadata are not reusable unless explicitly allowed.
+
+`L1ExtractedClaim` is EvidenceRecord-ready and retains fields needed for a
+MechanismEdge after L2 normalization. `python -m code_engine.cli.extract
+--dry-run --no-api` performs planning only and makes zero API calls. See
+`docs/L1_EXTRACTION_V2.md`.
+
+## Natural Language To Executable Literature Intake
+
+Natural-language intake can now produce non-evidence seed triples, sanitized
+PMC/PubMed search plans, manifest-aware acquisition, payload chunks, and L1 v2
+claims. Dry-run remains the default. Real acquisition requires `--execute
+--network`; real L1 calls require `--execute --api` and `DEEPSEEK_API_KEY`.
+
+```bash
+python -m code_engine.cli.intake \
+  --query "我想了解一下当前氯胺酮在抑郁症中的作用" \
+  --dry-run --no-api --no-network
+```
+
+Seed triples are planning objects with `is_evidence=false`; only claims
+extracted from downloaded papers can become EvidenceRecord or enter L3. See
+`docs/NATURAL_LANGUAGE_TO_LITERATURE_WORKFLOW.md`.
+
+## Type-Aware Biomedical Normalization
+
+### L2 Resolver Cascade Is Now The Default Mainline Normalizer
+
+L2 now carries ResolverCascade decisions directly into L3: canonical IDs,
+entity types, semantic levels, typed relations, statuses, and graph-use flags.
+L3 pair keys prefer canonical IDs, preventing receptor complexes, gene
+subunits, metabolites, parent compounds, assays, and phenotypes from being
+collapsed by display-name normalization.
+
+The old synonym-only path requires `--legacy-synonym-only`. Unknown uppercase
+fallback remains visible in audit output but is low confidence and excluded
+from high-confidence conflict statistics by default. The optional LLM candidate
+proposer remains disabled and cannot determine final normalization.
+
+Layer 2 now uses lexical normalization, entity typing, a local curated registry,
+relation-aware candidates, and deterministic acceptance. It distinguishes gene
+subunits from receptor complexes, metabolites and salts from parent compounds,
+and assays from the phenotypes they measure.
+
+Unknown uppercase terms remain traceable but are marked `unresolved_fallback`
+with confidence at most `0.35`; they are not permitted in high-confidence graph
+use. The optional candidate proposer is disabled and cannot adjudicate final
+normalization decisions.
+
+```bash
+python -m code_engine.cli.normalize --term "GluA1" --json
+python -m code_engine.cli.normalize --term "norketamine" --show-candidates
+```
+
+See `docs/BIOMEDICAL_ENTITY_NORMALIZATION.md`.

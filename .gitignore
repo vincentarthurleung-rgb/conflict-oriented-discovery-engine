@@ -1,5 +1,7 @@
 # Python runtime artifacts
 __pycache__/
+**/__pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 .pytest_cache/
@@ -13,14 +15,35 @@ venv/
 .DS_Store
 
 # Research runtime artifacts
-data/raw/
-data/interim/
-data/processed/
+data/raw/*
+!data/raw/README.md
+data/interim/*
+!data/interim/README.md
+data/processed/*
+!data/processed/README.md
+data/index/*
+!data/index/README.md
+data/query/*
+!data/query/README.md
 logs/
-reports/*.tmp
-reports/run_*/
+logs/**
+runs/*
+!runs/.gitkeep
+reports/*
+!reports/.gitkeep
+!reports/README.md
+artifacts/legacy/
+quarantine/
 .cache/
+
+# Cleanup audits are reviewable; temporary fragments are not.
+cleanup_reports/*.tmp
 
 # Explicitly allow small curated/demo fixtures if added later
 !data/fixtures/
 !data/demo/
+!tests/fixtures/
+
+# Minimal reproducibility metadata
+!data/metadata/global_manifest.json
+!data/metadata/literature_quality_audit.csv

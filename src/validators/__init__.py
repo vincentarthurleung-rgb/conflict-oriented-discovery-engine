@@ -1,7 +1,4 @@
-"""Validator registry for C.O.D.E. v4.0."""
+"""Legacy compatibility exports; prefer :mod:`code_engine.validation`."""
 
-from .base import AbstractValidator
-from .curated_omics_validator import CuratedOmicsValidator
-from .null_validator import NullValidator
-
-__all__ = ["AbstractValidator", "CuratedOmicsValidator", "NullValidator"]
+from code_engine.validation import *  # noqa: F401,F403
+from code_engine.validation import __all__

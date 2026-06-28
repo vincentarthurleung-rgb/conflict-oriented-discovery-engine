@@ -1,7 +1,9 @@
 import json
 import unittest
+from os import chdir, getcwd
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from src.config.loader import load_json_config
 from src.config.validation import ConfigValidationError
@@ -23,14 +25,43 @@ class ConfigValidationTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "bad.json"
             path.write_text(json.dumps({"ontology_settings": {}}), encoding="utf-8")
-            data, events = load_json_config(
-                str(path),
-                config_type="l2_l3_ontology_rules",
-                allow_fallback=True,
-                strict_config=False,
-            )
+            with patch("code_engine.config.loader.write_fallback_audit"):
+                data, events = load_json_config(
+                    str(path),
+                    config_type="l2_l3_ontology_rules",
+                    allow_fallback=True,
+                    strict_config=False,
+                )
             self.assertIn("synonym_map", data)
             self.assertTrue(events)
+
+    def test_missing_preferred_path_uses_audited_legacy_path(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy = root / "config/schemas/l2_l3_ontology_rules.json"
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text(
+                json.dumps(
+                    {
+                        "ontology_settings": {"marginal_entropy_conflict_gate": 0.1},
+                        "synonym_map": {"ketamine": "KETAMINE"},
+                        "forbidden_object_keywords": [],
+                        "weak_supervision_pool": ["ACUTE"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = getcwd()
+            try:
+                chdir(root)
+                _, events = load_json_config(
+                    "configs/normalization/l2_l3_ontology_rules.json",
+                    config_type="l2_l3_ontology_rules",
+                )
+            finally:
+                chdir(previous)
+            self.assertEqual(events[0]["fallback_kind"], "legacy_config_path")
+            self.assertTrue((root / "reports/config_fallback_audit.json").exists())
 
 
 if __name__ == "__main__":

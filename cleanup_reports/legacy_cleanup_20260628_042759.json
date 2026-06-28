@@ -1,0 +1,73 @@
+{
+  "protected_paths": [
+    {
+      "path": ".gitignore",
+      "bytes": 816
+    },
+    {
+      "path": "README.md",
+      "bytes": 9422
+    },
+    {
+      "path": "config",
+      "bytes": 36576
+    },
+    {
+      "path": "configs",
+      "bytes": 42961
+    },
+    {
+      "path": "data/metadata/global_manifest.json",
+      "bytes": 6177
+    },
+    {
+      "path": "data/metadata/literature_quality_audit.csv",
+      "bytes": 3381
+    },
+    {
+      "path": "docs",
+      "bytes": 38823
+    },
+    {
+      "path": "environment.yml",
+      "bytes": 4215
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 2633
+    },
+    {
+      "path": "scripts",
+      "bytes": 63096
+    },
+    {
+      "path": "src",
+      "bytes": 309379
+    },
+    {
+      "path": "tests/fixtures",
+      "bytes": 7947
+    }
+  ],
+  "planned_deletions": [],
+  "deleted_paths": [],
+  "planned_quarantine": [],
+  "quarantined_paths": [],
+  "skipped_paths": [],
+  "warnings": [],
+  "schema_version": "legacy_cleanup_audit_v1",
+  "generated_at": "2026-06-28T04:27:59.915161+00:00",
+  "mode": "dry_run",
+  "status": "dry_run_complete",
+  "next_commands": [
+    "python scripts/maintenance/cleanup_legacy_artifacts.py --dry-run",
+    "python scripts/maintenance/cleanup_legacy_artifacts.py --apply",
+    "python -m unittest discover -s tests"
+  ],
+  "current_clean_workspace_status": {
+    "clean": true,
+    "remaining_runtime_paths": [],
+    "manifest_retained": true,
+    "fixtures_retained": true
+  }
+}

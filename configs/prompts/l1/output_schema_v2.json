@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "L1ExtractionOutputV2",
+  "type": "object",
+  "required": ["causal_tuples"],
+  "properties": {
+    "causal_tuples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["subject", "relation_sign", "object", "evidence_sentence"],
+        "properties": {
+          "subject": {"type": "string"},
+          "relation_raw": {"type": "string"},
+          "relation_sign": {"type": "integer", "enum": [-1, 0, 1]},
+          "object": {"type": "string"},
+          "evidence_sentence": {"type": "string"},
+          "context": {"type": "object"},
+          "negated": {"type": "boolean"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

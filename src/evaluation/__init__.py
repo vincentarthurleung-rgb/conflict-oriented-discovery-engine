@@ -1,1 +1,4 @@
-"""Evaluation framework skeletons for C.O.D.E. v4.0."""
+"""Legacy compatibility exports; prefer :mod:`code_engine.evaluation`."""
+
+from code_engine.evaluation import *  # noqa: F401,F403
+from code_engine.evaluation import __all__

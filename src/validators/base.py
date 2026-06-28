@@ -1,11 +1,3 @@
-"""Base validator interface."""
+"""Legacy compatibility wrapper for validator interfaces."""
 
-
-class AbstractValidator:
-    name: str = "AbstractValidator"
-
-    def can_validate(self, hypothesis: dict) -> bool:
-        raise NotImplementedError
-
-    def validate(self, hypothesis: dict) -> dict:
-        raise NotImplementedError
+from code_engine.validation.base import *  # noqa: F401,F403

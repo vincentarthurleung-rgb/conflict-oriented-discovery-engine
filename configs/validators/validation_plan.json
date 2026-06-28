@@ -1,0 +1,14 @@
+{
+  "default_validators": ["CuratedOmicsValidator", "NullValidator"],
+  "rules": [
+    {
+      "hypothesis_pattern": "drug-gene expression",
+      "validators": ["CuratedOmicsValidator"],
+      "future_validators": ["LINCSValidator", "GEOValidator"]
+    },
+    {
+      "hypothesis_pattern": "unknown",
+      "validators": ["NullValidator"]
+    }
+  ]
+}

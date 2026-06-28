@@ -1,0 +1,77 @@
+{
+  "natural_language_queries": [
+    "我想了解一下当前氯胺酮在抑郁症的作用",
+    "氯胺酮抗抑郁机制现在研究到哪了",
+    "帮我比较 esketamine 和 ketamine 在 depression 上的机制差异",
+    "ketamine -> BDNF",
+    "completely unsupported request"
+  ],
+  "candidate_papers": [
+    {"paper_id": "P1", "pmid": "1001", "doi": "10.1/p1", "title": "Ketamine BDNF mechanisms"},
+    {"paper_id": "P2", "pmcid": "PMC1002", "title": "Ketamine clinical response"},
+    {"paper_id": "P3", "pmid": "1003", "title": "New ketamine depression paper"}
+  ],
+  "inventory": {
+    "papers": [
+      {
+        "paper_id": "P1",
+        "pmid": "1001",
+        "doi": "10.1/p1",
+        "title": "Ketamine BDNF mechanisms",
+        "in_manifest": true,
+        "raw_available": true,
+        "stage1_payload_available": true,
+        "l1_extracted": true,
+        "l1_5_refined": false,
+        "chunks": [
+          {
+            "chunk_id": "c1",
+            "chunk_hash": "hash1",
+            "l1_5_output": "",
+            "l1_record": {
+              "paper_id": "P1", "chunk_id": "c1", "chunk_hash": "hash1", "l1_output_path": "runs/r1/l1/P1_c1.json",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "2.0",
+              "output_schema_version": "l1_v2_evidence_mechanism_schema", "extraction_policy_version": "evidence_grounded_v2",
+              "model_name": "deepseek-v4-pro", "model_family": "deepseek", "processed_at": "2026-01-01"
+            }
+          },
+          {
+            "chunk_id": "c2",
+            "chunk_hash": "hash2",
+            "l1_record": {
+              "paper_id": "P1", "chunk_id": "c2", "chunk_hash": "hash2", "l1_output_path": "runs/r1/l1/P1_c2.json",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "1.0",
+              "output_schema_version": "l1_v2_evidence_mechanism_schema", "extraction_policy_version": "evidence_grounded_v2",
+              "model_name": "deepseek-v4-pro", "model_family": "deepseek"
+            }
+          },
+          {
+            "chunk_id": "c3",
+            "chunk_hash": "hash3",
+            "l1_record": {
+              "paper_id": "P1", "chunk_id": "c3", "chunk_hash": "hash3", "l1_output_path": "runs/r1/l1/P1_c3.json",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "2.0",
+              "output_schema_version": "l1_output_v1", "extraction_policy_version": "evidence_grounded_v2",
+              "model_name": "deepseek-v4-pro", "model_family": "deepseek"
+            }
+          },
+          {
+            "chunk_id": "c4",
+            "chunk_hash": "new_hash4",
+            "l1_record": {
+              "paper_id": "P1", "chunk_id": "c4", "chunk_hash": "old_hash4", "l1_output_path": "runs/r1/l1/P1_c4.json",
+              "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology", "prompt_version": "2.0",
+              "output_schema_version": "l1_v2_evidence_mechanism_schema", "extraction_policy_version": "evidence_grounded_v2",
+              "model_name": "deepseek-v4-pro", "model_family": "deepseek"
+            }
+          }
+        ]
+      },
+      {
+        "paper_id": "P2", "pmcid": "PMC1002", "title": "Ketamine clinical response", "in_manifest": true,
+        "raw_available": true, "stage1_payload_available": false, "l1_extracted": false, "l1_5_refined": false
+      }
+    ],
+    "duplicate_groups": []
+  }
+}

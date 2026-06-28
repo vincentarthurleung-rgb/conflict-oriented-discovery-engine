@@ -1,0 +1,347 @@
+{
+  "protected_paths": [
+    {
+      "path": ".gitignore",
+      "bytes": 816
+    },
+    {
+      "path": "README.md",
+      "bytes": 9422
+    },
+    {
+      "path": "config",
+      "bytes": 36576
+    },
+    {
+      "path": "configs",
+      "bytes": 42961
+    },
+    {
+      "path": "data/metadata/global_manifest.json",
+      "bytes": 6177
+    },
+    {
+      "path": "data/metadata/literature_quality_audit.csv",
+      "bytes": 3381
+    },
+    {
+      "path": "docs",
+      "bytes": 38823
+    },
+    {
+      "path": "environment.yml",
+      "bytes": 4215
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 2633
+    },
+    {
+      "path": "scripts",
+      "bytes": 142037
+    },
+    {
+      "path": "src",
+      "bytes": 751853
+    },
+    {
+      "path": "tests/fixtures",
+      "bytes": 7947
+    }
+  ],
+  "planned_deletions": [
+    {
+      "path": "code_engine/__pycache__",
+      "bytes": 688
+    },
+    {
+      "path": "scripts/__pycache__",
+      "bytes": 63206
+    },
+    {
+      "path": "tests/__pycache__",
+      "bytes": 106549
+    },
+    {
+      "path": "scripts/maintenance/__pycache__",
+      "bytes": 15735
+    },
+    {
+      "path": "src/agents/__pycache__",
+      "bytes": 13767
+    },
+    {
+      "path": "src/code_engine/__pycache__",
+      "bytes": 218
+    },
+    {
+      "path": "src/config/__pycache__",
+      "bytes": 756
+    },
+    {
+      "path": "src/evaluation/__pycache__",
+      "bytes": 625
+    },
+    {
+      "path": "src/pipelines/__pycache__",
+      "bytes": 85769
+    },
+    {
+      "path": "src/query/__pycache__",
+      "bytes": 2817
+    },
+    {
+      "path": "src/reporting/__pycache__",
+      "bytes": 1007
+    },
+    {
+      "path": "src/schemas/__pycache__",
+      "bytes": 2004
+    },
+    {
+      "path": "src/storage/__pycache__",
+      "bytes": 1267
+    },
+    {
+      "path": "src/validators/__pycache__",
+      "bytes": 3041
+    },
+    {
+      "path": "src/code_engine/acquisition/__pycache__",
+      "bytes": 28096
+    },
+    {
+      "path": "src/code_engine/agents/__pycache__",
+      "bytes": 3411
+    },
+    {
+      "path": "src/code_engine/cli/__pycache__",
+      "bytes": 7978
+    },
+    {
+      "path": "src/code_engine/common/__pycache__",
+      "bytes": 6228
+    },
+    {
+      "path": "src/code_engine/config/__pycache__",
+      "bytes": 20547
+    },
+    {
+      "path": "src/code_engine/domain/__pycache__",
+      "bytes": 3875
+    },
+    {
+      "path": "src/code_engine/evaluation/__pycache__",
+      "bytes": 8443
+    },
+    {
+      "path": "src/code_engine/extraction/__pycache__",
+      "bytes": 7601
+    },
+    {
+      "path": "src/code_engine/graph/__pycache__",
+      "bytes": 54438
+    },
+    {
+      "path": "src/code_engine/hypothesis/__pycache__",
+      "bytes": 13960
+    },
+    {
+      "path": "src/code_engine/loop/__pycache__",
+      "bytes": 5125
+    },
+    {
+      "path": "src/code_engine/normalization/__pycache__",
+      "bytes": 25553
+    },
+    {
+      "path": "src/code_engine/preprocessing/__pycache__",
+      "bytes": 1816
+    },
+    {
+      "path": "src/code_engine/query/__pycache__",
+      "bytes": 80843
+    },
+    {
+      "path": "src/code_engine/reporting/__pycache__",
+      "bytes": 19130
+    },
+    {
+      "path": "src/code_engine/schemas/__pycache__",
+      "bytes": 28905
+    },
+    {
+      "path": "src/code_engine/storage/__pycache__",
+      "bytes": 659
+    },
+    {
+      "path": "src/code_engine/validation/__pycache__",
+      "bytes": 10711
+    },
+    {
+      "path": "src/code_engine/visualization/__pycache__",
+      "bytes": 3652
+    },
+    {
+      "path": "src/code_engine/normalization/resolvers/__pycache__",
+      "bytes": 232
+    }
+  ],
+  "deleted_paths": [
+    {
+      "path": "code_engine/__pycache__",
+      "bytes": 688
+    },
+    {
+      "path": "scripts/__pycache__",
+      "bytes": 63206
+    },
+    {
+      "path": "tests/__pycache__",
+      "bytes": 106549
+    },
+    {
+      "path": "scripts/maintenance/__pycache__",
+      "bytes": 15735
+    },
+    {
+      "path": "src/agents/__pycache__",
+      "bytes": 13767
+    },
+    {
+      "path": "src/code_engine/__pycache__",
+      "bytes": 218
+    },
+    {
+      "path": "src/config/__pycache__",
+      "bytes": 756
+    },
+    {
+      "path": "src/evaluation/__pycache__",
+      "bytes": 625
+    },
+    {
+      "path": "src/pipelines/__pycache__",
+      "bytes": 85769
+    },
+    {
+      "path": "src/query/__pycache__",
+      "bytes": 2817
+    },
+    {
+      "path": "src/reporting/__pycache__",
+      "bytes": 1007
+    },
+    {
+      "path": "src/schemas/__pycache__",
+      "bytes": 2004
+    },
+    {
+      "path": "src/storage/__pycache__",
+      "bytes": 1267
+    },
+    {
+      "path": "src/validators/__pycache__",
+      "bytes": 3041
+    },
+    {
+      "path": "src/code_engine/acquisition/__pycache__",
+      "bytes": 28096
+    },
+    {
+      "path": "src/code_engine/agents/__pycache__",
+      "bytes": 3411
+    },
+    {
+      "path": "src/code_engine/cli/__pycache__",
+      "bytes": 7978
+    },
+    {
+      "path": "src/code_engine/common/__pycache__",
+      "bytes": 6228
+    },
+    {
+      "path": "src/code_engine/config/__pycache__",
+      "bytes": 20547
+    },
+    {
+      "path": "src/code_engine/domain/__pycache__",
+      "bytes": 3875
+    },
+    {
+      "path": "src/code_engine/evaluation/__pycache__",
+      "bytes": 8443
+    },
+    {
+      "path": "src/code_engine/extraction/__pycache__",
+      "bytes": 7601
+    },
+    {
+      "path": "src/code_engine/graph/__pycache__",
+      "bytes": 54438
+    },
+    {
+      "path": "src/code_engine/hypothesis/__pycache__",
+      "bytes": 13960
+    },
+    {
+      "path": "src/code_engine/loop/__pycache__",
+      "bytes": 5125
+    },
+    {
+      "path": "src/code_engine/normalization/__pycache__",
+      "bytes": 25553
+    },
+    {
+      "path": "src/code_engine/preprocessing/__pycache__",
+      "bytes": 1816
+    },
+    {
+      "path": "src/code_engine/query/__pycache__",
+      "bytes": 80843
+    },
+    {
+      "path": "src/code_engine/reporting/__pycache__",
+      "bytes": 19130
+    },
+    {
+      "path": "src/code_engine/schemas/__pycache__",
+      "bytes": 28905
+    },
+    {
+      "path": "src/code_engine/storage/__pycache__",
+      "bytes": 659
+    },
+    {
+      "path": "src/code_engine/validation/__pycache__",
+      "bytes": 10711
+    },
+    {
+      "path": "src/code_engine/visualization/__pycache__",
+      "bytes": 3652
+    },
+    {
+      "path": "src/code_engine/normalization/resolvers/__pycache__",
+      "bytes": 232
+    }
+  ],
+  "planned_quarantine": [],
+  "quarantined_paths": [],
+  "skipped_paths": [],
+  "warnings": [],
+  "schema_version": "legacy_cleanup_audit_v1",
+  "generated_at": "2026-06-28T04:27:55.458800+00:00",
+  "mode": "apply",
+  "status": "cleanup_applied",
+  "next_commands": [
+    "python scripts/maintenance/cleanup_legacy_artifacts.py --dry-run",
+    "python scripts/maintenance/cleanup_legacy_artifacts.py --apply",
+    "python -m unittest discover -s tests"
+  ],
+  "current_clean_workspace_status": {
+    "clean": true,
+    "remaining_runtime_paths": [],
+    "manifest_retained": true,
+    "fixtures_retained": true
+  }
+}
