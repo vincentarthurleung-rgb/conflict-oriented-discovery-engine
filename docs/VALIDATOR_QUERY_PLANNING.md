@@ -15,3 +15,8 @@ validation is blocked. Entity-free broad queries are `too_broad`.
 record/signal/time/payload bounds, and forces concurrency to one. The execution
 engine then processes plans sequentially, writes evidence/signals as JSONL, and
 contains validator failures as structured error signals.
+
+For local mode, planning also binds the validator's declared `schema_name`,
+`schema_version`, and `source_database` to index metadata. Version mismatch,
+missing required fields, or absent manifest produces `no_index` /
+`external_index_not_configured`; validators do not silently read records.

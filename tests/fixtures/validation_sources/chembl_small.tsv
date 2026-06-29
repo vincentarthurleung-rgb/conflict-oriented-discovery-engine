@@ -1,0 +1,2 @@
+record_id	compound_id	target_id	pchembl_value	direction
+CHEMBL-1	CHEM:SIROLIMUS	GENE:MTOR	8.3	inhibit

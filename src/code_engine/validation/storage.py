@@ -100,11 +100,16 @@ def _query_terms(plan: ValidationQueryPlan) -> list[str]:
 
 
 class ValidationLocalIndex:
-    def __init__(self, name: str, validator_name: str, index_type: str, path: str | Path):
+    def __init__(
+        self, name: str, validator_name: str, index_type: str, path: str | Path,
+        schema_path: str | Path | None = None, manifest_path: str | Path | None = None,
+    ):
         self.name = name
         self.validator_name = validator_name
         self.index_type = index_type
         self.path = Path(path)
+        self.schema_path = Path(schema_path) if schema_path else None
+        self.manifest_path = Path(manifest_path) if manifest_path else None
 
     def is_available(self) -> bool:
         return self.path.is_file()
@@ -124,6 +129,15 @@ class ValidationLocalIndex:
     def stream_query(self, query_plan: ValidationQueryPlan) -> Iterator[dict[str, Any]]:
         if not self.is_available():
             return
+        if not self.schema_path or not self.manifest_path:
+            raise ValueError("schema_bound_index_required")
+        from code_engine.validation.index_manifest import load_validation_index_manifest, validate_validation_index_manifest
+        from code_engine.validation.index_schema import load_validation_index_schema, validate_index_record_against_schema
+        schema = load_validation_index_schema(self.schema_path)
+        manifest = load_validation_index_manifest(self.manifest_path)
+        checked = validate_validation_index_manifest(manifest, schema)
+        if not checked.valid:
+            raise ValueError(f"invalid_index_manifest:{','.join(checked.errors)}")
         kind = self.index_type.casefold()
         if kind == "jsonl":
             terms = {item.casefold() for item in _query_terms(query_plan)}
@@ -131,6 +145,9 @@ class ValidationLocalIndex:
                 raise ValueError("Broad JSONL scan is not allowed")
             emitted = 0
             for item in stream_jsonl_records(self.path):
+                record_check = validate_index_record_against_schema(item, schema)
+                if not record_check.valid:
+                    raise ValueError(f"index_record_missing_required_fields:{','.join(record_check.missing_fields)}")
                 values = {str(item.get(column, "")).casefold() for column in IDENTITY_COLUMNS}
                 if terms.intersection(values):
                     yield item

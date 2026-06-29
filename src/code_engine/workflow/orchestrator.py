@@ -213,12 +213,17 @@ def run_workflow(
                     "validation_blocked_query_count", "validation_estimated_records",
                     "validation_actual_evidence_count", "validation_signal_count",
                     "validation_cache_hit_count", "validation_cache_miss_count",
-                    "validation_result_count",
+                    "validation_result_count", "validation_actual_records_seen",
+                    "validation_actual_evidence_written", "validation_actual_signals_written",
+                    "validation_actual_raw_payload_bytes_written", "validation_actual_jsonl_bytes_written",
+                    "validation_actual_peak_batch_records_buffered",
                 ):
                     if field in result.counts:
                         setattr(state, field, int(result.counts[field]))
                 if "validation_estimated_memory_mb" in result.summary:
                     state.validation_estimated_memory_mb = float(result.summary["validation_estimated_memory_mb"])
+                state.validation_actual_query_seconds = float(result.summary.get("validation_actual_query_seconds", 0.0))
+                state.validation_actual_total_seconds = float(result.summary.get("validation_actual_total_seconds", 0.0))
                 if "validation_aggregate_status" in result.summary:
                     state.validation_aggregate_status = str(result.summary["validation_aggregate_status"])
                 budget = result.summary.get("budget_report", {})

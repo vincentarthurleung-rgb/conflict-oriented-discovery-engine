@@ -97,6 +97,11 @@ Preview Layer 6 with `--external-validation --validation-query-mode auto
 point `--validation-index-dir` at bounded indexes and set memory/record/signal
 limits. Use `cache_only` when reproducibility requires zero provider access.
 Never enable large local scans merely to compensate for a missing index.
+
+Before non-dry external validation, run `code_engine.cli.validation_preflight`.
+Build local summaries through `code_engine.cli.build_validation_index`; do not
+place an unversioned flat database file under the index root. Remote clients are
+planning-only until a guarded transport is configured explicitly.
 # Unified entry point
 
 Prefer `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report`. RunState isolates artifacts and records every warning, error, and external-call count. Resume never restores API/network permission implicitly. Partial reports are normal when runtime inputs are absent.

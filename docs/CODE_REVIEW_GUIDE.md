@@ -145,3 +145,11 @@ Review new workflow paths for run-local artifacts, step-level external-call acco
 For semantic intake, reject Python keyword classifiers added to the main path. Domain semantics belong in the Scientific Encoder; deterministic code may validate allowed IDs, sanitize content, enforce schema/evidence boundaries, and provide generic degraded fallback only. Verify that uncertain execute runs block by default.
 
 For MechanismGraph changes, verify paper provenance on every edge, canonical-ID grouping, exclusion of planning/seed triples, explicit treatment of low-confidence normalization, bounded path enumeration, and run-local writes. Conflict annotations must preserve L3 output exactly; mechanism code must not reclassify Type I/II/III. Stage6 must not be invoked through global runtime paths.
+
+For external validation, reject local index reads without schema/manifest
+binding, direct HTTP calls in validators, unbounded source/table loads, and any
+aggregation that maps cache miss to no coverage or no record to contradiction.
+Review actual resource usage alongside estimates. Trial existence, binding,
+pathway membership, and dependency context must retain their interpretation
+limits. Run preflight and the deterministic aggregator benchmark before a real
+pilot.

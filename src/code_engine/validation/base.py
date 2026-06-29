@@ -26,6 +26,8 @@ class AbstractValidator:
     supports_cache_only = True
     requires_auth = False
     index_name: str | None = None
+    schema_name: str | None = None
+    schema_version: str | None = None
     source_database = "unknown"
     default_max_records = 100
     default_max_signals = 30

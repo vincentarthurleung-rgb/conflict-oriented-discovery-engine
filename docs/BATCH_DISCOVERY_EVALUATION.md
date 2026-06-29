@@ -29,3 +29,11 @@ non-conflicts, insufficient evidence, and uncertainty.
 Optional Layer 6 work uses the same anchor-based `code_engine.validation`
 pipeline as single runs. Batch mode does not create a parallel validation
 system and retains per-prompt/resource caps.
+
+`--batch-external-validation` adds anchor, question, route, query-plan,
+execution, aggregation, and metrics artifacts. It is disabled by default.
+`local_index` and `cache_only` can execute offline when the caller explicitly
+executes a non-dry batch; remote mode remains blocked without all guards. Batch
+statuses can be grouped by conflict/hypothesis provenance, but they are not a
+measurement of hypothesis accuracy. Missing index, no coverage, and cache miss
+remain distinct.

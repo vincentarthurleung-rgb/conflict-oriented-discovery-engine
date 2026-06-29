@@ -330,3 +330,17 @@ Natural-language understanding is [LLM-first](docs/LLM_FIRST_SEMANTIC_INTAKE.md)
 C.O.D.E. now includes an evidence-grounded [MechanismGraph MVP](docs/MECHANISM_GRAPH.md), moving the workflow toward `Paper → Evidence → Mechanism → Conflict → Hypothesis → Validation`. Mechanism edges come only from L2 paper observations; seed/user-intent triples never enter the graph. L3 remains unchanged and annotates matching mechanism edges after conflict discovery. Storage remains local JSON; see [Mechanism-Centered Knowledge Store](docs/MECHANISM_CENTERED_KNOWLEDGE_STORE.md).
 
 Layer 2 uses the [Entity Resolution Hub](docs/ENTITY_RESOLUTION_HUB.md), combining explicit curated anchors, an audited cache, guarded external provider skeletons, and an optional ungrounded LLM proposer. A deterministic adjudicator makes every canonical decision. The old ketamine registry is a pilot fixture only; no API or network provider is enabled by default. See [L2 audit artifacts](docs/L2_ENTITY_RESOLUTION_AUDIT.md).
+
+## External validation hardening
+
+Before any pilot, local validation indexes are schema-bound directories with
+`schema.json`, `manifest.json`, and bounded records. Builders, preflight, actual
+resource accounting, and a deterministic aggregator benchmark are documented
+in [Validation Index Schema](docs/VALIDATION_INDEX_SCHEMA.md), [Index Builders](docs/VALIDATION_INDEX_BUILDERS.md), [Preflight](docs/VALIDATION_PREFLIGHT.md), and [Aggregator Benchmark](docs/VALIDATION_AGGREGATOR_BENCHMARK.md).
+
+Remote clients are guarded request-planning boundaries. They do not perform
+HTTP by default; execution requires execute, network, and external-validation
+permission together, plus a configured transport. Real databases must still go
+through schema/manifest validation, query planning, and the resource guard.
+This work is architecture hardening, not a pilot or evidence of hypothesis
+accuracy.

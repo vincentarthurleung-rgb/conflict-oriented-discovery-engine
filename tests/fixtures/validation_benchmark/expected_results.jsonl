@@ -1,0 +1,10 @@
+{"case_id":"supported","expected_status":"supported"}
+{"case_id":"contradicted","expected_status":"contradicted"}
+{"case_id":"mixed","expected_status":"mixed"}
+{"case_id":"no_coverage","expected_status":"no_coverage"}
+{"case_id":"external_index_not_configured","expected_status":"external_index_not_configured"}
+{"case_id":"insufficient_quality","expected_status":"insufficient_quality"}
+{"case_id":"error","expected_status":"error"}
+{"case_id":"clinical_trial_existence_not_support","expected_status":"insufficient_quality"}
+{"case_id":"binding_record_not_mechanism_proof","expected_status":"insufficient_quality"}
+{"case_id":"cache_miss_not_no_coverage","expected_status":"external_index_not_configured"}

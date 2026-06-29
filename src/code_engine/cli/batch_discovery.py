@@ -27,6 +27,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--validation-query-mode", choices=("auto", "local_index", "remote_api", "cache_only", "disabled"), default="auto")
     parser.add_argument("--validation-index-dir")
     parser.add_argument("--validation-cache-dir")
+    parser.add_argument("--batch-external-validation", action="store_true")
+    parser.add_argument("--no-batch-external-validation", action="store_true")
+    parser.add_argument("--batch-validation-query-mode", choices=("auto", "local_index", "remote_api", "cache_only", "disabled"), default="disabled")
+    parser.add_argument("--batch-validation-index-dir")
+    parser.add_argument("--batch-validation-cache-dir")
+    parser.add_argument("--batch-validation-max-anchors", type=int, default=100)
+    parser.add_argument("--batch-validation-max-query-plans", type=int, default=400)
+    parser.add_argument("--batch-validation-max-records-per-validator", type=int, default=100)
+    parser.add_argument("--batch-validation-max-signals-per-run", type=int, default=500)
     return parser
 
 
@@ -39,10 +48,14 @@ def main(argv: list[str] | None = None) -> int:
         min_evidence_count=args.min_abstract_evidence_count,
         min_entropy=args.min_abstract_conflict_entropy,
         annotations_path=args.annotations,
-        external_validation=args.external_validation and not args.no_external_validation,
-        validation_query_mode=args.validation_query_mode,
-        validation_index_dir=args.validation_index_dir,
-        validation_cache_dir=args.validation_cache_dir,
+        external_validation=(args.batch_external_validation and not args.no_batch_external_validation) or (args.external_validation and not args.no_external_validation),
+        validation_query_mode=args.batch_validation_query_mode if args.batch_external_validation else args.validation_query_mode,
+        validation_index_dir=args.batch_validation_index_dir or args.validation_index_dir,
+        validation_cache_dir=args.batch_validation_cache_dir or args.validation_cache_dir,
+        validation_max_anchors=args.batch_validation_max_anchors,
+        validation_max_query_plans=args.batch_validation_max_query_plans,
+        validation_max_records_per_validator=args.batch_validation_max_records_per_validator,
+        validation_max_signals_per_run=args.batch_validation_max_signals_per_run,
     )
     print(json.dumps({"run_dir": result["run_dir"], "metrics": result["metrics"], "api_calls_made": 0, "network_calls_made": 0}, ensure_ascii=False, indent=2))
     return 0

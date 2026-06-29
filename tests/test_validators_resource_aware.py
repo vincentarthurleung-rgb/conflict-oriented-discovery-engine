@@ -25,8 +25,8 @@ class ResourceAwareValidatorTests(unittest.TestCase):
             self.assertEqual(registry.validate(name,question).validation_status,"external_index_not_configured")
 
     def test_fake_local_index_streams_and_remote_is_not_implicit(self):
-        fixture=Path(__file__).parent/"fixtures/validation_indexes/chembl.jsonl"
-        plan=ValidationQueryPlan(query_plan_id="P",anchor_id="A",validator_name="ChEMBLValidator",query_type="binding_activity_check",query_entities=[{"canonical_id":"CHEM:SIROLIMUS"},{"canonical_id":"GENE:MTOR"}],execution_mode="local_index",index_name="chembl",query_context={"index_path":str(fixture),"index_type":"jsonl"},status="allowed",max_records=5)
+        fixture=Path(__file__).parent/"fixtures/validation_indexes/chembl"
+        plan=ValidationQueryPlan(query_plan_id="P",anchor_id="A",validator_name="ChEMBLValidator",query_type="binding_activity_check",query_entities=[{"canonical_id":"CHEM:SIROLIMUS"},{"canonical_id":"GENE:MTOR"}],execution_mode="local_index",index_name="chembl",query_context={"index_path":str(fixture/"records.jsonl"),"index_type":"jsonl","schema_path":str(fixture/"schema.json"),"manifest_path":str(fixture/"manifest.json")},status="allowed",max_records=5)
         validator=ValidatorRegistry().register_defaults().create("ChEMBLValidator")
         self.assertEqual(len(list(validator.stream_evidence(plan,ValidationExecutionContext()))),1)
         remote=plan.model_copy(update={"execution_mode":"remote_api"})

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections import Counter
 from itertools import chain
 from pathlib import Path
@@ -39,6 +40,7 @@ def execute_validation_query_plans(
     evidence_path = output / "external_validation_evidence.jsonl" if output else None
     signal_path = output / "external_validation_signals.jsonl" if output else None
     summary_path = output / "external_validation_execution_summary.json" if output else None
+    usage_path = output / "validation_resource_usage.json" if output else None
     if output:
         output.mkdir(parents=True, exist_ok=True)
     evidence_handle = evidence_path.open("w", encoding="utf-8") if evidence_path else None
@@ -57,6 +59,18 @@ def execute_validation_query_plans(
     cache = ValidationQueryCache(cache_path) if cache_enabled and cache_path else None
     counts = Counter()
     evidence_count = signal_count = executed = blocked = cache_hits = cache_misses = network_calls = 0
+    records_seen = raw_payload_bytes = jsonl_bytes = 0
+    total_started = time.monotonic()
+    total_query_seconds = 0.0
+    per_query_stats: dict[str, dict[str, Any]] = {
+        item.query_plan_id: {
+            "actual_records_seen": 0, "actual_evidence_written": 0,
+            "actual_signals_written": 0, "actual_raw_payload_bytes_written": 0,
+            "actual_jsonl_bytes_written": 0, "actual_query_seconds": 0.0,
+            "truncated": False,
+        }
+        for item in query_plans
+    }
     max_records_seen = 0
     warnings = []
     try:
@@ -67,6 +81,8 @@ def execute_validation_query_plans(
         else:
             status = "completed"
             for plan in query_plans:
+                query_started = time.monotonic()
+                query_records_seen = query_evidence = query_signals = query_raw_bytes = query_jsonl_bytes = 0
                 if plan.status != "allowed":
                     blocked += 1
                     counts[plan.status] += 1
@@ -124,28 +140,57 @@ def execute_validation_query_plans(
                 plan_signals = 0
                 try:
                     for evidence in source:
+                        records_seen += 1
+                        query_records_seen += 1
                         if plan_records >= plan.max_records:
+                            warnings.append(f"{plan.query_plan_id}:max_records_truncated")
                             break
                         plan_records += 1
                         evidence_count += 1
                         if evidence_handle:
-                            evidence_handle.write(evidence.model_dump_json() + "\n")
+                            encoded = evidence.model_dump_json() + "\n"
+                            evidence_handle.write(encoded)
+                            size = len(encoded.encode("utf-8"))
+                            jsonl_bytes += size
+                            query_jsonl_bytes += size
+                        query_evidence += 1
+                        if evidence.raw_payload_ref:
+                            raw_path = Path(evidence.raw_payload_ref)
+                            if raw_path.is_file():
+                                payload_size = raw_path.stat().st_size
+                                if payload_size > plan.max_raw_payload_bytes:
+                                    with raw_path.open("r+b") as raw_handle:
+                                        raw_handle.truncate(plan.max_raw_payload_bytes)
+                                    payload_size = plan.max_raw_payload_bytes
+                                    warnings.append(f"{plan.query_plan_id}:raw_payload_truncated")
+                                raw_payload_bytes += payload_size
+                                query_raw_bytes += payload_size
                         if cache and plan.cache_key and first_cached is None:
                             cache.store_record(plan.cache_key, plan_records - 1, evidence, reset=plan_records == 1)
                         for signal in validator.build_signals((evidence,), context):
                             if plan_signals >= plan.max_signals or signal_count >= resource_policy.max_signals_per_run:
                                 break
                             if signal_handle:
-                                signal_handle.write(signal.model_dump_json() + "\n")
+                                encoded = signal.model_dump_json() + "\n"
+                                signal_handle.write(encoded)
+                                size = len(encoded.encode("utf-8"))
+                                jsonl_bytes += size
+                                query_jsonl_bytes += size
                             plan_signals += 1
                             signal_count += 1
+                            query_signals += 1
                     max_records_seen = max(max_records_seen, plan_records)
                     if plan_records == 0:
                         counts["no_coverage"] += 1
                         signal = _signal(plan, "no_coverage_signal", "Successful query returned no records; this is not contradiction.")
                         if signal_handle and signal_count < resource_policy.max_signals_per_run:
-                            signal_handle.write(signal.model_dump_json() + "\n")
+                            encoded = signal.model_dump_json() + "\n"
+                            signal_handle.write(encoded)
+                            size = len(encoded.encode("utf-8"))
+                            jsonl_bytes += size
+                            query_jsonl_bytes += size
                             signal_count += 1
+                            query_signals += 1
                     else:
                         counts["evidence_streamed"] += 1
                 except Exception as exc:
@@ -154,13 +199,31 @@ def execute_validation_query_plans(
                     warnings.append(warning)
                     signal = _signal(plan, "error_signal", warning)
                     if signal_handle:
-                        signal_handle.write(signal.model_dump_json() + "\n")
+                        encoded = signal.model_dump_json() + "\n"
+                        signal_handle.write(encoded)
+                        size = len(encoded.encode("utf-8"))
+                        jsonl_bytes += size
+                        query_jsonl_bytes += size
                         signal_count += 1
+                        query_signals += 1
+                finally:
+                    elapsed = time.monotonic() - query_started
+                    total_query_seconds += elapsed
+                    per_query_stats[plan.query_plan_id] = {
+                        "actual_records_seen": query_records_seen,
+                        "actual_evidence_written": query_evidence,
+                        "actual_signals_written": query_signals,
+                        "actual_raw_payload_bytes_written": query_raw_bytes,
+                        "actual_jsonl_bytes_written": query_jsonl_bytes,
+                        "actual_query_seconds": round(elapsed, 6),
+                        "truncated": query_records_seen > plan.max_records,
+                    }
     finally:
         if evidence_handle:
             evidence_handle.close()
         if signal_handle:
             signal_handle.close()
+    total_seconds = time.monotonic() - total_started
     result = ValidationExecutionResult(
         result_id=hashlib.sha256("|".join(item.query_plan_id for item in query_plans).encode()).hexdigest()[:16],
         status=status, query_plan_count=len(query_plans), executed_query_count=executed,
@@ -169,15 +232,39 @@ def execute_validation_query_plans(
         cache_hit_count=cache_hits, cache_miss_count=cache_misses,
         estimated_memory_mb=sum(float(item.estimated_memory_mb or 0.0) for item in query_plans),
         actual_max_records_seen=max_records_seen, network_calls_made=network_calls,
+        actual_records_seen=records_seen, actual_evidence_written=evidence_count,
+        actual_signals_written=signal_count,
+        actual_raw_payload_bytes_written=raw_payload_bytes,
+        actual_jsonl_bytes_written=jsonl_bytes,
+        actual_query_seconds=round(total_query_seconds, 6),
+        actual_total_validation_seconds=round(total_seconds, 6),
+        actual_peak_batch_records_buffered=1 if records_seen else 0,
+        per_query_actual_stats=per_query_stats,
         warnings=warnings,
         artifact_refs={
             "evidence": str(evidence_path) if evidence_path else "",
             "signals": str(signal_path) if signal_path else "",
             "summary": str(summary_path) if summary_path else "",
+            "resource_usage": str(usage_path) if usage_path else "",
         },
     )
     if summary_path:
         summary_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    if usage_path:
+        usage_path.write_text(json.dumps({
+            "estimated": {
+                "records": sum(int(item.estimated_records or 0) for item in query_plans),
+                "memory_mb": result.estimated_memory_mb,
+                "query_seconds": sum(float(item.estimated_query_seconds or 0.0) for item in query_plans),
+            },
+            "actual": result.model_dump(mode="json", include={
+                "actual_records_seen", "actual_evidence_written", "actual_signals_written",
+                "actual_raw_payload_bytes_written", "actual_jsonl_bytes_written",
+                "actual_query_seconds", "actual_total_validation_seconds",
+                "actual_peak_batch_records_buffered", "per_query_actual_stats",
+            }),
+            "warnings": warnings,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
     return result
 
 

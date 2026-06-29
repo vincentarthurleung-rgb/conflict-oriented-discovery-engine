@@ -16,6 +16,7 @@ from code_engine.evaluation.batch_discovery.reports import render_batch_discover
 from code_engine.evaluation.batch_discovery.sampling import sample_conflicts
 from code_engine.graph.abstract_conflict_screening import build_abstract_conflict_candidates
 from code_engine.extraction.l1_budget import estimate_l1_cost
+from code_engine.evaluation.batch_discovery.validation import run_batch_external_validation
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -45,6 +46,10 @@ def run_batch_discovery(
     validation_query_mode: str = "auto",
     validation_index_dir: str | None = None,
     validation_cache_dir: str | None = None,
+    validation_max_anchors: int = 100,
+    validation_max_query_plans: int = 400,
+    validation_max_records_per_validator: int = 100,
+    validation_max_signals_per_run: int = 500,
 ) -> dict[str, Any]:
     prompts = load_prompt_bank(prompt_bank, max_prompts)
     batch_hash = hashlib.sha256("|".join(str(item["prompt_id"]) for item in prompts).encode()).hexdigest()[:10]
@@ -92,6 +97,17 @@ def run_batch_discovery(
         run_summaries=run_summaries, hypothesis_statistics=hypothesis_statistics,
         estimated_cost_usd=cost_estimate["estimated_cost_usd"], actual_cost_usd=0.0,
     )
+    validation_result = None
+    if external_validation:
+        validation_result = run_batch_external_validation(
+            candidates, directory, execute=not dry_run,
+            query_mode=validation_query_mode, index_dir=validation_index_dir,
+            cache_dir=validation_cache_dir, max_anchors=validation_max_anchors,
+            max_query_plans=validation_max_query_plans,
+            max_records_per_validator=validation_max_records_per_validator,
+            max_signals_per_run=validation_max_signals_per_run,
+        )
+        metrics.update(validation_result["metrics"])
     manifest = {
         "batch_id": f"batch_{batch_hash}",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -108,7 +124,13 @@ def run_batch_discovery(
             "query_mode": validation_query_mode,
             "index_dir": validation_index_dir,
             "cache_dir": validation_cache_dir,
-            "execution": "planned_only",
+            "execution": "planned_only" if dry_run else "local_or_cache_execution",
+            "stages": [
+                "batch_validation_anchor_building", "batch_validation_question_building",
+                "batch_validation_routing", "batch_validation_query_planning",
+                "batch_validation_execution", "batch_validation_aggregation",
+                "batch_validation_metrics",
+            ] if external_validation else [],
         },
         "l1_cost_estimate": cost_estimate,
         "processed_prompt_ids": [item["prompt_id"] for item in prompts],
@@ -122,7 +144,7 @@ def run_batch_discovery(
     _write_json(directory / "hypothesis_statistics.json", hypothesis_statistics)
     _write_json(directory / "batch_metrics_summary.json", metrics)
     render_batch_discovery_report(metrics, directory / "batch_discovery_report.md")
-    return {"run_dir": str(directory), "manifest": manifest, "metrics": metrics, "candidates": candidates, "annotation_sample": sample}
+    return {"run_dir": str(directory), "manifest": manifest, "metrics": metrics, "candidates": candidates, "annotation_sample": sample, "validation": validation_result}
 
 
 __all__ = ["run_batch_discovery"]

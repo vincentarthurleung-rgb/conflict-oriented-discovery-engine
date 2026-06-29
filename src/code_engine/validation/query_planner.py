@@ -11,6 +11,8 @@ from code_engine.schemas.validation import (
     ValidationResourcePolicy, ValidatorRoute,
 )
 from code_engine.validation.cache import ValidationQueryCache, build_validation_cache_key
+from code_engine.validation.index_manifest import load_validation_index_manifest, validate_validation_index_manifest
+from code_engine.validation.index_schema import load_validation_index_schema, validate_index_record_against_schema
 from code_engine.validation.resource_guard import enforce_validation_resource_policy, summarize_validation_resource_usage
 from code_engine.validation.storage import ValidationLocalIndex
 
@@ -22,14 +24,43 @@ def _find_index(index_dir: str | None, index_name: str | None) -> tuple[Path | N
     if not index_dir or not index_name:
         return None, None
     root = Path(index_dir)
+    nested_root = root / index_name
+    for filename, index_type in (("records.jsonl", "jsonl"), ("records.sqlite", "sqlite"), ("records.parquet", "parquet"), ("records.duckdb", "duckdb")):
+        nested = nested_root / filename
+        if nested.is_file():
+            return nested, index_type
     for extension in INDEX_EXTENSIONS:
         candidate = root / f"{index_name}{extension}"
         if candidate.is_file():
             return candidate, extension.lstrip(".")
-    nested = root / index_name / "records.jsonl"
-    if nested.is_file():
-        return nested, "jsonl"
     return None, None
+
+
+def _validate_index_binding(path: Path, validator) -> tuple[bool, list[str], dict[str, str]]:
+    schema_path, manifest_path = path.parent / "schema.json", path.parent / "manifest.json"
+    if not schema_path.is_file() or not manifest_path.is_file():
+        return False, ["schema_or_manifest_missing"], {}
+    try:
+        schema = load_validation_index_schema(schema_path)
+        manifest = load_validation_index_manifest(manifest_path)
+        checked = validate_validation_index_manifest(manifest, schema)
+        errors = list(checked.errors)
+        if schema.index_name != getattr(validator, "schema_name", None):
+            errors.append("validator_schema_name_mismatch")
+        if schema.schema_version != getattr(validator, "schema_version", None):
+            errors.append("validator_schema_version_mismatch")
+        if path.suffix == ".jsonl":
+            with path.open("r", encoding="utf-8") as handle:
+                first = next((json.loads(line) for line in handle if line.strip()), None)
+            if first is not None:
+                record_check = validate_index_record_against_schema(first, schema)
+                if not record_check.valid:
+                    errors.append(f"index_record_missing_required_fields:{','.join(record_check.missing_fields)}")
+        return not errors, list(dict.fromkeys(checked.warnings + errors)), {
+            "schema_path": str(schema_path), "manifest_path": str(manifest_path),
+        }
+    except Exception as exc:
+        return False, [f"index_binding_error:{type(exc).__name__}:{exc}"], {}
 
 
 def _cache_path(cache_dir: str | None) -> Path | None:
@@ -108,8 +139,18 @@ def plan_validation_queries(
             if not capability.supports_local_index or not index_path:
                 plan.status, plan.reason = "no_index", "configured_local_index_missing"
             else:
-                plan.query_context.update({"index_path": str(index_path), "index_type": index_type})
-                estimate = ValidationLocalIndex(capability.index_name or route.validator_name, route.validator_name, index_type or "", index_path).estimate_query(plan)
+                validator = registry.create(route.validator_name)
+                binding_valid, binding_warnings, binding_paths = _validate_index_binding(index_path, validator)
+                if not binding_valid:
+                    plan.status, plan.reason = "no_index", "schema_bound_index_unavailable"
+                    plan.warnings.extend(binding_warnings)
+                    plans.append(plan)
+                    continue
+                plan.query_context.update({"index_path": str(index_path), "index_type": index_type, **binding_paths})
+                estimate = ValidationLocalIndex(
+                    capability.index_name or route.validator_name, route.validator_name,
+                    index_type or "", index_path, **binding_paths,
+                ).estimate_query(plan)
                 plan.estimated_records = estimate.get("estimated_records")
                 plan.estimated_memory_mb = estimate.get("estimated_memory_mb")
                 plan.estimated_output_bytes = estimate.get("estimated_output_bytes")

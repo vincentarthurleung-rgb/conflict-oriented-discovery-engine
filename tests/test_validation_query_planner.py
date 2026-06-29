@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+import shutil
 from pathlib import Path
 
 from code_engine.schemas.validation import ValidationAnchor, ValidationQuestion, ValidationResourcePolicy, ValidatorRoute
@@ -20,14 +21,17 @@ class ValidationQueryPlannerTests(unittest.TestCase):
         return plan_validation_queries([self.route],[self.question],[self.anchor],self.registry,policy,mode)[0]
 
     def test_local_remote_cache_and_missing(self):
-        fixture=Path(__file__).parent/"fixtures/validation_indexes/chembl.jsonl"
+        fixture=Path(__file__).parent/"fixtures/validation_indexes/chembl"
         with tempfile.TemporaryDirectory() as tmp:
-            Path(tmp,"chembl.jsonl").write_text(fixture.read_text())
+            shutil.copytree(fixture, Path(tmp, "chembl"))
             local=self.plan("local_index",ValidationResourcePolicy(index_dir=tmp,max_records_per_validator=10,max_signals_per_validator=5))
             self.assertEqual((local.execution_mode,local.status),("local_index","allowed"))
             self.assertEqual((local.max_records,local.max_signals),(10,5))
             artifacts=write_validation_query_plans([local],tmp)
             self.assertTrue(Path(artifacts["plans"]).exists())
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "chembl.jsonl").write_text((fixture / "records.jsonl").read_text())
+            self.assertEqual(self.plan("local_index", ValidationResourcePolicy(index_dir=tmp)).status, "no_index")
         missing=self.plan("local_index",ValidationResourcePolicy(index_dir="missing"))
         self.assertEqual(missing.status,"no_index")
         blocked=self.plan("remote_api",ValidationResourcePolicy(external_validation_enabled=True,network_enabled=False))

@@ -1,0 +1,1 @@
+{"signal_id":"e1","validator_name":"BenchmarkValidator","source_database":"fixture","query_plan_id":"plan-error","anchor_id":"anchor-error","signal_type":"error_signal","linked_external_evidence_ids":[],"supports_hypothesis":null,"contradicts_hypothesis":null,"direction":null,"confidence":0,"quality":0,"interpretation_limits":["Fixture signal is not proof."],"warnings":[]}

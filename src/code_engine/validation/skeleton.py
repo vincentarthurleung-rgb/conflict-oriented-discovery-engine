@@ -20,6 +20,12 @@ class ExternalIndexValidator(AbstractValidator):
     default_signal_type = "no_coverage_signal"
     interpretation_limits: tuple[str, ...] = ("External evidence is not proof.",)
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if getattr(cls, "index_name", None):
+            cls.schema_name = getattr(cls, "schema_name", None) or getattr(cls, "index_name", None)
+            cls.schema_version = getattr(cls, "schema_version", None) or "1.0.0"
+
     def __init__(
         self, configured_resources: set[str] | None = None,
         resource_paths: dict[str, str] | None = None, provider_client: Any | None = None,
@@ -45,7 +51,11 @@ class ExternalIndexValidator(AbstractValidator):
             index_type = query_plan.query_context.get("index_type")
             if not path or not index_type:
                 return
-            index = ValidationLocalIndex(query_plan.index_name or self.index_name or self.name, self.name, index_type, path)
+            index = ValidationLocalIndex(
+                query_plan.index_name or self.index_name or self.name, self.name, index_type, path,
+                schema_path=query_plan.query_context.get("schema_path"),
+                manifest_path=query_plan.query_context.get("manifest_path"),
+            )
             for sequence, raw in enumerate(index.stream_query(query_plan)):
                 yield self._evidence_from_raw(raw, query_plan, sequence)
         elif query_plan.execution_mode == "remote_api" and self.provider_client is not None:

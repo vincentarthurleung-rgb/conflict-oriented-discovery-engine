@@ -12,8 +12,8 @@ from code_engine.schemas.validation import ExternalEvidenceRecord
 
 class ValidationExecutionEngineTests(unittest.TestCase):
     def local_plan(self):
-        fixture=Path(__file__).parent/"fixtures/validation_indexes/chembl.jsonl"
-        return ValidationQueryPlan(query_plan_id="P",anchor_id="A",validator_name="ChEMBLValidator",query_type="binding_activity_check",query_entities=[{"canonical_id":"CHEM:SIROLIMUS"},{"canonical_id":"GENE:MTOR"}],query_context={"index_path":str(fixture),"index_type":"jsonl"},execution_mode="local_index",index_name="chembl",status="allowed",max_records=5,max_signals=5)
+        fixture=Path(__file__).parent/"fixtures/validation_indexes/chembl"
+        return ValidationQueryPlan(query_plan_id="P",anchor_id="A",validator_name="ChEMBLValidator",query_type="binding_activity_check",query_entities=[{"canonical_id":"CHEM:SIROLIMUS"},{"canonical_id":"GENE:MTOR"}],query_context={"index_path":str(fixture/"records.jsonl"),"index_type":"jsonl","schema_path":str(fixture/"schema.json"),"manifest_path":str(fixture/"manifest.json")},execution_mode="local_index",index_name="chembl",status="allowed",max_records=5,max_signals=5)
 
     def test_dry_run_and_local_streaming(self):
         registry=ValidatorRegistry().register_defaults(); policy=ValidationResourcePolicy(external_validation_enabled=True)

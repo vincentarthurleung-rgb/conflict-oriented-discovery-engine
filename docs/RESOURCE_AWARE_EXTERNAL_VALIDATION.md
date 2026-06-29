@@ -25,3 +25,9 @@ coverage. Missing indexes/providers produce `external_index_not_configured`.
 Trial existence is not efficacy support; binding activity is not mechanism
 proof; pathway membership is not causality proof; cancer cell-line dependency
 is not clinical efficacy.
+
+Local execution now requires the formal schema/manifest contract described in
+`VALIDATION_INDEX_SCHEMA.md`. Execution records estimated versus actual records,
+evidence/signals, JSONL/raw bytes, query time, total time, and peak buffered
+records in `validation_resource_usage.json`. Remote clients remain guarded and
+have no configured real HTTP transport in this hardening phase.

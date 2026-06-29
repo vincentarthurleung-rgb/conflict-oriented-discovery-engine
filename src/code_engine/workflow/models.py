@@ -100,6 +100,14 @@ class RunState:
     validation_estimated_memory_mb: float = 0.0
     validation_result_count: int = 0
     validation_aggregate_status: str = "not_run"
+    validation_actual_records_seen: int = 0
+    validation_actual_evidence_written: int = 0
+    validation_actual_signals_written: int = 0
+    validation_actual_raw_payload_bytes_written: int = 0
+    validation_actual_jsonl_bytes_written: int = 0
+    validation_actual_query_seconds: float = 0.0
+    validation_actual_total_seconds: float = 0.0
+    validation_actual_peak_batch_records_buffered: int = 0
     steps: dict[str, WorkflowStepRecord] = field(default_factory=dict)
     artifacts: dict[str, str] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)

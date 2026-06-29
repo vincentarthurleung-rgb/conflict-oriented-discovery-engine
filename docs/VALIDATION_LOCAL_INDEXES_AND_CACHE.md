@@ -19,3 +19,9 @@ type, canonical IDs, relation family, polarity, direction, context, and a
 validator configuration fingerprint. Cache-only mode never contacts a remote
 provider. A cache hit bypasses provider execution. A cache miss leaves the
 question unevaluated; it is neither contradiction nor no coverage.
+
+The preferred index layout is `<root>/<index>/schema.json`, `manifest.json`,
+and `records.*`. The manifest binds source/build versions and checksum to the
+schema. A flat record file without this metadata is legacy and blocked by the
+primary planner. Build bounded fixtures with `code_engine.cli.build_validation_index`
+and audit a run with `code_engine.cli.validation_preflight` before execution.

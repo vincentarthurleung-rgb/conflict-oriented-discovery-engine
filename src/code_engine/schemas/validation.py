@@ -281,6 +281,15 @@ class ValidationExecutionResult(CODEBaseModel):
     cache_miss_count: int = 0
     estimated_memory_mb: float | None = None
     actual_max_records_seen: int = 0
+    actual_records_seen: int = 0
+    actual_evidence_written: int = 0
+    actual_signals_written: int = 0
+    actual_raw_payload_bytes_written: int = 0
+    actual_jsonl_bytes_written: int = 0
+    actual_query_seconds: float = 0.0
+    actual_total_validation_seconds: float = 0.0
+    actual_peak_batch_records_buffered: int = 0
+    per_query_actual_stats: dict[str, dict[str, Any]] = Field(default_factory=dict)
     network_calls_made: int = 0
     warnings: list[str] = Field(default_factory=list)
     artifact_refs: dict[str, str] = Field(default_factory=dict)
