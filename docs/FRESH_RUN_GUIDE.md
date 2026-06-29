@@ -105,3 +105,6 @@ planning-only until a guarded transport is configured explicitly.
 # Unified entry point
 
 Prefer `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-network --until report`. RunState isolates artifacts and records every warning, error, and external-call count. Resume never restores API/network permission implicitly. Partial reports are normal when runtime inputs are absent.
+# Hypothesis behavior
+
+Fresh runs use only artifacts inside their run directory. Missing hypothesis inputs return `no_input` without failing the workflow. Large hypothesis JSONL artifacts are streamed. Validation follows hypothesis formation and its external signals are conservative, not proof.

@@ -208,6 +208,10 @@ def run_workflow(
                     record_artifact(state, artifact_name, artifact_path)
                 state.counts.update(result.counts)
                 for field in (
+                    "hypothesis_candidate_count", "hypothesis_count", "hypothesis_high_confidence_count",
+                    "hypothesis_abstract_only_count", "hypothesis_fulltext_grounded_count",
+                    "hypothesis_mechanism_grounded_count", "hypothesis_requires_manual_review_count",
+                    "hypothesis_artifact_count",
                     "validation_anchor_count", "validation_question_count", "validation_route_count",
                     "validation_query_plan_count", "validation_allowed_query_count",
                     "validation_blocked_query_count", "validation_estimated_records",
@@ -220,6 +224,8 @@ def run_workflow(
                 ):
                     if field in result.counts:
                         setattr(state, field, int(result.counts[field]))
+                if "hypothesis_source_mode_counts" in result.summary:
+                    state.hypothesis_source_mode_counts = dict(result.summary["hypothesis_source_mode_counts"])
                 if "validation_estimated_memory_mb" in result.summary:
                     state.validation_estimated_memory_mb = float(result.summary["validation_estimated_memory_mb"])
                 state.validation_actual_query_seconds = float(result.summary.get("validation_actual_query_seconds", 0.0))

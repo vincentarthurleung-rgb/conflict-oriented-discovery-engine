@@ -17,6 +17,9 @@ def render_batch_discovery_report(metrics: dict, path: str | Path) -> Path:
         f"- Valid conflict rate: {metrics.get('valid_conflict_rate')}",
         f"- Actionable conflict rate: {metrics.get('actionable_conflict_rate')}",
         f"- Hypotheses generated: {metrics.get('hypothesis_count', 0)}",
+        f"- Traceable hypotheses: {metrics.get('traceable_hypothesis_count', 0)}",
+        f"- Full-text grounded hypotheses: {metrics.get('fulltext_grounded_hypothesis_count', 0)}",
+        f"- Abstract-only follow-ups: {metrics.get('abstract_only_hypothesis_count', 0)}",
         f"- Estimated cost: ${metrics.get('estimated_cost_usd', 0.0):.6f}",
         f"- Cost per conflict candidate: {metrics.get('cost_per_conflict_candidate')}",
     ]

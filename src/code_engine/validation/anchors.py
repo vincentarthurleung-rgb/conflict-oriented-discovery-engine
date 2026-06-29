@@ -69,11 +69,17 @@ def build_validation_anchors_from_hypotheses(hypotheses: Iterable[Any]) -> list[
         contexts.update({"hypothesis_contexts": _value(hypothesis, "contexts", []) or []})
         provenance = {
             "hypothesis_ids": [hypothesis_id],
-            "evidence_ids": list(_value(hypothesis, "evidence_ids", []) or []),
-            "conflict_ids": list(_value(hypothesis, "conflict_bottlenecks", []) or []),
+            "evidence_ids": list(_value(hypothesis, "linked_evidence_ids", _value(hypothesis, "evidence_ids", [])) or []),
+            "conflict_ids": list(_value(hypothesis, "linked_conflict_ids", _value(hypothesis, "conflict_bottlenecks", [])) or []),
+            "mechanism_edge_ids": list(_value(hypothesis, "linked_mechanism_edge_ids", []) or []),
+            "mechanism_path_ids": list(_value(hypothesis, "linked_mechanism_path_ids", []) or []),
         }
-        intent = _intent_for_relation(relation, contexts)
+        requirements = list(_value(hypothesis, "validation_requirements", []) or [])
+        intents = [str(item.get("requirement_type")) if isinstance(item, dict) else str(item) for item in requirements]
+        intent = intents[0] if intents else _intent_for_relation(relation, contexts)
         anchors.append(_anchor("hypothesis_anchor", entities, validation_intent=intent, provenance=provenance, contexts=contexts, relation_family=relation, confidence=0.85, priority=3))
+        for requested_intent in intents[1:]:
+            anchors.append(_anchor("hypothesis_anchor", entities, validation_intent=requested_intent, provenance=provenance, contexts={**contexts, "validation_requirement": requested_intent}, relation_family=relation, confidence=0.8, priority=2))
         if len(entities) >= 2:
             anchors.append(_anchor("triple_anchor", entities[:2], validation_intent=intent, provenance=provenance, relations=[{"relation_family": relation}], contexts=contexts, relation_family=relation, confidence=0.8, priority=3))
         if intent == "clinical_context_check":

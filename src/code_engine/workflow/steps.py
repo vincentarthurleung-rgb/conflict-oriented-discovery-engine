@@ -40,9 +40,8 @@ def _read(run_dir: Path, name: str, default: Any = None) -> Any:
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    from code_engine.hypothesis.io import iter_jsonl
+    return [item for item in iter_jsonl(path)]
 
 
 def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[str, Any], run_dir: Path) -> list[dict[str, Any]]:
@@ -579,8 +578,20 @@ def run_hypothesis_step(*, run_dir: Path, execute: bool, max_papers: int | None 
     mechanism = _read(run_dir, "mechanism_graph.json")
     profile = _read(run_dir, "domain_profile.json")
     result = run_hypothesis_search_for_run(conflict, mechanism, profile, run_dir, dry_run=not execute, max_hypotheses=max_papers)
-    path = _write(run_dir, "hypothesis_summary.json", result)
-    return StepResult(status=result["status"], summary=result, artifacts={"hypothesis_summary": path}, counts={"hypothesis_count": int(result.get("hypothesis_count", 0))}, warnings=list(result.get("warnings", [])), skipped_reason=result.get("reason"))
+    artifact_dir = run_dir / "artifacts"
+    artifact_names = (
+        "hypothesis_candidates.jsonl", "hypothesis_hyperedges.jsonl",
+        "hypothesis_reasoning_records.jsonl", "hypothesis_validation_requirements.jsonl",
+        "hypothesis_summary.json",
+    )
+    artifacts = {Path(name).stem: str(artifact_dir / name) for name in artifact_names}
+    count_names = (
+        "hypothesis_candidate_count", "hypothesis_count", "hypothesis_high_confidence_count",
+        "hypothesis_abstract_only_count", "hypothesis_fulltext_grounded_count",
+        "hypothesis_mechanism_grounded_count", "hypothesis_requires_manual_review_count",
+        "hypothesis_artifact_count",
+    )
+    return StepResult(status=result["status"], summary=result, artifacts=artifacts, counts={name: int(result.get(name, 0)) for name in count_names}, warnings=list(result.get("warnings", [])), skipped_reason=result.get("reason"))
 
 
 def run_validation_step(
@@ -615,9 +626,10 @@ def run_validation_step(
     from code_engine.validation.router import route_validation_questions, write_validation_routes
 
     profile = _read(run_dir, "domain_profile.json", {})
-    hypothesis_payload = _read(run_dir, "hypothesis_summary.json", {})
-    hypotheses = list(hypothesis_payload.get("hypotheses", []))
-    if not hypotheses:
+    from code_engine.hypothesis.io import iter_jsonl
+    hypothesis_path = run_dir / "artifacts" / "hypothesis_hyperedges.jsonl"
+    hypotheses = iter_jsonl(hypothesis_path) if hypothesis_path.exists() and hypothesis_path.stat().st_size else None
+    if hypotheses is None:
         lowered_query = query.casefold()
         fallback_relation = (profile.get("key_relation_types") or ["identity_lookup"])[0]
         if any(term in lowered_query for term in ("signaling", "pathway", "通路", "信号")):
@@ -634,9 +646,9 @@ def run_validation_step(
             "relation_family": fallback_relation,
             "context": {"planning_only": True},
         }]
+    from itertools import chain
     conflict_payload = _read(run_dir, "conflict_graph_summary.json", {})
-    conflicts = list(conflict_payload.get("conflict_edges", []))
-    conflicts.extend(_read_jsonl(run_dir / "artifacts" / "fulltext_conflict_confirmation.jsonl"))
+    conflicts = chain(conflict_payload.get("conflict_edges", []), iter_jsonl(run_dir / "artifacts" / "fulltext_conflict_confirmation.jsonl"))
     mechanism = _read(run_dir, "mechanism_graph.json", {})
     observations = _read(run_dir, "l2_fulltext_observations.json", []) or _read(run_dir, "l2_observations.json", [])
     anchors = []

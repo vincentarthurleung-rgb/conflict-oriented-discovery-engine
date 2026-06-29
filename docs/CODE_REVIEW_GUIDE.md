@@ -153,3 +153,6 @@ Review actual resource usage alongside estimates. Trial existence, binding,
 pathway membership, and dependency context must retain their interpretation
 limits. Run preflight and the deterministic aggregator benchmark before a real
 pilot.
+# Hypothesis review checks
+
+Verify that hypothesis code never calls legacy Stage6, global data paths, PyG, LLMs, remote APIs, or validation signals. Abstract-only conflicts must remain low-confidence follow-ups. Full-text, mechanism, conflict, evidence, and observation provenance must survive into hyperedges and reasoning records. JSONL processing must be streaming and outputs run-scoped.

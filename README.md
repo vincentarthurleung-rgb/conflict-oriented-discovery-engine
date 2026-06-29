@@ -329,6 +329,8 @@ Natural-language understanding is [LLM-first](docs/LLM_FIRST_SEMANTIC_INTAKE.md)
 
 C.O.D.E. now includes an evidence-grounded [MechanismGraph MVP](docs/MECHANISM_GRAPH.md), moving the workflow toward `Paper → Evidence → Mechanism → Conflict → Hypothesis → Validation`. Mechanism edges come only from L2 paper observations; seed/user-intent triples never enter the graph. L3 remains unchanged and annotates matching mechanism edges after conflict discovery. Storage remains local JSON; see [Mechanism-Centered Knowledge Store](docs/MECHANISM_CENTERED_KNOWLEDGE_STORE.md).
 
+Hypothesis formation is now [run-scoped and artifact-grounded](docs/RUN_SCOPED_HYPOTHESIS_FORMATION.md). It does not call legacy global Stage6. Confirmed full-text conflicts and mechanism paths can form grounded hypotheses; abstract-only conflicts remain low-confidence follow-ups requiring full-text confirmation. Validation stays downstream and is not used in hypothesis scoring. See the [hypothesis artifact contract](docs/HYPOTHESIS_ARTIFACT_CONTRACT.md).
+
 Layer 2 uses the [Entity Resolution Hub](docs/ENTITY_RESOLUTION_HUB.md), combining explicit curated anchors, an audited cache, guarded external provider skeletons, and an optional ungrounded LLM proposer. A deterministic adjudicator makes every canonical decision. The old ketamine registry is a pilot fixture only; no API or network provider is enabled by default. See [L2 audit artifacts](docs/L2_ENTITY_RESOLUTION_AUDIT.md).
 
 ## External validation hardening

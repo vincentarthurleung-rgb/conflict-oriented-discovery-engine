@@ -86,6 +86,15 @@ class RunState:
     fulltext_escalation_enabled: bool = False
     l1_estimated_cost_usd: float = 0.0
     l1_actual_cost_usd: float | None = None
+    hypothesis_candidate_count: int = 0
+    hypothesis_count: int = 0
+    hypothesis_high_confidence_count: int = 0
+    hypothesis_abstract_only_count: int = 0
+    hypothesis_fulltext_grounded_count: int = 0
+    hypothesis_mechanism_grounded_count: int = 0
+    hypothesis_requires_manual_review_count: int = 0
+    hypothesis_source_mode_counts: dict[str, int] = field(default_factory=dict)
+    hypothesis_artifact_count: int = 0
     validation_anchor_count: int = 0
     validation_question_count: int = 0
     validation_route_count: int = 0

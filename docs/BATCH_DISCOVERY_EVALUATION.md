@@ -37,3 +37,6 @@ executes a non-dry batch; remote mode remains blocked without all guards. Batch
 statuses can be grouped by conflict/hypothesis provenance, but they are not a
 measurement of hypothesis accuracy. Missing index, no coverage, and cache miss
 remain distinct.
+# Hypothesis traceability
+
+Batch discovery emits `batch_hypothesis_candidates.jsonl`, `batch_hypothesis_hyperedges.jsonl`, and `batch_hypothesis_summary.json`. Abstract conflicts produce low-confidence follow-ups; available full-text confirmations upgrade grounding. Metrics cover candidate count, traceability, grounding, manual review, and validation readiness—not hypothesis accuracy.

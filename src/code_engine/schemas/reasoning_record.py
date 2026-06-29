@@ -12,6 +12,16 @@ class ReasoningRecord(CODEBaseModel):
     mechanism: str = "unspecified"
     tradeoff: str = "unspecified"
     evidence_ids: list[str] = Field(default_factory=list)
+    input_conflicts: list[str] = Field(default_factory=list)
+    input_mechanism_paths: list[str] = Field(default_factory=list)
+    input_evidence: list[str] = Field(default_factory=list)
+    conflict_bottleneck: str = "unspecified"
+    mechanism_bridge: str = "unspecified"
+    context_partition: str = "unspecified"
+    why_this_hypothesis: str = ""
+    why_not_validated_yet: str = "Validation occurs after hypothesis formation."
+    validation_requirements: list = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
     source: str = "deterministic_rule"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     warnings: list[str] = Field(default_factory=list)

@@ -49,6 +49,16 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         title = "L2 Entity Resolution" if name == "l2" else name
         lines += [f"### {title}", "", f"```json\n{json.dumps(state.steps[name].summary, ensure_ascii=False, indent=2)}\n```", ""]
     lines += [
+        "## Hypothesis Formation", "",
+        f"- Hypothesis source modes: `{json.dumps(state.hypothesis_source_mode_counts, sort_keys=True)}`",
+        f"- Candidate count: {state.hypothesis_candidate_count}",
+        f"- Generated hyperedge count: {state.hypothesis_count}",
+        f"- Fulltext-grounded count: {state.hypothesis_fulltext_grounded_count}",
+        f"- Mechanism-grounded count: {state.hypothesis_mechanism_grounded_count}",
+        f"- Abstract-only follow-up count: {state.hypothesis_abstract_only_count}",
+        f"- Manual review count: {state.hypothesis_requires_manual_review_count}",
+        f"- Top hypotheses: `{json.dumps(state.steps['hypothesis'].summary.get('top_hypotheses', []), ensure_ascii=False)}`",
+        f"- Warnings: `{json.dumps(state.steps['hypothesis'].warnings, ensure_ascii=False)}`", "",
         "## Coverage gaps", "",
         f"- Full-text unavailable papers: {state.counts.get('fulltext_unavailable_paper_count', 0)}",
         f"- Insufficient full-text coverage: {state.counts.get('insufficient_fulltext_coverage_count', 0)}",

@@ -1,0 +1,1 @@
+{"candidate_id":"C_FIXTURE","subject_canonical_id":"CHEM:SIROLIMUS","object_canonical_id":"GENE:MTOR","subject_name":"sirolimus","object_name":"MTOR","relation_family":"pathway_signaling","polarity_type":"mechanistic","abstract_entropy":1.0,"direction_distribution":{"activate":1,"inhibit":1},"normalized_observation_ids":["O_FIXTURE"]}

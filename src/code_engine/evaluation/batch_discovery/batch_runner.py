@@ -17,6 +17,11 @@ from code_engine.evaluation.batch_discovery.sampling import sample_conflicts
 from code_engine.graph.abstract_conflict_screening import build_abstract_conflict_candidates
 from code_engine.extraction.l1_budget import estimate_l1_cost
 from code_engine.evaluation.batch_discovery.validation import run_batch_external_validation
+from code_engine.hypothesis.candidate_builder import build_hypothesis_candidates_from_run_artifacts
+from code_engine.hypothesis.hyperedge_builder import build_hypothesis_hyperedge
+from code_engine.hypothesis.io import iter_jsonl, write_jsonl
+from code_engine.hypothesis.scoring import score_hypothesis_candidate
+from code_engine.hypothesis.validation_requirements import build_validation_requirements_for_hypothesis
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -59,9 +64,9 @@ def run_batch_discovery(
         manifest = json.loads((directory / "batch_run_manifest.json").read_text(encoding="utf-8"))
         metrics = json.loads((directory / "batch_metrics_summary.json").read_text(encoding="utf-8"))
         candidates_path = directory / "abstract_conflict_candidates.jsonl"
-        candidates = [json.loads(line) for line in candidates_path.read_text(encoding="utf-8").splitlines() if line.strip()] if candidates_path.exists() else []
+        candidates = [item for item in iter_jsonl(candidates_path)]
         sample_path = directory / "conflict_annotation_sample.jsonl"
-        sample = [json.loads(line) for line in sample_path.read_text(encoding="utf-8").splitlines() if line.strip()] if sample_path.exists() else []
+        sample = [item for item in iter_jsonl(sample_path)]
         return {"run_dir": str(directory), "manifest": {**manifest, "resumed": True}, "metrics": metrics, "candidates": candidates, "annotation_sample": sample}
     per_prompt_results = []
     run_summaries = []
@@ -84,8 +89,29 @@ def run_batch_discovery(
     sample = sample_conflicts(candidates, sample_conflict_count)
     annotations = []
     if annotations_path and Path(annotations_path).exists():
-        annotations = [json.loads(line) for line in Path(annotations_path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    hypothesis_statistics = {"hypothesis_count": 0, "traceable_hypothesis_count": 0, "note": "hypothesis accuracy is not the primary batch endpoint"}
+        annotations = [item for item in iter_jsonl(Path(annotations_path))]
+    confirmation_path = directory / "fulltext_conflict_confirmation.jsonl"
+    hypothesis_candidates = []
+    hypothesis_hyperedges = []
+    for candidate in build_hypothesis_candidates_from_run_artifacts(
+        None, iter_jsonl(confirmation_path), iter(candidates), iter(focus_set), iter(()), iter(()),
+        max_candidates=max(50, len(candidates) * 2),
+    ):
+        candidate["validation_requirements"] = build_validation_requirements_for_hypothesis(candidate)
+        scored = score_hypothesis_candidate(candidate)
+        scored["hypothesis_id"] = "H_" + str(scored["candidate_id"]).removeprefix("HC_")
+        hypothesis_candidates.append(scored)
+        hypothesis_hyperedges.append(build_hypothesis_hyperedge(scored).model_dump(mode="json"))
+    hypothesis_statistics = {
+        "hypothesis_candidate_count": len(hypothesis_candidates),
+        "hypothesis_count": len(hypothesis_hyperedges),
+        "traceable_hypothesis_count": sum(bool(item.get("linked_conflict_ids") or item.get("linked_evidence_ids") or item.get("evidence_ids")) for item in hypothesis_hyperedges),
+        "fulltext_grounded_hypothesis_count": sum(item.get("source_scope") == "full_text" for item in hypothesis_hyperedges),
+        "mechanism_grounded_hypothesis_count": sum(bool(item.get("linked_mechanism_edge_ids") or item.get("linked_mechanism_path_ids")) for item in hypothesis_hyperedges),
+        "abstract_only_hypothesis_count": sum(item.get("source_scope") == "abstract" for item in hypothesis_hyperedges),
+        "requires_manual_review_hypothesis_count": sum(bool(item.get("requires_manual_review")) for item in hypothesis_hyperedges),
+        "note": "hypothesis accuracy is not a batch metric",
+    }
     abstract_inputs = [
         str(paper.get("abstract") or paper.get("abstract_text") or "")
         for prompt in prompts for paper in prompt.get("papers", [])
@@ -105,7 +131,7 @@ def run_batch_discovery(
             cache_dir=validation_cache_dir, max_anchors=validation_max_anchors,
             max_query_plans=validation_max_query_plans,
             max_records_per_validator=validation_max_records_per_validator,
-            max_signals_per_run=validation_max_signals_per_run,
+            max_signals_per_run=validation_max_signals_per_run, hypotheses=hypothesis_hyperedges,
         )
         metrics.update(validation_result["metrics"])
     manifest = {
@@ -140,11 +166,14 @@ def run_batch_discovery(
     _write_jsonl(directory / "abstract_conflict_candidates.jsonl", candidates)
     _write_jsonl(directory / "conflict_focus_set.jsonl", focus_set)
     _write_jsonl(directory / "conflict_annotation_sample.jsonl", sample)
+    write_jsonl(directory / "batch_hypothesis_candidates.jsonl", iter(hypothesis_candidates))
+    write_jsonl(directory / "batch_hypothesis_hyperedges.jsonl", iter(hypothesis_hyperedges))
+    _write_json(directory / "batch_hypothesis_summary.json", hypothesis_statistics)
     write_annotation_schema(directory / "conflict_annotation_schema.json")
     _write_json(directory / "hypothesis_statistics.json", hypothesis_statistics)
     _write_json(directory / "batch_metrics_summary.json", metrics)
     render_batch_discovery_report(metrics, directory / "batch_discovery_report.md")
-    return {"run_dir": str(directory), "manifest": manifest, "metrics": metrics, "candidates": candidates, "annotation_sample": sample, "validation": validation_result}
+    return {"run_dir": str(directory), "manifest": manifest, "metrics": metrics, "candidates": candidates, "annotation_sample": sample, "hypotheses": hypothesis_hyperedges, "validation": validation_result}
 
 
 __all__ = ["run_batch_discovery"]
