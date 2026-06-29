@@ -331,6 +331,8 @@ C.O.D.E. now includes an evidence-grounded [MechanismGraph MVP](docs/MECHANISM_G
 
 Hypothesis formation is now [run-scoped and artifact-grounded](docs/RUN_SCOPED_HYPOTHESIS_FORMATION.md). It does not call legacy global Stage6. Confirmed full-text conflicts and mechanism paths can form grounded hypotheses; abstract-only conflicts remain low-confidence follow-ups requiring full-text confirmation. Validation stays downstream and is not used in hypothesis scoring. See the [hypothesis artifact contract](docs/HYPOTHESIS_ARTIFACT_CONTRACT.md).
 
+Cross-run reuse is provided by the offline [Global Incremental Corpus](docs/GLOBAL_INCREMENTAL_CORPUS.md): canonical paper identity, [bibliographic provenance](docs/PAPER_REGISTRY_AND_BIBLIOGRAPHIC_PROVENANCE.md), [task-family L1 caching](docs/L1_TASK_CACHE.md), [KnowledgeStore merge](docs/KNOWLEDGE_STORE_MERGE.md), and an optional [coverage precheck](docs/COVERAGE_PRECHECK.md). Global writes and coverage short-circuiting are disabled by default.
+
 Layer 2 uses the [Entity Resolution Hub](docs/ENTITY_RESOLUTION_HUB.md), combining explicit curated anchors, an audited cache, guarded external provider skeletons, and an optional ungrounded LLM proposer. A deterministic adjudicator makes every canonical decision. The old ketamine registry is a pilot fixture only; no API or network provider is enabled by default. See [L2 audit artifacts](docs/L2_ENTITY_RESOLUTION_AUDIT.md).
 
 ## External validation hardening

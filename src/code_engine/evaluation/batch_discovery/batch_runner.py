@@ -55,23 +55,67 @@ def run_batch_discovery(
     validation_max_query_plans: int = 400,
     validation_max_records_per_validator: int = 100,
     validation_max_signals_per_run: int = 500,
+    global_corpus_dir: str | Path | None = None,
+    paper_registry_enabled: bool = True, update_global_corpus: bool = False,
+    l1_task_cache_enabled: bool = True, allow_compatible_l1_task_reuse: bool = False,
+    merge_knowledge_store: bool = True, update_global_knowledge_store: bool = False,
 ) -> dict[str, Any]:
     prompts = load_prompt_bank(prompt_bank, max_prompts)
     batch_hash = hashlib.sha256("|".join(str(item["prompt_id"]) for item in prompts).encode()).hexdigest()[:10]
     directory = Path(run_dir) if run_dir is not None else Path("runs") / f"batch_{batch_hash}"
     directory.mkdir(parents=True, exist_ok=True)
+    corpus_dir = Path(global_corpus_dir) if global_corpus_dir else Path("data/corpus")
+    batch_paper_manifest = []
+    unique_papers: set[str] = set()
+    duplicate_hits = cache_hits = cache_misses = 0
+    prompt_corpus_stats = []
+    if paper_registry_enabled:
+        from code_engine.corpus.corpus_cache import compute_text_hash
+        from code_engine.corpus.io import atomic_write_jsonl
+        from code_engine.corpus.l1_task_cache import L1TaskSignature, build_l1_task_cache_key, lookup_l1_task_cache
+        from code_engine.corpus.paper_registry import PaperRegistry
+        registry = PaperRegistry.load(corpus_dir / "paper_registry")
+        seen_tasks: set[str] = set()
+        for prompt in prompts:
+            retrieved = reused = new_tasks = reused_tasks = 0
+            for paper in prompt.get("papers", []):
+                retrieved += 1
+                before = set(registry.records)
+                record = registry.resolve_or_create({**paper, "prompt_id": prompt["prompt_id"]}, f"batch_{batch_hash}", str(prompt.get("query") or prompt.get("prompt") or ""))
+                duplicate = record.canonical_paper_id in unique_papers or record.canonical_paper_id in before
+                duplicate_hits += int(duplicate); reused += int(duplicate)
+                unique_papers.add(record.canonical_paper_id)
+                batch_paper_manifest.append({"prompt_id": prompt["prompt_id"], "paper_id": paper.get("paper_id"), "canonical_paper_id": record.canonical_paper_id, "doi": record.bibliographic.doi, "title": record.bibliographic.title, "journal": record.bibliographic.journal, "publication_year": record.bibliographic.publication_year, "dedup_status": "duplicate" if duplicate else "new", "warnings": record.warnings})
+                if l1_task_cache_enabled and record.abstract_hash:
+                    signature = L1TaskSignature(task_family="abstract_claim_screening", source_scope="abstract", canonical_paper_id=record.canonical_paper_id, content_hash=record.abstract_hash, schema_version="abstract_claim_v1", prompt_fingerprint=str(prompt.get("prompt_profile_id") or "batch"), domain_id=prompt.get("domain_id"), l1_mode=l1_mode)
+                    key = build_l1_task_cache_key(signature)
+                    cached = lookup_l1_task_cache(signature, corpus_dir / "l1_task_cache")
+                    reusable = key in seen_tasks or (cached and (cached.status == "hit" or (cached.status == "compatible_task_family_hit" and allow_compatible_l1_task_reuse)))
+                    if reusable:
+                        cache_hits += 1; reused_tasks += 1
+                    else:
+                        cache_misses += 1; new_tasks += 1; seen_tasks.add(key)
+                        if update_global_corpus:
+                            from code_engine.corpus.l1_task_cache import L1TaskCache, store_l1_task_cache_record
+                            paper_claims = [{**claim, "canonical_paper_id": record.canonical_paper_id} for claim in prompt.get("abstract_claims", []) if str(claim.get("paper_id") or "") == str(paper.get("paper_id") or "")]
+                            store_l1_task_cache_record(L1TaskCache.new_record(signature, f"batch_{batch_hash}", {"claims": paper_claims}, claim_count=len(paper_claims)), corpus_dir / "l1_task_cache")
+            prompt_corpus_stats.append({"prompt_id": prompt["prompt_id"], "retrieved_papers": retrieved, "unique_papers": retrieved - reused, "reused_papers": reused, "new_l1_tasks": new_tasks, "reused_l1_tasks": reused_tasks})
+        atomic_write_jsonl(directory / "batch_paper_manifest.jsonl", iter(batch_paper_manifest))
+        atomic_write_jsonl(directory / "batch_prompt_corpus_stats.jsonl", iter(prompt_corpus_stats))
+        if update_global_corpus:
+            registry.save()
     if resume and (directory / "batch_run_manifest.json").exists() and (directory / "batch_metrics_summary.json").exists():
         manifest = json.loads((directory / "batch_run_manifest.json").read_text(encoding="utf-8"))
         metrics = json.loads((directory / "batch_metrics_summary.json").read_text(encoding="utf-8"))
         candidates_path = directory / "abstract_conflict_candidates.jsonl"
-        candidates = [item for item in iter_jsonl(candidates_path)]
         sample_path = directory / "conflict_annotation_sample.jsonl"
         sample = [item for item in iter_jsonl(sample_path)]
-        return {"run_dir": str(directory), "manifest": {**manifest, "resumed": True}, "metrics": metrics, "candidates": candidates, "annotation_sample": sample}
+        return {"run_dir": str(directory), "manifest": {**manifest, "resumed": True}, "metrics": metrics, "candidates": [], "candidates_path": str(candidates_path), "annotation_sample": sample, "resume_payload_bounded": True}
     per_prompt_results = []
     run_summaries = []
+    bibliography_by_paper = {str(item.get("paper_id")): item for item in batch_paper_manifest if item.get("paper_id")}
     for prompt in prompts:
-        claims = [{**item, "prompt_id": prompt["prompt_id"]} for item in prompt.get("abstract_claims", [])]
+        claims = [{**item, **bibliography_by_paper.get(str(item.get("paper_id")), {}), "prompt_id": prompt["prompt_id"]} for item in prompt.get("abstract_claims", [])]
         observations = list(prompt.get("normalized_observations", []))
         result = build_abstract_conflict_candidates(
             claims, observations, min_evidence_count=min_evidence_count,
@@ -85,6 +129,9 @@ def run_batch_discovery(
             "normalized_observation_count": len(observations),
         })
     candidates = aggregate_conflict_candidates(per_prompt_results)
+    if batch_paper_manifest:
+        from code_engine.corpus.artifact_provenance import attach_linked_paper_provenance
+        candidates = [attach_linked_paper_provenance(item, [bibliography_by_paper[paper_id] for paper_id in map(str, item.get("paper_ids", [])) if paper_id in bibliography_by_paper]) for item in candidates]
     focus_set = [item for item in candidates if item.get("recommended_for_fulltext_escalation")]
     sample = sample_conflicts(candidates, sample_conflict_count)
     annotations = []
@@ -123,6 +170,10 @@ def run_batch_discovery(
         run_summaries=run_summaries, hypothesis_statistics=hypothesis_statistics,
         estimated_cost_usd=cost_estimate["estimated_cost_usd"], actual_cost_usd=0.0,
     )
+    retrieved_total = sum(item["retrieved_papers"] for item in prompt_corpus_stats)
+    missing_doi = sum(not item.get("doi") for item in batch_paper_manifest)
+    missing_journal = sum(not item.get("journal") for item in batch_paper_manifest)
+    metrics.update({"unique_paper_count": len(unique_papers), "duplicate_paper_hit_count": duplicate_hits, "paper_overlap_rate": round(duplicate_hits / retrieved_total, 6) if retrieved_total else 0.0, "abstract_l1_cache_hit_count": cache_hits, "abstract_l1_cache_miss_count": cache_misses, "fulltext_l1_cache_hit_count": 0, "fulltext_l1_cache_miss_count": 0, "estimated_api_calls_saved_by_cache": cache_hits, "knowledge_merge_inserted_count": 0, "knowledge_merge_skipped_duplicate_count": 0, "missing_doi_rate": round(missing_doi / len(batch_paper_manifest), 6) if batch_paper_manifest else 0.0, "missing_journal_rate": round(missing_journal / len(batch_paper_manifest), 6) if batch_paper_manifest else 0.0})
     validation_result = None
     if external_validation:
         validation_result = run_batch_external_validation(
@@ -171,6 +222,11 @@ def run_batch_discovery(
     _write_json(directory / "batch_hypothesis_summary.json", hypothesis_statistics)
     write_annotation_schema(directory / "conflict_annotation_schema.json")
     _write_json(directory / "hypothesis_statistics.json", hypothesis_statistics)
+    if merge_knowledge_store:
+        from code_engine.corpus.knowledge_merge import merge_run_artifacts_into_knowledge_store
+        merge = merge_run_artifacts_into_knowledge_store(directory, corpus_dir, update_global=update_global_knowledge_store, dry_run=not update_global_knowledge_store)
+        metrics["knowledge_merge_inserted_count"] = merge.inserted_count
+        metrics["knowledge_merge_skipped_duplicate_count"] = merge.skipped_count
     _write_json(directory / "batch_metrics_summary.json", metrics)
     render_batch_discovery_report(metrics, directory / "batch_discovery_report.md")
     return {"run_dir": str(directory), "manifest": manifest, "metrics": metrics, "candidates": candidates, "annotation_sample": sample, "hypotheses": hypothesis_hyperedges, "validation": validation_result}

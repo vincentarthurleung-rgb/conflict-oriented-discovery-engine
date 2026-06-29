@@ -31,3 +31,6 @@ Local execution now requires the formal schema/manifest contract described in
 evidence/signals, JSONL/raw bytes, query time, total time, and peak buffered
 records in `validation_resource_usage.json`. Remote clients remain guarded and
 have no configured real HTTP transport in this hardening phase.
+# Corpus provenance boundary
+
+Validation anchors retain linked canonical paper IDs and compact DOI/title/journal fields inherited from hypotheses. Corpus cache hits and KnowledgeStore coverage are provenance or availability signals; neither is validation proof.

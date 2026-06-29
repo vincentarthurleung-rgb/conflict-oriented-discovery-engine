@@ -9,3 +9,5 @@ The hypothesis step writes these files under the current run's `artifacts/` dire
 - `hypothesis_summary.json`: bounded counts, source modes, warnings, and top hypotheses.
 
 Provenance fields distinguish conflict IDs, full-text confirmation IDs, mechanism edge/path IDs, evidence IDs, and observation IDs. Abstract-only records must set `requires_fulltext_confirmation` and `requires_manual_review`; they are never high confidence. JSONL is streamed rather than represented as a large JSON array.
+
+Bibliographic provenance uses compact `linked_canonical_paper_ids`, `linked_dois`, `linked_titles`, `linked_journals`, `journal_distribution`, and `publication_year_range` fields. Full author/source metadata remains in the Paper Registry.

@@ -51,6 +51,10 @@ def _anchor(
         linked_evidence_ids=provenance.get("evidence_ids", []),
         linked_mechanism_edge_ids=provenance.get("mechanism_edge_ids", []),
         linked_mechanism_path_ids=provenance.get("mechanism_path_ids", []),
+        linked_paper_ids=provenance.get("paper_ids", []),
+        linked_canonical_paper_ids=provenance.get("canonical_paper_ids", []),
+        linked_dois=provenance.get("dois", []), linked_titles=provenance.get("titles", []),
+        linked_journals=provenance.get("journals", []),
         validation_intent=validation_intent, confidence=confidence, priority=priority,
         warnings=warnings,
     )
@@ -73,6 +77,11 @@ def build_validation_anchors_from_hypotheses(hypotheses: Iterable[Any]) -> list[
             "conflict_ids": list(_value(hypothesis, "linked_conflict_ids", _value(hypothesis, "conflict_bottlenecks", [])) or []),
             "mechanism_edge_ids": list(_value(hypothesis, "linked_mechanism_edge_ids", []) or []),
             "mechanism_path_ids": list(_value(hypothesis, "linked_mechanism_path_ids", []) or []),
+            "paper_ids": list(_value(hypothesis, "linked_paper_ids", []) or []),
+            "canonical_paper_ids": list(_value(hypothesis, "linked_canonical_paper_ids", []) or []),
+            "dois": list(_value(hypothesis, "linked_dois", []) or []),
+            "titles": list(_value(hypothesis, "linked_titles", []) or []),
+            "journals": list(_value(hypothesis, "linked_journals", []) or []),
         }
         requirements = list(_value(hypothesis, "validation_requirements", []) or [])
         intents = [str(item.get("requirement_type")) if isinstance(item, dict) else str(item) for item in requirements]

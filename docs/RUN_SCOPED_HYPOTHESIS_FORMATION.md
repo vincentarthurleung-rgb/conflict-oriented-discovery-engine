@@ -7,3 +7,5 @@ Confirmed full-text conflicts form full-text-grounded mechanism-conflict hypothe
 Scoring is deterministic and pre-validation. Validation requirements describe downstream checks and always have `status: not_run`. External validation remains conservative evidence gathering, not proof.
 
 All JSONL inputs and outputs are processed line-by-line. Candidate output is bounded by `max_hypotheses` (default 50).
+
+Conflict, mechanism, and evidence inputs carry compact Paper Registry provenance. Hypothesis candidates, hyperedges, reasoning records, requirements, reports, and validation anchors retain linked canonical paper IDs plus DOI/title/journal/year summaries.

@@ -156,3 +156,5 @@ pilot.
 # Hypothesis review checks
 
 Verify that hypothesis code never calls legacy Stage6, global data paths, PyG, LLMs, remote APIs, or validation signals. Abstract-only conflicts must remain low-confidence follow-ups. Full-text, mechanism, conflict, evidence, and observation provenance must survive into hyperedges and reasoning records. JSONL processing must be streaming and outputs run-scoped.
+
+For corpus changes, verify SHA-256 identities, conservative title-only duplicate handling, task-family/schema/content cache compatibility, compact bibliography propagation, atomic global writes, explicit update flags, and no remote metadata enrichment.

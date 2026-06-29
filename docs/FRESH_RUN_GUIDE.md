@@ -108,3 +108,5 @@ Prefer `python -m code_engine.cli.run --query "..." --dry-run --no-api --no-netw
 # Hypothesis behavior
 
 Fresh runs use only artifacts inside their run directory. Missing hypothesis inputs return `no_input` without failing the workflow. Large hypothesis JSONL artifacts are streamed. Validation follows hypothesis formation and its external signals are conservative, not proof.
+
+Paper registry and L1 cache lookup are enabled by default, but global writes are not. Use `--global-corpus-dir` to isolate experiments. Only enable global update flags after reviewing run-local deduplication and merge plans.

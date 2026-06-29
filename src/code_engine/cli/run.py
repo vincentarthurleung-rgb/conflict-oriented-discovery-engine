@@ -55,6 +55,31 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--l1-budget-usd", type=float)
     parser.add_argument("--l1-pricing-profile", default="deepseek_default")
     parser.add_argument("--allow-budget-overrun", action="store_true")
+    parser.add_argument("--global-corpus-dir", type=Path)
+    registry = parser.add_mutually_exclusive_group()
+    registry.add_argument("--enable-paper-registry", action="store_true", default=True)
+    registry.add_argument("--no-paper-registry", action="store_true")
+    corpus_update = parser.add_mutually_exclusive_group()
+    corpus_update.add_argument("--update-global-corpus", action="store_true")
+    corpus_update.add_argument("--no-update-global-corpus", action="store_true")
+    parser.add_argument("--allow-title-hash-paper-merge", action="store_true")
+    task_cache = parser.add_mutually_exclusive_group()
+    task_cache.add_argument("--enable-l1-task-cache", action="store_true", default=True)
+    task_cache.add_argument("--no-l1-task-cache", action="store_true")
+    parser.add_argument("--allow-compatible-l1-task-reuse", action="store_true")
+    parser.add_argument("--force-reprocess-l1", action="store_true")
+    parser.add_argument("--force-reprocess-paper", action="append", default=[])
+    merge = parser.add_mutually_exclusive_group()
+    merge.add_argument("--merge-knowledge-store", action="store_true", default=True)
+    merge.add_argument("--no-merge-knowledge-store", action="store_true")
+    global_merge = parser.add_mutually_exclusive_group()
+    global_merge.add_argument("--update-global-knowledge-store", action="store_true")
+    global_merge.add_argument("--no-update-global-knowledge-store", action="store_true")
+    coverage = parser.add_mutually_exclusive_group()
+    coverage.add_argument("--coverage-precheck", action="store_true")
+    coverage.add_argument("--no-coverage-precheck", action="store_true")
+    parser.add_argument("--coverage-threshold", type=float, default=0.75)
+    parser.add_argument("--allow-coverage-short-circuit", action="store_true")
     external_validation = parser.add_mutually_exclusive_group()
     external_validation.add_argument("--external-validation", action="store_true")
     external_validation.add_argument("--no-external-validation", action="store_true")
@@ -120,6 +145,19 @@ def main(argv: list[str] | None = None) -> int:
         validation_max_query_seconds=args.validation_max_query_seconds,
         validation_max_raw_payload_bytes=args.validation_max_raw_payload_bytes,
         validation_allow_large_local_scan=args.validation_allow_large_local_scan,
+        global_corpus_dir=args.global_corpus_dir,
+        paper_registry_enabled=args.enable_paper_registry and not args.no_paper_registry,
+        update_global_corpus=args.update_global_corpus and not args.no_update_global_corpus,
+        allow_title_hash_paper_merge=args.allow_title_hash_paper_merge,
+        l1_task_cache_enabled=args.enable_l1_task_cache and not args.no_l1_task_cache,
+        allow_compatible_l1_task_reuse=args.allow_compatible_l1_task_reuse,
+        force_reprocess_l1=args.force_reprocess_l1,
+        force_reprocess_paper=args.force_reprocess_paper,
+        merge_knowledge_store=args.merge_knowledge_store and not args.no_merge_knowledge_store,
+        update_global_knowledge_store=args.update_global_knowledge_store and not args.no_update_global_knowledge_store,
+        coverage_precheck=args.coverage_precheck and not args.no_coverage_precheck,
+        coverage_threshold=args.coverage_threshold,
+        allow_coverage_short_circuit=args.allow_coverage_short_circuit,
     )
     directory = args.resume.resolve() if args.resume else (args.run_dir.resolve() if args.run_dir else Path("runs") / state.run_id)
     if args.json_output:

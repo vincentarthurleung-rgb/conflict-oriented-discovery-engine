@@ -37,6 +37,11 @@ def build_reasoning_record(hyperedge: HypothesisHyperedge) -> ReasoningRecord:
         why_not_validated_yet="Validation is downstream and no validation result is used during hypothesis formation.",
         validation_requirements=hyperedge.validation_requirements,
         limitations=limitations,
+        linked_paper_ids=hyperedge.linked_paper_ids,
+        linked_canonical_paper_ids=hyperedge.linked_canonical_paper_ids,
+        linked_dois=hyperedge.linked_dois,
+        linked_titles=hyperedge.linked_titles,
+        linked_journals=hyperedge.linked_journals,
         confidence=round(grounded / 3.0, 4),
         warnings=warnings,
     )

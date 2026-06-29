@@ -67,6 +67,14 @@ def run_workflow(
     validation_max_raw_payload_bytes: int = 5_000_000,
     validation_allow_large_local_scan: bool = False,
     validation_provider_clients: dict | None = None,
+    global_corpus_dir: str | Path | None = None,
+    paper_registry_enabled: bool = True, update_global_corpus: bool = False,
+    allow_title_hash_paper_merge: bool = False,
+    l1_task_cache_enabled: bool = True, allow_compatible_l1_task_reuse: bool = False,
+    force_reprocess_l1: bool = False, force_reprocess_paper: list[str] | None = None,
+    merge_knowledge_store: bool = True, update_global_knowledge_store: bool = False,
+    coverage_precheck: bool = False, coverage_threshold: float = 0.75,
+    allow_coverage_short_circuit: bool = False,
 ) -> RunState:
     if until not in STEP_ORDER:
         raise WorkflowConfigurationError(f"Unknown --until step: {until}")
@@ -110,6 +118,27 @@ def run_workflow(
     state.entity_resolution_policy = str(entity_resolution_policy) if entity_resolution_policy else None
     state.l1_mode = l1_mode
     state.fulltext_escalation_enabled = bool(enable_fulltext_escalation)
+    corpus_dir = Path(global_corpus_dir).resolve() if global_corpus_dir else root / "data/corpus"
+    state.global_corpus_dir = str(corpus_dir)
+    state.paper_registry_enabled = bool(paper_registry_enabled)
+    state.update_global_corpus = bool(update_global_corpus)
+    state.l1_task_cache_enabled = bool(l1_task_cache_enabled)
+    state.knowledge_merge_enabled = bool(merge_knowledge_store)
+    state.coverage_precheck_enabled = bool(coverage_precheck)
+    state.summary["global_corpus_configuration"] = {"corpus_dir": str(corpus_dir), "paper_registry_enabled": paper_registry_enabled, "update_global_corpus": update_global_corpus, "l1_task_cache_enabled": l1_task_cache_enabled, "compatible_l1_reuse": allow_compatible_l1_task_reuse, "merge_knowledge_store": merge_knowledge_store, "update_global_knowledge_store": update_global_knowledge_store, "coverage_precheck": coverage_precheck, "coverage_short_circuit": allow_coverage_short_circuit, "allow_title_hash_paper_merge": allow_title_hash_paper_merge}
+    if coverage_precheck:
+        from code_engine.corpus.coverage_precheck import run_global_coverage_precheck
+        from code_engine.corpus.io import atomic_write_json
+        coverage = run_global_coverage_precheck(state.query, None, corpus_dir, coverage_threshold)
+        state.coverage_precheck_score = coverage.coverage_score
+        state.coverage_recommended_action = coverage.recommended_action
+        atomic_write_json(directory / "artifacts" / "coverage_precheck.json", coverage.model_dump(mode="json"))
+        record_artifact(state, "coverage_precheck", directory / "artifacts" / "coverage_precheck.json")
+        if allow_coverage_short_circuit and coverage.coverage_score >= coverage_threshold and coverage.recommended_action == "use_existing_knowledge":
+            state.summary["coverage_short_circuit_applied"] = True
+            for step_name in STEP_ORDER:
+                if step_name not in {"intake", "report"}:
+                    update_step_status(state, step_name, WorkflowStepStatus.SKIPPED.value, summary={"reason": "global_coverage_short_circuit", "coverage_score": coverage.coverage_score}, skipped_reason="global_coverage_short_circuit")
     l1_budget_policy = {
         "max_l1_calls_per_prompt": max_l1_calls_per_prompt,
         "max_l1_input_tokens_per_prompt": max_l1_input_tokens_per_prompt,
@@ -160,6 +189,15 @@ def run_workflow(
             update_step_status(state, name, WorkflowStepStatus.RUNNING.value)
             save_run_state(state, directory)
             if name == "report":
+                if merge_knowledge_store:
+                    from code_engine.corpus.knowledge_merge import merge_run_artifacts_into_knowledge_store
+                    merge = merge_run_artifacts_into_knowledge_store(directory, corpus_dir, update_global=update_global_knowledge_store, dry_run=not bool(update_global_knowledge_store))
+                    state.knowledge_merge_inserted_count = merge.inserted_count
+                    state.knowledge_merge_updated_count = merge.updated_count
+                    state.knowledge_merge_skipped_count = merge.skipped_count
+                    state.summary["knowledge_merge"] = merge.model_dump(mode="json")
+                    for artifact_name, artifact_path in merge.artifact_refs.items():
+                        record_artifact(state, f"knowledge_merge_{artifact_name}", artifact_path)
                 result_status = "completed"
                 render_run_report(state, directory, final=True)
                 report_inputs = [state.artifacts[key] for key in STEP_INPUT_ARTIFACTS[name] if key in state.artifacts]
@@ -203,11 +241,24 @@ def run_workflow(
                     validation_max_raw_payload_bytes=validation_max_raw_payload_bytes,
                     validation_allow_large_local_scan=validation_allow_large_local_scan,
                     validation_provider_clients=validation_provider_clients,
+                    global_corpus_dir=corpus_dir,
+                    paper_registry_enabled=paper_registry_enabled,
+                    update_global_corpus=update_global_corpus,
+                    allow_title_hash_paper_merge=allow_title_hash_paper_merge,
+                    l1_task_cache_enabled=l1_task_cache_enabled,
+                    allow_compatible_l1_task_reuse=allow_compatible_l1_task_reuse,
+                    force_reprocess_l1=force_reprocess_l1,
+                    force_reprocess_paper=force_reprocess_paper,
                 )
                 for artifact_name, artifact_path in result.artifacts.items():
                     record_artifact(state, artifact_name, artifact_path)
                 state.counts.update(result.counts)
                 for field in (
+                    "paper_dedup_total", "paper_dedup_new_count", "paper_dedup_duplicate_count",
+                    "paper_missing_doi_count", "paper_missing_journal_count",
+                    "abstract_l1_cache_hit_count", "abstract_l1_cache_miss_count",
+                    "fulltext_l1_cache_hit_count", "fulltext_l1_cache_miss_count",
+                    "estimated_l1_api_calls_saved",
                     "hypothesis_candidate_count", "hypothesis_count", "hypothesis_high_confidence_count",
                     "hypothesis_abstract_only_count", "hypothesis_fulltext_grounded_count",
                     "hypothesis_mechanism_grounded_count", "hypothesis_requires_manual_review_count",
@@ -223,7 +274,10 @@ def run_workflow(
                     "validation_actual_peak_batch_records_buffered",
                 ):
                     if field in result.counts:
-                        setattr(state, field, int(result.counts[field]))
+                        if field == "estimated_l1_api_calls_saved":
+                            state.estimated_l1_api_calls_saved += int(result.counts[field])
+                        else:
+                            setattr(state, field, int(result.counts[field]))
                 if "hypothesis_source_mode_counts" in result.summary:
                     state.hypothesis_source_mode_counts = dict(result.summary["hypothesis_source_mode_counts"])
                 if "validation_estimated_memory_mb" in result.summary:

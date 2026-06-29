@@ -137,6 +137,11 @@ class ValidationAnchor(CODEBaseModel):
     linked_evidence_ids: list[str] = Field(default_factory=list)
     linked_mechanism_edge_ids: list[str] = Field(default_factory=list)
     linked_mechanism_path_ids: list[str] = Field(default_factory=list)
+    linked_paper_ids: list[str] = Field(default_factory=list)
+    linked_canonical_paper_ids: list[str] = Field(default_factory=list)
+    linked_dois: list[str] = Field(default_factory=list)
+    linked_titles: list[str] = Field(default_factory=list)
+    linked_journals: list[str] = Field(default_factory=list)
     validation_intent: str = "identity_lookup"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     priority: int = 0

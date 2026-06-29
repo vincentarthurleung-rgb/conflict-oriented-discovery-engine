@@ -40,3 +40,5 @@ remain distinct.
 # Hypothesis traceability
 
 Batch discovery emits `batch_hypothesis_candidates.jsonl`, `batch_hypothesis_hyperedges.jsonl`, and `batch_hypothesis_summary.json`. Abstract conflicts produce low-confidence follow-ups; available full-text confirmations upgrade grounding. Metrics cover candidate count, traceability, grounding, manual review, and validation readiness—not hypothesis accuracy.
+
+Overlapping prompts resolve papers through one registry and reuse identical abstract task signatures. Batch metrics report unique papers, duplicate hits, overlap rate, task-cache hits/misses, estimated calls saved, and missing DOI/journal rates.

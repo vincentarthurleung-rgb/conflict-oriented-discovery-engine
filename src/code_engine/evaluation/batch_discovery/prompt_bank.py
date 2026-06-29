@@ -11,18 +11,19 @@ from typing import Any
 def load_prompt_bank(path: str | Path, max_prompts: int | None = None) -> list[dict[str, Any]]:
     source = Path(path)
     records = []
-    for line_number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        item = json.loads(line)
-        query = str(item.get("query") or item.get("prompt") or "").strip()
-        if not query:
-            raise ValueError(f"Prompt bank line {line_number} has no query/prompt")
-        item["query"] = query
-        item.setdefault("prompt_id", hashlib.sha256(query.encode()).hexdigest()[:16])
-        records.append(item)
-        if max_prompts is not None and len(records) >= max_prompts:
-            break
+    with source.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            query = str(item.get("query") or item.get("prompt") or "").strip()
+            if not query:
+                raise ValueError(f"Prompt bank line {line_number} has no query/prompt")
+            item["query"] = query
+            item.setdefault("prompt_id", hashlib.sha256(query.encode()).hexdigest()[:16])
+            records.append(item)
+            if max_prompts is not None and len(records) >= max_prompts:
+                break
     return records
 
 

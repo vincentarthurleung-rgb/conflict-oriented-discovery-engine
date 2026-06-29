@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 from code_engine.evaluation.batch_discovery.batch_runner import run_batch_discovery
 
@@ -36,6 +37,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-validation-max-query-plans", type=int, default=400)
     parser.add_argument("--batch-validation-max-records-per-validator", type=int, default=100)
     parser.add_argument("--batch-validation-max-signals-per-run", type=int, default=500)
+    parser.add_argument("--global-corpus-dir", type=Path)
+    registry = parser.add_mutually_exclusive_group()
+    registry.add_argument("--enable-paper-registry", action="store_true", default=True)
+    registry.add_argument("--no-paper-registry", action="store_true")
+    cache = parser.add_mutually_exclusive_group()
+    cache.add_argument("--enable-l1-task-cache", action="store_true", default=True)
+    cache.add_argument("--no-l1-task-cache", action="store_true")
+    parser.add_argument("--allow-compatible-l1-task-reuse", action="store_true")
+    parser.add_argument("--update-global-corpus", action="store_true")
+    merge = parser.add_mutually_exclusive_group()
+    merge.add_argument("--merge-knowledge-store", action="store_true", default=True)
+    merge.add_argument("--no-merge-knowledge-store", action="store_true")
+    parser.add_argument("--update-global-knowledge-store", action="store_true")
     return parser
 
 
@@ -56,6 +70,13 @@ def main(argv: list[str] | None = None) -> int:
         validation_max_query_plans=args.batch_validation_max_query_plans,
         validation_max_records_per_validator=args.batch_validation_max_records_per_validator,
         validation_max_signals_per_run=args.batch_validation_max_signals_per_run,
+        global_corpus_dir=args.global_corpus_dir,
+        paper_registry_enabled=args.enable_paper_registry and not args.no_paper_registry,
+        update_global_corpus=args.update_global_corpus,
+        l1_task_cache_enabled=args.enable_l1_task_cache and not args.no_l1_task_cache,
+        allow_compatible_l1_task_reuse=args.allow_compatible_l1_task_reuse,
+        merge_knowledge_store=args.merge_knowledge_store and not args.no_merge_knowledge_store,
+        update_global_knowledge_store=args.update_global_knowledge_store,
     )
     print(json.dumps({"run_dir": result["run_dir"], "metrics": result["metrics"], "api_calls_made": 0, "network_calls_made": 0}, ensure_ascii=False, indent=2))
     return 0

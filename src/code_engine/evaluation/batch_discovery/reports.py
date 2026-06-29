@@ -20,6 +20,9 @@ def render_batch_discovery_report(metrics: dict, path: str | Path) -> Path:
         f"- Traceable hypotheses: {metrics.get('traceable_hypothesis_count', 0)}",
         f"- Full-text grounded hypotheses: {metrics.get('fulltext_grounded_hypothesis_count', 0)}",
         f"- Abstract-only follow-ups: {metrics.get('abstract_only_hypothesis_count', 0)}",
+        f"- Unique / duplicate paper hits: {metrics.get('unique_paper_count', 0)} / {metrics.get('duplicate_paper_hit_count', 0)}",
+        f"- Abstract L1 cache hits / misses: {metrics.get('abstract_l1_cache_hit_count', 0)} / {metrics.get('abstract_l1_cache_miss_count', 0)}",
+        f"- Estimated API calls saved by cache: {metrics.get('estimated_api_calls_saved_by_cache', 0)}",
         f"- Estimated cost: ${metrics.get('estimated_cost_usd', 0.0):.6f}",
         f"- Cost per conflict candidate: {metrics.get('cost_per_conflict_candidate')}",
     ]

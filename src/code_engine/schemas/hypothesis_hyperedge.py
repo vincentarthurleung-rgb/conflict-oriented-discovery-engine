@@ -37,6 +37,14 @@ class HypothesisHyperedge(CODEBaseModel):
     linked_mechanism_edge_ids: list[str] = Field(default_factory=list)
     linked_mechanism_path_ids: list[str] = Field(default_factory=list)
     linked_observation_ids: list[str] = Field(default_factory=list)
+    linked_paper_ids: list[str] = Field(default_factory=list)
+    linked_canonical_paper_ids: list[str] = Field(default_factory=list)
+    linked_dois: list[str] = Field(default_factory=list)
+    linked_titles: list[str] = Field(default_factory=list)
+    linked_journals: list[str] = Field(default_factory=list)
+    paper_count: int = 0
+    journal_distribution: dict[str, int] = Field(default_factory=dict)
+    publication_year_range: dict[str, int] = Field(default_factory=dict)
     relation_family: str = "unknown"
     polarity_type: str = "unknown"
     direction: str = "unknown"

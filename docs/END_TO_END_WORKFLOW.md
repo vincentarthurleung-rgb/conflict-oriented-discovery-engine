@@ -52,3 +52,5 @@ validation gates together.
 # Run-scoped hypothesis formation
 
 The mainline is `Conflict / Mechanism / Evidence → HypothesisCandidate → HypothesisHyperedge → ReasoningRecord → ValidationRequirements → Validation`. Hypothesis formation reads only current-run artifacts and never reads validation signals. It does not invoke legacy global Stage6. Abstract-only conflicts produce low-confidence follow-ups; confirmed full-text conflicts and mechanism paths can produce full-text- and mechanism-grounded hypotheses. No hypothesis input is a non-failing `no_input` outcome. See [the artifact contract](HYPOTHESIS_ARTIFACT_CONTRACT.md).
+
+Before L1, paper payloads are resolved through the global Paper Registry and task-family cache. After the run, artifacts receive compact bibliography and a KnowledgeStore merge plan. Global updates require explicit flags; no metadata enrichment occurs over the network.

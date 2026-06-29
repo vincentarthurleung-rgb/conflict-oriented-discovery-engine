@@ -44,6 +44,55 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [item for item in iter_jsonl(path)]
 
 
+def _manifest_map(run_dir: Path) -> dict[str, dict]:
+    records = _read_jsonl(run_dir / "artifacts" / "run_paper_manifest.jsonl")
+    result = {}
+    for item in records:
+        for key in (item.get("original_paper_id"), item.get("paper_id"), item.get("canonical_paper_id")):
+            if key:
+                result[str(key)] = item
+    return result
+
+
+def _attach_run_provenance(records: list[dict], run_dir: Path) -> list[dict]:
+    from code_engine.corpus.artifact_provenance import attach_paper_provenance
+    manifest = _manifest_map(run_dir)
+    return [attach_paper_provenance(item, None, manifest) for item in records]
+
+
+def _attach_linked_provenance(records: list[dict], run_dir: Path) -> list[dict]:
+    from code_engine.corpus.artifact_provenance import attach_linked_paper_provenance
+    manifest = _manifest_map(run_dir)
+    id_to_paper: dict[str, str] = {}
+    for name in ("abstract_l1_claims.jsonl", "fulltext_evidence_records.jsonl", "fulltext_l1_claims.jsonl"):
+        for item in _read_jsonl(run_dir / "artifacts" / name):
+            paper_id = str(item.get("canonical_paper_id") or item.get("paper_id") or "")
+            for key in (item.get("claim_id"), item.get("evidence_id"), item.get("observation_id")):
+                if key and paper_id:
+                    id_to_paper[str(key)] = paper_id
+    output = []
+    for item in records:
+        paper_ids = [str(value) for name in ("paper_ids", "linked_paper_ids", "linked_canonical_paper_ids") for value in item.get(name, [])]
+        for name in ("claim_ids", "linked_abstract_claim_ids", "linked_evidence_ids", "evidence_ids", "input_evidence"):
+            paper_ids.extend(id_to_paper[value] for value in map(str, item.get(name, [])) if value in id_to_paper)
+        refs = [manifest[paper_id] for paper_id in dict.fromkeys(paper_ids) if paper_id in manifest]
+        output.append(attach_linked_paper_provenance(item, refs))
+    return output
+
+
+def _run_id(run_dir: Path) -> str:
+    state_path = run_dir / "run_state.json"
+    return str(json.loads(state_path.read_text(encoding="utf-8")).get("run_id") or run_dir.name) if state_path.exists() else run_dir.name
+
+
+def _cached_payload(record: Any, key: str) -> list[dict]:
+    value = record.artifact_refs.get(key, [])
+    if isinstance(value, list):
+        return [dict(item) for item in value]
+    path = Path(value) if value else None
+    return _read_jsonl(path) if path and path.exists() else []
+
+
 def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[str, Any], run_dir: Path) -> list[dict[str, Any]]:
     """Normalize progressive claims while preserving evidence scope."""
 
@@ -161,7 +210,11 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
     return StepResult(status="completed" if execute and network else "planned", summary=summary, artifacts={"acquisition_plan": plan_path, "acquisition_report": report_path}, counts=summary, warnings=report.get("warnings", []), network_calls_made=calls)
 
 
-def run_payload_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
+def run_payload_step(
+    *, run_dir: Path, execute: bool, query: str = "", repository_root: Path | None = None,
+    global_corpus_dir: str | Path | None = None, paper_registry_enabled: bool = True,
+    update_global_corpus: bool = False, allow_title_hash_paper_merge: bool = False, **_: Any,
+) -> StepResult:
     acquisition = _read(run_dir, "acquisition_report.json", {})
     downloaded = acquisition.get("downloaded_papers", [])
     report = {"payload_count": 0, "chunk_count": 0, "inputs": downloaded, "mode": "execute" if execute else "dry_run"}
@@ -181,14 +234,44 @@ def run_payload_step(*, run_dir: Path, execute: bool, **_: Any) -> StepResult:
         status = "planned"
         reason = "execute_required_for_payload_build"
         warnings.append("payload_inputs_available_execution_disabled")
+    artifacts = run_dir / "artifacts"
+    manifest_artifacts = {}
+    dedup = {"total_input_papers": 0, "new_papers": 0, "duplicate_papers": 0, "missing_doi_count": 0, "missing_journal_count": 0}
+    if paper_registry_enabled:
+        from code_engine.corpus.paper_registry import PaperRegistry
+        from code_engine.corpus.reports import build_run_paper_manifest
+        corpus = Path(global_corpus_dir) if global_corpus_dir else Path(repository_root or Path.cwd()) / "data/corpus"
+        registry = PaperRegistry.load(corpus / "paper_registry", allow_title_hash_merge=allow_title_hash_paper_merge)
+        papers, seen = [], set()
+        for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
+            for paper in acquisition.get(field, []):
+                identity = str(paper.get("doi") or paper.get("pmid") or paper.get("pmcid") or paper.get("paper_id") or paper.get("title") or "")
+                if identity and identity not in seen:
+                    seen.add(identity); papers.append(dict(paper))
+        state_path = run_dir / "run_state.json"
+        run_id = json.loads(state_path.read_text(encoding="utf-8")).get("run_id", run_dir.name) if state_path.exists() else run_dir.name
+        manifest, dedup, by_original = build_run_paper_manifest(papers, registry, str(run_id), query, artifacts)
+        for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
+            acquisition[field] = [{**paper, **{key: value for key, value in by_original.get(str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or ""), {}).items() if key not in {"run_id", "query", "warnings"}}} for paper in acquisition.get(field, [])]
+        _write(run_dir, "acquisition_report.json", acquisition)
+        if update_global_corpus:
+            registry.save()
+        manifest_artifacts = {"run_paper_manifest": str(artifacts / "run_paper_manifest.jsonl"), "run_bibliographic_index": str(artifacts / "run_bibliographic_index.json"), "paper_deduplication_report": str(artifacts / "paper_deduplication_report.json")}
+        warnings.extend(registry.warnings)
     path = _write(run_dir, "payload_report.json", report)
-    return StepResult(status=status, summary=report, artifacts={"payload_report": path}, counts={"payload_count": report["payload_count"], "chunk_count": report["chunk_count"]}, warnings=warnings, skipped_reason=reason)
+    summary = {**report, **dedup, "paper_registry_enabled": paper_registry_enabled, "global_registry_updated": bool(paper_registry_enabled and update_global_corpus)}
+    counts = {"payload_count": report["payload_count"], "chunk_count": report["chunk_count"], "paper_dedup_total": dedup.get("total_input_papers", 0), "paper_dedup_new_count": dedup.get("new_papers", 0), "paper_dedup_duplicate_count": dedup.get("duplicate_papers", 0), "paper_missing_doi_count": dedup.get("missing_doi_count", 0), "paper_missing_journal_count": dedup.get("missing_journal_count", 0)}
+    return StepResult(status=status, summary=summary, artifacts={"payload_report": path, **manifest_artifacts}, counts=counts, warnings=warnings, skipped_reason=reason)
 
 
 def run_abstract_l1_step(
     *, run_dir: Path, execute: bool, api: bool, max_papers: int | None,
     l1_mode: str = "abstract_screening", l1_budget_policy: dict | None = None,
-    allow_budget_overrun: bool = False, l1_llm_client=None, **_: Any,
+    allow_budget_overrun: bool = False, l1_llm_client=None,
+    global_corpus_dir: str | Path | None = None, l1_task_cache_enabled: bool = True,
+    allow_compatible_l1_task_reuse: bool = False, force_reprocess_l1: bool = False,
+    force_reprocess_paper: list[str] | None = None, update_global_corpus: bool = False,
+    repository_root: Path | None = None, **_: Any,
 ) -> StepResult:
     if l1_mode == "legacy":
         summary = {"l1_mode": l1_mode, "abstract_claim_count": 0, "reason": "legacy_l1_mode"}
@@ -205,16 +288,66 @@ def run_abstract_l1_step(
             if paper_id and paper_id not in seen:
                 seen.add(paper_id)
                 papers.append(paper)
+    profile = _read(run_dir, "domain_profile.json", {})
+    cache_hits, cache_misses, reusable_claims, signatures = [], [], [], {}
+    misses = []
+    cache_dir = (Path(global_corpus_dir) if global_corpus_dir else Path(repository_root or Path.cwd()) / "data/corpus") / "l1_task_cache"
+    if l1_task_cache_enabled:
+        from code_engine.corpus.corpus_cache import compute_text_hash
+        from code_engine.corpus.l1_task_cache import L1TaskSignature, lookup_l1_task_cache
+        forced = set(force_reprocess_paper or [])
+        for paper in papers:
+            canonical = str(paper.get("canonical_paper_id") or paper.get("paper_id") or paper.get("pmid") or "")
+            content_hash = compute_text_hash(paper.get("abstract") or paper.get("abstract_text"))
+            signature = L1TaskSignature(task_family="abstract_claim_screening", source_scope="abstract", canonical_paper_id=canonical, content_hash=content_hash or "missing", schema_version="abstract_claim_v1", prompt_profile_id=profile.get("prompt_profile_id"), prompt_fingerprint=profile.get("prompt_profile_id"), model_name=type(l1_llm_client).__name__ if l1_llm_client else None, domain_id=profile.get("domain_id"), l1_mode=l1_mode)
+            signatures[canonical] = signature
+            cached = None if force_reprocess_l1 or canonical in forced else lookup_l1_task_cache(signature, cache_dir)
+            reusable = cached and (cached.status == "hit" or (cached.status == "compatible_task_family_hit" and allow_compatible_l1_task_reuse))
+            if reusable:
+                cache_hits.append({"canonical_paper_id": canonical, "cache_key": cached.task_cache_key, "status": cached.status})
+                for claim in _cached_payload(cached, "claims"):
+                    reusable_claims.append({**claim, "reused_from_cache": True, "cache_key": cached.task_cache_key, "original_run_id": (cached.run_ids[0] if cached.run_ids else None), "original_artifact_ref": cached.artifact_refs.get("claims")})
+            else:
+                cache_misses.append({"canonical_paper_id": canonical, "status": "forced" if force_reprocess_l1 or canonical in forced else (cached.status if cached else "miss")})
+                misses.append(paper)
+    else:
+        misses = papers
+        cache_misses = [{"canonical_paper_id": paper.get("canonical_paper_id"), "status": "cache_disabled"} for paper in papers]
     output = run_abstract_l1_screening(
-        papers, _read(run_dir, "domain_profile.json", {}), run_dir / "artifacts",
+        misses, profile, run_dir / "artifacts",
         execute=execute, api_enabled=api,
         max_papers=max_papers or (l1_budget_policy or {}).get("max_papers_per_prompt", 100),
         max_l1_calls=(l1_budget_policy or {}).get("max_l1_calls_per_prompt"),
         budget_policy=l1_budget_policy, llm_client=l1_llm_client,
         allow_budget_overrun=allow_budget_overrun,
     )
-    summary = {"l1_mode": l1_mode, **output["summary"]}
-    if summary["budget_report"].get("budget_status") == "blocked" or "llm_client_not_configured" in summary.get("warnings", []):
+    new_claims = _attach_run_provenance(output["claims"], run_dir)
+    reusable_claims = _attach_run_provenance(reusable_claims, run_dir)
+    output["claims"] = [*reusable_claims, *new_claims]
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_claims.jsonl", iter(output["claims"]))
+    paper_records = _attach_run_provenance(output["paper_records"], run_dir)
+    atomic_write_jsonl(run_dir / "artifacts" / "paper_processing_records.jsonl", iter(paper_records))
+    output["paper_records"] = paper_records
+    if l1_task_cache_enabled and update_global_corpus:
+        from code_engine.corpus.l1_task_cache import L1TaskCache, store_l1_task_cache_record
+        by_paper: dict[str, list[dict]] = {}
+        for claim in new_claims:
+            by_paper.setdefault(str(claim.get("canonical_paper_id") or claim.get("paper_id") or ""), []).append(claim)
+        for canonical, claims_for_paper in by_paper.items():
+            signature = signatures.get(canonical)
+            if signature:
+                task_key = L1TaskCache.new_record(signature, _run_id(run_dir), {}, claim_count=len(claims_for_paper)).task_cache_key
+                cache_artifact = cache_dir / "artifacts" / f"{task_key}.claims.jsonl"
+                atomic_write_jsonl(cache_artifact, iter(claims_for_paper))
+                record = L1TaskCache.new_record(signature, _run_id(run_dir), {"claims": str(cache_artifact)}, claim_count=len(claims_for_paper))
+                store_l1_task_cache_record(record, cache_dir)
+    cache_report = {"total_tasks": len(papers), "hit_count": len(cache_hits), "miss_count": len(cache_misses), "stale_count": sum(item["status"] in {"stale", "incompatible_schema"} for item in cache_misses), "compatible_family_hit_count": sum(item["status"] == "compatible_task_family_hit" for item in [*cache_hits, *cache_misses]), "reused_claim_count": len(reusable_claims), "new_claim_count": len(new_claims), "estimated_api_calls_saved": len(cache_hits)}
+    atomic_write_json(run_dir / "artifacts" / "abstract_l1_cache_report.json", cache_report)
+    atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_hits.jsonl", iter(cache_hits))
+    atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_misses.jsonl", iter(cache_misses))
+    summary = {"l1_mode": l1_mode, **output["summary"], **cache_report, "abstract_claim_count": len(output["claims"])}
+    if summary["budget_report"].get("budget_status") == "blocked" or ("llm_client_not_configured" in summary.get("warnings", []) and bool(misses)):
         status = "blocked"
     else:
         status = "completed" if execute and api else "planned"
@@ -222,10 +355,13 @@ def run_abstract_l1_step(
         "abstract_l1_claims": output["artifacts"].get("claims", ""),
         "abstract_l1_summary": output["artifacts"].get("summary", ""),
         "paper_processing_records": output["artifacts"].get("paper_records", ""),
+        "abstract_l1_cache_report": str(run_dir / "artifacts" / "abstract_l1_cache_report.json"),
+        "abstract_l1_cache_hits": str(run_dir / "artifacts" / "abstract_l1_cache_hits.jsonl"),
+        "abstract_l1_cache_misses": str(run_dir / "artifacts" / "abstract_l1_cache_misses.jsonl"),
     }
     return StepResult(
         status=status, summary=summary, artifacts=artifacts,
-        counts={"abstract_claim_count": len(output["claims"]), "abstract_processed_paper_count": summary["abstract_available_count"]},
+        counts={"abstract_claim_count": len(output["claims"]), "abstract_processed_paper_count": summary["abstract_available_count"], "abstract_l1_cache_hit_count": len(cache_hits), "abstract_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])), api_calls_made=int(summary["api_calls_made"]),
         skipped_reason=("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "llm_client_not_configured") if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
     )
@@ -271,6 +407,12 @@ def run_abstract_conflict_screening_step(
         claims, observations, min_evidence_count=min_abstract_evidence_count,
         min_entropy=min_abstract_conflict_entropy, run_dir=run_dir / "artifacts",
     )
+    from code_engine.corpus.io import atomic_write_jsonl
+    output["candidates"] = _attach_linked_provenance(output["candidates"], run_dir)
+    output["focus_set"] = _attach_linked_provenance(output["focus_set"], run_dir)
+    atomic_write_jsonl(Path(output["artifacts"]["candidates"]), iter(output["candidates"]))
+    atomic_write_jsonl(Path(output["artifacts"]["focus_set"]), iter(output["focus_set"]))
+    output["summary"]["top_conflicts"] = [{key: item.get(key) for key in ("candidate_id", "subject_name", "object_name", "abstract_entropy", "linked_dois", "linked_titles", "linked_journals", "publication_year_range")} for item in output["candidates"][:10]]
     artifacts = {
         "abstract_conflict_candidates": output["artifacts"]["candidates"],
         "conflict_focus_set": output["artifacts"]["focus_set"],
@@ -317,7 +459,10 @@ def run_fulltext_l1_step(
     l1_mode: str = "abstract_screening", enable_fulltext_escalation: bool = False,
     max_sections_per_paper: int = 5, max_spans_per_paper: int = 8,
     l1_budget_policy: dict | None = None, allow_budget_overrun: bool = False,
-    l1_llm_client=None, **_: Any,
+    l1_llm_client=None, global_corpus_dir: str | Path | None = None,
+    l1_task_cache_enabled: bool = True, allow_compatible_l1_task_reuse: bool = False,
+    force_reprocess_l1: bool = False, force_reprocess_paper: list[str] | None = None,
+    update_global_corpus: bool = False, **_: Any,
 ) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
     selected = _read_jsonl(run_dir / "artifacts" / "fulltext_escalation_papers.jsonl") if enabled else []
@@ -345,18 +490,68 @@ def run_fulltext_l1_step(
                 paper["full_text"] = source.read_text(encoding="utf-8")
         candidate = candidates.get(str(item.get("candidate_id")), item)
         ranked = rank_fulltext_sections_for_conflict(paper, candidate, _read(run_dir, "domain_profile.json", {}), max_sections_per_paper)
-        spans.extend(select_evidence_spans(ranked, candidate, max_spans_per_paper=max_spans_per_paper))
+        selected_spans = select_evidence_spans(ranked, candidate, max_spans_per_paper=max_spans_per_paper)
+        for span in selected_spans:
+            span["canonical_paper_id"] = paper.get("canonical_paper_id") or span.get("paper_id")
+        spans.extend(selected_spans)
     spans_path = run_dir / "artifacts" / "selected_fulltext_spans.jsonl"
     spans_path.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in spans), encoding="utf-8")
+    profile = _read(run_dir, "domain_profile.json", {})
+    cache_dir = (Path(global_corpus_dir) if global_corpus_dir else repository_root / "data/corpus") / "l1_task_cache"
+    cache_hits, cache_misses, reusable_evidence, reusable_claims, signatures = [], [], [], [], {}
+    miss_spans = []
+    if l1_task_cache_enabled:
+        from code_engine.corpus.corpus_cache import compute_text_hash
+        from code_engine.corpus.l1_task_cache import L1TaskSignature, lookup_l1_task_cache
+        forced = set(force_reprocess_paper or [])
+        for span in spans:
+            canonical = str(span.get("canonical_paper_id") or span.get("paper_id") or "")
+            signature = L1TaskSignature(task_family="fulltext_evidence_extraction", source_scope="span", canonical_paper_id=canonical, content_hash=compute_text_hash(span.get("text")) or "missing", schema_version="fulltext_evidence_v1", prompt_profile_id=profile.get("prompt_profile_id"), prompt_fingerprint=profile.get("prompt_profile_id"), model_name=type(l1_llm_client).__name__ if l1_llm_client else None, domain_id=profile.get("domain_id"), l1_mode=l1_mode)
+            signatures[str(span.get("span_id") or "")] = signature
+            cached = None if force_reprocess_l1 or canonical in forced else lookup_l1_task_cache(signature, cache_dir)
+            reusable = cached and (cached.status == "hit" or (cached.status == "compatible_task_family_hit" and allow_compatible_l1_task_reuse))
+            if reusable:
+                cache_hits.append({"canonical_paper_id": canonical, "span_id": span.get("span_id"), "cache_key": cached.task_cache_key, "status": cached.status})
+                metadata = {"reused_from_cache": True, "cache_key": cached.task_cache_key, "original_run_id": (cached.run_ids[0] if cached.run_ids else None)}
+                reusable_evidence.extend({**item, **metadata, "original_artifact_ref": cached.artifact_refs.get("evidence_records")} for item in _cached_payload(cached, "evidence_records"))
+                reusable_claims.extend({**item, **metadata, "original_artifact_ref": cached.artifact_refs.get("claims")} for item in _cached_payload(cached, "claims"))
+            else:
+                miss_spans.append(span)
+                cache_misses.append({"canonical_paper_id": canonical, "span_id": span.get("span_id"), "status": "forced" if force_reprocess_l1 or canonical in forced else (cached.status if cached else "miss")})
+    else:
+        miss_spans = spans
+        cache_misses = [{"canonical_paper_id": span.get("canonical_paper_id"), "span_id": span.get("span_id"), "status": "cache_disabled"} for span in spans]
     output = run_fulltext_evidence_l1(
-        spans, list(candidates.values()), _read(run_dir, "domain_profile.json", {}),
+        miss_spans, list(candidates.values()), profile,
         run_dir / "artifacts", execute=execute and enabled, api_enabled=api and enabled,
         budget_policy=l1_budget_policy, llm_client=l1_llm_client,
         allow_budget_overrun=allow_budget_overrun,
     )
-    summary = {**output["summary"], "enabled": enabled, "ranked_span_count": len(spans), "l1_mode": l1_mode}
+    new_evidence = _attach_run_provenance(output["evidence_records"], run_dir)
+    new_claims = _attach_run_provenance(output["claims"], run_dir)
+    output["evidence_records"] = [*_attach_run_provenance(reusable_evidence, run_dir), *new_evidence]
+    output["claims"] = [*_attach_run_provenance(reusable_claims, run_dir), *new_claims]
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    atomic_write_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl", iter(output["evidence_records"]))
+    atomic_write_jsonl(run_dir / "artifacts" / "fulltext_l1_claims.jsonl", iter(output["claims"]))
+    if l1_task_cache_enabled and update_global_corpus:
+        from code_engine.corpus.l1_task_cache import L1TaskCache, store_l1_task_cache_record
+        for span_id, signature in signatures.items():
+            evidence = [item for item in new_evidence if str(item.get("evidence_span_id") or "") == span_id]
+            claims = [item for item in new_claims if str(item.get("evidence_span_id") or "") == span_id]
+            if not evidence and not claims:
+                continue
+            seed = L1TaskCache.new_record(signature, _run_id(run_dir), {}, claim_count=len(claims), evidence_count=len(evidence))
+            evidence_path = cache_dir / "artifacts" / f"{seed.task_cache_key}.evidence.jsonl"
+            claims_path = cache_dir / "artifacts" / f"{seed.task_cache_key}.claims.jsonl"
+            atomic_write_jsonl(evidence_path, iter(evidence)); atomic_write_jsonl(claims_path, iter(claims))
+            store_l1_task_cache_record(L1TaskCache.new_record(signature, _run_id(run_dir), {"evidence_records": str(evidence_path), "claims": str(claims_path)}, claim_count=len(claims), evidence_count=len(evidence)), cache_dir)
+    cache_report = {"total_tasks": len(spans), "hit_count": len(cache_hits), "miss_count": len(cache_misses), "stale_count": sum(item["status"] in {"stale", "incompatible_schema"} for item in cache_misses), "compatible_family_hit_count": sum(item["status"] == "compatible_task_family_hit" for item in [*cache_hits, *cache_misses]), "reused_claim_count": len(reusable_claims), "reused_evidence_count": len(reusable_evidence), "new_claim_count": len(new_claims), "new_evidence_count": len(new_evidence), "estimated_api_calls_saved": len(cache_hits)}
+    atomic_write_json(run_dir / "artifacts" / "fulltext_l1_cache_report.json", cache_report)
+    atomic_write_jsonl(run_dir / "artifacts" / "fulltext_l1_cache_hits.jsonl", iter(cache_hits)); atomic_write_jsonl(run_dir / "artifacts" / "fulltext_l1_cache_misses.jsonl", iter(cache_misses))
+    summary = {**output["summary"], **cache_report, "enabled": enabled, "ranked_span_count": len(spans), "l1_mode": l1_mode, "fulltext_evidence_count": len(output["evidence_records"]), "fulltext_claim_count": len(output["claims"])}
     budget_blocked = summary["budget_report"].get("budget_status") == "blocked"
-    client_missing = "llm_client_not_configured" in summary.get("warnings", [])
+    client_missing = "llm_client_not_configured" in summary.get("warnings", []) and bool(miss_spans)
     return StepResult(
         status="blocked" if budget_blocked or client_missing else ("completed" if enabled and execute and api and spans else ("planned" if enabled else "skipped")),
         summary=summary,
@@ -365,8 +560,11 @@ def run_fulltext_l1_step(
             "fulltext_evidence_records": output["artifacts"].get("evidence_records", ""),
             "fulltext_l1_claims": output["artifacts"].get("claims", ""),
             "fulltext_l1_summary": output["artifacts"].get("summary", ""),
+            "fulltext_l1_cache_report": str(run_dir / "artifacts" / "fulltext_l1_cache_report.json"),
+            "fulltext_l1_cache_hits": str(run_dir / "artifacts" / "fulltext_l1_cache_hits.jsonl"),
+            "fulltext_l1_cache_misses": str(run_dir / "artifacts" / "fulltext_l1_cache_misses.jsonl"),
         },
-        counts={"fulltext_evidence_count": len(output["evidence_records"])},
+        counts={"fulltext_evidence_count": len(output["evidence_records"]), "fulltext_l1_cache_hit_count": len(cache_hits), "fulltext_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])) + ([] if enabled else ["fulltext_escalation_not_enabled"]),
         api_calls_made=int(summary["api_calls_made"]),
         skipped_reason="l1_budget_exceeded" if budget_blocked else ("llm_client_not_configured" if client_missing else (None if enabled else "fulltext_escalation_not_enabled")),
@@ -401,6 +599,9 @@ def run_fulltext_conflict_confirmation_step(*, run_dir: Path, l1_mode: str = "ab
     evidence = _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl") if enabled else []
     observations = _read(run_dir, "l2_fulltext_observations.json", []) if enabled else []
     output = confirm_conflicts_with_fulltext_evidence(candidates, evidence, observations, run_dir=run_dir / "artifacts")
+    from code_engine.corpus.io import atomic_write_jsonl
+    output["confirmations"] = _attach_linked_provenance(output["confirmations"], run_dir)
+    atomic_write_jsonl(Path(output["artifacts"]["confirmations"]), iter(output["confirmations"]))
     return StepResult(
         status="completed" if evidence else ("planned" if enabled else "skipped"),
         summary=output["summary"],
@@ -564,6 +765,12 @@ def run_mechanism_step(*, run_dir: Path, execute: bool, l1_mode: str = "legacy",
         claims = _read_jsonl(run_dir / "artifacts" / "fulltext_l1_claims.jsonl")
     graph = build_mechanism_graph(observations, evidence, claims, profile)
     graph_path = save_mechanism_graph(graph, run_dir / "artifacts" / "mechanism_graph.json")
+    graph_payload = json.loads(Path(graph_path).read_text(encoding="utf-8"))
+    graph_payload["nodes"] = _attach_linked_provenance(graph_payload.get("nodes", []), run_dir)
+    graph_payload["edges"] = _attach_linked_provenance(graph_payload.get("edges", []), run_dir)
+    graph_payload["paths"] = _attach_linked_provenance(graph_payload.get("paths", []), run_dir)
+    from code_engine.corpus.io import atomic_write_json
+    atomic_write_json(Path(graph_path), graph_payload)
     report_payload = mechanism_graph_summary(graph)
     summary_path = _write(run_dir, "mechanism_graph_summary.json", report_payload)
     annotation_path = _write(run_dir, "mechanism_conflict_annotations.json", [])
@@ -579,6 +786,22 @@ def run_hypothesis_step(*, run_dir: Path, execute: bool, max_papers: int | None 
     profile = _read(run_dir, "domain_profile.json")
     result = run_hypothesis_search_for_run(conflict, mechanism, profile, run_dir, dry_run=not execute, max_hypotheses=max_papers)
     artifact_dir = run_dir / "artifacts"
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    candidates = _attach_linked_provenance(_read_jsonl(artifact_dir / "hypothesis_candidates.jsonl"), run_dir)
+    hyperedges = _attach_linked_provenance(_read_jsonl(artifact_dir / "hypothesis_hyperedges.jsonl"), run_dir)
+    hypothesis_refs = {str(item.get("hypothesis_id")): item for item in hyperedges}
+    reasoning = []
+    for item in _read_jsonl(artifact_dir / "hypothesis_reasoning_records.jsonl"):
+        source = hypothesis_refs.get(str(item.get("hypothesis_id")), {})
+        reasoning.append({**item, **{key: source.get(key) for key in ("linked_paper_ids", "linked_canonical_paper_ids", "linked_dois", "linked_titles", "linked_journals", "paper_count", "journal_distribution", "publication_year_range")}})
+    requirements = []
+    for item in _read_jsonl(artifact_dir / "hypothesis_validation_requirements.jsonl"):
+        source = hypothesis_refs.get(str(item.get("hypothesis_id")), {})
+        requirements.append({**item, **{key: source.get(key) for key in ("linked_paper_ids", "linked_canonical_paper_ids", "linked_dois", "linked_titles", "linked_journals")}})
+    atomic_write_jsonl(artifact_dir / "hypothesis_candidates.jsonl", iter(candidates)); atomic_write_jsonl(artifact_dir / "hypothesis_hyperedges.jsonl", iter(hyperedges))
+    atomic_write_jsonl(artifact_dir / "hypothesis_reasoning_records.jsonl", iter(reasoning)); atomic_write_jsonl(artifact_dir / "hypothesis_validation_requirements.jsonl", iter(requirements))
+    result["top_hypotheses"] = [{**top, **{key: hypothesis_refs.get(str(top.get("hypothesis_id")), {}).get(key) for key in ("linked_dois", "linked_titles", "linked_journals", "publication_year_range")}} for top in result.get("top_hypotheses", [])]
+    atomic_write_json(artifact_dir / "hypothesis_summary.json", result)
     artifact_names = (
         "hypothesis_candidates.jsonl", "hypothesis_hyperedges.jsonl",
         "hypothesis_reasoning_records.jsonl", "hypothesis_validation_requirements.jsonl",
@@ -700,6 +923,15 @@ def run_validation_step(
         Path(execution.artifact_refs["signals"]), anchors, query_plans,
         resource_policy, output_dir=run_dir / "artifacts",
     )
+    result_path = Path(aggregate.artifact_refs.get("results", "")) if aggregate.artifact_refs.get("results") else None
+    if result_path and result_path.exists():
+        from code_engine.corpus.io import atomic_write_jsonl
+        anchor_refs = {item.anchor_id: item.model_dump(mode="json") for item in anchors}
+        results = []
+        for item in _read_jsonl(result_path):
+            source = anchor_refs.get(str(item.get("anchor_id")), {})
+            results.append({**item, **{key: source.get(key, []) for key in ("linked_paper_ids", "linked_canonical_paper_ids", "linked_dois", "linked_titles", "linked_journals")}})
+        atomic_write_jsonl(result_path, iter(results))
     allowed_count = sum(item.status == "allowed" for item in query_plans)
     blocked_count = len(query_plans) - allowed_count
     estimated_records = sum(int(item.estimated_records or 0) for item in query_plans)

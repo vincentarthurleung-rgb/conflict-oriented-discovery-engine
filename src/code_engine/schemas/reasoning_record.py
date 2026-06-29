@@ -22,6 +22,11 @@ class ReasoningRecord(CODEBaseModel):
     why_not_validated_yet: str = "Validation occurs after hypothesis formation."
     validation_requirements: list = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+    linked_paper_ids: list[str] = Field(default_factory=list)
+    linked_canonical_paper_ids: list[str] = Field(default_factory=list)
+    linked_dois: list[str] = Field(default_factory=list)
+    linked_titles: list[str] = Field(default_factory=list)
+    linked_journals: list[str] = Field(default_factory=list)
     source: str = "deterministic_rule"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     warnings: list[str] = Field(default_factory=list)
