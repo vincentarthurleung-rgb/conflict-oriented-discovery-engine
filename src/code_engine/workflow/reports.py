@@ -44,6 +44,15 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
               f"- Warnings: `{json.dumps(readiness.get('warnings', []))}`", ""]
     if "l1_llm_client_not_configured" in readiness.get("blocking_reasons", []):
         lines += ["Real L1 extraction did not run because no L1 client was configured.", ""]
+    contamination = readiness.get("legacy_contamination_check", {})
+    provenance = state.summary.get("runtime_provenance", {})
+    lines += ["### Experiment Contamination Preflight", "",
+              f"- Status: `{contamination.get('status', 'unknown')}`",
+              f"- Import path: `{provenance.get('code_engine_import_path')}`",
+              f"- Current-run only: `{str(provenance.get('current_run_only', False)).lower()}`",
+              f"- Legacy pipelines used: `{str(contamination.get('legacy_pipeline_used', False)).lower()}`",
+              f"- Historical runs read: `{str(contamination.get('historical_runs_read', False)).lower()}`",
+              f"- Global evidence injected before reasoning: `{str(contamination.get('global_evidence_injected_before_reasoning', False)).lower()}`", ""]
     for name in STEP_ORDER:
         record = state.steps[name]
         detail = record.skipped_reason or ", ".join(record.warnings[:2])

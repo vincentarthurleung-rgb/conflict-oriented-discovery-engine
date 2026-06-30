@@ -86,6 +86,10 @@ def run_workflow(
     coverage_precheck: bool = False, coverage_threshold: float = 0.75,
     allow_coverage_short_circuit: bool = False,
 ) -> RunState:
+    from code_engine.workflow.runtime_provenance import (
+        build_runtime_provenance, contamination_check, imported_legacy_modules, write_runtime_provenance,
+    )
+    legacy_modules_before = imported_legacy_modules()
     if until not in STEP_ORDER:
         raise WorkflowConfigurationError(f"Unknown --until step: {until}")
     if not 0.0 <= semantic_confidence_threshold <= 1.0:
@@ -211,6 +215,24 @@ def run_workflow(
         "api_enabled": api, "execute_enabled": execute,
     }
     (directory / "artifacts").mkdir(parents=True, exist_ok=True)
+    runtime_provenance = build_runtime_provenance(
+        directory, repository_root=root, resume_explicit=bool(resume),
+        entity_registry_path=entity_registry_path, automatic_pilot_registry=automatic_pilot_registry,
+        l1_mode=l1_mode, l1_task_cache_enabled=l1_task_cache_enabled,
+        update_global_corpus=update_global_corpus, paper_registry_enabled=paper_registry_enabled,
+        coverage_precheck=coverage_precheck, allow_coverage_short_circuit=allow_coverage_short_circuit,
+        merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
+        execute=execute, legacy_modules_before=legacy_modules_before,
+    )
+    contamination = contamination_check(runtime_provenance)
+    readiness["legacy_contamination_check"] = contamination
+    readiness["blocking_reasons"] = list(dict.fromkeys([*readiness["blocking_reasons"], *contamination["blocking_reasons"]]))
+    if readiness["blocking_reasons"]:
+        readiness["status"] = "not_ready"
+    provenance_path = directory / "artifacts" / "runtime_provenance_report.json"
+    write_runtime_provenance(provenance_path, runtime_provenance)
+    state.summary["runtime_provenance"] = runtime_provenance
+    record_artifact(state, "runtime_provenance_report", provenance_path)
     readiness_path = directory / "artifacts" / "pilot_readiness_report.json"
     readiness_path.write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
     state.summary["pilot_readiness"] = readiness
@@ -246,6 +268,23 @@ def run_workflow(
                     state.summary["knowledge_merge"] = merge.model_dump(mode="json")
                     for artifact_name, artifact_path in merge.artifact_refs.items():
                         record_artifact(state, f"knowledge_merge_{artifact_name}", artifact_path)
+                runtime_provenance = build_runtime_provenance(
+                    directory, repository_root=root, resume_explicit=bool(resume),
+                    entity_registry_path=entity_registry_path, automatic_pilot_registry=automatic_pilot_registry,
+                    l1_mode=l1_mode, l1_task_cache_enabled=l1_task_cache_enabled,
+                    update_global_corpus=update_global_corpus, paper_registry_enabled=paper_registry_enabled,
+                    coverage_precheck=coverage_precheck, allow_coverage_short_circuit=allow_coverage_short_circuit,
+                    merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
+                    execute=execute, legacy_modules_before=legacy_modules_before,
+                )
+                contamination = contamination_check(runtime_provenance)
+                readiness["legacy_contamination_check"] = contamination
+                readiness["blocking_reasons"] = list(dict.fromkeys([*readiness["blocking_reasons"], *contamination["blocking_reasons"]]))
+                if readiness["blocking_reasons"]:
+                    readiness["status"] = "not_ready"
+                state.summary["runtime_provenance"], state.summary["pilot_readiness"] = runtime_provenance, readiness
+                write_runtime_provenance(provenance_path, runtime_provenance)
+                readiness_path.write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
                 result_status = "completed"
                 render_run_report(state, directory, final=True)
                 report_inputs = [state.artifacts[key] for key in STEP_INPUT_ARTIFACTS[name] if key in state.artifacts]
