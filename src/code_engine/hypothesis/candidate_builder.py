@@ -30,6 +30,9 @@ def _base(kind: str, source: dict, *, source_scope: str, source_mode: str) -> di
     linked_conflicts = _values(source, "abstract_conflict_candidate_id", "linked_conflict_candidate_ids", "conflict_edge_ids", "conflict_ids")
     if source.get("candidate_id") and not str(source.get("candidate_id")).startswith("confirmation_"):
         linked_conflicts = list(dict.fromkeys([str(source["candidate_id"]), *linked_conflicts]))
+    year_range = source.get("publication_year_range") or {}
+    if isinstance(year_range, list):
+        year_range = {"min": year_range[0], "max": year_range[-1]} if year_range else {}
     return {
         "candidate_id": candidate_id,
         "candidate_type": kind,
@@ -49,7 +52,7 @@ def _base(kind: str, source: dict, *, source_scope: str, source_mode: str) -> di
         "linked_titles": _values(source, "linked_titles"),
         "linked_journals": _values(source, "linked_journals"),
         "journal_distribution": dict(source.get("journal_distribution") or {}),
-        "publication_year_range": dict(source.get("publication_year_range") or {}),
+        "publication_year_range": dict(year_range),
         "subject_canonical_id": subject,
         "object_canonical_id": obj,
         "subject_name": source.get("subject_name"),
@@ -124,6 +127,7 @@ def build_hypothesis_candidates_from_run_artifacts(
     legacy_conflict_edges: Iterable[dict],
     observations: Iterable[dict],
     max_candidates: int = 50,
+    graph_conflict_candidates: Iterable[dict] = (),
 ) -> Iterator[dict]:
     """Yield at most ``max_candidates`` traceable candidates in stable priority order."""
 
@@ -180,6 +184,31 @@ def build_hypothesis_candidates_from_run_artifacts(
         return item
 
     confirmed_abstract_ids: set[str] = set()
+    for graph_conflict in graph_conflict_candidates:
+        if graph_conflict.get("status") != "graph_conflict_candidate":
+            continue
+        item = _base("graph_conflict_hypothesis", graph_conflict, source_scope="graph_bundle", source_mode="merged_evidence_graph")
+        item.update(
+            hypothesis_text="Opposing cross-paper directions in the merged relation evidence bundle require a context or mechanism explanation.",
+            linked_conflict_candidate_ids=[str(graph_conflict.get("graph_conflict_id"))],
+            linked_evidence_ids=list(graph_conflict.get("linked_evidence_edge_ids") or []),
+            linked_observation_ids=list(graph_conflict.get("linked_observation_ids") or []),
+            linked_paper_ids=list(graph_conflict.get("linked_paper_ids") or []),
+            linked_canonical_paper_ids=list(graph_conflict.get("linked_canonical_paper_ids") or []),
+            linked_dois=list(graph_conflict.get("linked_dois") or []),
+            linked_titles=list(graph_conflict.get("linked_titles") or []),
+            linked_journals=list(graph_conflict.get("linked_journals") or []),
+            publication_year_range={"min": (graph_conflict.get("publication_year_range") or [None])[0], "max": (graph_conflict.get("publication_year_range") or [None])[-1]} if isinstance(graph_conflict.get("publication_year_range"), list) else (graph_conflict.get("publication_year_range") or {}),
+            abstract_entropy=graph_conflict.get("entropy"), high_confidence=False,
+            requires_manual_review=True, graph_bundle_id=graph_conflict.get("bundle_id"),
+        )
+        item["warnings"] = list(dict.fromkeys([*item["warnings"], "graph_conflict_candidate_not_resolution_verdict"]))
+        link_matching_mechanism(item)
+        result = emit(item)
+        if result:
+            yield result
+        if count >= limit:
+            return
     for confirmation in fulltext_conflict_confirmations:
         abstract_id = str(confirmation.get("abstract_conflict_candidate_id") or "")
         if abstract_id:

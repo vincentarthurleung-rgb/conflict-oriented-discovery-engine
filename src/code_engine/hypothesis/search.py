@@ -61,11 +61,14 @@ def run_hypothesis_search_for_run(
         "abstract": artifacts / "abstract_conflict_candidates.jsonl",
         "focus": artifacts / "conflict_focus_set.jsonl",
     }
+    graph_conflicts_path = artifacts / "graph_conflict_candidates.jsonl"
+    graph_conflicts = list(iter_jsonl(graph_conflicts_path))
+    usable_graph_conflicts = [item for item in graph_conflicts if item.get("status") == "graph_conflict_candidate"]
     fulltext_summary = _json(artifacts / "fulltext_conflict_summary.json", {})
     for label, path in paths.items():
         if not path.exists():
             warnings.append(f"missing_optional_hypothesis_input:{label}")
-    has_input = any(path.exists() and path.stat().st_size for path in paths.values()) or bool(mechanism.get("edges") or mechanism.get("paths")) or bool(legacy.get("conflict_edges"))
+    has_input = any(path.exists() and path.stat().st_size for path in paths.values()) or bool(mechanism.get("edges") or mechanism.get("paths")) or bool(legacy.get("conflict_edges")) or bool(usable_graph_conflicts)
     maximum = 50 if max_hypotheses is None else max(0, int(max_hypotheses))
     source_default = "dry_run_artifact_based" if dry_run else "run_artifact_based"
     candidates_path = artifacts / "hypothesis_candidates.jsonl"
@@ -83,6 +86,7 @@ def run_hypothesis_search_for_run(
             mechanism,
             iter_jsonl(paths["confirmations"]), iter_jsonl(paths["abstract"]), iter_jsonl(paths["focus"]),
             iter(legacy.get("conflict_edges", []) or []), _iter_observations(artifacts), maximum,
+            iter(usable_graph_conflicts),
         )
         for candidate in generated:
             candidate["artifact_source_mode"] = candidate.get("source_mode")
@@ -133,6 +137,8 @@ def run_hypothesis_search_for_run(
         "domain_id": (domain_profile or {}).get("domain_id"), "max_hypotheses": maximum,
         "fulltext_conflict_summary_available": bool(fulltext_summary),
         "formation_mode": source_default, "run_dir": str(run_dir), "warnings": list(dict.fromkeys(warnings)),
+        "graph_conflict_candidates_used": len(usable_graph_conflicts),
+        "hypotheses_from_graph_conflicts": types.get("graph_conflict_hypothesis", 0),
     }
     write_json(artifacts / "hypothesis_summary.json", summary)
     return summary

@@ -50,13 +50,16 @@ class ResolverCascade:
             providers.append(LocalCuratedProvider(registry=registry))
         elif registry_path is not None and Path(registry_path) != DEFAULT_REGISTRY_PATH:
             providers.append(LocalCuratedProvider(registry_path=registry_path))
-        providers.append(LocalCacheProvider(EntityCache()))
+        # An explicitly selected curated registry is authoritative for a bounded
+        # pilot and must not become ambiguous with stale cache namespaces.
+        if registry is None and registry_path is None:
+            providers.append(LocalCacheProvider(EntityCache()))
         providers.extend([PubChemCandidateProvider(clients.get("pubchem")), ChEMBLCandidateProvider(clients.get("chembl")), MyGeneCandidateProvider(clients.get("mygene")), UniProtCandidateProvider(clients.get("uniprot"))])
         if entity_llm_proposer:
             providers.append(LLMCandidateProposerProvider(llm_client))
         providers.append(NullProvider())
         audit = EntityResolutionAuditWriter(run_dir) if run_dir else None
-        cache = EntityCache(accepted_writes_enabled=bool(execute)) if execute else None
+        cache = EntityCache(accepted_writes_enabled=True) if execute and registry is None and registry_path is None else None
         self.hub = EntityResolutionHub(providers, adjudicator_policy, audit, entity_cache=cache)
         self.registry = registry
 

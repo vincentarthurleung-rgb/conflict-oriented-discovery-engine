@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 from code_engine.workflow.errors import WorkflowConfigurationError
 from code_engine.workflow.models import RunState, STEP_ORDER, WorkflowStepStatus
@@ -26,8 +27,11 @@ STEP_INPUT_ARTIFACTS = {
     "fulltext_conflict_confirmation": ("abstract_conflict_candidates", "fulltext_evidence_records", "l2_fulltext_observations"),
     "l1": ("payload_report", "domain_profile"),
     "l1_5": ("l1_summary",), "l2": ("l1_5_summary", "domain_profile"),
+    "evidence_graph_core": ("l2_abstract_observations", "l2_fulltext_observations", "run_paper_manifest"),
     "mechanism": ("l2_observations", "l1_summary", "domain_profile"),
-    "conflict": ("l2_observations", "mechanism_graph"), "hypothesis": ("conflict_graph_summary", "mechanism_graph"),
+    "conflict": ("l2_observations", "mechanism_graph"), "hypothesis": ("conflict_graph_summary", "mechanism_graph", "evidence_graph_core_conflicts"),
+    "conflict_timeline": ("hypothesis_hyperedges", "abstract_conflict_candidates", "evidence_graph_core_conflicts"),
+    "evidence_graph": ("conflict_evidence_timelines", "hypothesis_hyperedges", "l2_abstract_observations"),
     "validation": ("hypothesis_summary", "domain_profile"),
     "report": ("validation_summary",),
 }
@@ -44,7 +48,7 @@ def run_workflow(
     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
     semantic_llm_client=None,
     entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
-    entity_resolution_policy=None,
+    entity_resolution_policy=None, entity_registry_path: str | Path | None = None,
     l1_mode: str = "legacy", enable_fulltext_escalation: bool = False,
     fulltext_escalation_trigger: str = "conflict_entropy",
     min_abstract_conflict_entropy: float = 0.65, min_abstract_evidence_count: int = 3,
@@ -67,6 +71,12 @@ def run_workflow(
     validation_max_raw_payload_bytes: int = 5_000_000,
     validation_allow_large_local_scan: bool = False,
     validation_provider_clients: dict | None = None,
+    enable_conflict_timeline: bool = True, timeline_cutoff_year: int | None = None,
+    timeline_window_size: int = 5, timeline_min_conflict_papers: int = 3,
+    timeline_min_later_papers: int = 1,
+    enable_evidence_graph: bool = True, evidence_graph_min_conflict_papers: int = 2,
+    evidence_graph_conflict_entropy_threshold: float = 0.55,
+    evidence_graph_max_edges: int | None = None,
     global_corpus_dir: str | Path | None = None,
     paper_registry_enabled: bool = True, update_global_corpus: bool = False,
     allow_title_hash_paper_merge: bool = False,
@@ -167,6 +177,44 @@ def run_workflow(
         "selected_validators": validation_validators or [],
         "allow_large_local_scan": bool(validation_allow_large_local_scan),
     }
+    state.summary["conflict_timeline_configuration"] = {
+        "enabled": enable_conflict_timeline, "cutoff_year": timeline_cutoff_year,
+        "window_size": timeline_window_size, "min_conflict_papers": timeline_min_conflict_papers,
+        "min_later_papers": timeline_min_later_papers, "uses_external_validation": False,
+    }
+    state.summary["evidence_graph_configuration"] = {
+        "enabled": enable_evidence_graph, "scope": "run_level_only",
+        "min_conflict_papers": evidence_graph_min_conflict_papers,
+        "conflict_entropy_threshold": evidence_graph_conflict_entropy_threshold,
+        "max_edges": evidence_graph_max_edges, "uses_external_validation_for_reasoning": False,
+    }
+    pilot_terms = ("ketamine", "esketamine", "arketamine", "norketamine", "hydroxynorketamine")
+    automatic_pilot_registry = any(term in state.query.casefold() for term in pilot_terms)
+    resolver_configured = bool((entity_registry_path and Path(entity_registry_path).exists()) or automatic_pilot_registry)
+    blocking_reasons = []
+    if execute:
+        if not api: blocking_reasons.append("api_not_enabled")
+        if not network: blocking_reasons.append("network_not_enabled")
+        if l1_mode != "legacy" and l1_llm_client is None: blocking_reasons.append("l1_llm_client_not_configured")
+        if not resolver_configured: blocking_reasons.append("progressive_resolver_not_configured")
+        if entity_registry_path and not Path(entity_registry_path).exists(): blocking_reasons.append("entity_registry_path_not_found")
+        if not paper_registry_enabled: blocking_reasons.append("paper_registry_disabled")
+        if not enable_evidence_graph: blocking_reasons.append("evidence_graph_disabled")
+        if not enable_conflict_timeline: blocking_reasons.append("conflict_timeline_disabled")
+    readiness = {
+        "status": "not_ready" if blocking_reasons else ("ready_with_warnings" if execute else "dry_run_safe"),
+        "blocking_reasons": blocking_reasons,
+        "warnings": (["compound_normalization_requires_manual_review"] if automatic_pilot_registry else []),
+        "l1_client_configured": l1_llm_client is not None, "resolver_configured": resolver_configured,
+        "paper_registry_enabled": paper_registry_enabled, "evidence_graph_enabled": enable_evidence_graph,
+        "conflict_timeline_enabled": enable_conflict_timeline, "network_enabled": network,
+        "api_enabled": api, "execute_enabled": execute,
+    }
+    (directory / "artifacts").mkdir(parents=True, exist_ok=True)
+    readiness_path = directory / "artifacts" / "pilot_readiness_report.json"
+    readiness_path.write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
+    state.summary["pilot_readiness"] = readiness
+    record_artifact(state, "pilot_readiness_report", readiness_path)
     if api and not execute:
         record_warning(state, "API enabled but execute=false, no API calls will be made")
     if network and not execute:
@@ -214,6 +262,7 @@ def run_workflow(
                     entity_network_lookup=entity_network_lookup,
                     entity_llm_proposer=entity_llm_proposer,
                     entity_resolution_policy=entity_resolution_policy,
+                    entity_registry_path=entity_registry_path,
                     l1_mode=l1_mode,
                     enable_fulltext_escalation=enable_fulltext_escalation,
                     fulltext_escalation_trigger=fulltext_escalation_trigger,
@@ -241,6 +290,15 @@ def run_workflow(
                     validation_max_raw_payload_bytes=validation_max_raw_payload_bytes,
                     validation_allow_large_local_scan=validation_allow_large_local_scan,
                     validation_provider_clients=validation_provider_clients,
+                    enable_conflict_timeline=enable_conflict_timeline,
+                    timeline_cutoff_year=timeline_cutoff_year,
+                    timeline_window_size=timeline_window_size,
+                    timeline_min_conflict_papers=timeline_min_conflict_papers,
+                    timeline_min_later_papers=timeline_min_later_papers,
+                    enable_evidence_graph=enable_evidence_graph,
+                    evidence_graph_min_conflict_papers=evidence_graph_min_conflict_papers,
+                    evidence_graph_conflict_entropy_threshold=evidence_graph_conflict_entropy_threshold,
+                    evidence_graph_max_edges=evidence_graph_max_edges,
                     global_corpus_dir=corpus_dir,
                     paper_registry_enabled=paper_registry_enabled,
                     update_global_corpus=update_global_corpus,

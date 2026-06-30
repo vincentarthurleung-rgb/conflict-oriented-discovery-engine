@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 from code_engine.workflow.models import RunState, STEP_ORDER
+from code_engine.evidence_graph.graph_reports import render_merged_evidence_graph_section
+from code_engine.temporal.reports import render_temporal_evidence_section
 from code_engine.workflow.run_state import record_artifact
 
 
@@ -35,6 +37,13 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         f"- External calls enabled: `{json.dumps(state.summary.get('external_calls_enabled', {}), sort_keys=True)}`",
         "", "## Workflow steps", "",
     ]
+    readiness = state.summary.get("pilot_readiness", {})
+    lines += ["", "## Pilot Readiness", "",
+              "**NOT READY FOR REAL DATA PILOT**" if readiness.get("status") == "not_ready" else "**READY WITH WARNINGS**" if readiness.get("status") == "ready_with_warnings" else "**DRY-RUN SAFE**",
+              "", f"- Blocking reasons: `{json.dumps(readiness.get('blocking_reasons', []))}`",
+              f"- Warnings: `{json.dumps(readiness.get('warnings', []))}`", ""]
+    if "l1_llm_client_not_configured" in readiness.get("blocking_reasons", []):
+        lines += ["Real L1 extraction did not run because no L1 client was configured.", ""]
     for name in STEP_ORDER:
         record = state.steps[name]
         detail = record.skipped_reason or ", ".join(record.warnings[:2])
@@ -108,6 +117,23 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         "- No record found is not contradiction; cache miss is not no coverage.",
         "- Trial existence, binding activity, pathway membership, and cancer-cell dependency have limited interpretation.", "",
     ]
+    timeline_path = directory / "artifacts" / "conflict_evidence_timelines.jsonl"
+    timelines = []
+    if timeline_path.exists():
+        for line in timeline_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                timelines.append(json.loads(line))
+    lines += render_temporal_evidence_section(timelines)
+    graph_summary_path = directory / "artifacts" / "merged_evidence_graph_summary.json"
+    graph_summary = json.loads(graph_summary_path.read_text(encoding="utf-8")) if graph_summary_path.exists() else {}
+    def read_jsonl(name: str) -> list[dict]:
+        path = directory / "artifacts" / name
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()] if path.exists() else []
+    lines += render_merged_evidence_graph_section(
+        graph_summary, read_jsonl("graph_conflict_candidates.jsonl"),
+        read_jsonl("graph_reasoning_traces.jsonl"), read_jsonl("merged_evidence_graph_nodes.jsonl"),
+        read_jsonl("merged_evidence_graph_edges.jsonl"),
+    )
     lines += ["## Warnings", ""] + ([f"- {item}" for item in state.warnings] or ["- None"])
     failed_or_blocked = [f"{name}: {record.status}" for name, record in state.steps.items() if record.status in {"failed", "blocked", "skipped", "manual_review_required"}]
     lines += ["", "## Failed or skipped steps", ""] + ([f"- {item}" for item in failed_or_blocked] or ["- None"])

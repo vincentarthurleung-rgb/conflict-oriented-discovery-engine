@@ -36,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     entity_llm.add_argument("--entity-llm-proposer", action="store_true")
     entity_llm.add_argument("--no-entity-llm-proposer", action="store_true")
     parser.add_argument("--entity-resolution-policy")
+    parser.add_argument("--entity-registry-path", type=Path)
     parser.add_argument(
         "--l1-mode",
         choices=("abstract_screening", "progressive_fulltext", "fulltext_oracle", "legacy"),
@@ -54,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-l1-input-tokens-per-prompt", type=int)
     parser.add_argument("--l1-budget-usd", type=float)
     parser.add_argument("--l1-pricing-profile", default="deepseek_default")
+    parser.add_argument("--l1-provider", choices=("deepseek", "openai"))
+    parser.add_argument("--l1-model")
     parser.add_argument("--allow-budget-overrun", action="store_true")
     parser.add_argument("--global-corpus-dir", type=Path)
     registry = parser.add_mutually_exclusive_group()
@@ -80,6 +83,19 @@ def build_parser() -> argparse.ArgumentParser:
     coverage.add_argument("--no-coverage-precheck", action="store_true")
     parser.add_argument("--coverage-threshold", type=float, default=0.75)
     parser.add_argument("--allow-coverage-short-circuit", action="store_true")
+    timeline = parser.add_mutually_exclusive_group()
+    timeline.add_argument("--enable-conflict-timeline", action="store_true", default=True)
+    timeline.add_argument("--no-conflict-timeline", action="store_true")
+    parser.add_argument("--timeline-cutoff-year", type=int)
+    parser.add_argument("--timeline-window-size", type=int, default=5)
+    parser.add_argument("--timeline-min-conflict-papers", type=int, default=3)
+    parser.add_argument("--timeline-min-later-papers", type=int, default=1)
+    evidence_graph = parser.add_mutually_exclusive_group()
+    evidence_graph.add_argument("--enable-evidence-graph", action="store_true", default=True)
+    evidence_graph.add_argument("--no-evidence-graph", action="store_true")
+    parser.add_argument("--evidence-graph-min-conflict-papers", type=int, default=2)
+    parser.add_argument("--evidence-graph-conflict-entropy-threshold", type=float, default=0.55)
+    parser.add_argument("--evidence-graph-max-edges", type=int)
     external_validation = parser.add_mutually_exclusive_group()
     external_validation.add_argument("--external-validation", action="store_true")
     external_validation.add_argument("--no-external-validation", action="store_true")
@@ -106,6 +122,10 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if not args.resume and not args.query:
         build_parser().error("--query is required unless --resume is used")
+    l1_client = None
+    if args.execute and args.api:
+        from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
+        l1_client = build_l1_client_from_env_or_config(args.l1_provider, args.l1_model)
     state = run_workflow(
         query=args.query or "", run_dir=args.run_dir, until=args.until,
         execute=args.execute, api=args.api, network=args.network,
@@ -116,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         entity_network_lookup=args.entity_network_lookup,
         entity_llm_proposer=args.entity_llm_proposer,
         entity_resolution_policy=args.entity_resolution_policy,
+        entity_registry_path=args.entity_registry_path,
         l1_mode=args.l1_mode,
         enable_fulltext_escalation=args.enable_fulltext_escalation and not args.no_fulltext_escalation,
         fulltext_escalation_trigger=args.fulltext_escalation_trigger,
@@ -129,6 +150,8 @@ def main(argv: list[str] | None = None) -> int:
         l1_budget_usd=args.l1_budget_usd,
         l1_pricing_profile=args.l1_pricing_profile,
         allow_budget_overrun=args.allow_budget_overrun,
+        l1_llm_client=l1_client,
+        semantic_llm_client=l1_client,
         external_validation=args.external_validation and not args.no_external_validation,
         validation_query_mode=args.validation_query_mode,
         validation_index_dir=args.validation_index_dir,
@@ -158,6 +181,15 @@ def main(argv: list[str] | None = None) -> int:
         coverage_precheck=args.coverage_precheck and not args.no_coverage_precheck,
         coverage_threshold=args.coverage_threshold,
         allow_coverage_short_circuit=args.allow_coverage_short_circuit,
+        enable_conflict_timeline=args.enable_conflict_timeline and not args.no_conflict_timeline,
+        timeline_cutoff_year=args.timeline_cutoff_year,
+        timeline_window_size=args.timeline_window_size,
+        timeline_min_conflict_papers=args.timeline_min_conflict_papers,
+        timeline_min_later_papers=args.timeline_min_later_papers,
+        enable_evidence_graph=args.enable_evidence_graph and not args.no_evidence_graph,
+        evidence_graph_min_conflict_papers=args.evidence_graph_min_conflict_papers,
+        evidence_graph_conflict_entropy_threshold=args.evidence_graph_conflict_entropy_threshold,
+        evidence_graph_max_edges=args.evidence_graph_max_edges,
     )
     directory = args.resume.resolve() if args.resume else (args.run_dir.resolve() if args.run_dir else Path("runs") / state.run_id)
     if args.json_output:

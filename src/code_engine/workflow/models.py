@@ -33,9 +33,12 @@ class WorkflowStepName(str, Enum):
     L1 = "l1"
     L1_5 = "l1_5"
     L2 = "l2"
+    EVIDENCE_GRAPH_CORE = "evidence_graph_core"
     MECHANISM = "mechanism"
     CONFLICT = "conflict"
     HYPOTHESIS = "hypothesis"
+    CONFLICT_TIMELINE = "conflict_timeline"
+    EVIDENCE_GRAPH = "evidence_graph"
     VALIDATION = "validation"
     REPORT = "report"
 

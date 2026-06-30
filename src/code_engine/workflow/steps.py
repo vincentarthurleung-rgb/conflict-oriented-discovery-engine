@@ -93,16 +93,30 @@ def _cached_payload(record: Any, key: str) -> list[dict]:
     return _read_jsonl(path) if path and path.exists() else []
 
 
-def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[str, Any], run_dir: Path) -> list[dict[str, Any]]:
+def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[str, Any], run_dir: Path, *,
+                                   entity_registry_path: str | Path | None = None,
+                                   execute: bool = False, network: bool = False, api: bool = False,
+                                   entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
+                                   entity_resolution_policy: dict | None = None) -> list[dict[str, Any]]:
     """Normalize progressive claims while preserving evidence scope."""
 
+    from code_engine.normalization.registry import LocalBiomedicalRegistry, PILOT_REGISTRY_PATH
     from code_engine.normalization.resolver import ResolverCascade
+
+    registry_path = Path(entity_registry_path) if entity_registry_path else (PILOT_REGISTRY_PATH if profile.get("domain_id") == "neuropharmacology" else None)
+    try:
+        registry = LocalBiomedicalRegistry(registry_path) if registry_path else None
+    except FileNotFoundError:
+        registry = None
 
     resolver = ResolverCascade(
         domain_id=profile.get("domain_id", "general_biomedical"),
         entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"),
         resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"),
         run_dir=run_dir,
+        registry=registry, execute=execute, network_enabled=network, api_enabled=api,
+        entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
+        adjudicator_policy=entity_resolution_policy,
     )
     observations = []
     for item in records:
@@ -142,7 +156,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
 def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
                     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
                     semantic_llm_client: Any | None = None, **_: Any) -> StepResult:
-    intake = parse_research_intake(query, use_api=api, execute=execute, llm_client=semantic_llm_client)
+    intake = parse_research_intake(query, use_api=bool(api and semantic_llm_client is not None), execute=execute, llm_client=semantic_llm_client)
     profile = default_domain_router().get_or_default(intake.research_intent.domain_id)
     intake_path = _write(run_dir, "intake.json", intake)
     profile_path = _write(run_dir, "domain_profile.json", profile.to_dict())
@@ -159,6 +173,8 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
     }
     warnings = list(intake.ambiguities)
     warnings.extend(intake.semantic_warnings)
+    if execute and api and semantic_llm_client is None:
+        warnings.append("semantic_llm_client_not_configured_deterministic_intake_used")
     uncertain = intake.semantic_confidence < semantic_confidence_threshold or intake.requires_manual_review
     blocked = bool(execute and uncertain and not allow_uncertain_intake)
     if blocked:
@@ -363,17 +379,25 @@ def run_abstract_l1_step(
         status=status, summary=summary, artifacts=artifacts,
         counts={"abstract_claim_count": len(output["claims"]), "abstract_processed_paper_count": summary["abstract_available_count"], "abstract_l1_cache_hit_count": len(cache_hits), "abstract_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])), api_calls_made=int(summary["api_calls_made"]),
-        skipped_reason=("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "llm_client_not_configured") if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
+        skipped_reason=("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "l1_llm_client_not_configured") if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
     )
 
 
-def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening", **_: Any) -> StepResult:
+def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
+                         entity_registry_path: str | Path | None = None, execute: bool = False,
+                         network: bool = False, api: bool = False, entity_network_lookup: bool = False,
+                         entity_llm_proposer: bool = False, entity_resolution_policy=None, **_: Any) -> StepResult:
     if l1_mode == "legacy":
         summary = {"normalized_observation_count": 0, "reason": "legacy_l1_mode"}
         path = _write(run_dir, "l2_abstract_summary.json", summary)
         return StepResult(status="skipped", summary=summary, artifacts={"l2_abstract_summary": path}, skipped_reason="legacy_l1_mode")
     claims = _read_jsonl(run_dir / "artifacts" / "abstract_l1_claims.jsonl")
-    observations = _normalize_progressive_records(claims, _read(run_dir, "domain_profile.json", {}), run_dir)
+    observations = _normalize_progressive_records(
+        claims, _read(run_dir, "domain_profile.json", {}), run_dir,
+        entity_registry_path=entity_registry_path, execute=execute, network=network, api=api,
+        entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
+        entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
+    )
     observations_path = _write(run_dir, "l2_abstract_observations.json", observations)
     summary = {
         "normalized_observation_count": len(observations),
@@ -382,11 +406,14 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening", 
         "source_scope": "abstract",
     }
     summary_path = _write(run_dir, "l2_abstract_summary.json", summary)
+    pilot_terms = {"ketamine", "esketamine", "arketamine", "norketamine", "hydroxynorketamine", "bdnf", "mtor"}
+    pilot_mentions = sum(str(item.get("subject_raw") or "").casefold() in pilot_terms or str(item.get("object_raw") or "").casefold() in pilot_terms for item in claims)
+    low_pilot_coverage = bool(pilot_mentions and summary["high_confidence_observation_count"] < max(1, pilot_mentions // 2))
     return StepResult(
         status="completed" if observations else "planned", summary=summary,
         artifacts={"l2_abstract_observations": observations_path, "l2_abstract_summary": summary_path},
         counts={key: value for key, value in summary.items() if key.endswith("_count")},
-        warnings=[] if observations else ["no_abstract_claims_to_normalize"],
+        warnings=(["entity_resolution_low_coverage_for_pilot_query"] if low_pilot_coverage else []) + ([] if observations else ["no_abstract_claims_to_normalize"]),
     )
 
 
@@ -567,14 +594,22 @@ def run_fulltext_l1_step(
         counts={"fulltext_evidence_count": len(output["evidence_records"]), "fulltext_l1_cache_hit_count": len(cache_hits), "fulltext_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])) + ([] if enabled else ["fulltext_escalation_not_enabled"]),
         api_calls_made=int(summary["api_calls_made"]),
-        skipped_reason="l1_budget_exceeded" if budget_blocked else ("llm_client_not_configured" if client_missing else (None if enabled else "fulltext_escalation_not_enabled")),
+        skipped_reason="l1_budget_exceeded" if budget_blocked else ("l1_llm_client_not_configured" if client_missing else (None if enabled else "fulltext_escalation_not_enabled")),
     )
 
 
-def run_l2_fulltext_step(*, run_dir: Path, l1_mode: str = "abstract_screening", **_: Any) -> StepResult:
+def run_l2_fulltext_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
+                         entity_registry_path: str | Path | None = None, execute: bool = False,
+                         network: bool = False, api: bool = False, entity_network_lookup: bool = False,
+                         entity_llm_proposer: bool = False, entity_resolution_policy=None, **_: Any) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"}
     evidence = _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl") if enabled else []
-    observations = _normalize_progressive_records(evidence, _read(run_dir, "domain_profile.json", {}), run_dir)
+    observations = _normalize_progressive_records(
+        evidence, _read(run_dir, "domain_profile.json", {}), run_dir,
+        entity_registry_path=entity_registry_path, execute=execute, network=network, api=api,
+        entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
+        entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
+    )
     path = _write(run_dir, "l2_fulltext_observations.json", observations)
     summary = {
         "normalized_fulltext_observation_count": len(observations),
@@ -1017,6 +1052,79 @@ def run_validation_step(
     )
 
 
+def run_conflict_timeline_step(*, run_dir: Path, enable_conflict_timeline: bool = True,
+                               timeline_cutoff_year: int | None = None,
+                               timeline_window_size: int = 5,
+                               timeline_min_conflict_papers: int = 3,
+                               timeline_min_later_papers: int = 1, **_: Any) -> StepResult:
+    from code_engine.temporal.io import run_conflict_timeline
+    summary = run_conflict_timeline(
+        run_dir, cutoff_year=timeline_cutoff_year, window_size=timeline_window_size,
+        min_conflict_papers=timeline_min_conflict_papers, min_later_papers=timeline_min_later_papers,
+        enabled=enable_conflict_timeline,
+    )
+    artifact_dir = run_dir / "artifacts"
+    names = (
+        "conflict_evidence_timelines.jsonl", "conflict_evidence_timeline_summary.json",
+        "conflict_temporal_windows.jsonl", "hypothesis_later_evidence_comparisons.jsonl",
+    )
+    return StepResult(
+        status="completed" if summary["status"] in {"completed", "no_input", "disabled"} else summary["status"],
+        summary=summary, artifacts={Path(name).stem: str(artifact_dir / name) for name in names},
+        counts={"conflict_timeline_count": int(summary.get("timeline_count", 0))},
+        warnings=list(summary.get("warnings", [])),
+    )
+
+
+def run_evidence_graph_step(*, run_dir: Path, enable_evidence_graph: bool = True,
+                            evidence_graph_min_conflict_papers: int = 2,
+                            evidence_graph_conflict_entropy_threshold: float = 0.55,
+                            evidence_graph_max_edges: int | None = None, **_: Any) -> StepResult:
+    from code_engine.evidence_graph.builders import build_merged_evidence_graph_from_run_artifacts
+    if enable_evidence_graph:
+        result = build_merged_evidence_graph_from_run_artifacts(
+            run_dir, max_edges=evidence_graph_max_edges,
+            min_conflict_papers=evidence_graph_min_conflict_papers,
+            conflict_entropy_threshold=evidence_graph_conflict_entropy_threshold,
+        )
+        summary, artifacts = result["summary"], result["artifacts"]
+    else:
+        from code_engine.evidence_graph.graph_io import write_json, write_jsonl
+        output = run_dir / "artifacts"
+        names = ("merged_evidence_graph_nodes.jsonl", "merged_evidence_graph_edges.jsonl", "relation_evidence_bundles.jsonl",
+                 "graph_conflict_candidates.jsonl", "graph_reasoning_traces.jsonl")
+        artifacts = {Path(name).stem: write_jsonl(output / name, []) for name in names}
+        summary = {"status": "disabled", "node_count": 0, "edge_count": 0, "relation_bundle_count": 0,
+                   "warnings": ["evidence_graph_disabled"], "scope": "run_level_graph_ready_reasoning_layer"}
+        artifacts["summary"] = write_json(output / "merged_evidence_graph_summary.json", summary)
+        artifacts["contract_report"] = write_json(output / "merged_evidence_graph_contract_report.json", {"status": "disabled", "warnings": []})
+        artifacts["alignment_report"] = write_json(output / "graph_conflict_alignment_report.json", {"status": "disabled", "warnings": []})
+    return StepResult(status="completed", summary=summary, artifacts={f"merged_evidence_graph_{key}": value for key, value in artifacts.items()},
+                      counts={"evidence_graph_node_count": int(summary.get("node_count", 0)), "evidence_graph_edge_count": int(summary.get("edge_count", 0))},
+                      warnings=list(summary.get("warnings", [])))
+
+
+def run_evidence_graph_core_step(*, run_dir: Path, enable_evidence_graph: bool = True,
+                                 evidence_graph_min_conflict_papers: int = 2,
+                                 evidence_graph_conflict_entropy_threshold: float = 0.55,
+                                 evidence_graph_max_edges: int | None = None, **_: Any) -> StepResult:
+    """Build bundles/reasoning before hypothesis and timeline formation."""
+    if not enable_evidence_graph:
+        return StepResult(status="skipped", summary={"status": "disabled", "phase": "core"}, warnings=["evidence_graph_disabled"], skipped_reason="evidence_graph_disabled")
+    from code_engine.evidence_graph.builders import build_merged_evidence_graph_from_run_artifacts
+    result = build_merged_evidence_graph_from_run_artifacts(
+        run_dir, include_temporal=False, include_hypotheses=False,
+        max_edges=evidence_graph_max_edges,
+        min_conflict_papers=evidence_graph_min_conflict_papers,
+        conflict_entropy_threshold=evidence_graph_conflict_entropy_threshold,
+    )
+    summary = {**result["summary"], "phase": "core"}
+    return StepResult(
+        status="completed", summary=summary,
+        artifacts={f"evidence_graph_core_{key}": value for key, value in result["artifacts"].items()},
+        counts={"evidence_graph_core_conflict_count": int(summary.get("graph_conflict_candidate_count", 0))},
+        warnings=list(summary.get("warnings", [])),
+    )
 STEP_RUNNERS = {
     "intake": run_intake_step, "search": run_search_step, "acquisition": run_acquisition_step,
     "payload": run_payload_step,
@@ -1028,5 +1136,8 @@ STEP_RUNNERS = {
     "l2_fulltext": run_l2_fulltext_step,
     "fulltext_conflict_confirmation": run_fulltext_conflict_confirmation_step,
     "l1": run_l1_step, "l1_5": run_l1_5_step, "l2": run_l2_step,
-    "mechanism": run_mechanism_step, "conflict": run_conflict_step, "hypothesis": run_hypothesis_step, "validation": run_validation_step,
+    "evidence_graph_core": run_evidence_graph_core_step,
+    "mechanism": run_mechanism_step, "conflict": run_conflict_step, "hypothesis": run_hypothesis_step,
+    "conflict_timeline": run_conflict_timeline_step, "evidence_graph": run_evidence_graph_step,
+    "validation": run_validation_step,
 }
