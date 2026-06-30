@@ -4,6 +4,8 @@
   "entity_registry_path": "configs/normalization/fixtures/ketamine_pilot_registry.json",
   "domain_profile": "neuropharmacology",
   "search_expansions": [
+    "(Ketamine[Title/Abstract]) AND (antidepressant[Title/Abstract] OR depression[Title/Abstract]) AND (NMDA[Title/Abstract] OR synaptic[Title/Abstract] OR glutamate[Title/Abstract])",
+    "(Ketamine[Title/Abstract]) AND (BDNF[Title/Abstract] OR \"brain-derived neurotrophic factor\"[Title/Abstract]) AND (depression[Title/Abstract] OR antidepressant[Title/Abstract])",
     "ketamine BDNF depression",
     "ketamine NMDA receptor antidepressant",
     "ketamine AMPA receptor BDNF mTOR depression",

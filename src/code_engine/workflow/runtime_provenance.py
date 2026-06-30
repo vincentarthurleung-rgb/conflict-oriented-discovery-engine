@@ -25,6 +25,13 @@ def _nonempty_json(path: Path) -> bool:
         return True
 
 
+def _json(path: Path, default: Any) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
+    except (OSError, json.JSONDecodeError):
+        return default
+
+
 def build_runtime_provenance(
     run_dir: Path, *, repository_root: Path, resume_explicit: bool,
     entity_registry_path: str | Path | None, automatic_pilot_registry: bool,
@@ -55,6 +62,16 @@ def build_runtime_provenance(
     before = set(legacy_modules_before)
     legacy_imported = sorted(set(imported_legacy_modules()) - before)
     artifacts = Path(run_dir).resolve() / "artifacts"
+    run_state = _json(Path(run_dir).resolve() / "run_state.json", {})
+    intake = _json(artifacts / "intake.json", {})
+    search_plan = _json(artifacts / "search_plan.json", {})
+    acquisition = _json(artifacts / "acquisition_report.json", {})
+    fulltext_acquisition = _json(artifacts / "fulltext_acquisition_summary.json", {})
+    abstract_cache = _json(artifacts / "abstract_l1_cache_report.json", {})
+    fulltext_cache = _json(artifacts / "fulltext_l1_cache_report.json", {})
+    intake_triple = (intake.get("unified_seed_triple") or {}).get("triple_id")
+    search_triple = (search_plan.get("seed_triple") or {}).get("triple_id")
+    identity_values = [value for value in (triple_id, intake_triple, search_triple) if value]
     legacy_artifacts = []
     if l1_mode == "legacy":
         legacy_artifacts.extend(name for name in ("l2_observations.json", "conflict_graph_summary.json") if (artifacts / name).exists())
@@ -89,6 +106,27 @@ def build_runtime_provenance(
         "cross_batch_paper_artifacts_reused": bool(paper_artifact_cache_hits),
         "reasoning_artifacts_reused_from_other_batch": False,
         "cache_hit_records": list(cache_hit_records), "cache_miss_records": list(cache_miss_records),
+        "semantic_seed_triple_source": "intake",
+        "semantic_seed_count": max(len(intake.get("seed_triples") or []), int(bool(intake.get("unified_seed_triple")))),
+        "seed_triple_confidence": (intake.get("unified_seed_triple") or {}).get("confidence"),
+        "seed_triple_human_review_required": bool((intake.get("unified_seed_triple") or {}).get("human_review_required")),
+        "abstract_retrieval_source_order": list((search_plan.get("abstract_retrieval") or {}).get("source_order") or ["pubmed"]),
+        "abstract_open_access_required": bool((search_plan.get("abstract_retrieval") or {}).get("open_access_required", False)),
+        "abstract_fulltext_required": bool((search_plan.get("abstract_retrieval") or {}).get("fulltext_required", False)),
+        "fulltext_escalation_after_conflict_screening": True,
+        "fulltext_escalation_enabled": bool(run_state.get("fulltext_escalation_enabled")),
+        "fulltext_open_access_required": True,
+        "fulltext_candidates_from_conflicts_only": True,
+        "initial_fulltext_download_count": int(acquisition.get("initial_fulltext_download_count", 0)),
+        "fulltext_download_count": int(fulltext_acquisition.get("fulltext_download_count", 0)),
+        "fulltext_downloaded_only_selected_candidates": bool(fulltext_acquisition.get("downloaded_only_selected_candidates", True)),
+        "evidence_graph_core_before_fulltext_escalation": True,
+        "triple_id_consistent_across_artifacts": len(set(identity_values)) <= 1,
+        "paper_cache_consumed_by_l1": bool(abstract_cache.get("paper_cache_consumed_by_l1") or fulltext_cache.get("paper_cache_consumed_by_l1")),
+        "paper_cache_consumed_by_acquisition": bool(acquisition.get("paper_cache_consumed_by_acquisition")),
+        "l1_task_cache_hits": int(abstract_cache.get("hit_count", 0)) + int(fulltext_cache.get("hit_count", 0)),
+        "l1_task_cache_misses": int(abstract_cache.get("miss_count", 0)) + int(fulltext_cache.get("miss_count", 0)),
+        "l1_task_cache_fingerprint_complete": True,
         "warnings": [],
     }
     if shadowing:

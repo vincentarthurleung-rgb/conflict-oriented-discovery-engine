@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -93,6 +94,44 @@ def _cached_payload(record: Any, key: str) -> list[dict]:
     return _read_jsonl(path) if path and path.exists() else []
 
 
+def _cache_identity(run_dir: Path, client: Any, registry_path: Any = None) -> dict[str, Any]:
+    state_path = run_dir / "run_state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    metadata = state.get("summary", {}).get("triple_metadata", {})
+    seed = metadata.get("seed_triple") or {}
+    client_type = type(client)
+    registry = str(registry_path or "domain_neutral_registry")
+    return {
+        "model_provider": client_type.__module__.split(".")[0] if client is not None else "none",
+        "model_name": client_type.__name__ if client is not None else "none",
+        "model_fingerprint": hashlib.sha256(f"{client_type.__module__}.{client_type.__name__}".encode()).hexdigest(),
+        "resolver_registry_hash": hashlib.sha256(registry.encode()).hexdigest(),
+        "query_hash": str(metadata.get("query_hash") or ""),
+        "triple_id": str(metadata.get("triple_id") or ""),
+        "seed_triple_hash": hashlib.sha256(json.dumps(seed, sort_keys=True, default=str).encode()).hexdigest(),
+    }
+
+
+def _paper_cache_imports(run_dir: Path, filename: str, expected: dict[str, str]) -> tuple[list[dict[str, Any]], set[str]]:
+    records: list[dict[str, Any]] = []
+    paper_ids: set[str] = set()
+    for path in sorted((run_dir / "artifacts/cache_imports").glob(f"paper_*/{filename}")):
+        cache_record_path = path.parent / "cache_record.json"
+        cache_record = json.loads(cache_record_path.read_text(encoding="utf-8")) if cache_record_path.exists() else {}
+        if not cache_record.get("reuse_allowed") or any(str(cache_record.get(key) or "") != str(value or "") for key, value in expected.items()):
+            continue
+        canonical = str(cache_record.get("canonical_paper_id") or "")
+        imported = _read_jsonl(path) if path.suffix == ".jsonl" else []
+        for item in imported:
+            item = {**item, "canonical_paper_id": item.get("canonical_paper_id") or canonical,
+                    "reused_from_paper_artifact_cache": True,
+                    "cache_record_id": cache_record.get("cache_record_id")}
+            records.append(item)
+        if canonical:
+            paper_ids.add(canonical)
+    return records, paper_ids
+
+
 def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[str, Any], run_dir: Path, *,
                                    entity_registry_path: str | Path | None = None,
                                    execute: bool = False, network: bool = False, api: bool = False,
@@ -156,7 +195,8 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
 def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
                     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
                     semantic_llm_client: Any | None = None,
-                    pilot_domain_profile: str | None = None, **_: Any) -> StepResult:
+                    pilot_domain_profile: str | None = None,
+                    explicit_seed_triple: dict[str, Any] | None = None, **_: Any) -> StepResult:
     intake = parse_research_intake(query, use_api=bool(api and semantic_llm_client is not None), execute=execute, llm_client=semantic_llm_client)
     profile = default_domain_router().get_or_default(pilot_domain_profile or intake.research_intent.domain_id)
     if pilot_domain_profile:
@@ -169,6 +209,34 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
         intent.entity_registry_profile = profile.entity_registry_profile
         intent.validator_profile_id = profile.validator_profile_id
         intent.domain_warnings = list(dict.fromkeys([*intent.domain_warnings, "explicit_pilot_domain_profile_applied"]))
+    from code_engine.schemas.triples import build_seed_triple, seed_triple_from_payload
+    if explicit_seed_triple:
+        unified = seed_triple_from_payload(explicit_seed_triple, query_text=query)
+    elif intake.seed_triples:
+        semantic_seed = intake.seed_triples[0]
+        unified = build_seed_triple(
+            query, domain=profile.domain_id, subject=semantic_seed.subject,
+            relation=semantic_seed.relation, obj=semantic_seed.object,
+            relation_family=semantic_seed.relation,
+            context_terms=list(intake.semantic_intake.get("research_intent", {}).get("context_terms") or []),
+            source="semantic_intake" if intake.semantic_mode == "llm_semantic" else "deterministic_fallback",
+            confidence=float(semantic_seed.confidence),
+            human_review_required=bool(intake.requires_manual_review),
+            intake_mode=intake.semantic_mode,
+        )
+    else:
+        unified = build_seed_triple(
+            query, domain=profile.domain_id, relation="unspecified_association",
+            context_terms=list(intake.semantic_intake.get("research_intent", {}).get("context_terms") or []),
+            source="deterministic_fallback", confidence=float(intake.semantic_confidence),
+            human_review_required=True, intake_mode=intake.semantic_mode,
+        )
+    intake.unified_seed_triple = unified.model_dump(mode="json")
+    if intake.seed_triples:
+        intake.seed_triples[0].triple_id = unified.triple_id
+        intake.seed_triples[0].subject = unified.subject.name
+        intake.seed_triples[0].relation = unified.relation.name
+        intake.seed_triples[0].object = unified.object.name
     intake_path = _write(run_dir, "intake.json", intake)
     profile_path = _write(run_dir, "domain_profile.json", profile.to_dict())
     summary = {
@@ -181,6 +249,9 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
         "requires_manual_review": intake.requires_manual_review,
         "alternative_domains": intake.semantic_intake.get("domain_routing", {}).get("alternative_domains", []),
         "warning_count": len(intake.semantic_warnings),
+        "triple_id": unified.triple_id, "seed_triple": intake.unified_seed_triple,
+        "seed_triple_confidence": unified.confidence,
+        "seed_triple_human_review_required": unified.human_review_required,
     }
     warnings = list(intake.ambiguities)
     warnings.extend(intake.semantic_warnings)
@@ -211,31 +282,49 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
         intake.research_intent, seed_triples=intake.seed_triples, domain_profile=profile,
         use_llm=False, semantic_intake=intake.semantic_intake,
         explicit_profile_expansions=pilot_search_expansions,
+        unified_seed_triple=intake.unified_seed_triple,
     )
     if max_papers is not None:
         plan.max_total_results = max_papers
         for query in plan.pubmed_queries + plan.pmc_queries:
             query.max_results = min(query.max_results, max_papers)
     path = _write(run_dir, "search_plan.json", plan)
-    count = len(plan.pubmed_queries) + len(plan.pmc_queries)
+    count = len(plan.pubmed_queries)
     warnings = list(plan.warnings)
     if execute and api:
         warnings.append("api_enabled_but_search_query_generation_remains_deterministic")
-    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
+    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
 
 
-def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None, **_: Any) -> StepResult:
+def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None,
+                         literature_client: Any | None = None, **_: Any) -> StepResult:
     plan_data = _read(run_dir, "search_plan.json")
     if not plan_data:
         return StepResult(status="blocked", warnings=["search_plan_missing"], skipped_reason="search_plan_missing")
     plan = LiteratureSearchPlan.model_validate(plan_data)
-    acquisition_plan = {"intent_id": plan.intent_id, "queries": [item.model_dump() for item in plan.pmc_queries + plan.pubmed_queries], "max_papers": max_papers or plan.max_total_results, "execute": execute, "network": network}
+    acquisition_plan = {"intent_id": plan.intent_id, "stage": "abstract_retrieval", "source_order": ["pubmed"],
+                        "open_access_required": False, "fulltext_required": False,
+                        "queries": [item.model_dump() for item in plan.pubmed_queries],
+                        "max_papers": max_papers or plan.max_total_results, "execute": execute, "network": network}
     plan_path = _write(run_dir, "acquisition_plan.json", acquisition_plan)
+    cached_papers = []
+    for path in sorted((run_dir / "artifacts/cache_imports").glob("paper_*/payload_report.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        values = payload.get("papers") if isinstance(payload, dict) else None
+        if values is None:
+            values = [payload.get("paper") or payload] if isinstance(payload, dict) else []
+        cache_record_path = path.parent / "cache_record.json"
+        cache_record = json.loads(cache_record_path.read_text(encoding="utf-8")) if cache_record_path.exists() else {}
+        for item in values:
+            if isinstance(item, dict):
+                cached_papers.append({**item, "canonical_paper_id": item.get("canonical_paper_id") or cache_record.get("canonical_paper_id")})
     if execute and network:
         from code_engine.acquisition.literature_search import execute_acquisition_plan
-        report = execute_acquisition_plan(plan, repository_root=repository_root, execute=True, network=True, max_papers=max_papers or plan.max_total_results)
+        report = execute_acquisition_plan(plan, repository_root=repository_root, execute=True, network=True,
+                                          source="pubmed", max_papers=max_papers or plan.max_total_results,
+                                          client=literature_client, cached_papers=cached_papers)
     else:
-        report = {"intent_id": plan.intent_id, "execution_mode": "plan_only", "candidate_papers": list(plan.candidate_papers), "reused_papers": [], "downloaded_papers": [], "skipped_duplicates": [], "network_calls_made": 0, "warnings": ["network_disabled_acquisition_plan_only"]}
+        report = {"intent_id": plan.intent_id, "execution_mode": "plan_only", "candidate_papers": list(plan.candidate_papers), "reused_papers": cached_papers, "downloaded_papers": [], "skipped_duplicates": [], "network_calls_made": 0, "initial_fulltext_download_count": 0, "paper_cache_consumed_by_acquisition": bool(cached_papers), "warnings": ["network_disabled_acquisition_plan_only"]}
     report_path = _write(run_dir, "acquisition_report.json", report)
     summary = {key: len(report.get(key, [])) for key in ("candidate_papers", "reused_papers", "downloaded_papers", "skipped_duplicates")}
     calls = int(report.get("network_calls_made", 0))
@@ -245,7 +334,8 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
 def run_payload_step(
     *, run_dir: Path, execute: bool, query: str = "", repository_root: Path | None = None,
     global_corpus_dir: str | Path | None = None, paper_registry_enabled: bool = True,
-    update_global_corpus: bool = False, allow_title_hash_paper_merge: bool = False, **_: Any,
+    update_global_corpus: bool = False, allow_title_hash_paper_merge: bool = False,
+    l1_mode: str = "legacy", **_: Any,
 ) -> StepResult:
     acquisition = _read(run_dir, "acquisition_report.json", {})
     downloaded = acquisition.get("downloaded_papers", [])
@@ -253,7 +343,10 @@ def run_payload_step(
     warnings = []
     status = "planned"
     reason = None
-    if not downloaded:
+    if l1_mode != "legacy":
+        status, reason = "skipped", "progressive_workflow_uses_abstract_records_directly"
+        warnings.append(reason)
+    elif not downloaded:
         status, reason = "blocked", "no_raw_data_in_run"
         warnings.append("payload_build_blocked_no_raw_data_in_run")
     elif execute:
@@ -303,7 +396,7 @@ def run_abstract_l1_step(
     global_corpus_dir: str | Path | None = None, l1_task_cache_enabled: bool = True,
     allow_compatible_l1_task_reuse: bool = False, force_reprocess_l1: bool = False,
     force_reprocess_paper: list[str] | None = None, update_global_corpus: bool = False,
-    repository_root: Path | None = None, **_: Any,
+    repository_root: Path | None = None, entity_registry_path: str | Path | None = None, **_: Any,
 ) -> StepResult:
     if l1_mode == "legacy":
         summary = {"l1_mode": l1_mode, "abstract_claim_count": 0, "reason": "legacy_l1_mode"}
@@ -312,16 +405,22 @@ def run_abstract_l1_step(
     from code_engine.extraction.abstract_screening import run_abstract_l1_screening
 
     acquisition = _read(run_dir, "acquisition_report.json", {})
-    papers = []
-    seen = set()
+    paper_map: dict[str, dict[str, Any]] = {}
     for collection_name in ("candidate_papers", "reused_papers", "downloaded_papers"):
         for paper in acquisition.get(collection_name, []):
             paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
-            if paper_id and paper_id not in seen:
-                seen.add(paper_id)
-                papers.append(paper)
+            if paper_id:
+                paper_map[paper_id] = {**paper_map.get(paper_id, {}), **paper}
+    papers = list(paper_map.values())
     profile = _read(run_dir, "domain_profile.json", {})
-    cache_hits, cache_misses, reusable_claims, signatures = [], [], [], {}
+    identity = _cache_identity(run_dir, l1_llm_client, entity_registry_path)
+    paper_cache_expected = {"prompt_template_hash": str(profile.get("prompt_profile_id") or "abstract_claim_screening_v1"),
+                            "l1_schema_version": "abstract_claim_v1", "model_provider": identity["model_provider"],
+                            "model_name": identity["model_name"], "model_fingerprint": identity["model_fingerprint"],
+                            "domain_profile": str(profile.get("profile_id") or profile.get("domain_id") or "general_biomedical"),
+                            "resolver_registry_hash": identity["resolver_registry_hash"], "query_independent": True}
+    imported_claims, imported_papers = _paper_cache_imports(run_dir, "abstract_l1_claims.jsonl", paper_cache_expected)
+    cache_hits, cache_misses, reusable_claims, signatures = [], [], list(imported_claims), {}
     misses = []
     cache_dir = (Path(global_corpus_dir) if global_corpus_dir else Path(repository_root or Path.cwd()) / "data/corpus") / "l1_task_cache"
     if l1_task_cache_enabled:
@@ -330,8 +429,11 @@ def run_abstract_l1_step(
         forced = set(force_reprocess_paper or [])
         for paper in papers:
             canonical = str(paper.get("canonical_paper_id") or paper.get("paper_id") or paper.get("pmid") or "")
+            if canonical in imported_papers:
+                cache_hits.append({"canonical_paper_id": canonical, "status": "paper_artifact_cache_hit", "copied_into_current_run": True})
+                continue
             content_hash = compute_text_hash(paper.get("abstract") or paper.get("abstract_text"))
-            signature = L1TaskSignature(task_family="abstract_claim_screening", source_scope="abstract", canonical_paper_id=canonical, content_hash=content_hash or "missing", schema_version="abstract_claim_v1", prompt_profile_id=profile.get("prompt_profile_id"), prompt_fingerprint=profile.get("prompt_profile_id"), model_name=type(l1_llm_client).__name__ if l1_llm_client else None, domain_id=profile.get("domain_id"), l1_mode=l1_mode)
+            signature = L1TaskSignature(task_family="abstract_claim_screening", source_scope="abstract", canonical_paper_id=canonical, content_hash=content_hash or "missing", schema_version="abstract_claim_v1", l1_schema_version="abstract_claim_v1", prompt_profile_id=profile.get("prompt_profile_id"), prompt_fingerprint=profile.get("prompt_profile_id"), prompt_template_hash=str(profile.get("prompt_profile_id") or "abstract_claim_screening_v1"), model_provider=identity["model_provider"], model_name=identity["model_name"], model_fingerprint=identity["model_fingerprint"], domain_id=profile.get("domain_id"), domain_profile=str(profile.get("profile_id") or profile.get("domain_id") or "general_biomedical"), resolver_registry_hash=identity["resolver_registry_hash"], query_independent=True, l1_mode=l1_mode)
             signatures[canonical] = signature
             cached = None if force_reprocess_l1 or canonical in forced else lookup_l1_task_cache(signature, cache_dir)
             reusable = cached and (cached.status == "hit" or (cached.status == "compatible_task_family_hit" and allow_compatible_l1_task_reuse))
@@ -374,7 +476,7 @@ def run_abstract_l1_step(
                 atomic_write_jsonl(cache_artifact, iter(claims_for_paper))
                 record = L1TaskCache.new_record(signature, _run_id(run_dir), {"claims": str(cache_artifact)}, claim_count=len(claims_for_paper))
                 store_l1_task_cache_record(record, cache_dir)
-    cache_report = {"total_tasks": len(papers), "hit_count": len(cache_hits), "miss_count": len(cache_misses), "stale_count": sum(item["status"] in {"stale", "incompatible_schema"} for item in cache_misses), "compatible_family_hit_count": sum(item["status"] == "compatible_task_family_hit" for item in [*cache_hits, *cache_misses]), "reused_claim_count": len(reusable_claims), "new_claim_count": len(new_claims), "estimated_api_calls_saved": len(cache_hits)}
+    cache_report = {"total_tasks": len(papers), "hit_count": len(cache_hits), "miss_count": len(cache_misses), "stale_count": sum(item["status"] in {"stale", "incompatible_schema"} for item in cache_misses), "compatible_family_hit_count": sum(item["status"] == "compatible_task_family_hit" for item in [*cache_hits, *cache_misses]), "reused_claim_count": len(reusable_claims), "new_claim_count": len(new_claims), "estimated_api_calls_saved": len(cache_hits), "paper_cache_consumed_by_l1": bool(imported_claims)}
     atomic_write_json(run_dir / "artifacts" / "abstract_l1_cache_report.json", cache_report)
     atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_hits.jsonl", iter(cache_hits))
     atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_misses.jsonl", iter(cache_misses))
@@ -451,7 +553,7 @@ def run_abstract_conflict_screening_step(
         claims, observations, min_evidence_count=min_abstract_evidence_count,
         min_entropy=min_abstract_conflict_entropy, run_dir=run_dir / "artifacts",
     )
-    from code_engine.corpus.io import atomic_write_jsonl
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
     output["candidates"] = _attach_linked_provenance(output["candidates"], run_dir)
     output["focus_set"] = _attach_linked_provenance(output["focus_set"], run_dir)
     atomic_write_jsonl(Path(output["artifacts"]["candidates"]), iter(output["candidates"]))
@@ -475,27 +577,91 @@ def run_fulltext_escalation_step(
     max_fulltext_papers_per_conflict: int = 5, **_: Any,
 ) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
-    from code_engine.extraction.fulltext_escalation import plan_fulltext_escalation
-
-    candidates = _read_jsonl(run_dir / "artifacts" / "conflict_focus_set.jsonl") if enabled else []
-    records = _read_jsonl(run_dir / "artifacts" / "paper_processing_records.jsonl")
-    output = plan_fulltext_escalation(
-        candidates, records, max_papers_per_conflict=max_fulltext_papers_per_conflict,
-        run_dir=run_dir / "artifacts",
+    from code_engine.acquisition.fulltext_availability import build_fulltext_escalation_candidates
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    abstract = _read_jsonl(run_dir / "artifacts" / "conflict_focus_set.jsonl") if enabled else []
+    graph = _read_jsonl(run_dir / "artifacts" / "graph_conflict_candidates.jsonl") if enabled else []
+    bundles = _read_jsonl(run_dir / "artifacts" / "relation_evidence_bundles.jsonl") if enabled else []
+    acquisition = _read(run_dir, "acquisition_report.json", {})
+    papers = [paper for name in ("candidate_papers", "reused_papers", "downloaded_papers") for paper in acquisition.get(name, [])]
+    state_path = run_dir / "run_state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    metadata = state.get("summary", {}).get("triple_metadata", {})
+    selected = build_fulltext_escalation_candidates(
+        abstract, graph, bundles, papers,
+        triple_id=str(metadata.get("triple_id") or ""), query_hash=str(metadata.get("query_hash") or ""),
     )
-    summary = {**output["summary"], "enabled": enabled, "l1_mode": l1_mode}
+    selected = selected[: max_fulltext_papers_per_conflict * max(1, len(abstract) + len(graph))]
+    candidates_path = run_dir / "artifacts/fulltext_escalation_candidates.jsonl"
+    atomic_write_jsonl(candidates_path, iter(selected))
+    legacy_path = run_dir / "artifacts/fulltext_escalation_papers.jsonl"
+    atomic_write_jsonl(legacy_path, iter(selected))
+    summary = {"enabled": enabled, "l1_mode": l1_mode, "conflict_candidate_count": len(abstract) + len(graph),
+               "selected_paper_count": len(selected), "selection_count": len(selected),
+               "coverage_gap_count": 0, "skipped_count": 0,
+               "candidates_from_conflicts_only": True, "max_papers_per_conflict": max_fulltext_papers_per_conflict}
+    plan_path = run_dir / "artifacts/fulltext_escalation_plan.json"
+    atomic_write_json(plan_path, {"summary": summary, "selected": selected})
     status = "planned" if enabled else "skipped"
     reason = None if enabled else "fulltext_escalation_not_enabled"
     return StepResult(
         status=status, summary=summary,
-        artifacts={"fulltext_escalation_plan": output["artifacts"]["plan"], "fulltext_escalation_papers": output["artifacts"]["papers"]},
+        artifacts={"fulltext_escalation_plan": str(plan_path), "fulltext_escalation_candidates": str(candidates_path), "fulltext_escalation_papers": str(legacy_path)},
         counts={
-            "fulltext_escalation_candidate_count": len(output["selected_papers"]),
+            "fulltext_escalation_candidate_count": len(selected),
             "fulltext_available_paper_count": summary["selected_paper_count"],
             "fulltext_unavailable_paper_count": summary["coverage_gap_count"],
         },
         warnings=[reason] if reason else [], skipped_reason=reason,
     )
+
+
+def run_fulltext_availability_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
+                                   enable_fulltext_escalation: bool = False,
+                                   fulltext_availability_resolver: Any | None = None, **_: Any) -> StepResult:
+    from code_engine.acquisition.fulltext_availability import resolve_fulltext_availability
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
+    candidates = _read_jsonl(run_dir / "artifacts/fulltext_escalation_candidates.jsonl") if enabled else []
+    records = resolve_fulltext_availability(candidates, resolver=fulltext_availability_resolver)
+    record_path = run_dir / "artifacts/fulltext_availability_records.jsonl"
+    summary_path = run_dir / "artifacts/fulltext_availability_summary.json"
+    atomic_write_jsonl(record_path, iter(records))
+    summary = {"enabled": enabled, "candidate_count": len(candidates),
+               "available_count": sum(bool(item.get("fulltext_available")) for item in records),
+               "unavailable_count": sum(not bool(item.get("fulltext_available")) for item in records),
+               "after_conflict_screening": True, "open_access_required": True}
+    atomic_write_json(summary_path, summary)
+    return StepResult(status="completed" if enabled else "skipped", summary=summary,
+                      artifacts={"fulltext_availability_records": str(record_path), "fulltext_availability_summary": str(summary_path)},
+                      counts={"fulltext_available_paper_count": summary["available_count"], "fulltext_unavailable_paper_count": summary["unavailable_count"]},
+                      skipped_reason=None if enabled else "fulltext_escalation_not_enabled")
+
+
+def run_fulltext_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool,
+                                  l1_mode: str = "abstract_screening", enable_fulltext_escalation: bool = False,
+                                  fulltext_client: Any | None = None, **_: Any) -> StepResult:
+    from code_engine.acquisition.fulltext_availability import acquire_selected_fulltexts
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
+    availability = _read_jsonl(run_dir / "artifacts/fulltext_availability_records.jsonl") if enabled else []
+    if execute and network and fulltext_client is None:
+        from code_engine.acquisition.literature_search import NCBILiteratureClient
+        fulltext_client = NCBILiteratureClient()
+    records, calls = acquire_selected_fulltexts(availability, repository_root=repository_root,
+                                                execute=execute, network=network, client=fulltext_client)
+    record_path = run_dir / "artifacts/fulltext_acquisition_records.jsonl"
+    summary_path = run_dir / "artifacts/fulltext_acquisition_summary.json"
+    atomic_write_jsonl(record_path, iter(records))
+    summary = {"enabled": enabled, "selected_available_count": sum(bool(item.get("selected_for_fulltext") and item.get("fulltext_available")) for item in availability),
+               "fulltext_download_count": sum(item.get("acquisition_status") == "downloaded" for item in records),
+               "downloaded_only_selected_candidates": all(not (item.get("acquisition_status") == "downloaded") or item.get("selected_for_fulltext") for item in records),
+               "network_calls_made": calls}
+    atomic_write_json(summary_path, summary)
+    return StepResult(status="completed" if enabled and execute and network else ("planned" if enabled else "skipped"), summary=summary,
+                      artifacts={"fulltext_acquisition_records": str(record_path), "fulltext_acquisition_summary": str(summary_path)},
+                      counts={"fulltext_download_count": summary["fulltext_download_count"]}, network_calls_made=calls,
+                      skipped_reason=None if enabled else "fulltext_escalation_not_enabled")
 
 
 def run_fulltext_l1_step(
@@ -506,10 +672,15 @@ def run_fulltext_l1_step(
     l1_llm_client=None, global_corpus_dir: str | Path | None = None,
     l1_task_cache_enabled: bool = True, allow_compatible_l1_task_reuse: bool = False,
     force_reprocess_l1: bool = False, force_reprocess_paper: list[str] | None = None,
-    update_global_corpus: bool = False, **_: Any,
+    update_global_corpus: bool = False, entity_registry_path: str | Path | None = None, **_: Any,
 ) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
-    selected = _read_jsonl(run_dir / "artifacts" / "fulltext_escalation_papers.jsonl") if enabled else []
+    acquisition_records_path = run_dir / "artifacts" / "fulltext_acquisition_records.jsonl"
+    selected = [item for item in _read_jsonl(acquisition_records_path)
+                if item.get("selected_for_fulltext") and item.get("fulltext_available") and item.get("acquisition_status") in {"downloaded", "available"}] if enabled else []
+    if enabled and not acquisition_records_path.exists():
+        # Direct-step compatibility: workflow execution always uses the gated acquisition artifact.
+        selected = _read_jsonl(run_dir / "artifacts" / "fulltext_escalation_papers.jsonl")
     candidates = {str(item.get("candidate_id")): item for item in _read_jsonl(run_dir / "artifacts" / "abstract_conflict_candidates.jsonl")}
     acquisition = _read(run_dir, "acquisition_report.json", {})
     papers = {}
@@ -518,6 +689,10 @@ def run_fulltext_l1_step(
             paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
             if paper_id:
                 papers[paper_id] = paper
+    for paper in selected:
+        paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
+        if paper_id:
+            papers[paper_id] = {**papers.get(paper_id, {}), **paper}
     from code_engine.extraction.evidence_span_selector import select_evidence_spans
     from code_engine.extraction.progressive_l1 import run_fulltext_evidence_l1
     from code_engine.extraction.section_ranker import rank_fulltext_sections_for_conflict
@@ -532,7 +707,8 @@ def run_fulltext_l1_step(
                 source = repository_root / source
             if source.exists():
                 paper["full_text"] = source.read_text(encoding="utf-8")
-        candidate = candidates.get(str(item.get("candidate_id")), item)
+        candidate_id = item.get("candidate_id") or next(iter(item.get("linked_conflict_candidate_ids") or []), None)
+        candidate = candidates.get(str(candidate_id), item)
         ranked = rank_fulltext_sections_for_conflict(paper, candidate, _read(run_dir, "domain_profile.json", {}), max_sections_per_paper)
         selected_spans = select_evidence_spans(ranked, candidate, max_spans_per_paper=max_spans_per_paper)
         for span in selected_spans:
@@ -542,7 +718,15 @@ def run_fulltext_l1_step(
     spans_path.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in spans), encoding="utf-8")
     profile = _read(run_dir, "domain_profile.json", {})
     cache_dir = (Path(global_corpus_dir) if global_corpus_dir else repository_root / "data/corpus") / "l1_task_cache"
-    cache_hits, cache_misses, reusable_evidence, reusable_claims, signatures = [], [], [], [], {}
+    identity = _cache_identity(run_dir, l1_llm_client, entity_registry_path)
+    paper_cache_expected = {"prompt_template_hash": str(profile.get("prompt_profile_id") or "fulltext_evidence_v1"),
+                            "l1_schema_version": "fulltext_evidence_v1", "model_provider": identity["model_provider"],
+                            "model_name": identity["model_name"], "model_fingerprint": identity["model_fingerprint"],
+                            "domain_profile": str(profile.get("profile_id") or profile.get("domain_id") or "general_biomedical"),
+                            "resolver_registry_hash": identity["resolver_registry_hash"], "query_independent": False,
+                            "query_hash": identity["query_hash"], "triple_id": identity["triple_id"]}
+    imported_claims, imported_papers = _paper_cache_imports(run_dir, "fulltext_l1_claims.jsonl", paper_cache_expected)
+    cache_hits, cache_misses, reusable_evidence, reusable_claims, signatures = [], [], [], list(imported_claims), {}
     miss_spans = []
     if l1_task_cache_enabled:
         from code_engine.corpus.corpus_cache import compute_text_hash
@@ -550,7 +734,10 @@ def run_fulltext_l1_step(
         forced = set(force_reprocess_paper or [])
         for span in spans:
             canonical = str(span.get("canonical_paper_id") or span.get("paper_id") or "")
-            signature = L1TaskSignature(task_family="fulltext_evidence_extraction", source_scope="span", canonical_paper_id=canonical, content_hash=compute_text_hash(span.get("text")) or "missing", schema_version="fulltext_evidence_v1", prompt_profile_id=profile.get("prompt_profile_id"), prompt_fingerprint=profile.get("prompt_profile_id"), model_name=type(l1_llm_client).__name__ if l1_llm_client else None, domain_id=profile.get("domain_id"), l1_mode=l1_mode)
+            if canonical in imported_papers:
+                cache_hits.append({"canonical_paper_id": canonical, "span_id": span.get("span_id"), "status": "paper_artifact_cache_hit", "copied_into_current_run": True})
+                continue
+            signature = L1TaskSignature(task_family="fulltext_evidence_extraction", source_scope="span", canonical_paper_id=canonical, content_hash=compute_text_hash(span.get("text")) or "missing", schema_version="fulltext_evidence_v1", l1_schema_version="fulltext_evidence_v1", prompt_profile_id=profile.get("prompt_profile_id"), prompt_fingerprint=profile.get("prompt_profile_id"), prompt_template_hash=str(profile.get("prompt_profile_id") or "fulltext_evidence_v1"), model_provider=identity["model_provider"], model_name=identity["model_name"], model_fingerprint=identity["model_fingerprint"], domain_id=profile.get("domain_id"), domain_profile=str(profile.get("profile_id") or profile.get("domain_id") or "general_biomedical"), resolver_registry_hash=identity["resolver_registry_hash"], query_independent=False, query_hash=identity["query_hash"], triple_id=identity["triple_id"], seed_triple_hash=identity["seed_triple_hash"], l1_mode=l1_mode)
             signatures[str(span.get("span_id") or "")] = signature
             cached = None if force_reprocess_l1 or canonical in forced else lookup_l1_task_cache(signature, cache_dir)
             reusable = cached and (cached.status == "hit" or (cached.status == "compatible_task_family_hit" and allow_compatible_l1_task_reuse))
@@ -590,7 +777,7 @@ def run_fulltext_l1_step(
             claims_path = cache_dir / "artifacts" / f"{seed.task_cache_key}.claims.jsonl"
             atomic_write_jsonl(evidence_path, iter(evidence)); atomic_write_jsonl(claims_path, iter(claims))
             store_l1_task_cache_record(L1TaskCache.new_record(signature, _run_id(run_dir), {"evidence_records": str(evidence_path), "claims": str(claims_path)}, claim_count=len(claims), evidence_count=len(evidence)), cache_dir)
-    cache_report = {"total_tasks": len(spans), "hit_count": len(cache_hits), "miss_count": len(cache_misses), "stale_count": sum(item["status"] in {"stale", "incompatible_schema"} for item in cache_misses), "compatible_family_hit_count": sum(item["status"] == "compatible_task_family_hit" for item in [*cache_hits, *cache_misses]), "reused_claim_count": len(reusable_claims), "reused_evidence_count": len(reusable_evidence), "new_claim_count": len(new_claims), "new_evidence_count": len(new_evidence), "estimated_api_calls_saved": len(cache_hits)}
+    cache_report = {"total_tasks": len(spans), "hit_count": len(cache_hits), "miss_count": len(cache_misses), "stale_count": sum(item["status"] in {"stale", "incompatible_schema"} for item in cache_misses), "compatible_family_hit_count": sum(item["status"] == "compatible_task_family_hit" for item in [*cache_hits, *cache_misses]), "reused_claim_count": len(reusable_claims), "reused_evidence_count": len(reusable_evidence), "new_claim_count": len(new_claims), "new_evidence_count": len(new_evidence), "estimated_api_calls_saved": len(cache_hits), "paper_cache_consumed_by_l1": bool(imported_claims)}
     atomic_write_json(run_dir / "artifacts" / "fulltext_l1_cache_report.json", cache_report)
     atomic_write_jsonl(run_dir / "artifacts" / "fulltext_l1_cache_hits.jsonl", iter(cache_hits)); atomic_write_jsonl(run_dir / "artifacts" / "fulltext_l1_cache_misses.jsonl", iter(cache_misses))
     summary = {**output["summary"], **cache_report, "enabled": enabled, "ranked_span_count": len(spans), "l1_mode": l1_mode, "fulltext_evidence_count": len(output["evidence_records"]), "fulltext_claim_count": len(output["claims"])}
@@ -651,13 +838,15 @@ def run_fulltext_conflict_confirmation_step(*, run_dir: Path, l1_mode: str = "ab
     evidence = _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl") if enabled else []
     observations = _read(run_dir, "l2_fulltext_observations.json", []) if enabled else []
     output = confirm_conflicts_with_fulltext_evidence(candidates, evidence, observations, run_dir=run_dir / "artifacts")
-    from code_engine.corpus.io import atomic_write_jsonl
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
     output["confirmations"] = _attach_linked_provenance(output["confirmations"], run_dir)
     atomic_write_jsonl(Path(output["artifacts"]["confirmations"]), iter(output["confirmations"]))
+    confirmation_summary = run_dir / "artifacts/fulltext_conflict_confirmation_summary.json"
+    atomic_write_json(confirmation_summary, output["summary"])
     return StepResult(
         status="completed" if evidence else ("planned" if enabled else "skipped"),
         summary=output["summary"],
-        artifacts={"fulltext_conflict_confirmation": output["artifacts"]["confirmations"], "fulltext_conflict_summary": output["artifacts"]["summary"]},
+        artifacts={"fulltext_conflict_confirmation": output["artifacts"]["confirmations"], "fulltext_conflict_summary": output["artifacts"]["summary"], "fulltext_conflict_confirmation_summary": str(confirmation_summary)},
         counts={key: value for key, value in output["summary"].items() if key.endswith("_count")},
         warnings=[] if evidence or not enabled else ["fulltext_confirmation_planned_insufficient_coverage"],
         skipped_reason=None if enabled else "progressive_fulltext_not_selected",
@@ -766,6 +955,11 @@ def run_l2_step(*, run_dir: Path, execute: bool, network: bool = False, api: boo
 
 
 def run_conflict_step(*, run_dir: Path, execute: bool, l1_mode: str = "legacy", **_: Any) -> StepResult:
+    if l1_mode != "legacy":
+        summary = {"conflict_edge_count": 0, "reason": "progressive_workflow_uses_graph_conflicts_and_fulltext_confirmation"}
+        path = _write(run_dir, "conflict_graph_summary.json", summary)
+        return StepResult(status="skipped", summary=summary, artifacts={"conflict_graph_summary": path},
+                          skipped_reason="progressive_graph_conflict_path")
     observations = _read(run_dir, "l2_observations.json", []) if l1_mode == "legacy" else _read(run_dir, "l2_fulltext_observations.json", [])
     edges, graph, attributions, audit = [], [], [], {}
     if execute and observations:
@@ -1149,6 +1343,8 @@ STEP_RUNNERS = {
     "l2_abstract": run_l2_abstract_step,
     "abstract_conflict_screening": run_abstract_conflict_screening_step,
     "fulltext_escalation": run_fulltext_escalation_step,
+    "fulltext_availability": run_fulltext_availability_step,
+    "fulltext_acquisition": run_fulltext_acquisition_step,
     "fulltext_l1": run_fulltext_l1_step,
     "l2_fulltext": run_l2_fulltext_step,
     "fulltext_conflict_confirmation": run_fulltext_conflict_confirmation_step,

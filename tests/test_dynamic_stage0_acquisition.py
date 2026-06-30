@@ -35,7 +35,7 @@ class DynamicStage0AcquisitionTests(unittest.TestCase):
             manifest.write_text(json.dumps({"papers": {"PMC1": {"pmcid": "PMC1", "title": "Existing"}}}), encoding="utf-8")
             client = FakeLiteratureClient()
             plan = build_literature_search_plan(parse_research_intent("ketamine depression"))
-            plan.pmc_queries = plan.pmc_queries[:1]
+            plan.pmc_queries = [plan.pubmed_queries[0].model_copy(update={"source": "pmc"})]
             plan.pubmed_queries = []
             report = execute_acquisition_plan(plan, repository_root=root, execute=True, network=True, source="pmc", client=client)
             self.assertEqual([item["paper_id"] for item in report["reused_papers"]], ["PMC1"])

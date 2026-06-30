@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl, iter_jsonl
 from code_engine.schemas.models import CODEBaseModel
 
@@ -22,6 +22,31 @@ class L1TaskSignature(CODEBaseModel):
     model_name: str | None = None
     domain_id: str | None = None
     l1_mode: str | None = None
+    prompt_template_hash: str | None = None
+    l1_schema_version: str | None = None
+    model_provider: str | None = None
+    model_fingerprint: str | None = None
+    domain_profile: str | None = None
+    resolver_registry_hash: str | None = None
+    query_independent: bool | None = True
+    query_hash: str | None = None
+    triple_id: str | None = None
+    seed_triple_hash: str | None = None
+
+    @model_validator(mode="after")
+    def align_fingerprint_aliases(self):
+        self.l1_schema_version = self.l1_schema_version or self.schema_version
+        self.prompt_template_hash = self.prompt_template_hash or self.prompt_fingerprint
+        self.domain_profile = self.domain_profile or self.domain_id
+        return self
+
+    @property
+    def fingerprint_complete(self) -> bool:
+        base = all((self.prompt_template_hash, self.l1_schema_version, self.model_provider,
+                    self.model_name, self.model_fingerprint, self.domain_profile,
+                    self.resolver_registry_hash))
+        return bool(base and self.query_independent is not None and
+                    (self.query_independent is True or (self.query_hash and self.triple_id and self.seed_triple_hash)))
 
 
 class L1TaskCacheRecord(CODEBaseModel):
@@ -43,15 +68,23 @@ def build_l1_task_cache_key(signature: L1TaskSignature) -> str:
 
 
 def _compatible(left: L1TaskSignature, right: L1TaskSignature) -> bool:
-    return all(getattr(left, key) == getattr(right, key) for key in ("task_family", "source_scope", "canonical_paper_id", "content_hash", "schema_version", "domain_id", "l1_mode"))
+    fields = ("task_family", "source_scope", "canonical_paper_id", "content_hash", "schema_version",
+              "prompt_template_hash", "model_provider", "model_name", "model_fingerprint",
+              "domain_profile", "resolver_registry_hash", "query_independent", "query_hash",
+              "triple_id", "seed_triple_hash", "l1_mode")
+    return all(getattr(left, key) == getattr(right, key) for key in fields)
 
 
 def lookup_l1_task_cache(signature: L1TaskSignature, cache_dir: Path) -> L1TaskCacheRecord | None:
+    if not signature.fingerprint_complete:
+        return None
     exact_key = build_l1_task_cache_key(signature)
     compatible = None
     incompatible = None
     for payload in iter_jsonl(Path(cache_dir) / "l1_task_cache.jsonl"):
         record = L1TaskCacheRecord.model_validate(payload)
+        if not record.signature.fingerprint_complete:
+            continue
         if record.task_cache_key == exact_key:
             result = record.model_copy(deep=True)
             result.status = "hit" if record.status in {"stored", "hit", "completed", "compatible_task_family_hit"} else record.status

@@ -22,6 +22,8 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
     directory = Path(run_dir)
     lines = [
         f"# {state.summary.get('triple_metadata', {}).get('seed_triple_title') or 'C.O.D.E. Research Workflow Run'}", "", f"- Run ID: `{state.run_id}`",
+        f"- Triple ID: `{state.summary.get('triple_metadata', {}).get('triple_id') or 'not resolved'}`",
+        f"- Query hash: `{state.summary.get('triple_metadata', {}).get('query_hash') or 'not resolved'}`",
         f"- Query: {state.query}", f"- Mode: `{state.mode}`", f"- Status: `{state.final_status}`",
         f"- Domain profile: `{state.domain_profile_id or 'not resolved'}`",
         f"- Semantic mode: `{state.semantic_mode or 'not run'}`",

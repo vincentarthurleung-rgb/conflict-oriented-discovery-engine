@@ -47,10 +47,19 @@ def _hash(payload: Any) -> str:
 
 def _default_artifact_builder(seed: SeedTriple, paper: dict[str, Any], run_dir: Path) -> Path:
     paper_id = str(paper["canonical_paper_id"]).replace("/", "_")
-    target = run_dir / "artifacts" / "cache_imports" / f"paper_{paper_id}" / "payload_report.json"
+    filenames = {"raw_payload": "payload_report.json", "abstract_l1_claims": "abstract_l1_claims.jsonl",
+                 "fulltext_l1_claims": "fulltext_l1_claims.jsonl", "selected_fulltext_spans": "selected_fulltext_spans.jsonl"}
+    artifact_type = str(paper.get("artifact_type") or "raw_payload")
+    target = run_dir / "artifacts" / "cache_imports" / f"paper_{paper_id}" / filenames.get(artifact_type, "payload_report.json")
     target.parent.mkdir(parents=True, exist_ok=True)
     payload = paper.get("artifact_payload", paper.get("payload", {"canonical_paper_id": paper["canonical_paper_id"]}))
-    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    if isinstance(payload, dict):
+        payload = {"canonical_paper_id": paper["canonical_paper_id"], **payload}
+    if target.suffix == ".jsonl":
+        rows = payload if isinstance(payload, list) else [payload]
+        target.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in rows), encoding="utf-8")
+    else:
+        target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return target
 
 
@@ -122,6 +131,7 @@ def _prepare_papers(
                 **fingerprints,
             )
             store_cache_record(fresh, cache_index)
+            (source.parent / "cache_record.json").write_text(fresh.model_dump_json(indent=2), encoding="utf-8")
     write_cache_events(run_dir, hits, misses)
     return hits, misses, builds
 
@@ -164,6 +174,7 @@ def run_triple_batch(
     cache_fingerprints: dict[str, str] | None = None,
     paper_artifact_builder: PaperArtifactBuilder | None = None,
     workflow_kwargs: dict[str, Any] | None = None,
+    execute: bool = False, api: bool = False, network: bool = False,
 ) -> dict[str, Any]:
     """Run each seed triple in its own directory, then build read-only aggregates."""
 
@@ -196,6 +207,8 @@ def run_triple_batch(
         "aggregate_feedback_to_triples": False,
         "paper_artifact_cache_enabled": bool(paper_artifact_cache_enabled),
         "paper_artifact_cache_index": str(Path(paper_artifact_cache_index).resolve()),
+        "execution_mode": "execute" if execute else "dry_run",
+        "api_enabled": bool(execute and api), "network_enabled": bool(execute and network),
     }
     atomic_write_json(directory / "batch_manifest.json", manifest)
     preflight = {
@@ -257,9 +270,9 @@ def run_triple_batch(
             paper_artifact_cache_misses=len(misses),
             paper_cache_hit_records=hits,
             paper_cache_miss_records=misses,
-            execute=False,
-            api=False,
-            network=False,
+            execute=execute,
+            api=bool(execute and api),
+            network=bool(execute and network),
             **kwargs,
         )
         cards.append(json.loads((run_dir / "triple_card.json").read_text(encoding="utf-8")))
@@ -286,6 +299,7 @@ def run_triple_batch(
         "cache_hit_requires_copy_in": True,
         "per_triple_run_dirs_unique": True,
         "processed_triples_index_role": "post_run_catalog_only",
+        "execution_mode": "execute" if execute else "dry_run",
     }
     atomic_write_json(aggregate / "batch_runtime_provenance_report.json", provenance)
     report = (

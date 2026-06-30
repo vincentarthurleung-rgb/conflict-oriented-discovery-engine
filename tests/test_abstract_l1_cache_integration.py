@@ -1,4 +1,5 @@
 import json
+import hashlib
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -22,7 +23,7 @@ class AbstractCacheIntegrationTests(unittest.TestCase):
             (artifacts / "acquisition_report.json").write_text(json.dumps({"candidate_papers": [paper]}))
             (artifacts / "domain_profile.json").write_text(json.dumps({"domain_id": "bio", "prompt_profile_id": "profile"}))
             (artifacts / "run_paper_manifest.jsonl").write_text(json.dumps({"original_paper_id": "OLD", "paper_id": "OLD", "canonical_paper_id": canonical, "title": "T", "journal": "J"}) + "\n")
-            signature = L1TaskSignature(task_family="abstract_claim_screening", source_scope="abstract", canonical_paper_id=canonical, content_hash=compute_text_hash(abstract), schema_version="abstract_claim_v1", prompt_profile_id="profile", prompt_fingerprint="profile", model_name="FailClient", domain_id="bio", l1_mode="abstract_screening")
+            signature = L1TaskSignature(task_family="abstract_claim_screening", source_scope="abstract", canonical_paper_id=canonical, content_hash=compute_text_hash(abstract), schema_version="abstract_claim_v1", prompt_profile_id="profile", prompt_fingerprint="profile", prompt_template_hash="profile", model_provider=FailClient.__module__.split('.')[0], model_name="FailClient", model_fingerprint=hashlib.sha256(f"{FailClient.__module__}.{FailClient.__name__}".encode()).hexdigest(), domain_id="bio", domain_profile="bio", resolver_registry_hash=hashlib.sha256(b"domain_neutral_registry").hexdigest(), query_independent=True, l1_mode="abstract_screening")
             now = datetime.now(timezone.utc).isoformat(); key = build_l1_task_cache_key(signature)
             claim = {"claim_id": "C", "paper_id": "OLD", "source_scope": "abstract"}
             store_l1_task_cache_record(L1TaskCacheRecord(task_cache_key=key, signature=signature, status="stored", artifact_refs={"claims": [claim]}, claim_count=1, created_at=now, updated_at=now, run_ids=["ORIGINAL"]), root / "corpus/l1_task_cache")

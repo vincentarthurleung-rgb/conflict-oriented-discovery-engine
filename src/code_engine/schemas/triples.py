@@ -38,6 +38,10 @@ class SeedTriple(CODEBaseModel):
     query_hash: str
     display_title: str
     identity_kind: str = "seed_triple"
+    source: str = "semantic_intake"
+    confidence: float = 1.0
+    human_review_required: bool = False
+    intake_mode: str = "semantic"
 
 
 def _normalized(value: str) -> str:
@@ -50,6 +54,8 @@ def build_seed_triple(
     subject_canonical_id: str = "", object_canonical_id: str = "",
     subject_type: str = "unknown", object_type: str = "unknown",
     relation_family: str | None = None, context_terms: list[str] | None = None,
+    source: str = "semantic_intake", confidence: float = 1.0,
+    human_review_required: bool = False, intake_mode: str = "semantic",
 ) -> SeedTriple:
     """Build a stable experiment identity without claiming discovered evidence."""
 
@@ -78,6 +84,8 @@ def build_seed_triple(
         object=TripleEntity(name=object_name, canonical_id=object_canonical_id, type=object_type),
         context=context, query_text=query, query_hash=query_hash,
         display_title=f"{subject_name} — {relation_name} — {object_name}{context_label}",
+        source=source, confidence=confidence, human_review_required=human_review_required,
+        intake_mode=intake_mode,
     )
 
 
@@ -105,6 +113,10 @@ def seed_triple_from_payload(payload: dict[str, Any] | SeedTriple, query_text: s
         subject_type=str((subject_payload or {}).get("type", "unknown") if isinstance(subject_payload, dict) else "unknown"),
         object_type=str((object_payload or {}).get("type", "unknown") if isinstance(object_payload, dict) else "unknown"),
         context_terms=list(payload.get("context_terms") or context.get("context_terms") or []),
+        source=str(payload.get("source") or "semantic_intake"),
+        confidence=float(payload.get("confidence", 1.0)),
+        human_review_required=bool(payload.get("human_review_required", False)),
+        intake_mode=str(payload.get("intake_mode") or "semantic"),
     )
 
 

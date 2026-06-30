@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from code_engine.common.json_io import write_json
 from code_engine.query.intent import ResearchIntent
@@ -35,6 +35,18 @@ class LiteratureSearchQuery(CODEBaseModel):
     from_seed_triples: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     expected_prompt_profile: str = "general_biomedical_l1_v2"
+    stage: str = "abstract_retrieval"
+    precision_level: str = "medium"
+    requires_open_access: bool = False
+    requires_fulltext: bool = False
+    expansion_sources: list[str] = Field(default_factory=list)
+    allowed_for_conflict_source: bool = True
+    query: str = ""
+
+    @model_validator(mode="after")
+    def align_query_alias(self):
+        self.query = self.query or self.query_string
+        return self
 
 
 SearchQuery = LiteratureSearchQuery
@@ -66,6 +78,17 @@ class LiteratureSearchPlan(CODEBaseModel):
     sanitizer_warnings: list[str] = Field(default_factory=list)
     semantic_confidence: float = 0.0
     manual_review_required: bool = False
+    seed_triple: dict[str, Any] = Field(default_factory=dict)
+    abstract_retrieval: dict[str, Any] = Field(default_factory=lambda: {
+        "sources": ["pubmed"], "source_order": ["pubmed"],
+        "open_access_required": False, "fulltext_required": False,
+    })
+    fulltext_escalation: dict[str, Any] = Field(default_factory=lambda: {
+        "sources": ["pmc", "publisher", "oa_resolver"],
+        "open_access_required": True, "fulltext_required": True,
+        "only_for_selected_conflict_candidates": True,
+    })
+    query_groups: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def sanitize_query(query: str) -> tuple[str, list[str]]:
@@ -116,6 +139,7 @@ def build_literature_search_plan(
     write_outputs: bool = False,
     semantic_intake: SemanticIntakeResult | dict[str, Any] | None = None,
     explicit_profile_expansions: list[str] | None = None,
+    unified_seed_triple: dict[str, Any] | None = None,
 ) -> LiteratureSearchPlan:
     profile = domain_profile or default_domain_router().resolve(intent.domain_id) or default_domain_router().route_text(intent.raw_user_input)
     primary = intent.primary_entities[0] if intent.primary_entities else intent.primary_entity
@@ -185,6 +209,16 @@ def build_literature_search_plan(
         mechanism_texts.append(f"{primary or 'protein'} protein interaction ligand receptor")
     for triple in seed_triples or []:
         mechanism_texts.append(f"{triple.subject} {triple.object} mechanism")
+    if unified_seed_triple:
+        subject = str((unified_seed_triple.get("subject") or {}).get("name") or "")
+        relation = str((unified_seed_triple.get("relation") or {}).get("name") or "")
+        obj = str((unified_seed_triple.get("object") or {}).get("name") or "")
+        contexts = list((unified_seed_triple.get("context") or {}).get("context_terms") or [])
+        core = " ".join(item for item in (subject, obj, *contexts[:1]) if item)
+        if core:
+            primary_texts.insert(0, core)
+        if subject and obj:
+            mechanism_texts.insert(0, " ".join(item for item in (subject, obj, relation) if item))
     if not (primary_texts or secondary_texts or mechanism_texts or comparison_texts or clinical_texts):
         primary_texts.append(intent.raw_user_input)
     warnings = []
@@ -202,8 +236,20 @@ def build_literature_search_plan(
     comparison_queries = _unique([_query(text, "comparison", intent, seed_ids=seed_ids) for text in comparison_texts])
     clinical_queries = _unique([_query(text, "clinical", intent, seed_ids=seed_ids, priority=2) for text in clinical_texts])
     base = primary_queries + secondary_queries + mechanism_queries + comparison_queries + clinical_queries
-    pubmed_queries = [item.model_copy(update={"source": "pubmed"}) for item in base]
-    pmc_queries = [item.model_copy(update={"source": "pmc"}) for item in base]
+    purpose_map = {"primary": "core_triple", "secondary": "broad_recall", "mechanism": "mechanism_recall", "comparison": "context_recall", "clinical": "context_recall"}
+    precision_map = {"primary": "high", "mechanism": "medium", "comparison": "medium", "clinical": "medium", "secondary": "broad"}
+    pubmed_queries = [item.model_copy(update={"source": "pubmed", "stage": "abstract_retrieval",
+                                                   "purpose": purpose_map.get(item.purpose, item.purpose),
+                                                   "precision_level": precision_map.get(item.purpose, "medium"),
+                                                   "requires_open_access": False, "requires_fulltext": False}) for item in base]
+    # Full-text escalation resolves PMCID/OA availability for selected papers; it
+    # does not replay the broad abstract query against PMC.
+    pmc_queries: list[LiteratureSearchQuery] = []
+    query_groups = []
+    for group, queries in (("core_triple", primary_queries), ("domain_mechanism_expansion", mechanism_queries), ("context_expansion", clinical_queries), ("broad_recall", secondary_queries)):
+        query_groups.append({"group": group, "stage": "abstract_retrieval", "source": "pubmed", "queries": [item.model_copy(update={"source": "pubmed", "stage": "abstract_retrieval", "purpose": purpose_map.get(item.purpose, item.purpose), "precision_level": precision_map.get(item.purpose, "medium"), "requires_open_access": False, "requires_fulltext": False}).model_dump(mode="json") for item in queries]})
+    query_groups.insert(1, {"group": "entity_alias_expansion", "stage": "abstract_retrieval", "source": "pubmed", "queries": []})
+    query_groups.append({"group": "fulltext_escalation", "stage": "fulltext_escalation", "source": "pmc", "queries": [], "only_for_selected_conflict_candidates": True})
     plan = LiteratureSearchPlan(
         intent_id=intent.intent_id,
         primary_queries=primary_queries,
@@ -227,6 +273,7 @@ def build_literature_search_plan(
         sanitizer_warnings=list(dict.fromkeys(sanitizer_warnings)),
         semantic_confidence=min(semantic.research_intent.confidence, semantic.domain_routing.confidence) if semantic else intent.confidence,
         manual_review_required=semantic.domain_routing.requires_manual_review if semantic else False,
+        seed_triple=unified_seed_triple or {}, query_groups=query_groups,
     )
     if write_outputs:
         root = Path(output_root)

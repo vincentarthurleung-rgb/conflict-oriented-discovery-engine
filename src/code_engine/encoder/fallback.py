@@ -37,7 +37,15 @@ def deterministic_degraded_intake(query: str, allowed_domain_ids: set[str]) -> S
         subject, obj = relation.groups()
         stable = hashlib.sha256(f"{subject}|explicit_relation|{obj}".encode()).hexdigest()[:16]
         seeds.append(SemanticSeedTriple(triple_id=stable, subject=subject.strip(), relation="explicit_relation", object=obj.strip(), source="deterministic_degraded_fallback", confidence=0.5))
+    elif len(concepts) >= 2:
+        subject, obj = concepts[:2]
+        stable = hashlib.sha256(f"{subject}|unspecified_association|{obj}|{'|'.join(concepts[2:])}".encode()).hexdigest()[:16]
+        seeds.append(SemanticSeedTriple(
+            triple_id=stable, subject=subject, relation="unspecified_association", object=obj,
+            source="deterministic_degraded_fallback", confidence=0.3,
+            warnings=["weak_seed_triple_requires_human_review"],
+        ))
     search_concepts = [SemanticSearchConcept(concept_id=hashlib.sha256(item.encode()).hexdigest()[:12], text=item, concept_type="entity", importance=0.5, source="deterministic_degraded_fallback") for item in concepts]
-    intent = SemanticResearchIntent(raw_user_input=query, language=_language(query), task_type="explicit_relation" if relation else "unknown", research_goal="User-provided explicit relation" if relation else "Semantic interpretation unavailable", primary_entities=[relation.group(1).strip()] if relation else concepts[:1], secondary_entities=concepts[1:], domain_routing=routing, confidence=confidence, ambiguities=list(routing.ambiguities))
+    intent = SemanticResearchIntent(raw_user_input=query, language=_language(query), task_type="explicit_relation" if relation else "unknown", research_goal="User-provided explicit relation" if relation else "Semantic interpretation unavailable", primary_entities=[relation.group(1).strip()] if relation else concepts[:1], secondary_entities=concepts[1:], context_terms=[] if relation else concepts[2:], domain_routing=routing, confidence=confidence, ambiguities=list(routing.ambiguities))
     warning = "LLM semantic intake disabled; deterministic fallback used."
     return SemanticIntakeResult(research_intent=intent, domain_routing=routing, seed_triples=seeds, search_concepts=search_concepts, recommended_search_queries=[], negative_filters=[], ambiguities=list(routing.ambiguities), warnings=[warning], semantic_mode="deterministic_degraded", api_calls_made=0)

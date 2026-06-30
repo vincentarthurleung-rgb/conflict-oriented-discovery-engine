@@ -20,14 +20,16 @@ STEP_INPUT_ARTIFACTS = {
     "payload": ("acquisition_report",),
     "abstract_l1": ("acquisition_report", "domain_profile"),
     "l2_abstract": ("abstract_l1_claims", "domain_profile"),
+    "evidence_graph_core": ("l2_abstract_observations", "run_paper_manifest"),
     "abstract_conflict_screening": ("abstract_l1_claims", "l2_abstract_observations"),
-    "fulltext_escalation": ("abstract_conflict_candidates", "paper_processing_records"),
-    "fulltext_l1": ("fulltext_escalation_plan", "domain_profile"),
+    "fulltext_escalation": ("abstract_conflict_candidates", "evidence_graph_core_conflicts", "paper_processing_records"),
+    "fulltext_availability": ("fulltext_escalation_candidates",),
+    "fulltext_acquisition": ("fulltext_availability_records",),
+    "fulltext_l1": ("fulltext_acquisition_records", "domain_profile"),
     "l2_fulltext": ("fulltext_evidence_records", "domain_profile"),
     "fulltext_conflict_confirmation": ("abstract_conflict_candidates", "fulltext_evidence_records", "l2_fulltext_observations"),
     "l1": ("payload_report", "domain_profile"),
     "l1_5": ("l1_summary",), "l2": ("l1_5_summary", "domain_profile"),
-    "evidence_graph_core": ("l2_abstract_observations", "l2_fulltext_observations", "run_paper_manifest"),
     "mechanism": ("l2_observations", "l1_summary", "domain_profile"),
     "conflict": ("l2_observations", "mechanism_graph"), "hypothesis": ("conflict_graph_summary", "mechanism_graph", "evidence_graph_core_conflicts"),
     "conflict_timeline": ("hypothesis_hyperedges", "abstract_conflict_candidates", "evidence_graph_core_conflicts"),
@@ -39,6 +41,55 @@ STEP_INPUT_ARTIFACTS = {
 
 def _repository_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def _core_design_report(provenance: dict) -> dict:
+    blockers = []
+    if provenance.get("abstract_retrieval_source_order") != ["pubmed"]:
+        blockers.append("abstract_retrieval_not_pubmed_only")
+    if provenance.get("abstract_open_access_required") or provenance.get("abstract_fulltext_required"):
+        blockers.append("abstract_retrieval_has_fulltext_or_oa_filter")
+    if provenance.get("initial_fulltext_download_count"):
+        blockers.append("initial_acquisition_downloaded_fulltext")
+    if not provenance.get("evidence_graph_core_before_fulltext_escalation"):
+        blockers.append("evidence_graph_core_after_fulltext_escalation")
+    if not provenance.get("triple_id_consistent_across_artifacts"):
+        blockers.append("triple_id_mismatch")
+    if provenance.get("paper_artifact_cache_hits") and not (
+        provenance.get("paper_cache_consumed_by_l1") or provenance.get("paper_cache_consumed_by_acquisition")
+    ):
+        blockers.append("paper_cache_hit_not_consumed")
+    if not provenance.get("l1_task_cache_fingerprint_complete"):
+        blockers.append("l1_task_cache_fingerprint_incomplete")
+    keys = (
+        "semantic_seed_triple_source", "semantic_seed_count", "seed_triple_confidence",
+        "seed_triple_human_review_required", "abstract_retrieval_source_order",
+        "abstract_open_access_required", "abstract_fulltext_required",
+        "fulltext_escalation_enabled", "fulltext_escalation_after_conflict_screening", "fulltext_open_access_required",
+        "fulltext_candidates_from_conflicts_only", "initial_fulltext_download_count",
+        "fulltext_download_count", "fulltext_downloaded_only_selected_candidates",
+        "evidence_graph_core_before_fulltext_escalation", "triple_id_consistent_across_artifacts",
+        "paper_cache_consumed_by_l1", "l1_task_cache_fingerprint_complete",
+    )
+    return {"status": "blocked" if blockers else "pass", "blocking_reasons": blockers,
+            **{key: provenance.get(key) for key in keys}}
+
+
+def _annotate_jsonl_metadata(paths, metadata: dict, run_dir: Path) -> None:
+    for value in paths:
+        path = Path(value) if value else None
+        if path is None or path.suffix != ".jsonl" or not path.is_file():
+            continue
+        try:
+            path.resolve().relative_to(run_dir.resolve())
+        except ValueError:
+            continue
+        records = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                payload = json.loads(line)
+                records.append({**payload, **metadata})
+        path.write_text("".join(json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n" for item in records), encoding="utf-8")
 
 
 def run_workflow(
@@ -93,6 +144,7 @@ def run_workflow(
     paper_artifact_cache_hits: int = 0, paper_artifact_cache_misses: int = 0,
     paper_cache_hit_records: list[dict] | None = None,
     paper_cache_miss_records: list[dict] | None = None,
+    literature_client=None, fulltext_availability_resolver=None, fulltext_client=None,
 ) -> RunState:
     from code_engine.workflow.runtime_provenance import (
         build_runtime_provenance, contamination_check, imported_legacy_modules, write_runtime_provenance,
@@ -145,11 +197,36 @@ def run_workflow(
             fulltext_escalation_enabled=enable_fulltext_escalation,
         )
         directory = Path(run_dir).resolve() if run_dir else root / "runs" / state.run_id
-    from code_engine.schemas.triples import build_seed_triple, seed_triple_from_payload
+    # Intake is executed before experiment identity/provenance so every downstream
+    # artifact uses the semantic intake seed as its single source of truth.
+    if state.steps["intake"].status in {"pending", "running", "failed"} or not (directory / "artifacts/intake.json").is_file():
+        save_run_state(state, directory)
+        intake_result = STEP_RUNNERS["intake"](
+            query=state.query, run_dir=directory, execute=execute, api=bool(execute and api),
+            allow_uncertain_intake=allow_uncertain_intake,
+            semantic_confidence_threshold=semantic_confidence_threshold,
+            semantic_llm_client=semantic_llm_client,
+            pilot_domain_profile=pilot_domain_profile,
+            explicit_seed_triple=seed_triple,
+        )
+        for artifact_name, artifact_path in intake_result.artifacts.items():
+            record_artifact(state, artifact_name, artifact_path)
+        for warning in intake_result.warnings:
+            record_warning(state, warning, "intake")
+        update_step_status(state, "intake", intake_result.status, summary=intake_result.summary,
+                           warnings=intake_result.warnings, output_refs=list(intake_result.artifacts.values()),
+                           api_calls_made=intake_result.api_calls_made,
+                           skipped_reason=intake_result.skipped_reason)
+        for field in ("domain_id", "subdomain_id", "domain_profile_id", "prompt_profile_id", "entity_registry_profile", "validator_profile_id"):
+            setattr(state, field, intake_result.summary.get(field))
+        state.semantic_mode = intake_result.summary.get("semantic_mode")
+        state.semantic_confidence = intake_result.summary.get("semantic_confidence")
+        state.requires_manual_review = bool(intake_result.summary.get("requires_manual_review"))
+        save_run_state(state, directory)
+    from code_engine.schemas.triples import seed_triple_from_payload
     from code_engine.workflow.triple_metadata import annotate_summary_artifacts, finalize_triple_card, triple_metadata, write_triple_run_manifest
-    seed = seed_triple_from_payload(seed_triple, query_text=state.query) if seed_triple else build_seed_triple(
-        state.query, domain=str(pilot_config.get("domain_profile") or "general_biomedical")
-    )
+    intake_payload = json.loads((directory / "artifacts/intake.json").read_text(encoding="utf-8"))
+    seed = seed_triple_from_payload(intake_payload["unified_seed_triple"], query_text=state.query)
     run_triple_metadata = triple_metadata(seed, batch_id)
     state.summary["triple_metadata"] = run_triple_metadata
     write_triple_run_manifest(directory, state, seed, batch_id, input_hash=triple_input_hash)
@@ -275,6 +352,8 @@ def run_workflow(
         "warnings": [],
     }
     readiness["legacy_contamination_check"] = contamination
+    core_design = _core_design_report(runtime_provenance)
+    readiness["core_design_semantics_check"] = core_design
     readiness["blocking_reasons"] = list(dict.fromkeys([*readiness["blocking_reasons"], *contamination["blocking_reasons"]]))
     if readiness["blocking_reasons"]:
         readiness["status"] = "not_ready"
@@ -286,6 +365,9 @@ def run_workflow(
     readiness_path.write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
     state.summary["pilot_readiness"] = readiness
     record_artifact(state, "pilot_readiness_report", readiness_path)
+    core_design_path = directory / "artifacts" / "core_design_semantics_report.json"
+    core_design_path.write_text(json.dumps(core_design, ensure_ascii=False, indent=2), encoding="utf-8")
+    record_artifact(state, "core_design_semantics_report", core_design_path)
     if api and not execute:
         record_warning(state, "API enabled but execute=false, no API calls will be made")
     if network and not execute:
@@ -298,9 +380,12 @@ def run_workflow(
         state.summary["legacy_source_policy"] = "quarantine_and_legacy_artifacts_excluded"
     save_run_state(state, directory)
     stop_index = STEP_ORDER.index(until)
+    intake_blocked = state.steps["intake"].status == "blocked"
     try:
         for index, name in enumerate(STEP_ORDER):
             if index > stop_index:
+                break
+            if intake_blocked and name != "intake":
                 break
             record = state.steps[name]
             if record.status not in {"pending", "running", "failed"}:
@@ -335,13 +420,16 @@ def run_workflow(
                     cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
                 )
                 contamination = contamination_check(runtime_provenance)
+                core_design = _core_design_report(runtime_provenance)
                 readiness["legacy_contamination_check"] = contamination
+                readiness["core_design_semantics_check"] = core_design
                 readiness["blocking_reasons"] = list(dict.fromkeys([*readiness["blocking_reasons"], *contamination["blocking_reasons"]]))
                 if readiness["blocking_reasons"]:
                     readiness["status"] = "not_ready"
                 state.summary["runtime_provenance"], state.summary["pilot_readiness"] = runtime_provenance, readiness
                 write_runtime_provenance(provenance_path, runtime_provenance)
                 readiness_path.write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
+                core_design_path.write_text(json.dumps(core_design, ensure_ascii=False, indent=2), encoding="utf-8")
                 result_status = "completed"
                 render_run_report(state, directory, final=True)
                 report_inputs = [state.artifacts[key] for key in STEP_INPUT_ARTIFACTS[name] if key in state.artifacts]
@@ -407,7 +495,11 @@ def run_workflow(
                     allow_compatible_l1_task_reuse=allow_compatible_l1_task_reuse,
                     force_reprocess_l1=force_reprocess_l1,
                     force_reprocess_paper=force_reprocess_paper,
+                    literature_client=literature_client,
+                    fulltext_availability_resolver=fulltext_availability_resolver,
+                    fulltext_client=fulltext_client,
                 )
+                _annotate_jsonl_metadata(result.artifacts.values(), run_triple_metadata, directory)
                 for artifact_name, artifact_path in result.artifacts.items():
                     record_artifact(state, artifact_name, artifact_path)
                 result.summary.update(run_triple_metadata)

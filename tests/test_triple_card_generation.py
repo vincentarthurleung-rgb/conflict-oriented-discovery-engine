@@ -18,9 +18,10 @@ class TripleCardGenerationTests(unittest.TestCase):
             card = json.loads((directory / "triple_card.json").read_text())
             manifest = json.loads((directory / "triple_run_manifest.json").read_text())
             provenance = json.loads((directory / "artifacts/runtime_provenance_report.json").read_text())
-            self.assertEqual(card["triple_id"], first.triple_id)
-            self.assertEqual(manifest["triple_id"], first.triple_id)
-            self.assertEqual(provenance["query_hash"], first.query_hash)
+            intake = json.loads((directory / "artifacts/intake.json").read_text())
+            self.assertEqual(card["triple_id"], intake["unified_seed_triple"]["triple_id"])
+            self.assertEqual(manifest["triple_id"], card["triple_id"])
+            self.assertEqual(provenance["query_hash"], card["query_hash"])
             self.assertIn("seed_triple", provenance)
 
 

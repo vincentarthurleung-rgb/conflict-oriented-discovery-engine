@@ -39,6 +39,7 @@ class ResearchIntakeResult(CODEBaseModel):
     recommended_search_queries: list[str] = Field(default_factory=list)
     semantic_search_concepts: list[SemanticSearchConcept] = Field(default_factory=list)
     semantic_intake: dict[str, Any] = Field(default_factory=dict)
+    unified_seed_triple: dict[str, Any] = Field(default_factory=dict)
 
 
 def parse_research_intake(
