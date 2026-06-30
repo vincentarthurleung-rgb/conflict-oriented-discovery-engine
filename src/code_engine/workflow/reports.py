@@ -21,7 +21,7 @@ def _next_command(state: RunState, run_dir: Path) -> str:
 def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = False) -> Path:
     directory = Path(run_dir)
     lines = [
-        "# C.O.D.E. Research Workflow Run", "", f"- Run ID: `{state.run_id}`",
+        f"# {state.summary.get('triple_metadata', {}).get('seed_triple_title') or 'C.O.D.E. Research Workflow Run'}", "", f"- Run ID: `{state.run_id}`",
         f"- Query: {state.query}", f"- Mode: `{state.mode}`", f"- Status: `{state.final_status}`",
         f"- Domain profile: `{state.domain_profile_id or 'not resolved'}`",
         f"- Semantic mode: `{state.semantic_mode or 'not run'}`",
@@ -151,7 +151,7 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
     report.write_text("\n".join(lines), encoding="utf-8")
     if final:
         payload = directory / "artifacts" / "final_report.json"
-        payload.write_text(json.dumps({"run_id": state.run_id, "query": state.query, "status": state.final_status, "steps": {name: state.steps[name].summary for name in STEP_ORDER}, "warnings": state.warnings}, ensure_ascii=False, indent=2), encoding="utf-8")
+        payload.write_text(json.dumps({"run_id": state.run_id, "query": state.query, "status": state.final_status, **state.summary.get("triple_metadata", {}), "steps": {name: state.steps[name].summary for name in STEP_ORDER}, "warnings": state.warnings}, ensure_ascii=False, indent=2), encoding="utf-8")
         record_artifact(state, "final_report", payload)
     record_artifact(state, "run_report", directory / "run_report.md")
     return report

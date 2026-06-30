@@ -35,6 +35,12 @@ def build_runtime_provenance(
     legacy_modules_before: Iterable[str] = (),
     pilot_profile: str | None = None, pilot_terms: Iterable[str] = (),
     domain_specific_defaults_used: Iterable[str] = (),
+    batch_id: str | None = None, triple_id: str | None = None,
+    query_hash: str | None = None, seed_triple: dict[str, Any] | None = None,
+    paper_artifact_cache_enabled: bool = True,
+    paper_artifact_cache_index: str | Path | None = None,
+    paper_artifact_cache_hits: int = 0, paper_artifact_cache_misses: int = 0,
+    cache_hit_records: Iterable[dict[str, Any]] = (), cache_miss_records: Iterable[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     import code_engine
     from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
@@ -74,6 +80,15 @@ def build_runtime_provenance(
         "pilot_terms_used": list(dict.fromkeys(str(item) for item in pilot_terms)),
         "domain_specific_defaults_used": list(dict.fromkeys(str(item) for item in domain_specific_defaults_used)),
         "ketamine_specific_defaults_used": bool(automatic_pilot_registry),
+        "batch_id": batch_id, "triple_id": triple_id, "query_hash": query_hash,
+        "seed_triple": seed_triple or {},
+        "paper_artifact_cache_enabled": bool(paper_artifact_cache_enabled),
+        "paper_artifact_cache_index": str(paper_artifact_cache_index) if paper_artifact_cache_index else None,
+        "paper_artifact_cache_hits": int(paper_artifact_cache_hits),
+        "paper_artifact_cache_misses": int(paper_artifact_cache_misses),
+        "cross_batch_paper_artifacts_reused": bool(paper_artifact_cache_hits),
+        "reasoning_artifacts_reused_from_other_batch": False,
+        "cache_hit_records": list(cache_hit_records), "cache_miss_records": list(cache_miss_records),
         "warnings": [],
     }
     if shadowing:

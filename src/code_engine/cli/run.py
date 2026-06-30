@@ -73,6 +73,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-compatible-l1-task-reuse", action="store_true")
     parser.add_argument("--force-reprocess-l1", action="store_true")
     parser.add_argument("--force-reprocess-paper", action="append", default=[])
+    paper_cache = parser.add_mutually_exclusive_group()
+    paper_cache.add_argument("--enable-paper-artifact-cache", action="store_true", default=True)
+    paper_cache.add_argument("--no-cross-batch-paper-cache", action="store_true")
+    parser.add_argument(
+        "--paper-artifact-cache-index", type=Path,
+        default=Path("data/index/paper_artifact_cache/paper_artifact_cache_index.jsonl"),
+    )
+    parser.add_argument("--build-paper-artifact-cache-from-runs", action="store_true")
     merge = parser.add_mutually_exclusive_group()
     merge.add_argument("--merge-knowledge-store", action="store_true", default=True)
     merge.add_argument("--no-merge-knowledge-store", action="store_true")
@@ -127,6 +135,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.execute and args.api:
         from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
         l1_client = build_l1_client_from_env_or_config(args.l1_provider, args.l1_model)
+    if args.build_paper_artifact_cache_from_runs:
+        from code_engine.corpus.paper_artifact_cache import build_paper_artifact_cache_index_from_runs
+        build_paper_artifact_cache_index_from_runs(
+            Path("runs"), args.paper_artifact_cache_index, include_batches=True, dry_run=False,
+        )
     state = run_workflow(
         query=args.query or "", run_dir=args.run_dir, until=args.until,
         execute=args.execute, api=args.api, network=args.network,
@@ -178,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
         allow_compatible_l1_task_reuse=args.allow_compatible_l1_task_reuse,
         force_reprocess_l1=args.force_reprocess_l1,
         force_reprocess_paper=args.force_reprocess_paper,
+        paper_artifact_cache_enabled=args.enable_paper_artifact_cache and not args.no_cross_batch_paper_cache,
+        paper_artifact_cache_index=args.paper_artifact_cache_index,
         merge_knowledge_store=args.merge_knowledge_store and not args.no_merge_knowledge_store,
         update_global_knowledge_store=args.update_global_knowledge_store and not args.no_update_global_knowledge_store,
         coverage_precheck=args.coverage_precheck and not args.no_coverage_precheck,

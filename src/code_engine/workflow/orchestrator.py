@@ -86,6 +86,13 @@ def run_workflow(
     merge_knowledge_store: bool = True, update_global_knowledge_store: bool = False,
     coverage_precheck: bool = False, coverage_threshold: float = 0.75,
     allow_coverage_short_circuit: bool = False,
+    batch_id: str | None = None, seed_triple: dict | None = None,
+    triple_input_hash: str | None = None,
+    paper_artifact_cache_enabled: bool = True,
+    paper_artifact_cache_index: str | Path | None = None,
+    paper_artifact_cache_hits: int = 0, paper_artifact_cache_misses: int = 0,
+    paper_cache_hit_records: list[dict] | None = None,
+    paper_cache_miss_records: list[dict] | None = None,
 ) -> RunState:
     from code_engine.workflow.runtime_provenance import (
         build_runtime_provenance, contamination_check, imported_legacy_modules, write_runtime_provenance,
@@ -138,6 +145,14 @@ def run_workflow(
             fulltext_escalation_enabled=enable_fulltext_escalation,
         )
         directory = Path(run_dir).resolve() if run_dir else root / "runs" / state.run_id
+    from code_engine.schemas.triples import build_seed_triple, seed_triple_from_payload
+    from code_engine.workflow.triple_metadata import annotate_summary_artifacts, finalize_triple_card, triple_metadata, write_triple_run_manifest
+    seed = seed_triple_from_payload(seed_triple, query_text=state.query) if seed_triple else build_seed_triple(
+        state.query, domain=str(pilot_config.get("domain_profile") or "general_biomedical")
+    )
+    run_triple_metadata = triple_metadata(seed, batch_id)
+    state.summary["triple_metadata"] = run_triple_metadata
+    write_triple_run_manifest(directory, state, seed, batch_id, input_hash=triple_input_hash)
     state.summary["using_legacy_data"] = bool(allow_legacy)
     state.summary["external_calls_enabled"] = {"api": bool(execute and api), "network": bool(execute and network)}
     state.entity_network_lookup_enabled = bool(execute and network and entity_network_lookup)
@@ -230,6 +245,7 @@ def run_workflow(
         "paper_registry_enabled": paper_registry_enabled, "evidence_graph_enabled": enable_evidence_graph,
         "conflict_timeline_enabled": enable_conflict_timeline, "network_enabled": network,
         "api_enabled": api, "execute_enabled": execute,
+        **run_triple_metadata,
     }
     (directory / "artifacts").mkdir(parents=True, exist_ok=True)
     runtime_provenance = build_runtime_provenance(
@@ -241,6 +257,13 @@ def run_workflow(
         merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
         execute=execute, legacy_modules_before=legacy_modules_before,
         pilot_profile=pilot_profile, pilot_terms=pilot_terms,
+        batch_id=batch_id, triple_id=seed.triple_id, query_hash=seed.query_hash,
+        seed_triple=seed.model_dump(mode="json"),
+        paper_artifact_cache_enabled=paper_artifact_cache_enabled,
+        paper_artifact_cache_index=paper_artifact_cache_index,
+        paper_artifact_cache_hits=paper_artifact_cache_hits,
+        paper_artifact_cache_misses=paper_artifact_cache_misses,
+        cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
     )
     contamination = contamination_check(runtime_provenance)
     readiness["domain_decoupling_check"] = {
@@ -303,6 +326,13 @@ def run_workflow(
                     merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
                     execute=execute, legacy_modules_before=legacy_modules_before,
                     pilot_profile=pilot_profile, pilot_terms=pilot_terms,
+                    batch_id=batch_id, triple_id=seed.triple_id, query_hash=seed.query_hash,
+                    seed_triple=seed.model_dump(mode="json"),
+                    paper_artifact_cache_enabled=paper_artifact_cache_enabled,
+                    paper_artifact_cache_index=paper_artifact_cache_index,
+                    paper_artifact_cache_hits=paper_artifact_cache_hits,
+                    paper_artifact_cache_misses=paper_artifact_cache_misses,
+                    cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
                 )
                 contamination = contamination_check(runtime_provenance)
                 readiness["legacy_contamination_check"] = contamination
@@ -380,6 +410,7 @@ def run_workflow(
                 )
                 for artifact_name, artifact_path in result.artifacts.items():
                     record_artifact(state, artifact_name, artifact_path)
+                result.summary.update(run_triple_metadata)
                 state.counts.update(result.counts)
                 for field in (
                     "paper_dedup_total", "paper_dedup_new_count", "paper_dedup_duplicate_count",
@@ -439,6 +470,10 @@ def run_workflow(
         mark_run_completed(state, partial=bool(execute and (until != "report" or blocked)))
         state.summary["runtime_data_status"] = "partial" if blocked else ("executed" if execute else "planned")
         render_run_report(state, directory)
+        annotate_summary_artifacts(directory, seed, batch_id)
+        card_path, manifest_path = finalize_triple_card(directory, state, seed, batch_id, input_hash=triple_input_hash)
+        record_artifact(state, "triple_card", card_path)
+        record_artifact(state, "triple_run_manifest", manifest_path)
         save_run_state(state, directory)
         return state
     except Exception as exc:
@@ -447,5 +482,9 @@ def run_workflow(
             mark_run_failed(state, step, f"{type(exc).__name__}: {exc}")
         state.summary["runtime_data_status"] = "failed"
         render_run_report(state, directory)
+        annotate_summary_artifacts(directory, seed, batch_id)
+        card_path, manifest_path = finalize_triple_card(directory, state, seed, batch_id, input_hash=triple_input_hash)
+        record_artifact(state, "triple_card", card_path)
+        record_artifact(state, "triple_run_manifest", manifest_path)
         save_run_state(state, directory)
         raise
