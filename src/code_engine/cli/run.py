@@ -37,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     entity_llm.add_argument("--no-entity-llm-proposer", action="store_true")
     parser.add_argument("--entity-resolution-policy")
     parser.add_argument("--entity-registry-path", type=Path)
+    parser.add_argument("--pilot-profile", choices=("ketamine",))
     parser.add_argument(
         "--l1-mode",
         choices=("abstract_screening", "progressive_fulltext", "fulltext_oracle", "legacy"),
@@ -137,6 +138,7 @@ def main(argv: list[str] | None = None) -> int:
         entity_llm_proposer=args.entity_llm_proposer,
         entity_resolution_policy=args.entity_resolution_policy,
         entity_registry_path=args.entity_registry_path,
+        pilot_profile=args.pilot_profile,
         l1_mode=args.l1_mode,
         enable_fulltext_escalation=args.enable_fulltext_escalation and not args.no_fulltext_escalation,
         fulltext_escalation_trigger=args.fulltext_escalation_trigger,

@@ -33,9 +33,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         intent = parse_research_intent(args.query)
         plan = build_literature_search_plan(intent, output_root=args.repository_root, write_outputs=True)
     else:
-        intent = parse_research_intent("ketamine depression antidepressant mechanism")
-        plan = build_literature_search_plan(intent, output_root=args.repository_root, write_outputs=True)
-        plan.warnings.append("legacy_ketamine_query_fallback_used")
+        parser.error("--query is required unless --search-plan is used")
     report = execute_acquisition_plan(
         plan, repository_root=args.repository_root,
         execute=args.execute, network=args.network and not args.no_network,

@@ -115,6 +115,7 @@ def build_literature_search_plan(
     output_root: str | Path = ".",
     write_outputs: bool = False,
     semantic_intake: SemanticIntakeResult | dict[str, Any] | None = None,
+    explicit_profile_expansions: list[str] | None = None,
 ) -> LiteratureSearchPlan:
     profile = domain_profile or default_domain_router().resolve(intent.domain_id) or default_domain_router().route_text(intent.raw_user_input)
     primary = intent.primary_entities[0] if intent.primary_entities else intent.primary_entity
@@ -154,18 +155,8 @@ def build_literature_search_plan(
     elif primary and disease:
         # Legacy direct-call compatibility path. New workflow calls pass semantic_intake.
         primary_texts += [f"{primary} {disease}", f"{primary} antidepressant response"]
-    if semantic is None and profile.domain_id == "neuropharmacology" and primary == "ketamine" and disease == "depression":
-        mechanism_texts += [
-            "ketamine BDNF depression",
-            "ketamine NMDA receptor antidepressant",
-            "ketamine AMPA receptor BDNF mTOR depression",
-            "ketamine mTOR BDNF depression",
-            "ketamine synaptic plasticity antidepressant",
-            "ketamine depression behavioral assay",
-        ]
-        secondary_texts.append("esketamine depression mechanism")
-        clinical_texts.append("ketamine depression clinical trial antidepressant response")
-        mechanism_texts.append("ketamine chronic stress mouse prefrontal cortex BDNF")
+    if explicit_profile_expansions:
+        mechanism_texts.extend(explicit_profile_expansions)
     if intent.needs_comparison and len(intent.comparison_entities) >= 2:
         left, right = intent.comparison_entities[:2]
         comparison_texts += [
@@ -194,6 +185,8 @@ def build_literature_search_plan(
         mechanism_texts.append(f"{primary or 'protein'} protein interaction ligand receptor")
     for triple in seed_triples or []:
         mechanism_texts.append(f"{triple.subject} {triple.object} mechanism")
+    if not (primary_texts or secondary_texts or mechanism_texts or comparison_texts or clinical_texts):
+        primary_texts.append(intent.raw_user_input)
     warnings = []
     if use_llm and llm_client is not None:
         response = llm_client.extract_json("Generate PubMed/PMC search queries as JSON for: " + intent.raw_user_input)

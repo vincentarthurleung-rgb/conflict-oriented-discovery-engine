@@ -14,15 +14,6 @@ from .validation import ConfigValidationError, validate_config_payload
 DEFAULT_CONFIG_PATH = "configs/normalization/l2_l3_ontology_rules.json"
 FALLBACK_AUDIT_PATH = "reports/config_fallback_audit.json"
 
-LEGACY_CONFIG_PATHS = {
-    "l2_l3_ontology_rules": "config/schemas/l2_l3_ontology_rules.json",
-    "context_axis_map": "config/schemas/context_axis_map.json",
-    "domain_spec": "config/schemas/domain_spec.json",
-    "validation_plan": "config/schemas/validation_plan.json",
-    "entity_registry": "config/schemas/entity_registry.json",
-}
-
-
 class PipelineConfig:
     """Validated config wrapper for deterministic pipeline modules."""
 
@@ -109,21 +100,6 @@ def _fallback_event(config_path: str, config_type: str, reason: str, modules: Op
     }
 
 
-def resolve_config_path(config_path: str, config_type: str) -> tuple[Path, List[Dict[str, Any]]]:
-    """Resolve a preferred config path and audit legacy-path fallback."""
-
-    preferred = Path(config_path)
-    if preferred.exists():
-        return preferred, []
-    legacy_value = LEGACY_CONFIG_PATHS.get(config_type)
-    legacy = Path(legacy_value) if legacy_value else None
-    if legacy is not None and legacy.exists() and str(preferred).startswith("configs/"):
-        event = _fallback_event(str(legacy), config_type, f"preferred_config_missing: {preferred}", ["config_loader"])
-        event["fallback_kind"] = "legacy_config_path"
-        return legacy, [event]
-    return preferred, []
-
-
 def load_json_config(
     config_path: str,
     *,
@@ -135,9 +111,8 @@ def load_json_config(
 ) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Load and validate a JSON config with explicit fallback behavior."""
 
-    path, fallback_events = resolve_config_path(config_path, config_type)
-    if fallback_events:
-        write_fallback_audit(fallback_events)
+    path = Path(config_path)
+    fallback_events: List[Dict[str, Any]] = []
     if not path.exists():
         if strict_config and not allow_fallback:
             raise FileNotFoundError(f"Required config missing: {config_path}")
@@ -178,8 +153,8 @@ def load_pipeline_config(
         fallback_data=default_l2_l3_fallback_config(),
         required_modules=required_modules,
     )
-    data_fallback = any(event.get("fallback_kind") != "legacy_config_path" for event in fallback_events)
-    source_path = "fallback_default" if data_fallback else str(resolve_config_path(config_path, "l2_l3_ontology_rules")[0])
+    data_fallback = bool(fallback_events)
+    source_path = "fallback_default" if data_fallback else str(Path(config_path))
     print(f"[Config] Using config file: {source_path}")
     print(f"[Config] Fallback occurred: {bool(fallback_events)}")
     return PipelineConfig(data, source_path, allow_fallback=allow_fallback, fallback_events=fallback_events)

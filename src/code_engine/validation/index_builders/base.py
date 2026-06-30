@@ -16,7 +16,7 @@ from code_engine.validation.index_manifest import (
     ValidationIndexManifest, compute_index_checksum, write_validation_index_manifest,
 )
 from code_engine.validation.index_schema import (
-    ValidationIndexSchema, load_validation_index_schema,
+    load_validation_index_schema,
     validate_index_record_against_schema, write_validation_index_schema,
 )
 

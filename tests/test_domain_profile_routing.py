@@ -4,11 +4,9 @@ from code_engine.query.intent import parse_research_intent
 
 
 class DomainProfileRoutingTests(unittest.TestCase):
-    def test_chinese_ketamine_depression_routes_to_neuropharmacology(self):
+    def test_query_terms_do_not_implicitly_select_pilot_domain(self):
         intent = parse_research_intent("我想了解当前氯胺酮在抑郁症中的作用")
-        self.assertEqual(intent.domain_id, "neuropharmacology")
-        self.assertEqual(intent.subdomain_id, "antidepressant_mechanism")
-        self.assertEqual(intent.prompt_profile_id, "neuropharmacology_l1_v2")
+        self.assertEqual(intent.domain_id, "general_biomedical")
 
     def test_receptor_blockade_routes_to_binding(self):
         intent = parse_research_intent("ketamine 是否通过 NMDA receptor blockade 发挥作用")

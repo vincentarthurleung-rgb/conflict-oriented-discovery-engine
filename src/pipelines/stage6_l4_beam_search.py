@@ -252,7 +252,7 @@ class HeterogeneousCausalAblationSearcher:
             obj = seed["object"]
             
             # Build a set of common terms to exclude (tautology tax)
-            seed_blackwords = {sub, obj, "KETAMINE", "RAT", "MOUSE", "UNSPECIFIED"}
+            seed_blackwords = {sub, obj, "RAT", "MOUSE", "UNSPECIFIED"}
             for trace in seed.get("whitebox_traceability", []):
                 for val in trace.get("context_snapshot", {}).values():
                     if val:
@@ -380,7 +380,7 @@ def execute_l4_search_pipeline():
             }
         }, f, ensure_ascii=False, indent=2)
 
-    print(f"\n[L4 Hypothesis Search Complete] 4-track ablation completed successfully.")
+    print("\n[L4 Hypothesis Search Complete] 4-track ablation completed successfully.")
     print(f"Full-track hypotheses saved to: {L4_HYPOTHESIS_PATH}")
     print(f"Net L3 contribution score: {no_l3_net_drop}")
     print(f"Ablation report saved to: {L4_REPORT_PATH}\n")

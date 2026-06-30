@@ -9,7 +9,7 @@ from collections import defaultdict
 
 
 INPUT_PATH = "data/processed/l4/context_mentions.json"
-OUTPUT_PATH = "config/schemas/context_axis_map.generated.json"
+OUTPUT_PATH = "configs/generated/context_axis_map.generated.json"
 
 
 def generate_axis_map(input_path: str = INPUT_PATH) -> dict:

@@ -110,7 +110,11 @@ def validate_entity_registry(payload: Dict[str, Any]) -> List[str]:
 
     if not str(payload.get("version") or "").strip():
         raise ConfigValidationError("entity_registry requires `version`")
-    entities = _require_list(payload, "entities", "entity_registry")
+    entities = payload.get("entities")
+    if not isinstance(entities, list):
+        raise ConfigValidationError("entity_registry requires list section `entities`")
+    if not entities:
+        return []
     canonical_ids = set()
     alias_owners: Dict[str, set[str]] = {}
     required = ("canonical_id", "canonical_name", "entity_type", "semantic_level", "aliases")

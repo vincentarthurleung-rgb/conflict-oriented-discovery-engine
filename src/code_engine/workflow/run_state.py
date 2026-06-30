@@ -16,10 +16,7 @@ def utc_now() -> str:
 
 
 def _slug(query: str) -> str:
-    aliases = {"氯胺酮": "ketamine", "艾司氯胺酮": "esketamine", "抑郁症": "depression"}
     text = query.casefold()
-    for source, target in aliases.items():
-        text = text.replace(source, f" {target} ")
     words = re.findall(r"[a-z0-9]+", text)
     meaningful = [word for word in words if word not in {"i", "want", "to", "know", "about", "current"}]
     return "_".join(meaningful[:5]) or "research_run"

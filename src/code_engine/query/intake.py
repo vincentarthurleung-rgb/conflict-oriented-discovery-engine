@@ -6,7 +6,7 @@ from typing import Any, Protocol
 
 from pydantic import Field
 
-from code_engine.encoder.models import SemanticIntakeResult, SemanticSearchConcept, SemanticSeedTriple
+from code_engine.encoder.models import SemanticSearchConcept, SemanticSeedTriple
 from code_engine.encoder.semantic_intake import run_semantic_intake
 from code_engine.query.intent import ResearchIntent, research_intent_from_semantic
 from code_engine.domain.models import default_domain_profiles

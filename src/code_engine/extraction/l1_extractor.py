@@ -50,6 +50,8 @@ def build_l1_dry_run_plan(
     if selected_profile is None and auto_domain:
         selected_profile = router.route_text(chunk_text)
     selected_profile = selected_profile or router.resolve("general_biomedical")
+    if selected_profile is None:
+        raise RuntimeError("The general_biomedical domain profile is not configured")
     selected_domain = selected_profile.domain_id
     profile_id = prompt_profile or selected_profile.prompt_profile_id
     profile = default_prompt_registry().get_profile(profile_id)
@@ -151,7 +153,7 @@ def execute_l1_extraction(
     import json
 
     root = Path(repository_root)
-    result = {"chunks_reused": [], "chunks_extracted": [], "extraction_needed": [], "errors": [], "api_calls_made": 0}
+    result: dict[str, Any] = {"chunks_reused": [], "chunks_extracted": [], "extraction_needed": [], "errors": [], "api_calls_made": 0}
     active_client = client
     if execute and api and active_client is None:
         from code_engine.extraction.deepseek_client import DeepSeekClient
@@ -176,6 +178,8 @@ def execute_l1_extraction(
             result["extraction_needed"].append({"paper_id": paper_id, "chunk_id": chunk_id, "prompt_fingerprint": plan["prompt_fingerprint"]})
             continue
         try:
+            if active_client is None:
+                raise RuntimeError("L1 extraction client is not configured")
             profile = default_prompt_registry().get_profile(plan["prompt_profile_id"])
             compiled = compile_l1_prompt(profile, text, prompt_version=prompt_version, output_schema_version=schema_version)
             response = active_client.extract_json(
@@ -186,7 +190,7 @@ def execute_l1_extraction(
             claims_payload = response.get("claims") or response.get("causal_tuples") or []
             if not isinstance(claims_payload, list):
                 raise ValueError("L1 response must contain a claims list")
-            chunk_outputs = []
+            chunk_outputs: list[Path] = []
             for claim_index, raw_claim in enumerate(claims_payload):
                 sign = raw_claim.get("direct_relation_sign", raw_claim.get("relation_sign", "unknown"))
                 if isinstance(sign, int):
@@ -199,6 +203,12 @@ def execute_l1_extraction(
                     str(raw_claim.get("evidence_sentence") or ""),
                     plan["domain_id"],
                 )
+                context_fields: dict[str, Any] = {
+                    field: str(raw_claim.get(field) or context.get(field) or "")
+                    for field in (
+                        "species", "sex", "age", "disease_model", "brain_region", "cell_type", "treatment", "dose", "route", "treatment_duration", "time_after_treatment", "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype", "oxygen_condition", "localization", "drug", "target", "binding_affinity", "assay_type", "experimental_system", "population", "intervention", "comparator", "trial_phase", "sample_size", "response_rate", "remission_rate", "adverse_events", "timepoint"
+                    )
+                }
                 claim = L1ExtractedClaim(
                     claim_id=str(raw_claim.get("claim_id") or f"{paper_id}_{chunk_id}_{claim_index}"),
                     paper_id=paper_id, chunk_id=chunk_id, chunk_hash=plan["chunk_hash"],
@@ -232,9 +242,7 @@ def execute_l1_extraction(
                     subject_span=str(raw_claim.get("subject_span") or ""), relation_span=str(raw_claim.get("relation_span") or ""), object_span=str(raw_claim.get("object_span") or ""),
                     context_spans=dict(raw_claim.get("context_spans") or {}),
                     domain_specific_warnings=list(directional.warnings),
-                    **{field: str(raw_claim.get(field) or context.get(field) or "") for field in (
-                        "species", "sex", "age", "disease_model", "brain_region", "cell_type", "treatment", "dose", "route", "treatment_duration", "time_after_treatment", "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype", "oxygen_condition", "localization", "drug", "target", "binding_affinity", "assay_type", "experimental_system", "population", "intervention", "comparator", "trial_phase", "sample_size", "response_rate", "remission_rate", "adverse_events", "timepoint"
-                    )},
+                    **context_fields,
                 )
                 suffix = "" if claim_index == 0 else f"_{claim_index}"
                 output = root / f"data/processed/l1_v2/{paper_id}_{chunk_id}_claim{suffix}.json"

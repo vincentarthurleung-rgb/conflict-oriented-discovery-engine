@@ -1,46 +1,4 @@
 {
-  "perturbation_registry": {
-    "BDNF": {
-      "registry_anchor_gene": "BDNF",
-      "omics_anchor_gene": "BDNF",
-      "target_gene": "BDNF",
-      "legacy_fields": {
-        "target_gene": "retained for backward compatibility; use registry_anchor_gene"
-      },
-      "cell_lines": {
-        "NEURON_CL": {"z_score": 0.0524},
-        "PC12": {"z_score": 0.0211},
-        "A549": {"z_score": 0.1142},
-        "MCF7": {"z_score": -0.0418}
-      }
-    },
-    "ANTIDEPRESSANT RESPONSE": {
-      "registry_anchor_gene": "GRIA1",
-      "omics_anchor_gene": "GRIA1",
-      "target_gene": "GRIA1",
-      "legacy_fields": {
-        "target_gene": "retained for backward compatibility; use registry_anchor_gene"
-      },
-      "cell_lines": {
-        "NEURON_CL": {"z_score": 3.4215},
-        "PC12": {"z_score": 2.9418},
-        "A549": {"z_score": 0.1204},
-        "MCF7": {"z_score": 1.9521}
-      }
-    },
-    "GLUN2B": {
-      "registry_anchor_gene": "GRIN2B",
-      "omics_anchor_gene": "GRIN2B",
-      "target_gene": "GRIN2B",
-      "legacy_fields": {
-        "target_gene": "retained for backward compatibility; use registry_anchor_gene"
-      },
-      "cell_lines": {
-        "NEURON_CL": {"z_score": -2.6541},
-        "PC12": {"z_score": -1.8214},
-        "A549": {"z_score": 0.0112},
-        "MCF7": {"z_score": -0.0524}
-      }
-    }
-  }
+  "registry_status": "domain_neutral_empty",
+  "perturbation_registry": {}
 }

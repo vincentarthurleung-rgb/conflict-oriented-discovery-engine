@@ -1,0 +1,20 @@
+{
+  "pilot_profile": "ketamine",
+  "terms": ["ketamine", "esketamine", "arketamine", "norketamine", "hydroxynorketamine", "BDNF", "mTOR"],
+  "entity_registry_path": "configs/normalization/fixtures/ketamine_pilot_registry.json",
+  "domain_profile": "neuropharmacology",
+  "search_expansions": [
+    "ketamine BDNF depression",
+    "ketamine NMDA receptor antidepressant",
+    "ketamine AMPA receptor BDNF mTOR depression",
+    "esketamine depression mechanism",
+    "ketamine depression clinical trial antidepressant response"
+  ],
+  "entity_aliases": {
+    "艾司氯胺酮": "esketamine",
+    "氯胺酮": "ketamine",
+    "抑郁症": "depression",
+    "脑源性神经营养因子": "BDNF",
+    "雷帕霉素靶蛋白": "mTOR"
+  }
+}

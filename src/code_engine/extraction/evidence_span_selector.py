@@ -5,8 +5,6 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import defaultdict
-from typing import Any
-
 from code_engine.extraction.evidence_tiers import EvidenceTier
 from code_engine.extraction.section_ranker import CONTEXT_TERMS, DIRECTION_TERMS, SKIP_SECTIONS
 

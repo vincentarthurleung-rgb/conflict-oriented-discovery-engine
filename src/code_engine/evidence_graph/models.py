@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, is_dataclass
-from typing import Any
+from typing import Any, cast
 
 NODE_TYPES = {
     "paper", "entity", "claim", "evidence_span", "observation", "relation_bundle", "conflict",
@@ -26,7 +26,7 @@ class Serializable:
     def to_dict(self) -> dict[str, Any]:
         if not is_dataclass(self):
             raise TypeError(f"{type(self).__name__} must be a dataclass to be serialized")
-        return asdict(self)
+        return cast(dict[str, Any], asdict(self))  # type: ignore[arg-type]
 
 
 @dataclass

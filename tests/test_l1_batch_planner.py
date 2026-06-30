@@ -14,7 +14,7 @@ FIXTURE = json.loads((Path(__file__).parent / "fixtures/intake_minimal.json").re
 
 class L1BatchPlannerTests(unittest.TestCase):
     def setUp(self):
-        self.intent = parse_research_intent(FIXTURE["natural_language_queries"][0])
+        self.intent = parse_research_intent("domain: neuropharmacology ketamine depression mechanism")
         self.search = build_literature_search_plan(self.intent, candidate_papers=FIXTURE["candidate_papers"])
         self.required = build_required_fingerprint_for_intent(self.intent)
 

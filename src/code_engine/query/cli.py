@@ -98,8 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     preferred = root / "configs/normalization/l2_l3_ontology_rules.json"
-    legacy = root / "config/schemas/l2_l3_ontology_rules.json"
-    query = parse_research_query(args.query, ontology_config_path=preferred if preferred.exists() else legacy)
+    query = parse_research_query(args.query, ontology_config_path=preferred)
     if args.mode == "parse":
         print(query.model_dump_json(indent=2))
         return 0

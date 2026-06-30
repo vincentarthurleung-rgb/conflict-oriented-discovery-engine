@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 ALLOWED_STATUSES = {
     "persistent_conflict", "emerging_conflict", "conflict_with_later_explanation_evidence",
     "recent_consensus_signal", "context_partition_supported", "stale_unresolved_conflict",

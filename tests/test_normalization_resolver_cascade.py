@@ -97,8 +97,9 @@ class NormalizationResolverCascadeTests(unittest.TestCase):
 
     def test_explicit_registry_fallback_is_audited(self):
         registry = LocalBiomedicalRegistry("definitely_missing_registry.json", allow_fallback=True)
-        self.assertIn("registry_missing_explicit_pilot_fixture_fallback_used", registry.warnings)
-        self.assertEqual(ResolverCascade(registry).resolve_entity("ketamine").canonical_id, "CHEM:KETAMINE")
+        self.assertIn("requested_registry_missing_domain_neutral_default_used", registry.warnings)
+        self.assertEqual(registry.entities, [])
+        self.assertEqual(ResolverCascade(registry).resolve_entity("ketamine").canonical_id, "")
 
     def test_lexical_receptor_and_greek_normalization(self):
         self.assertEqual(normalize_lexical_surface("NMDAR").normalized_surface, "nmda receptor")

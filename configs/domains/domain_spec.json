@@ -1,12 +1,9 @@
 {
-  "domain_name": "Ketamine antidepressant response",
-  "generation_mode": "curated_seed",
-  "core_entities": ["KETAMINE", "ANTIDEPRESSANT RESPONSE", "GLUTAMATE", "NMDA", "AMPA", "MTOR", "BDNF", "GRIA1", "GRIN2B"],
-  "relation_vocabulary": ["activates", "inhibits", "upregulates", "downregulates", "increases", "decreases", "promotes", "suppresses"],
-  "context_axes": ["treatment_duration", "oxygen_condition", "species", "cell_type", "brain_region", "dose"],
-  "suggested_search_queries": [
-    "ketamine antidepressant glutamate NMDA AMPA mTOR",
-    "ketamine BDNF synaptic plasticity antidepressant"
-  ],
-  "validation_resources": ["curated_omics_index", "LINCS", "GEO", "DrugBank", "ChEMBL"]
+  "domain_name": "General biomedical discovery",
+  "generation_mode": "domain_neutral_default",
+  "core_entities": ["COMPOUND", "GENE", "PROTEIN", "PATHWAY", "PHENOTYPE"],
+  "relation_vocabulary": ["activates", "inhibits", "upregulates", "downregulates", "increases", "decreases", "binds", "associates_with"],
+  "context_axes": ["treatment_duration", "species", "cell_type", "tissue", "dose", "assay_or_readout"],
+  "suggested_search_queries": [],
+  "validation_resources": ["PubMed", "ChEMBL", "Reactome", "UniProt"]
 }

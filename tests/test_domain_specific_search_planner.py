@@ -1,4 +1,6 @@
 import unittest
+import json
+from pathlib import Path
 
 from code_engine.query.intent import parse_research_intent
 from code_engine.query.search_planner import build_literature_search_plan
@@ -6,13 +8,14 @@ from code_engine.query.seed_triples import SeedResearchTriple
 
 
 class DomainSpecificSearchPlannerTests(unittest.TestCase):
-    def query_text(self, text):
+    def query_text(self, text, expansions=None):
         intent = parse_research_intent(text)
-        plan = build_literature_search_plan(intent)
+        plan = build_literature_search_plan(intent, explicit_profile_expansions=expansions)
         return plan, " ".join(item.query_string for item in plan.pubmed_queries).casefold()
 
     def test_domain_templates(self):
-        neuro, neuro_text = self.query_text("ketamine depression mechanism")
+        profile = json.loads((Path(__file__).parents[1] / "configs/pilots/ketamine.json").read_text())
+        neuro, neuro_text = self.query_text("domain: neuropharmacology ketamine depression mechanism", profile["search_expansions"])
         self.assertEqual(neuro.domain_id, "neuropharmacology")
         self.assertIn("bdnf", neuro_text)
         clinical, clinical_text = self.query_text("esketamine treatment-resistant depression clinical efficacy")

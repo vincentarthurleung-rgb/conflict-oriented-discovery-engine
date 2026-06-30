@@ -23,9 +23,9 @@ The repository remains a research MVP, not a production-ready package. Legacy
 
 `code_engine.schemas` defines stable Pydantic objects for documents, triples, normalized entities, conflict edges, context mentions, context attribution, candidate hypotheses, validation results, and report items.
 
-`code_engine.config` prevents silent data fallback. `configs/` is preferred;
-legacy `config/schemas/` resolution is audited. Missing content or sections still
-raise unless fallback is explicitly enabled. Old config modules are wrappers.
+`code_engine.config` prevents silent data fallback. `configs/` is the single
+on-disk configuration root. Missing content or sections raise unless an
+in-memory fallback is explicitly enabled. Old Python config modules are wrappers.
 
 `src/pipelines/stage5_shannon_matrix.py` is now an orchestrator. It writes legacy-compatible `data/processed/l3/integrated_shannon_graph.json` and new audit outputs:
 

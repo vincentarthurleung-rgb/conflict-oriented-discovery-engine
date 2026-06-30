@@ -100,10 +100,10 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                    entity_resolution_policy: dict | None = None) -> list[dict[str, Any]]:
     """Normalize progressive claims while preserving evidence scope."""
 
-    from code_engine.normalization.registry import LocalBiomedicalRegistry, PILOT_REGISTRY_PATH
+    from code_engine.normalization.registry import LocalBiomedicalRegistry
     from code_engine.normalization.resolver import ResolverCascade
 
-    registry_path = Path(entity_registry_path) if entity_registry_path else (PILOT_REGISTRY_PATH if profile.get("domain_id") == "neuropharmacology" else None)
+    registry_path = Path(entity_registry_path) if entity_registry_path else None
     try:
         registry = LocalBiomedicalRegistry(registry_path) if registry_path else None
     except FileNotFoundError:
@@ -155,9 +155,20 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
 
 def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
                     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
-                    semantic_llm_client: Any | None = None, **_: Any) -> StepResult:
+                    semantic_llm_client: Any | None = None,
+                    pilot_domain_profile: str | None = None, **_: Any) -> StepResult:
     intake = parse_research_intake(query, use_api=bool(api and semantic_llm_client is not None), execute=execute, llm_client=semantic_llm_client)
-    profile = default_domain_router().get_or_default(intake.research_intent.domain_id)
+    profile = default_domain_router().get_or_default(pilot_domain_profile or intake.research_intent.domain_id)
+    if pilot_domain_profile:
+        intent = intake.research_intent
+        intent.selected_domain = profile.domain_id
+        intent.domain_id = profile.domain_id
+        intent.subdomain_id = profile.subdomain_id
+        intent.domain_profile_id = profile.profile_id
+        intent.prompt_profile_id = profile.prompt_profile_id
+        intent.entity_registry_profile = profile.entity_registry_profile
+        intent.validator_profile_id = profile.validator_profile_id
+        intent.domain_warnings = list(dict.fromkeys([*intent.domain_warnings, "explicit_pilot_domain_profile_applied"]))
     intake_path = _write(run_dir, "intake.json", intake)
     profile_path = _write(run_dir, "domain_profile.json", profile.to_dict())
     summary = {
@@ -182,7 +193,8 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
     return StepResult(status="blocked" if blocked else "completed", summary=summary, artifacts={"intake": intake_path, "domain_profile": profile_path}, counts={"seed_triple_count": len(intake.seed_triples)}, warnings=warnings, api_calls_made=intake.api_calls_made, skipped_reason="uncertain_semantic_intake" if blocked else None)
 
 
-def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int | None, **_: Any) -> StepResult:
+def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int | None,
+                    pilot_search_expansions: list[str] | None = None, **_: Any) -> StepResult:
     intake_data = _read(run_dir, "intake.json")
     profile_data = _read(run_dir, "domain_profile.json")
     if not intake_data or not profile_data:
@@ -195,7 +207,11 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
         if key in profile_data:
             profile_data[key] = tuple(profile_data[key])
     profile = DomainProfile(**profile_data)
-    plan = build_literature_search_plan(intake.research_intent, seed_triples=intake.seed_triples, domain_profile=profile, use_llm=False, semantic_intake=intake.semantic_intake)
+    plan = build_literature_search_plan(
+        intake.research_intent, seed_triples=intake.seed_triples, domain_profile=profile,
+        use_llm=False, semantic_intake=intake.semantic_intake,
+        explicit_profile_expansions=pilot_search_expansions,
+    )
     if max_papers is not None:
         plan.max_total_results = max_papers
         for query in plan.pubmed_queries + plan.pmc_queries:
@@ -259,16 +275,16 @@ def run_payload_step(
         corpus = Path(global_corpus_dir) if global_corpus_dir else Path(repository_root or Path.cwd()) / "data/corpus"
         registry = PaperRegistry.load(corpus / "paper_registry", allow_title_hash_merge=allow_title_hash_paper_merge)
         papers, seen = [], set()
-        for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
-            for paper in acquisition.get(field, []):
+        for collection_name in ("candidate_papers", "reused_papers", "downloaded_papers"):
+            for paper in acquisition.get(collection_name, []):
                 identity = str(paper.get("doi") or paper.get("pmid") or paper.get("pmcid") or paper.get("paper_id") or paper.get("title") or "")
                 if identity and identity not in seen:
                     seen.add(identity); papers.append(dict(paper))
         state_path = run_dir / "run_state.json"
         run_id = json.loads(state_path.read_text(encoding="utf-8")).get("run_id", run_dir.name) if state_path.exists() else run_dir.name
-        manifest, dedup, by_original = build_run_paper_manifest(papers, registry, str(run_id), query, artifacts)
-        for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
-            acquisition[field] = [{**paper, **{key: value for key, value in by_original.get(str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or ""), {}).items() if key not in {"run_id", "query", "warnings"}}} for paper in acquisition.get(field, [])]
+        _manifest, dedup, by_original = build_run_paper_manifest(papers, registry, str(run_id), query, artifacts)
+        for collection_name in ("candidate_papers", "reused_papers", "downloaded_papers"):
+            acquisition[collection_name] = [{**paper, **{key: value for key, value in by_original.get(str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or ""), {}).items() if key not in {"run_id", "query", "warnings"}}} for paper in acquisition.get(collection_name, [])]
         _write(run_dir, "acquisition_report.json", acquisition)
         if update_global_corpus:
             registry.save()
@@ -298,8 +314,8 @@ def run_abstract_l1_step(
     acquisition = _read(run_dir, "acquisition_report.json", {})
     papers = []
     seen = set()
-    for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
-        for paper in acquisition.get(field, []):
+    for collection_name in ("candidate_papers", "reused_papers", "downloaded_papers"):
+        for paper in acquisition.get(collection_name, []):
             paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
             if paper_id and paper_id not in seen:
                 seen.add(paper_id)
@@ -386,7 +402,8 @@ def run_abstract_l1_step(
 def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                          entity_registry_path: str | Path | None = None, execute: bool = False,
                          network: bool = False, api: bool = False, entity_network_lookup: bool = False,
-                         entity_llm_proposer: bool = False, entity_resolution_policy=None, **_: Any) -> StepResult:
+                         entity_llm_proposer: bool = False, entity_resolution_policy=None,
+                         pilot_terms: list[str] | None = None, **_: Any) -> StepResult:
     if l1_mode == "legacy":
         summary = {"normalized_observation_count": 0, "reason": "legacy_l1_mode"}
         path = _write(run_dir, "l2_abstract_summary.json", summary)
@@ -406,8 +423,8 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "source_scope": "abstract",
     }
     summary_path = _write(run_dir, "l2_abstract_summary.json", summary)
-    pilot_terms = {"ketamine", "esketamine", "arketamine", "norketamine", "hydroxynorketamine", "bdnf", "mtor"}
-    pilot_mentions = sum(str(item.get("subject_raw") or "").casefold() in pilot_terms or str(item.get("object_raw") or "").casefold() in pilot_terms for item in claims)
+    active_pilot_terms = {item.casefold() for item in (pilot_terms or [])}
+    pilot_mentions = sum(str(item.get("subject_raw") or "").casefold() in active_pilot_terms or str(item.get("object_raw") or "").casefold() in active_pilot_terms for item in claims)
     low_pilot_coverage = bool(pilot_mentions and summary["high_confidence_observation_count"] < max(1, pilot_mentions // 2))
     return StepResult(
         status="completed" if observations else "planned", summary=summary,
@@ -496,8 +513,8 @@ def run_fulltext_l1_step(
     candidates = {str(item.get("candidate_id")): item for item in _read_jsonl(run_dir / "artifacts" / "abstract_conflict_candidates.jsonl")}
     acquisition = _read(run_dir, "acquisition_report.json", {})
     papers = {}
-    for field in ("candidate_papers", "reused_papers", "downloaded_papers"):
-        for paper in acquisition.get(field, []):
+    for collection_name in ("candidate_papers", "reused_papers", "downloaded_papers"):
+        for paper in acquisition.get(collection_name, []):
             paper_id = str(paper.get("paper_id") or paper.get("pmcid") or paper.get("pmid") or "")
             if paper_id:
                 papers[paper_id] = paper

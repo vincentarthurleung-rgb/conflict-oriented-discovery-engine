@@ -10,7 +10,7 @@ from code_engine.validation.planner import build_validation_plan
 
 class DomainProfilePropagationTests(unittest.TestCase):
     def test_profile_reaches_each_adaptive_boundary(self):
-        intent = parse_research_intent("ketamine depression mechanism")
+        intent = parse_research_intent("domain: neuropharmacology ketamine depression mechanism")
         profile = default_domain_router().resolve(intent.domain_id)
         search = build_literature_search_plan(intent, domain_profile=profile)
         claim = L1ExtractedClaim(

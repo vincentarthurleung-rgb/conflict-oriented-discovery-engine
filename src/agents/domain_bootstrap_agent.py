@@ -12,14 +12,11 @@ import os
 import time
 
 
-OUTPUT_PATH = "config/schemas/domain_spec.json"
+OUTPUT_PATH = "configs/generated/domain_spec.generated.json"
 
 
 def build_domain_spec(topic: str) -> dict:
-    topic_lower = topic.lower()
-    core = ["KETAMINE", "ANTIDEPRESSANT RESPONSE", "GLUTAMATE", "NMDA", "AMPA", "MTOR", "BDNF"]
-    if "ketamine" not in topic_lower:
-        core = [topic.upper()]
+    core = [topic.upper()]
     return {
         "domain_name": topic,
         "generation_mode": "template_fallback",
@@ -34,7 +31,7 @@ def build_domain_spec(topic: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate domain_spec.json from a topic.")
-    parser.add_argument("topic", nargs="?", default="Ketamine antidepressant response")
+    parser.add_argument("topic", help="Explicit domain topic; no default pilot is selected")
     parser.add_argument("--output", default=OUTPUT_PATH)
     args = parser.parse_args()
     os.makedirs(os.path.dirname(args.output), exist_ok=True)

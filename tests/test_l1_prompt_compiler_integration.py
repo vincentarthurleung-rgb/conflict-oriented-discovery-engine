@@ -4,16 +4,20 @@ from code_engine.extraction.l1_extractor import build_l1_dry_run_plan
 
 
 class L1PromptCompilerIntegrationTests(unittest.TestCase):
-    def test_neuropharmacology_selected_for_ketamine_depression(self):
+    def test_neuropharmacology_selected_explicitly(self):
         plan = build_l1_dry_run_plan(
             "Ketamine reduced depression-like behavior in mice.",
-            auto_domain=True,
+            domain="neuropharmacology",
             cache_path="definitely_missing_cache.json",
         )
         self.assertEqual(plan["domain_id"], "neuropharmacology")
         self.assertEqual(plan["prompt_profile_id"], "neuropharmacology_l1_v2")
         self.assertIn("behavioral_assay", plan["context_slots"])
         self.assertIn("oxygen_condition", plan["context_slots"])
+
+    def test_ketamine_text_does_not_select_neuropharmacology_implicitly(self):
+        plan = build_l1_dry_run_plan("Ketamine reduced depression-like behavior.", auto_domain=True, cache_path="missing.json")
+        self.assertEqual(plan["domain_id"], "general_biomedical")
 
     def test_general_biomedical_is_default(self):
         plan = build_l1_dry_run_plan("A generic biomedical statement.", cache_path="missing.json")

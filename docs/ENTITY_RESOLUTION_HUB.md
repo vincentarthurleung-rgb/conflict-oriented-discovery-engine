@@ -11,7 +11,7 @@ local curated anchors
 → auditable NormalizationDecision
 ```
 
-The former ketamine-depression dictionary is stored only as `configs/normalization/fixtures/ketamine_pilot_registry.json`. It is never loaded by the production default. The old path is a zero-entity compatibility stub that points to EntityResolutionHub.
+The former ketamine-depression dictionary is stored only as `configs/normalization/fixtures/ketamine_pilot_registry.json`. It is never loaded by the production default. The domain-neutral default registry is `configs/normalization/entity_registry.json`.
 
 Curated registries are explicit high-confidence anchor sources, not comprehensive biomedical dictionaries. PubChem, ChEMBL, MyGene, and UniProt providers expose guarded candidate interfaces. This patch does not configure or call a real service by default. Network lookup requires all of `--execute --network --entity-network-lookup`.
 

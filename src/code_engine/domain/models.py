@@ -61,7 +61,7 @@ def default_domain_profiles() -> list[DomainProfile]:
             key_entity_types=("compound", "gene", "protein", "phenotype"),
         ),
         DomainProfile(
-            "neuropharmacology", aliases=("ketamine", "depression"), prompt_id="neuropharmacology_l1_v2",
+            "neuropharmacology", aliases=("neuropharmacology", "central_nervous_system_pharmacology"), prompt_id="neuropharmacology_l1_v2",
             subdomain_id="antidepressant_mechanism", display_name="Neuropharmacology",
             search_profile_id="neuropharmacology_search", prompt_profile_id="neuropharmacology_l1_v2",
             entity_registry_profile="biomedical_entity_resolution_hub", resolver_policy_id="neuropharmacology_resolver_v2",

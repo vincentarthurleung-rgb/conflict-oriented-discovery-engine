@@ -1,4 +1,5 @@
 {
+  "fixture_profile": "ketamine",
   "perturbation_registry": {
     "BDNF": {
       "registry_anchor_gene": "BDNF",

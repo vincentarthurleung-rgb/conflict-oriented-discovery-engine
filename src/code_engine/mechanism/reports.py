@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from code_engine.mechanism.models import MechanismBuildReport, MechanismGraph
@@ -22,7 +21,6 @@ def mechanism_graph_summary(graph: MechanismGraph) -> dict:
 def render_mechanism_graph_report(graph: MechanismGraph, report: str | Path) -> Path:
     target = Path(report)
     target.parent.mkdir(parents=True, exist_ok=True)
-    summary = mechanism_graph_summary(graph)
     lines = ["# MechanismGraph Report", "", f"- Graph ID: `{graph.graph_id}`", f"- Nodes: {len(graph.nodes)}", f"- Edges: {len(graph.edges)}", f"- Paths: {len(graph.paths)}", f"- Conflict annotations: {len(graph.conflict_annotations)}", "", "## Top mechanism edges", ""]
     lines.extend(f"- `{edge.edge_id}`: {edge.subject_name} → {edge.object_name}; {edge.relation_type}; support={edge.support_count}" for edge in sorted(graph.edges, key=lambda item: (-item.support_count, item.edge_id))[:10])
     lines += ["", "## Conflicted mechanism edges", ""]

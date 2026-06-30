@@ -13,7 +13,7 @@ If negated is true, set relation_sign to the opposite of the verb's normal polar
     {
       "cell_line_or_type": "",   // e.g., "A549", "HeLa", "primary neuron", "T cell"
       "species": "",             // e.g., "human", "mouse", "rat"
-      "treatment": "",          // e.g., "cisplatin", "EGF", "siRNA", "ketamine"
+      "treatment": "",          // e.g., "cisplatin", "EGF", "siRNA", "dexamethasone"
       "localization": "",       // e.g., "nuclear", "cytoplasmic", "membrane"
       "time": "",               // e.g., "24h", "48 hours", "early", "late"
       "genotype": ""            // e.g., "KRAS-mutant", "p53-/-", "wild-type"

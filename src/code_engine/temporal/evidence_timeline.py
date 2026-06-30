@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from collections import Counter
 from typing import Any
 
 from .hypothesis_comparison import compare_hypotheses, hypothesis_matches_conflict

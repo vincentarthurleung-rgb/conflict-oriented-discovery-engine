@@ -33,17 +33,19 @@ def build_runtime_provenance(
     allow_coverage_short_circuit: bool, merge_knowledge_store: bool,
     update_global_knowledge_store: bool, execute: bool,
     legacy_modules_before: Iterable[str] = (),
+    pilot_profile: str | None = None, pilot_terms: Iterable[str] = (),
+    domain_specific_defaults_used: Iterable[str] = (),
 ) -> dict[str, Any]:
     import code_engine
-    from code_engine.normalization.registry import PILOT_REGISTRY_PATH
+    from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
 
     root = Path(repository_root).resolve()
     actual = Path(code_engine.__file__).resolve()
     expected = (root / "src/code_engine/__init__.py").resolve()
     shadowing = actual != expected
-    selected_registry = Path(entity_registry_path).resolve() if entity_registry_path else ((root / PILOT_REGISTRY_PATH).resolve() if automatic_pilot_registry else None)
-    config_files = [str(selected_registry)] if selected_registry else []
-    legacy_config = any("/config/schemas/" in value.replace("\\", "/") for value in config_files)
+    selected_registry = Path(entity_registry_path).resolve() if entity_registry_path else (root / DEFAULT_REGISTRY_PATH).resolve()
+    config_files = [str(selected_registry)]
+    legacy_config = False
     before = set(legacy_modules_before)
     legacy_imported = sorted(set(imported_legacy_modules()) - before)
     artifacts = Path(run_dir).resolve() / "artifacts"
@@ -56,7 +58,7 @@ def build_runtime_provenance(
     provenance = {
         "code_engine_import_path": str(actual), "expected_code_engine_path": str(expected),
         "python_executable": sys.executable, "sys_path_head": list(sys.path[:10]),
-        "config_files_used": config_files, "entity_registry_path": str(selected_registry) if selected_registry else None,
+        "config_files_used": config_files, "entity_registry_path": str(selected_registry),
         "run_dir": str(Path(run_dir).resolve()), "artifacts_dir": str(artifacts),
         "global_store_read": global_read, "global_store_write": bool(update_global_knowledge_store),
         "global_store_read_reason": "post_reasoning_merge_plan" if merge_knowledge_store else ("explicit_coverage_precheck" if coverage_precheck else None),
@@ -68,14 +70,18 @@ def build_runtime_provenance(
         "legacy_config_used": legacy_config, "historical_runs_read": False,
         "resume_explicit": bool(resume_explicit), "current_run_only": True,
         "import_shadowing_risk": shadowing,
+        "pilot_profile": pilot_profile,
+        "pilot_terms_used": list(dict.fromkeys(str(item) for item in pilot_terms)),
+        "domain_specific_defaults_used": list(dict.fromkeys(str(item) for item in domain_specific_defaults_used)),
+        "ketamine_specific_defaults_used": bool(automatic_pilot_registry),
         "warnings": [],
     }
     if shadowing:
         provenance["warnings"].append("top_level_code_engine_package_shadows_src_package")
-    if legacy_config:
-        provenance["warnings"].append("legacy_config_path_used")
     if legacy_artifacts:
         provenance["warnings"].append("legacy_artifact_fallback_read_explicitly_reported")
+    if automatic_pilot_registry:
+        provenance["warnings"].append("automatic_query_selected_pilot_is_forbidden")
     if provenance["entity_cache_read"]:
         provenance["warnings"].append("entity_cache_read_with_provenance")
     if provenance["l1_cache_read"]:
@@ -89,6 +95,7 @@ def contamination_check(provenance: dict[str, Any]) -> dict[str, Any]:
     if provenance.get("legacy_modules_imported"): blockers.append("legacy_pipeline_used")
     if provenance.get("historical_runs_read") and not provenance.get("resume_explicit"): blockers.append("historical_runs_read_without_explicit_resume")
     if provenance.get("global_evidence_injected_before_reasoning"): blockers.append("global_evidence_injected_before_reasoning")
+    if provenance.get("ketamine_specific_defaults_used"): blockers.append("ketamine_specific_defaults_used")
     warnings = list(provenance.get("warnings", []))
     return {
         "status": "blocked" if blockers else ("warning" if warnings else "pass"),

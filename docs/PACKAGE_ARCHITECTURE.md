@@ -4,15 +4,14 @@
 
 The primary Python package is `code_engine`, implemented under
 `src/code_engine/`. New application code should import `code_engine.*`.
-`pyproject.toml` defines a standard `src`-layout package. The small root-level
-`code_engine/__init__.py` is only a source-checkout bootstrap so package CLI
-commands work before an editable install; it contains no domain implementation.
+`pyproject.toml` defines a standard `src`-layout package. Editable installs load
+`code_engine` directly from `src/code_engine/`.
 
 The package boundaries are:
 
 - `common`: paths, JSON I/O, hashing, logging, and non-scientific constants
 - `schemas`: stable data contracts grouped by responsibility
-- `config`: strict section validation and audited path compatibility
+- `config`: strict section validation for canonical configuration files
 - `domain`: future domain routing and prompt selection contracts
 - `acquisition` and `preprocessing`: literature and payload boundaries
 - `extraction`: API-dependent extraction adapters and LLM cache metadata
@@ -41,11 +40,9 @@ python -m code_engine.cli.visualize
 
 ## Configuration Boundary
 
-`configs/` is the preferred configuration root. It separates domain profiles,
-prompts, normalization rules, validator registries, and generated proposals.
-`config/schemas/` remains a legacy path. When a preferred config is absent and
-the loader resolves a legacy equivalent, it writes a `legacy_config_path` event
-to `reports/config_fallback_audit.json`.
+`configs/` is the single configuration root. It separates domain profiles,
+prompts, normalization rules, validator registries, pilot fixtures, and
+generated proposals. Missing files never trigger a search in a secondary tree.
 
 ## Runtime Boundary
 

@@ -17,14 +17,6 @@ from code_engine.query.models import ResearchQuery
 
 
 DEFAULT_ONTOLOGY_CONFIG = Path("configs/normalization/l2_l3_ontology_rules.json")
-CHINESE_ALIASES = {
-    "氯胺酮": "ketamine",
-    "抑郁症": "depression",
-    "脑源性神经营养因子": "BDNF",
-    "雷帕霉素靶蛋白": "mTOR",
-}
-
-
 def _load_synonyms(config_path: str | Path | None) -> Dict[str, str]:
     path = Path(config_path or DEFAULT_ONTOLOGY_CONFIG)
     if not path.exists():
@@ -36,9 +28,22 @@ def _load_synonyms(config_path: str | Path | None) -> Dict[str, str]:
     return {str(k).lower(): str(v) for k, v in payload.get("synonym_map", {}).items()}
 
 
-def _translate_chinese(text: str) -> str:
+def _load_entity_aliases(config_path: str | Path | None) -> Dict[str, str]:
+    if not config_path:
+        return {}
+    path = Path(config_path)
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {str(key): str(value) for key, value in payload.get("entity_aliases", {}).items()}
+
+
+def _translate_aliases(text: str, aliases: Dict[str, str]) -> str:
     translated = text
-    for source, target in CHINESE_ALIASES.items():
+    for source, target in aliases.items():
         translated = translated.replace(source, target)
     return translated
 
@@ -68,10 +73,6 @@ def _entity_type(value: str) -> str:
     upper = value.upper()
     if not upper:
         return "unknown"
-    if upper in {"KETAMINE", "ESKETAMINE"}:
-        return "compound"
-    if upper in {"DEPRESSION", "MDD", "ANTIDEPRESSANT RESPONSE"}:
-        return "disease_or_phenotype"
     if re.fullmatch(r"[A-Z][A-Z0-9-]{1,12}", upper):
         return "gene_or_protein"
     return "biomedical_entity"
@@ -81,12 +82,13 @@ def parse_research_query(
     raw_query: str,
     *,
     ontology_config_path: str | Path | None = None,
+    entity_aliases_path: str | Path | None = None,
 ) -> ResearchQuery:
     """Parse and normalize a query without network or LLM access."""
 
     raw = str(raw_query or "").strip()
     language = "zh" if re.search(r"[\u4e00-\u9fff]", raw) else "en"
-    translated = _translate_chinese(raw)
+    translated = _translate_aliases(raw, _load_entity_aliases(entity_aliases_path))
     subject_raw, relation_raw, object_raw, query_type = _split_query(translated)
     synonyms = _load_synonyms(ontology_config_path)
     subject = clean_semantic_token(subject_raw, synonyms)

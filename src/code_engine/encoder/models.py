@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 
 from code_engine.schemas.models import CODEBaseModel
 

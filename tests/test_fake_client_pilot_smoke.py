@@ -27,7 +27,7 @@ class FakeClientPilotSmokeTests(unittest.TestCase):
             for name in ("intake","search","acquisition","payload"):
                 state.steps[name].status="completed"
             save_run_state(state,root)
-            result=run_workflow(resume=root,until="report",execute=True,api=True,network=False,allow_uncertain_intake=True,l1_mode="abstract_screening",l1_llm_client=FakeClient(),global_corpus_dir=root/"corpus",merge_knowledge_store=False)
+            result=run_workflow(resume=root,until="report",execute=True,api=True,network=False,allow_uncertain_intake=True,l1_mode="abstract_screening",l1_llm_client=FakeClient(),global_corpus_dir=root/"corpus",merge_knowledge_store=False,pilot_profile="ketamine")
             self.assertGreater(result.steps["evidence_graph_core"].summary["graph_conflict_candidate_count"],0)
             self.assertGreater(result.steps["hypothesis"].summary["hypotheses_from_graph_conflicts"],0)
             self.assertGreater(result.steps["conflict_timeline"].summary["timelines_from_graph_conflicts"],0)

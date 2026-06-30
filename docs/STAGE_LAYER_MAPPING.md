@@ -62,7 +62,7 @@ These fields may still appear in old artifacts and compatibility outputs:
 3. `docs/STAGE_LAYER_MAPPING.md`
 4. `docs/ARTIFACT_POLICY.md`
 5. `docs/PACKAGE_ARCHITECTURE.md`
-6. `src/code_engine/schemas/`, `config/`, and `common/`
+6. `src/code_engine/schemas/`, `src/code_engine/config/`, and `common/`
 7. `src/code_engine/normalization/` and `graph/`
 8. `src/code_engine/hypothesis/` and `validation/`
 9. `src/code_engine/query/`

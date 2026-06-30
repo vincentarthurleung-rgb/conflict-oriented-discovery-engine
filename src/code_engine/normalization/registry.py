@@ -12,7 +12,7 @@ from code_engine.normalization.lexical import normalize_lexical_surface
 from code_engine.normalization.models import EntityRelation, NormalizationCandidate
 
 
-DEFAULT_REGISTRY_PATH = Path("configs/normalization/entity_registry.json")  # compatibility stub only
+DEFAULT_REGISTRY_PATH = Path("configs/normalization/entity_registry.json")
 PILOT_REGISTRY_PATH = Path("configs/normalization/fixtures/ketamine_pilot_registry.json")
 
 
@@ -24,15 +24,17 @@ class LocalBiomedicalRegistry:
             active_path = requested
             payload = json.loads(active_path.read_text(encoding="utf-8"))
         elif allow_fallback:
-            active_path = PILOT_REGISTRY_PATH
+            active_path = DEFAULT_REGISTRY_PATH
+            if not active_path.exists():
+                raise FileNotFoundError(f"Default biomedical entity registry missing: {active_path}")
             payload = json.loads(active_path.read_text(encoding="utf-8"))
-            self.warnings.append("registry_missing_explicit_pilot_fixture_fallback_used")
+            self.warnings.append("requested_registry_missing_domain_neutral_default_used")
         else:
             raise FileNotFoundError(f"Biomedical entity registry missing: {requested}")
         self.path = active_path
         self.payload = payload
-        if payload.get("do_not_use_as_production_general_registry") and not payload.get("entities"):
-            self.warnings.append("legacy_registry_stub_no_curated_entities")
+        if not payload.get("entities"):
+            self.warnings.append("domain_neutral_registry_has_no_curated_entities")
         else:
             self.warnings.extend(validate_entity_registry(payload))
         self.entities = list(payload.get("entities", []))

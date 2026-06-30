@@ -70,7 +70,6 @@ def run_batch_discovery(
     duplicate_hits = cache_hits = cache_misses = 0
     prompt_corpus_stats = []
     if paper_registry_enabled:
-        from code_engine.corpus.corpus_cache import compute_text_hash
         from code_engine.corpus.io import atomic_write_jsonl
         from code_engine.corpus.l1_task_cache import L1TaskSignature, build_l1_task_cache_key, lookup_l1_task_cache
         from code_engine.corpus.paper_registry import PaperRegistry

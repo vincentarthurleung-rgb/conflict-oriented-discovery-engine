@@ -4,8 +4,8 @@ Universal Release 7.0.0 (Data Engineering - Memory Protection Edition)
 
 [Release 7.0.0 Principles]:
 1. Memory defense: uses chunked iterator streaming when a large matrix is available.
-2. Targeted orthogonal filtering: maps text-mined causal endpoints (BDNF, GRIA1, GLUN2B)
-   to their real-world shRNA/small-molecule perturbation z-scores.
+2. Targeted orthogonal filtering uses only targets explicitly supplied through
+   the CODE_OMICS_TARGETS environment variable.
 
 This script does not certify full LINCS validation. If the raw matrix is absent,
 it writes a curated/demo registry that must be reported as limited coverage.
@@ -19,12 +19,12 @@ from collections import defaultdict
 
 # Paths
 RAW_LINCS_CSV_PATH = "./data/external/GSE92742_Broad_LINCS_Level5_COMPZ_sub_matrix.txt"
-OUTPUT_INDEX_PATH = "./config/schemas/l5_lincs_index.json"
+OUTPUT_INDEX_PATH = "./configs/validators/curated_omics_registry.json"
 
 os.makedirs(os.path.dirname(OUTPUT_INDEX_PATH), exist_ok=True)
 
-# Core target genes extracted from L3/L4 analysis
-TARGET_GENE_FLIGHT_LOG = ["BDNF", "GRIA1", "GLUN2B", "DLG4", "CREB1"]
+# Explicit target genes supplied by the caller; the default is domain-neutral.
+TARGET_GENE_FLIGHT_LOG = [item.strip().upper() for item in os.getenv("CODE_OMICS_TARGETS", "").split(",") if item.strip()]
 
 def _registry_entry(anchor_gene, cell_lines):
     return {
@@ -46,19 +46,7 @@ def build_production_lincs_index():
         print("[Parser Notice] Raw data file not found on disk.")
         print("Writing curated/demo registry because the raw matrix is absent.")
         
-        simulated_registry = {
-            "perturbation_registry": {
-                "BDNF": {
-                    **_registry_entry("BDNF", {"PC3": {"z_score": 0.02}, "MCF7": {"z_score": -0.04}, "A549": {"z_score": 0.11}, "NEURON_CL": {"z_score": 0.05}})
-                },
-                "ANTIDEPRESSANT RESPONSE": {
-                    **_registry_entry("GRIA1", {"PC3": {"z_score": 2.94}, "MCF7": {"z_score": 1.95}, "A549": {"z_score": 0.12}, "NEURON_CL": {"z_score": 3.42}})
-                },
-                "GLUN2B": {
-                    **_registry_entry("GRIN2B", {"PC3": {"z_score": -1.82}, "MCF7": {"z_score": -0.05}, "A549": {"z_score": 0.01}, "NEURON_CL": {"z_score": -2.65}})
-                }
-            }
-        }
+        simulated_registry = {"perturbation_registry": {}}
         with open(OUTPUT_INDEX_PATH, "w", encoding="utf-8") as f:
             json.dump(simulated_registry, f, ensure_ascii=False, indent=2)
         print(f"Index compiled and saved to: {OUTPUT_INDEX_PATH}\n")
@@ -78,8 +66,8 @@ def build_production_lincs_index():
                 cell = str(row.get("cell_id", "UNKNOWN_CL")).upper().strip()
                 z_val = float(row.get("zscore", 0.0))
                 
-                if gene in TARGET_GENE_FLIGHT_LOG or pert in ["KETAMINE"]:
-                    key_entity = pert if pert in ["KETAMINE"] else gene
+                if gene in TARGET_GENE_FLIGHT_LOG:
+                    key_entity = gene
                     
                     if key_entity not in perturbation_registry:
                         perturbation_registry[key_entity] = {

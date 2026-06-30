@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from code_engine.acquisition.manifest import normalized_title_hash
-from code_engine.query.search_planner import LiteratureSearchPlan
+from code_engine.query.search_planner import LiteratureSearchPlan, LiteratureSearchQuery
 
 
 class LiteratureClient(Protocol):
@@ -80,7 +80,7 @@ def execute_acquisition_plan(
     manifest_path = root / "data/metadata/global_manifest.json"
     manifest = _read_manifest(manifest_path)
     papers = manifest.setdefault("papers", {})
-    existing_keys = set()
+    existing_keys: set[str] = set()
     for paper_id, metadata in papers.items():
         existing_keys.update(_dedup_values({
             "paper_id": paper_id,
@@ -88,12 +88,12 @@ def execute_acquisition_plan(
             "pmid": paper_id if str(paper_id).isdigit() else None,
             **metadata,
         }))
-    selected_queries = []
+    selected_queries: list[LiteratureSearchQuery] = []
     if source in {"pmc", "both"}:
         selected_queries.extend(plan.pmc_queries)
     if source in {"pubmed", "both"}:
         selected_queries.extend(plan.pubmed_queries)
-    report = {
+    report: dict[str, Any] = {
         "intent_id": plan.intent_id,
         "execution_mode": "execute_network" if execute and network else "dry_run_no_network",
         "queries": [item.model_dump() for item in selected_queries],
@@ -104,7 +104,7 @@ def execute_acquisition_plan(
         report["warnings"].append("network_disabled_acquisition_plan_only")
     else:
         active_client = client or NCBILiteratureClient()
-        candidates = []
+        candidates: list[dict[str, Any]] = []
         for query in selected_queries:
             if len(candidates) >= max_papers:
                 break

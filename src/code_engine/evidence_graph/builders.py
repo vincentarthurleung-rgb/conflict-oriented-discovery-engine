@@ -365,7 +365,6 @@ def build_merged_evidence_graph_from_run_artifacts(
     status_counts = Counter(item.status for item in candidates)
     hypothesis_summary = load_artifact(source_dir / "hypothesis_summary.json")
     timeline_summary = load_artifact(source_dir / "conflict_evidence_timeline_summary.json")
-    observation_nodes = [item for item in nodes if item.node_type == "observation"]
     evidence_with_span = sum(bool(item.evidence_span or item.evidence_text) for item in evidence_edges)
     evidence_with_year = sum(item.publication_year is not None for item in evidence_edges)
     provenance_count = sum(bool(item.paper_id or item.canonical_paper_id or item.doi) for item in evidence_edges)

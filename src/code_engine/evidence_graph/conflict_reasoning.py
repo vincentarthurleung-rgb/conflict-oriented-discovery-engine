@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
-
 from .bundle_builder import stable_id
 from .models import GraphConflictCandidate, GraphReasoningTrace, RelationEvidenceBundle
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from code_engine.normalization.candidates import EntityCandidate, EntityResolutionResult
+from code_engine.normalization.candidates import EntityResolutionResult
 
 
 class EntityResolutionAuditWriter:

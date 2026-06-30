@@ -1,3 +1,5 @@
+"""PubChem-backed normalization candidate provider metadata."""
+
 from code_engine.normalization.providers.base import ExternalCandidateProvider
 
 

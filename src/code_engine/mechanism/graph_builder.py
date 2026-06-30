@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any
 
 from code_engine.mechanism.edge_builder import build_mechanism_edges_from_observations
 from code_engine.mechanism.models import MechanismEdge, MechanismGraph, MechanismNode

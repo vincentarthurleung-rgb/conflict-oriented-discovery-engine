@@ -1,11 +1,13 @@
 import unittest
+from pathlib import Path
 
 from src.query.parser import parse_research_query
 
 
 class QueryParserTests(unittest.TestCase):
     def test_chinese_entity_pair(self):
-        query = parse_research_query("氯胺酮 - 抑郁症")
+        profile = Path(__file__).parents[1] / "configs/pilots/ketamine.json"
+        query = parse_research_query("氯胺酮 - 抑郁症", entity_aliases_path=profile)
         self.assertEqual(query.normalized_subject, "KETAMINE")
         self.assertEqual(query.normalized_object, "DEPRESSION")
         self.assertEqual(query.language, "zh")

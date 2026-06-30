@@ -39,8 +39,8 @@
       "MUTANT": "\\b(mutant|mutation|tyr\\-1325\\-phe|point mutation|transgenic|tg)\\b"
     },
     "treatment": {
-      "KETAMINE": "\\b(ketamine|subanesthetic ketamine|esketamine|r\\,s\\-ketamine)\\b",
-      "BDNF_INFUSION": "\\b(bdnf|bdnf infusion|brain-derived neurotrophic factor infusion)\\b",
+      "CISPLATIN": "\\b(cisplatin|cisplatin treatment)\\b",
+      "EGF": "\\b(egf|epidermal growth factor)\\b",
       "TRAMADOL": "\\b(tramadol|tramadol pretreatment)\\b",
       "MEMANTINE": "\\b(memantine|high doses of memantine)\\b",
       "SCOPOLAMINE": "\\b(scopolamine)\\b"

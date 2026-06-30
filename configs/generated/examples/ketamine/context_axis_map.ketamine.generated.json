@@ -1,5 +1,5 @@
 {
-  "generation_mode": "deterministic_grouping",
+  "generation_mode": "explicit_ketamine_example_deterministic_grouping",
   "axes": {
     "cell_line_or_type": {
       "glial cells": [

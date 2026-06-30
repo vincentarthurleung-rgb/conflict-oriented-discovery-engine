@@ -9,7 +9,6 @@ These are source-controlled engineering assets:
 - `src/`
 - `scripts/`
 - `tests/`
-- `config/`
 - `configs/`
 - `docs/`
 - `README.md`

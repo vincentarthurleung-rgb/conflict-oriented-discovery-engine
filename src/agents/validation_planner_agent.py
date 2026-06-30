@@ -8,14 +8,14 @@ import os
 
 
 INPUT_PATH = "data/processed/l4/hypothesis_search_results.json"
-OUTPUT_PATH = "config/schemas/validation_plan.generated.json"
+OUTPUT_PATH = "configs/generated/validation_plan.generated.json"
 
 
 def classify_hypothesis(hypothesis: dict) -> str:
-    seed = str(hypothesis.get("seed_pair", "")).upper()
-    if any(token in seed for token in ["BDNF", "GRIA", "GRIN", "GENE", "RECEPTOR", "ANTIDEPRESSANT RESPONSE"]):
+    relation = str(hypothesis.get("relation_family") or hypothesis.get("hypothesis_type") or "").casefold()
+    if relation in {"gene_expression", "drug_gene_expression", "expression_direction"}:
         return "drug-gene expression"
-    if "PATHWAY" in seed or "MTOR" in seed:
+    if "pathway" in relation:
         return "pathway"
     return "unknown"
 

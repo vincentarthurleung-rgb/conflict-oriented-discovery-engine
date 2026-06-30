@@ -1,7 +1,6 @@
 # Preferred Configuration Layout
 
-`configs/` is the package-oriented configuration root. Files under
-`config/schemas/` remain available for legacy stage entrypoints.
+`configs/` is the repository's single configuration root.
 
 - `domains/`: domain profiles
 - `prompts/l1/`: extraction prompts and output contracts
@@ -9,9 +8,10 @@
 - `validators/`: validator routing and curated/demo registries
 - `generated/`: generated configuration proposals requiring review
 
-Falling back from a preferred path to `config/schemas/` is recorded in
-`reports/config_fallback_audit.json`.
+Missing configuration fails explicitly unless a caller opts into an in-memory
+fallback. There is no secondary on-disk configuration tree.
 
-`normalization/entity_registry.json` is a zero-entity compatibility stub, not a
-production registry. The ketamine dictionary is an explicit pilot fixture under
-`normalization/fixtures/`. Production Layer 2 uses EntityResolutionHub providers.
+`normalization/entity_registry.json` is the domain-neutral empty default. Curated
+entities are enabled only through an explicit registry or pilot profile. The
+ketamine dictionary is an explicit pilot fixture under `normalization/fixtures/`.
+Production Layer 2 can also use EntityResolutionHub providers.

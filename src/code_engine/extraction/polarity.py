@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-
 from pydantic import Field
 
 from code_engine.schemas.models import CODEBaseModel

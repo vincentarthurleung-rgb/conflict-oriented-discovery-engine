@@ -49,6 +49,7 @@ def run_workflow(
     semantic_llm_client=None,
     entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
     entity_resolution_policy=None, entity_registry_path: str | Path | None = None,
+    pilot_profile: str | None = None,
     l1_mode: str = "legacy", enable_fulltext_escalation: bool = False,
     fulltext_escalation_trigger: str = "conflict_entropy",
     min_abstract_conflict_entropy: float = 0.65, min_abstract_evidence_count: int = 3,
@@ -95,6 +96,18 @@ def run_workflow(
     if not 0.0 <= semantic_confidence_threshold <= 1.0:
         raise WorkflowConfigurationError("semantic confidence threshold must be between 0 and 1")
     root = _repository_root()
+    from code_engine.config.pilots import load_pilot_profile
+    from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
+    pilot_config = load_pilot_profile(pilot_profile, root) if pilot_profile else {}
+    pilot_terms = list(pilot_config.get("terms") or [])
+    pilot_search_expansions = list(pilot_config.get("search_expansions") or [])
+    pilot_domain_profile = str(pilot_config.get("domain_profile") or "") or None
+    if entity_registry_path is not None:
+        effective_entity_registry_path = Path(entity_registry_path).resolve()
+    elif pilot_config.get("entity_registry_path"):
+        effective_entity_registry_path = (root / str(pilot_config["entity_registry_path"])).resolve()
+    else:
+        effective_entity_registry_path = (root / DEFAULT_REGISTRY_PATH).resolve()
     if resume:
         directory = Path(resume).resolve()
         state = load_run_state(directory)
@@ -192,23 +205,27 @@ def run_workflow(
         "conflict_entropy_threshold": evidence_graph_conflict_entropy_threshold,
         "max_edges": evidence_graph_max_edges, "uses_external_validation_for_reasoning": False,
     }
-    pilot_terms = ("ketamine", "esketamine", "arketamine", "norketamine", "hydroxynorketamine")
-    automatic_pilot_registry = any(term in state.query.casefold() for term in pilot_terms)
-    resolver_configured = bool((entity_registry_path and Path(entity_registry_path).exists()) or automatic_pilot_registry)
+    automatic_pilot_registry = False
+    resolver_configured = effective_entity_registry_path.exists()
+    state.summary["pilot_configuration"] = {
+        "pilot_profile": pilot_profile, "pilot_terms": pilot_terms,
+        "profile_path": pilot_config.get("profile_path"),
+        "entity_registry_path": str(effective_entity_registry_path),
+    }
     blocking_reasons = []
     if execute:
         if not api: blocking_reasons.append("api_not_enabled")
         if not network: blocking_reasons.append("network_not_enabled")
         if l1_mode != "legacy" and l1_llm_client is None: blocking_reasons.append("l1_llm_client_not_configured")
         if not resolver_configured: blocking_reasons.append("progressive_resolver_not_configured")
-        if entity_registry_path and not Path(entity_registry_path).exists(): blocking_reasons.append("entity_registry_path_not_found")
+        if not effective_entity_registry_path.exists(): blocking_reasons.append("entity_registry_path_not_found")
         if not paper_registry_enabled: blocking_reasons.append("paper_registry_disabled")
         if not enable_evidence_graph: blocking_reasons.append("evidence_graph_disabled")
         if not enable_conflict_timeline: blocking_reasons.append("conflict_timeline_disabled")
     readiness = {
         "status": "not_ready" if blocking_reasons else ("ready_with_warnings" if execute else "dry_run_safe"),
         "blocking_reasons": blocking_reasons,
-        "warnings": (["compound_normalization_requires_manual_review"] if automatic_pilot_registry else []),
+        "warnings": (["compound_normalization_requires_manual_review"] if pilot_profile else []),
         "l1_client_configured": l1_llm_client is not None, "resolver_configured": resolver_configured,
         "paper_registry_enabled": paper_registry_enabled, "evidence_graph_enabled": enable_evidence_graph,
         "conflict_timeline_enabled": enable_conflict_timeline, "network_enabled": network,
@@ -217,14 +234,23 @@ def run_workflow(
     (directory / "artifacts").mkdir(parents=True, exist_ok=True)
     runtime_provenance = build_runtime_provenance(
         directory, repository_root=root, resume_explicit=bool(resume),
-        entity_registry_path=entity_registry_path, automatic_pilot_registry=automatic_pilot_registry,
+        entity_registry_path=effective_entity_registry_path, automatic_pilot_registry=False,
         l1_mode=l1_mode, l1_task_cache_enabled=l1_task_cache_enabled,
         update_global_corpus=update_global_corpus, paper_registry_enabled=paper_registry_enabled,
         coverage_precheck=coverage_precheck, allow_coverage_short_circuit=allow_coverage_short_circuit,
         merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
         execute=execute, legacy_modules_before=legacy_modules_before,
+        pilot_profile=pilot_profile, pilot_terms=pilot_terms,
     )
     contamination = contamination_check(runtime_provenance)
+    readiness["domain_decoupling_check"] = {
+        "status": "blocked" if runtime_provenance["ketamine_specific_defaults_used"] else "pass",
+        "ketamine_specific_defaults_used": runtime_provenance["ketamine_specific_defaults_used"],
+        "default_query_is_domain_neutral": True,
+        "default_registry_is_domain_neutral": True,
+        "pilot_profile_explicit": bool(pilot_profile),
+        "warnings": [],
+    }
     readiness["legacy_contamination_check"] = contamination
     readiness["blocking_reasons"] = list(dict.fromkeys([*readiness["blocking_reasons"], *contamination["blocking_reasons"]]))
     if readiness["blocking_reasons"]:
@@ -270,12 +296,13 @@ def run_workflow(
                         record_artifact(state, f"knowledge_merge_{artifact_name}", artifact_path)
                 runtime_provenance = build_runtime_provenance(
                     directory, repository_root=root, resume_explicit=bool(resume),
-                    entity_registry_path=entity_registry_path, automatic_pilot_registry=automatic_pilot_registry,
+                    entity_registry_path=effective_entity_registry_path, automatic_pilot_registry=False,
                     l1_mode=l1_mode, l1_task_cache_enabled=l1_task_cache_enabled,
                     update_global_corpus=update_global_corpus, paper_registry_enabled=paper_registry_enabled,
                     coverage_precheck=coverage_precheck, allow_coverage_short_circuit=allow_coverage_short_circuit,
                     merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
                     execute=execute, legacy_modules_before=legacy_modules_before,
+                    pilot_profile=pilot_profile, pilot_terms=pilot_terms,
                 )
                 contamination = contamination_check(runtime_provenance)
                 readiness["legacy_contamination_check"] = contamination
@@ -301,7 +328,11 @@ def run_workflow(
                     entity_network_lookup=entity_network_lookup,
                     entity_llm_proposer=entity_llm_proposer,
                     entity_resolution_policy=entity_resolution_policy,
-                    entity_registry_path=entity_registry_path,
+                    entity_registry_path=effective_entity_registry_path,
+                    pilot_profile=pilot_profile,
+                    pilot_terms=pilot_terms,
+                    pilot_search_expansions=pilot_search_expansions,
+                    pilot_domain_profile=pilot_domain_profile,
                     l1_mode=l1_mode,
                     enable_fulltext_escalation=enable_fulltext_escalation,
                     fulltext_escalation_trigger=fulltext_escalation_trigger,

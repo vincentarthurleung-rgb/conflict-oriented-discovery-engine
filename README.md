@@ -1,6 +1,6 @@
 # C.O.D.E. v4.0 MVP
 
-C.O.D.E. is an agent-assisted, conflict-oriented scientific discovery system for the current ketamine antidepressant-response corpus. It is designed as:
+C.O.D.E. is an agent-assisted, conflict-oriented scientific discovery system with domain-neutral defaults and explicit pilot profiles. It is designed as:
 
 - Agentic Control Plane: generates configs, validation plans, and critic reports.
 - Deterministic Pipeline Core: performs extraction post-processing, ontology alignment, conflict discovery, context attribution, graph search, validation state assignment, and ranking.
@@ -33,7 +33,7 @@ C.O.D.E. is an agent-assisted, conflict-oriented scientific discovery system for
 - `src.*` legacy namespaces re-export `code_engine.*` implementations.
 - `src/pipelines/stage*.py` retains legacy orchestration and API-dependent stages.
 - `scripts/` contains legacy compatibility entrypoints.
-- `configs/` is preferred; `config/schemas/` remains a legacy config path.
+- `configs/` is the single configuration root.
 - `src/agents/` is a config-generation/control plane; agents are not scientific judges and do not change final scores.
 - Legacy stage names remain for compatibility. New documentation explains the system as Layer 0-8 in `docs/STAGE_LAYER_MAPPING.md`.
 
@@ -44,8 +44,8 @@ See also:
 - `docs/CODE_REVIEW_GUIDE.md`
 - `docs/PACKAGE_ARCHITECTURE.md`
 
-Install the package in editable mode for development, or run commands directly
-from the repository checkout through the source-tree bootstrap:
+Install the package in editable mode for development, or run commands from the
+repository checkout after installation:
 
 ```bash
 python -m pip install -e .

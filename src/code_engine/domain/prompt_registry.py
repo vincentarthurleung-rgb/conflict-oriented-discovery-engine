@@ -35,8 +35,8 @@ DOMAIN_INSTRUCTIONS = {
     "neuropharmacology": """
 Domain focus: preserve species, sex, age, disease model, brain region, cell type,
 genotype, treatment, dose, route, duration, post-treatment time, assay/readout,
-behavioral assay, clinical outcome, receptor target, and pathway. Distinguish
-BDNF, mTOR, AMPAR, and NMDAR mechanisms; do not infer an unstated mechanism.
+behavioral assay, clinical outcome, receptor target, and pathway. Keep distinct
+molecular mechanisms separate and do not infer an unstated mechanism.
 """,
     "drug_target_binding": """
 Domain focus: preserve drug, target receptor/protein, binding affinity, Ki, IC50,

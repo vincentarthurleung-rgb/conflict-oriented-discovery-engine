@@ -1,6 +1,5 @@
 import json
 import unittest
-from os import chdir, getcwd
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -35,12 +34,12 @@ class ConfigValidationTests(unittest.TestCase):
             self.assertIn("synonym_map", data)
             self.assertTrue(events)
 
-    def test_missing_preferred_path_uses_audited_legacy_path(self):
+    def test_missing_preferred_path_does_not_search_secondary_tree(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            legacy = root / "config/schemas/l2_l3_ontology_rules.json"
-            legacy.parent.mkdir(parents=True)
-            legacy.write_text(
+            secondary = root / "old_configs/l2_l3_ontology_rules.json"
+            secondary.parent.mkdir(parents=True)
+            secondary.write_text(
                 json.dumps(
                     {
                         "ontology_settings": {"marginal_entropy_conflict_gate": 0.1},
@@ -51,17 +50,12 @@ class ConfigValidationTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            previous = getcwd()
-            try:
-                chdir(root)
+            with self.assertRaises(FileNotFoundError):
                 _, events = load_json_config(
-                    "configs/normalization/l2_l3_ontology_rules.json",
+                    str(root / "configs/normalization/l2_l3_ontology_rules.json"),
                     config_type="l2_l3_ontology_rules",
                 )
-            finally:
-                chdir(previous)
-            self.assertEqual(events[0]["fallback_kind"], "legacy_config_path")
-            self.assertTrue((root / "reports/config_fallback_audit.json").exists())
+            self.assertFalse((root / "reports/config_fallback_audit.json").exists())
 
 
 if __name__ == "__main__":

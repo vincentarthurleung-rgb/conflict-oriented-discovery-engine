@@ -15,7 +15,7 @@ FIXTURE = json.loads((Path(__file__).parent / "fixtures/intake_minimal.json").re
 
 class L1BatchPlannerFingerprintAlignmentTests(unittest.TestCase):
     def setUp(self):
-        self.intent = parse_research_intent(FIXTURE["natural_language_queries"][0])
+        self.intent = parse_research_intent("domain: neuropharmacology ketamine depression mechanism")
         self.search = build_literature_search_plan(self.intent, candidate_papers=FIXTURE["candidate_papers"])
         self.required = build_required_fingerprint_for_intent(self.intent)
 
@@ -30,7 +30,7 @@ class L1BatchPlannerFingerprintAlignmentTests(unittest.TestCase):
 
     def test_intent_required_profile_matches_extractor_profile(self):
         extraction = build_l1_dry_run_plan(
-            "Ketamine affects depression.", auto_domain=True, cache_path="missing.json"
+            "Ketamine affects depression.", domain="neuropharmacology", cache_path="missing.json"
         )
         self.assertEqual(self.required.domain_id, extraction["domain_id"])
         self.assertEqual(self.required.prompt_profile_id, extraction["prompt_profile_id"])

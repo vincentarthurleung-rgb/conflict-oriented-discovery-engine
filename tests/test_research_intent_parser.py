@@ -11,8 +11,9 @@ FIXTURE = json.loads((Path(__file__).parent / "fixtures/intake_minimal.json").re
 class ResearchIntentParserTests(unittest.TestCase):
     def test_chinese_role_query(self):
         intent = parse_research_intent(FIXTURE["natural_language_queries"][0])
-        self.assertEqual((intent.primary_entity, intent.disease_or_condition), ("ketamine", "depression"))
+        self.assertEqual((intent.primary_entity, intent.disease_or_condition), ("", ""))
         self.assertEqual(intent.intent_type, "mechanism_overview")
+        self.assertEqual(intent.domain_id, "general_biomedical")
 
     def test_literature_update_mechanism(self):
         intent = parse_research_intent(FIXTURE["natural_language_queries"][1])

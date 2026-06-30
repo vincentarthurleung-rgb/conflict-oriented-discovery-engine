@@ -24,25 +24,10 @@ IntentType = Literal[
     "hypothesis_generation", "literature_update", "coverage_check", "unknown",
 ]
 
-ENTITY_ALIASES = {
-    "艾司氯胺酮": "esketamine",
-    "氯胺酮": "ketamine",
-    "抑郁症": "depression",
-    "抗抑郁": "antidepressant response",
-    "脑源性神经营养因子": "BDNF",
-    "雷帕霉素靶蛋白": "mTOR",
-    "nmda receptor": "NMDA receptor",
-    "ampa receptor": "AMPA receptor",
-    "antidepressant response": "antidepressant response",
-    "esketamine": "esketamine",
-    "ketamine": "ketamine",
-    "depression": "depression",
-    "bdnf": "BDNF",
-    "mtor": "mTOR",
+ENTITY_STOPWORDS = {
+    "about", "and", "compare", "comparison", "current", "effect", "in", "mechanism",
+    "of", "on", "role", "the", "update", "versus", "with",
 }
-MECHANISM_ENTITIES = {"BDNF", "mTOR", "NMDA receptor", "AMPA receptor"}
-DRUG_ENTITIES = {"ketamine", "esketamine"}
-DISEASE_ENTITIES = {"depression"}
 
 
 class ResearchIntent(CODEBaseModel):
@@ -83,14 +68,17 @@ class ResearchIntent(CODEBaseModel):
 
 
 def _extract_entities(raw: str) -> list[str]:
-    lowered = raw.casefold()
-    hits = []
-    for alias, canonical in sorted(ENTITY_ALIASES.items(), key=lambda item: -len(item[0])):
-        position = lowered.find(alias.casefold())
-        if position >= 0:
-            normalize_entity(canonical)  # Preserve the existing normalization audit boundary.
-            hits.append((position, canonical))
-    return list(dict.fromkeys(canonical for _, canonical in sorted(hits)))
+    directed = re.match(r"^\s*(.+?)\s*(?:->|=>)\s*(.+?)\s*$", raw)
+    if directed:
+        values = [item.strip() for item in directed.groups()]
+    else:
+        values = [
+            token for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]{1,}", raw)
+            if token.casefold() not in ENTITY_STOPWORDS
+        ]
+    for value in values:
+        normalize_entity(value)  # Preserve the existing normalization audit boundary.
+    return list(dict.fromkeys(values))[:12]
 
 
 def _select_domain(raw: str):
@@ -132,20 +120,18 @@ def parse_research_intent(
     elif coverage:
         intent_type = "coverage_check"
         task_goal = "assess current evidence coverage"
-    elif directed or len(entities) >= 2:
+    elif directed:
         intent_type = "entity_relation_query"
         task_goal = "assess entity relation evidence"
     else:
         intent_type = "unknown"
         task_goal = "unresolved"
 
-    primary = next((entity for entity in entities if entity in DRUG_ENTITIES), entities[0] if entities else "")
-    disease = next((entity for entity in entities if entity in DISEASE_ENTITIES), "")
-    mechanisms = [entity for entity in entities if entity in MECHANISM_ENTITIES]
-    comparisons = [entity for entity in entities if entity in DRUG_ENTITIES] if comparison else []
-    outcomes = [entity for entity in entities if entity == "antidepressant response"]
-    if disease == "depression" and (mechanism or primary in DRUG_ENTITIES) and "antidepressant response" not in outcomes:
-        outcomes.append("antidepressant response")
+    primary = entities[0] if entities else ""
+    disease = ""
+    mechanisms = entities[1:] if mechanism else []
+    comparisons = entities[:2] if comparison else []
+    outcomes: list[str] = []
     secondary = [entity for entity in entities if entity not in {primary, disease} and entity not in mechanisms]
     domains, domain_profile = _select_domain(raw)
     selected_domain = domain_profile.domain_id

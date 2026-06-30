@@ -9,13 +9,16 @@ class DomainSpecificPromptSelectionTests(unittest.TestCase):
 
     def test_domain_specific_profiles_are_selected(self):
         cases = (
-            ("ketamine depression mechanism", "neuropharmacology_l1_v2"),
+            ("domain: neuropharmacology mechanism", "neuropharmacology_l1_v2"),
             ("esketamine clinical trial efficacy", "clinical_outcome_l1_v2"),
             ("ketamine NMDA receptor binding affinity", "drug_target_binding_l1_v2"),
         )
         for text, expected in cases:
             with self.subTest(text=text):
                 self.assertEqual(self.plan(text)["prompt_profile_id"], expected)
+
+    def test_pilot_terms_do_not_select_a_profile_implicitly(self):
+        self.assertEqual(self.plan("ketamine depression mechanism")["prompt_profile_id"], "general_biomedical_l1_v2")
 
     def test_prompt_profile_changes_fingerprint(self):
         general = build_l1_dry_run_plan("neutral text", domain="general_biomedical", cache_path="missing-cache.json")

@@ -6,13 +6,9 @@
     "type_i_attribution_gate": 0.45
   },
   "synonym_map": {
-    "ampa receptor": "AMPAR",
-    "ampa": "AMPAR",
-    "nmda receptor": "NMDAR",
-    "nmda": "NMDAR",
-    "glun2b": "GRIN2B",
-    "antidepressant effect": "ANTIDEPRESSANT RESPONSE",
-    "antidepressant response": "ANTIDEPRESSANT RESPONSE"
+    "tumor necrosis factor alpha": "TNF",
+    "nuclear factor kappa b": "NFKB1",
+    "epidermal growth factor receptor": "EGFR"
   },
   "forbidden_object_keywords": [
     "figure",
@@ -22,9 +18,9 @@
   "weak_supervision_latent_prior": {
     "latent_variables": ["HYPOXIA", "NORMOXIA", "ACUTE_PHASE", "CHRONIC_PHASE"],
     "co_occurrence_priors": {
-      "GLUTAMATE RELEASE": {"HYPOXIA": 0.85, "NORMOXIA": 0.15},
-      "BDNF": {"ACUTE_PHASE": 0.75, "CHRONIC_PHASE": 0.25},
-      "AMPAR": {"ACUTE_PHASE": 0.80, "NORMOXIA": 0.40}
+      "TNF SIGNALING": {"HYPOXIA": 0.85, "NORMOXIA": 0.15},
+      "NFKB": {"ACUTE_PHASE": 0.75, "CHRONIC_PHASE": 0.25},
+      "NFKB": {"ACUTE_PHASE": 0.80, "NORMOXIA": 0.40}
     }
   }
 }

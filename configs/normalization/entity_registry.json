@@ -1,7 +1,6 @@
 {
-  "version": "legacy_pilot_stub_v1",
-  "registry_status": "legacy_pilot_stub",
-  "do_not_use_as_production_general_registry": true,
-  "replacement": "EntityResolutionHub",
+  "version": "generic_biomedical_registry_v1",
+  "registry_status": "domain_neutral_empty",
+  "description": "Domain-neutral default registry. Add curated entities through an explicit registry or pilot profile.",
   "entities": []
 }
