@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.storage.knowledge_store import (
+from code_engine.graph.knowledge_store import (
     build_knowledge_store,
     query_conflicts_for_pair,
     query_contexts_for_pair,

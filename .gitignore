@@ -35,7 +35,7 @@ data/layer6/cache/
 *.db
 logs/
 logs/**
-runs/*
+runs/
 !runs/.gitkeep
 reports/*
 !reports/.gitkeep
@@ -45,8 +45,8 @@ artifacts/legacy/
 quarantine/
 .cache/
 
-# Cleanup audits are reviewable; temporary fragments are not.
-cleanup_reports/*.tmp
+cleanup_reports/
+tmp_cleanup/
 
 # Explicitly allow small curated/demo fixtures if added later
 !data/fixtures/

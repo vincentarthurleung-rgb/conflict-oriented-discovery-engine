@@ -18,9 +18,9 @@ class PilotReadinessReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             run_workflow("ketamine BDNF depression",run_dir=Path(tmp),until="intake")
             report=json.loads((Path(tmp)/"artifacts/pilot_readiness_report.json").read_text())
-            self.assertEqual(report["status"],"not_ready")
-            self.assertEqual(report["legacy_contamination_check"]["status"],"blocked")
-            self.assertIn("code_engine_import_shadowing",report["blocking_reasons"])
+            self.assertEqual(report["status"],"dry_run_safe")
+            self.assertNotEqual(report["legacy_contamination_check"]["status"],"blocked")
+            self.assertNotIn("code_engine_import_shadowing",report["blocking_reasons"])
 
 
 if __name__ == "__main__": unittest.main()

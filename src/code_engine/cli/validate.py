@@ -7,7 +7,12 @@ from code_engine.config.loader import load_json_config
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run local C.O.D.E. validation audits.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run local C.O.D.E. validation audits. Manifest and payload audits "
+            "are legacy compatibility operations."
+        )
+    )
     parser.add_argument("--config")
     parser.add_argument("--config-type", choices=("l2_l3_ontology_rules", "context_axis_map", "domain_spec", "validation_plan", "entity_registry"))
     parser.add_argument("--manifest", action="store_true")
@@ -25,6 +30,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Config valid: {args.config}")
         return 0
     if args.manifest or args.payloads:
+        # Legacy compatibility only. Not used by the main System A workflow.
         from src.pipelines.manifest_validation import (
             PAYLOAD_DIR,
             validate_manifest,

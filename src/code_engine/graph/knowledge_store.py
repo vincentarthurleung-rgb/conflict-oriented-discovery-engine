@@ -211,9 +211,9 @@ def load_knowledge_store(
     return store
 
 
-def query_exact_pair(subject: str, object: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+def query_exact_pair(subject: str, obj: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
     active = store if store is not None else load_knowledge_store()
-    triple_ids = set(active.get("pairs", {}).get(_pair_key(subject, object), {}).get("triple_ids", []))
+    triple_ids = set(active.get("pairs", {}).get(_pair_key(subject, obj), {}).get("triple_ids", []))
     return [triple for triple in active.get("triples", []) if triple.get("triple_id") in triple_ids]
 
 
@@ -238,27 +238,27 @@ def query_neighbors(entity: str, max_depth: int = 1, store: Dict[str, Any] | Non
     return results
 
 
-def query_contexts_for_pair(subject: str, object: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+def query_contexts_for_pair(subject: str, obj: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
     active = store if store is not None else load_knowledge_store()
-    triple_ids = {item.get("triple_id") for item in query_exact_pair(subject, object, active)}
+    triple_ids = {item.get("triple_id") for item in query_exact_pair(subject, obj, active)}
     return [item for item in active.get("context_mentions", []) if item.get("triple_id") in triple_ids]
 
 
-def query_conflicts_for_pair(subject: str, object: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+def query_conflicts_for_pair(subject: str, obj: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
     active = store if store is not None else load_knowledge_store()
-    key = _pair_key(subject, object)
+    key = _pair_key(subject, obj)
     return [item for item in active.get("conflict_edges", []) if item.get("pair_key") == key]
 
 
-def query_validation_for_pair(subject: str, object: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+def query_validation_for_pair(subject: str, obj: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
     active = store if store is not None else load_knowledge_store()
-    key = _pair_key(subject, object)
+    key = _pair_key(subject, obj)
     hypothesis_ids = {hid for hid, pair_key in active.get("hypothesis_pairs", {}).items() if pair_key == key}
     return [item for item in active.get("validation_results", []) if item.get("hypothesis_id") in hypothesis_ids]
 
 
-def query_hypotheses_for_pair(subject: str, object: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+def query_hypotheses_for_pair(subject: str, obj: str, store: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
     active = store if store is not None else load_knowledge_store()
-    key = _pair_key(subject, object)
+    key = _pair_key(subject, obj)
     hypothesis_ids = {hid for hid, pair_key in active.get("hypothesis_pairs", {}).items() if pair_key == key}
     return [item for item in active.get("hypotheses", []) if item.get("hypothesis_id") in hypothesis_ids]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any
 
 NODE_TYPES = {
@@ -24,6 +24,8 @@ EDGE_TYPES = {
 
 class Serializable:
     def to_dict(self) -> dict[str, Any]:
+        if not is_dataclass(self):
+            raise TypeError(f"{type(self).__name__} must be a dataclass to be serialized")
         return asdict(self)
 
 

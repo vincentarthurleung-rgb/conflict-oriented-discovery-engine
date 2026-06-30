@@ -17,7 +17,9 @@ from code_engine.hypothesis.validation_requirements import build_validation_requ
 
 def run_legacy_search() -> None:
     """Explicit opt-in compatibility entry; never called by run-scoped workflow."""
+    # Legacy compatibility only. Not used by the main System A workflow.
     from src.pipelines.stage6_l4_beam_search import execute_l4_search_pipeline
+
     execute_l4_search_pipeline()
 
 

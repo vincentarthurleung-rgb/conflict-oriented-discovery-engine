@@ -10,7 +10,7 @@ class NullValidator(AbstractValidator):
     supported_validation_intents = ()
     supports_cache_only = False
 
-    def can_validate(self, hypothesis: dict) -> bool:
+    def can_validate(self, question_or_anchor, context=None) -> bool:
         return True
 
     def validate(self, hypothesis: dict) -> dict:
