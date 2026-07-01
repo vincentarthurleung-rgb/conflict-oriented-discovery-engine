@@ -1,4 +1,9 @@
 """
+LEGACY ONLY. Not imported or used by System A runtime reasoning.
+
+The static journal metrics emitted here are historical audit metadata and must
+not be consumed as confidence or scoring inputs by ``src/code_engine``.
+
 C.O.D.E. Stage 1: Journal Weighting & Full-Text Extraction Pipeline
 Complete Release 1.5 (Unified Asset Settlement Master Control - Rigid Flow Edition)
 

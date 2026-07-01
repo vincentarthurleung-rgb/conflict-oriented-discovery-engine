@@ -10,6 +10,11 @@ from typing import Any
 from code_engine.extraction.evidence_tiers import EvidenceTier, FullTextStatus, PaperProcessingRecord
 from code_engine.extraction.l1_budget import build_l1_budget_report, enforce_l1_budget, estimate_l1_cost
 from code_engine.extraction.polarity import normalize_directional_relation
+from code_engine.domain.prompt_compiler import compile_l1_prompt
+from code_engine.extraction.l1_response import (
+    L1ResponseError, normalize_l1_json_response, resolve_l1_prompt_profile,
+    write_l1_diagnostic,
+)
 
 
 def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
@@ -58,14 +63,23 @@ def _normalize_claims(
             "evidence_tier": EvidenceTier.ABSTRACT_SCREENING.value,
             "full_text_status": _fulltext_status(paper),
             "subject_raw": str(raw.get("subject_raw") or raw.get("subject") or ""),
+            "subject_type": str(raw.get("subject_type") or "unknown"),
             "relation_raw": relation_raw,
             "object_raw": str(raw.get("object_raw") or raw.get("object") or ""),
+            "object_type": str(raw.get("object_type") or "unknown"),
             "relation_family": str(raw.get("relation_family") or normalized.relation_family),
             "polarity_type": str(raw.get("polarity_type") or normalized.polarity_type),
             "direction": str(raw.get("direction") or normalized.direction),
             "direction_confidence": float(raw.get("direction_confidence", normalized.confidence)),
+            "direct_relation_sign": raw.get("direct_relation_sign", 0),
+            "therapeutic_direction": str(raw.get("therapeutic_direction") or "unknown"),
+            "negated": bool(raw.get("negated", False)),
+            "null_or_no_effect": bool(raw.get("null_or_no_effect", False)),
+            "speculative": bool(raw.get("speculative", False)),
+            "confidence": float(raw.get("confidence", 0.0)),
             "evidence_sentence": str(raw.get("evidence_sentence") or ""),
             "context_mentions": dict(raw.get("context_mentions") or raw.get("context") or {}),
+            "context": dict(raw.get("context") or raw.get("context_mentions") or {}),
             "domain_id": domain_profile.get("domain_id"),
             "llm_extraction_ref": cache_key,
             "warnings": list(dict.fromkeys(list(raw.get("warnings") or []) + normalized.warnings + ["abstract_claim_not_fulltext_evidence"])),
@@ -85,10 +99,12 @@ def run_abstract_l1_screening(
     *,
     llm_client: Any | None = None,
     allow_budget_overrun: bool = False,
+    pilot_profile: str | None = None,
 ) -> dict:
     """Plan or execute abstract-only extraction; never emits full-text evidence."""
 
     profile = dict(domain_profile or {})
+    prompt_profile = resolve_l1_prompt_profile(profile, pilot_profile)
     selected = list(papers[:max_papers] if max_papers is not None else papers)
     abstracts = [str(item.get("abstract") or item.get("abstract_text") or "").strip() for item in selected]
     callable_inputs = [text for text in abstracts if text]
@@ -113,6 +129,8 @@ def run_abstract_l1_screening(
     skipped: list[dict[str, str]] = []
     calls = 0
     cache_hits = 0
+    recovery_warnings: list[str] = []
+    prompt_calls: list[dict[str, Any]] = []
     processed_inputs = 0
     for index, paper in enumerate(selected):
         paper_id = _paper_id(paper, index)
@@ -139,12 +157,37 @@ def run_abstract_l1_screening(
             paper_claims = list(cached.get("claims", []))
             cache_hits += 1
         elif execute and api_enabled and not decision["blocked"] and llm_client is not None:
-            response = llm_client.extract_json(
-                "Extract grounded biomedical claims from this abstract as JSON claims. "
-                "Preserve evidence_sentence and do not infer missing context.\n" + abstract
-            )
-            calls += 1
-            paper_claims = _normalize_claims(list(response.get("claims") or response.get("causal_tuples") or []), paper, paper_id, key, profile)
+            compiled = compile_l1_prompt(prompt_profile, abstract)
+            metadata = {
+                "prompt_profile_id": compiled.prompt_profile_id, "prompt_version": compiled.prompt_version,
+                "compiled_prompt_hash": compiled.compiled_prompt_hash,
+                "compiled_prompt_chars": compiled.compiled_prompt_char_count,
+                "context_slots_used": list(prompt_profile.context_slots), "pilot_profile": pilot_profile,
+                "domain_id": compiled.domain_id,
+            }
+            prompt_calls.append(metadata)
+            try:
+                response = llm_client.extract_json(compiled.text)
+                calls += 1
+                raw_response = response.pop("__l1_raw_response", response) if isinstance(response, dict) else response
+                response, warnings = normalize_l1_json_response(response)
+                for warning in warnings:
+                    recovery_warnings.append(warning)
+                    write_l1_diagnostic(output_dir, stage="abstract_l1", paper_id=paper_id, pmid=paper.get("pmid"),
+                                        prompt_metadata=metadata, raw_response=raw_response, error_type=warning,
+                                        parsed_json_type="list" if "list" in warning else "dict", recoverable=True,
+                                        recovery_action=warning)
+            except Exception as exc:
+                calls += 1
+                write_l1_diagnostic(output_dir, stage="abstract_l1", paper_id=paper_id, pmid=paper.get("pmid"),
+                                    prompt_metadata=metadata, raw_response=getattr(exc, "raw_response", ""),
+                                    error_type=getattr(exc, "error_type", "schema_validation_failed"),
+                                    parsed_json_type=getattr(exc, "parsed_json_type", "unknown"), recoverable=False,
+                                    recovery_action="blocked_no_claims_emitted")
+                raise
+            paper_claims = _normalize_claims(list(response["claims"]), paper, paper_id, key, profile)
+            for claim in paper_claims:
+                claim.update(metadata)
             cache.setdefault("entries", {})[key] = {"claims": paper_claims}
         else:
             paper_claims = []
@@ -167,7 +210,13 @@ def run_abstract_l1_screening(
         "warnings": (
             (["l1_budget_blocked"] if decision["blocked"] else [])
             + (["llm_client_not_configured"] if execute and api_enabled and llm_client is None else [])
+            + list(dict.fromkeys(recovery_warnings))
         ),
+        "prompt_profile_id": prompt_profile.profile_id,
+        "prompt_profile_version": prompt_profile.version,
+        "abstract_l1_prompt_uses_compiled_profile": True,
+        "hardcoded_abstract_l1_prompt_used": False,
+        "prompt_calls": prompt_calls,
     }
     artifacts = {}
     if output_dir:

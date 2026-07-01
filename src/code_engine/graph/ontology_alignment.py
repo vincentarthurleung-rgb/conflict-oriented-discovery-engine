@@ -150,7 +150,6 @@ def extract_normalized_observations(
         asset_id = l1_data.get("asset_id", fname.replace("_refined.json", ""))
         doi_str = str(l1_data.get("doi", "N/A")).strip()
         title_str = str(l1_data.get("article_title", "N/A")).strip()
-        belief_weight = float(l1_data.get("belief_weight", 0.6))
 
         for chunk in l1_data.get("chunks_extracted", []):
             chunk_id = str(chunk.get("chunk_index", "unknown"))
@@ -260,7 +259,13 @@ def extract_normalized_observations(
                             "source_asset": asset_id,
                             "doi": doi_str,
                             "article_title": title_str,
-                            "belief_weight": belief_weight,
+                            "confidence": float(node.get("confidence", 0.0)),
+                            "paper_quality_metadata": {
+                                "journal": l1_data.get("journal"),
+                                "publication_year": l1_data.get("publication_year"),
+                                "impact_factor": None,
+                                "static_weight_used_for_reasoning": False,
+                            },
                             "chunk_id": chunk_id,
                             "normalization": {
                                 "subject": sub_norm.model_dump(),

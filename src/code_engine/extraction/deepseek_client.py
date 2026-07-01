@@ -27,6 +27,7 @@ class DeepSeekClient:
         self.sleep_fn = sleep_fn
 
     def extract_json(self, prompt: str, model: str = "deepseek-v4-pro", temperature: float = 0.0, top_p: float = 1.0, timeout: int = 60, **_: Any) -> dict[str, Any]:
+        from code_engine.extraction.l1_response import L1ResponseError, normalize_l1_json_response
         body = json.dumps({
             "model": model,
             "messages": [{"role": "system", "content": prompt}],
@@ -39,14 +40,19 @@ class DeepSeekClient:
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
         )
         last_error = "unknown_error"
+        last_exception: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 with urllib.request.urlopen(request, timeout=timeout) as response:
                     payload = json.loads(response.read().decode("utf-8"))
                 content = payload["choices"][0]["message"]["content"]
-                parsed = json.loads(content) if isinstance(content, str) else content
-                if not isinstance(parsed, dict):
-                    raise ValueError("DeepSeek response JSON must be an object")
+                try:
+                    parsed, warnings = normalize_l1_json_response(content)
+                except L1ResponseError as exc:
+                    exc.raw_response = content
+                    raise
+                parsed["__l1_warnings"] = warnings
+                parsed["__l1_raw_response"] = content
                 return parsed
             except urllib.error.HTTPError as exc:
                 last_error = f"http_{exc.code}"
@@ -55,6 +61,11 @@ class DeepSeekClient:
                     continue
             except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as exc:
                 last_error = str(exc)
+                last_exception = exc
             if attempt < self.max_retries:
                 self.sleep_fn(2 ** attempt)
-        raise DeepSeekExtractionError("deepseek_extraction_failed", last_error, self.max_retries)
+        error = DeepSeekExtractionError("deepseek_extraction_failed", last_error, self.max_retries)
+        error.raw_response = getattr(last_exception, "raw_response", locals().get("content"))
+        error.error_type = getattr(last_exception, "error_type", "json_parse_failed")
+        error.parsed_json_type = getattr(last_exception, "parsed_json_type", "unknown")
+        raise error

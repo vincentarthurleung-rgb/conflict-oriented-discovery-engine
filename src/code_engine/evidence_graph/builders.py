@@ -111,7 +111,8 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
         context_variables=_first(item, "context_variables", "context_slots", "context", "conditions") or {},
         evidence_span=span, evidence_text=_first(item, "evidence_text", "evidence_sentence", "text", "sentence"),
         source_scope=_first(item, "source_scope", "scope"), evidence_tier=_first(item, "evidence_tier", "tier"),
-        confidence=_float(_first(item, "confidence", "belief_weight", "score")),
+        # Never promote legacy belief_weight into evidence confidence.
+        confidence=_float(_first(item, "confidence", "score")),
         paper_id=str(paper_id) if paper_id else None, canonical_paper_id=str(canonical) if canonical else None,
         doi=_first(item, "doi", "provenance.doi") or paper.get("doi"),
         title=_first(item, "title", "article_title", "paper_title", "provenance.title") or paper.get("title"),

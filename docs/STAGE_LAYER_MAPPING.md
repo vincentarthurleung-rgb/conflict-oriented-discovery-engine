@@ -11,7 +11,7 @@ update mode creates a dry-run delta plan only.
 | --- | --- | --- | --- |
 | `scripts/stage0_fetch_pmc.py` | L0 Literature Acquisition | PMC full-text fetching | legacy wrapper |
 | `scripts/stage0_5_fetch_abstracts.py` | L0 Literature Acquisition | PubMed abstract fetching | legacy wrapper |
-| `scripts/stage1_clean_weight.py` | L0/L1 Input Preparation | payload extraction and journal weighting | legacy wrapper |
+| `scripts/stage1_clean_weight.py` | Archived input preparation | legacy payload extraction and static journal audit metadata; never a System A reasoning input | legacy-only wrapper |
 | `src/pipelines/stage2_l1_extract.py` | L1 Scientific Fact Extraction | LLM tuple extraction | core, API-dependent |
 | `src/pipelines/stage3_l1_5_refiner.py` | L1.5 Context Refinement | context-field refinement | core, API-dependent |
 | `src/pipelines/ontology_alignment.py` | L2 Ontology Alignment | delegates to `code_engine.graph.ontology_alignment` | legacy import wrapper |

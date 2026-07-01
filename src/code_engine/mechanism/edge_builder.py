@@ -93,7 +93,9 @@ def build_mechanism_edges_from_observations(observations: list[dict], evidence_r
         claim_id = str(observation.get("claim_id") or observation.get("l1_claim_id") or "")
         linked_claim = claims.get(claim_id, {})
         evidence_id = str(observation.get("evidence_id") or linked_claim.get("evidence_id") or "")
-        confidence = min(1.0, max(0.0, float(observation.get("belief_weight", observation.get("confidence", 0.0)))))
+        # Evidence confidence is claim/run evidence metadata. Static journal or
+        # manually assigned belief weights are intentionally ignored.
+        confidence = min(1.0, max(0.0, float(observation.get("confidence", 0.0))))
         warnings = [] if usable else ["low_confidence_observation_included", "not_for_high_confidence_graph_use"]
         if not subject_id or not object_id:
             warnings.append("canonical_id_missing_stable_node_hash_used")

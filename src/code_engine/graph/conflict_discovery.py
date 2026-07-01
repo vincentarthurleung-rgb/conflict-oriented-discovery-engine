@@ -101,7 +101,7 @@ def build_conflict_graph(
         h_r = calculate_shannon_entropy(
             [sign_counts.get(1, 0) / total_obs, sign_counts.get(-1, 0) / total_obs]
         )
-        mean_edge_confidence = round(sum(obs["belief_weight"] for obs in observations_dedup) / total_obs, 4)
+        mean_edge_confidence = round(sum(float(obs.get("confidence", 0.0)) for obs in observations_dedup) / total_obs, 4)
         attr = attributions[pair]
         attribution_score = float(attr["score_components"]["legacy_em_score"])
         collapsed_entropy = float(attr["score_components"]["legacy_collapsed_entropy"])

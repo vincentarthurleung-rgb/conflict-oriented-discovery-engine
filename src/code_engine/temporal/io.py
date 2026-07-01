@@ -78,7 +78,7 @@ def _normalize(item: dict[str, Any], manifest: dict[str, dict[str, Any]], mechan
         "context_variables": _first(item, "context_variables", "context_slots", "context", "conditions") or {},
         "source_scope": _first(item, "source_scope", "scope"),
         "evidence_tier": _first(item, "evidence_tier", "tier"),
-        "confidence": _first(item, "confidence", "belief_weight", "score"),
+        "confidence": _first(item, "confidence", "score"),
     })
     if evidence_id and str(evidence_id) in mechanisms:
         normalized["linked_mechanism_edge_ids"] = sorted(set((normalized.get("linked_mechanism_edge_ids") or []) + mechanisms[str(evidence_id)]))

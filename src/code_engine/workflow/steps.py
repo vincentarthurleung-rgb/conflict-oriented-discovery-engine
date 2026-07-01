@@ -396,7 +396,8 @@ def run_abstract_l1_step(
     global_corpus_dir: str | Path | None = None, l1_task_cache_enabled: bool = True,
     allow_compatible_l1_task_reuse: bool = False, force_reprocess_l1: bool = False,
     force_reprocess_paper: list[str] | None = None, update_global_corpus: bool = False,
-    repository_root: Path | None = None, entity_registry_path: str | Path | None = None, **_: Any,
+    repository_root: Path | None = None, entity_registry_path: str | Path | None = None,
+    pilot_profile: str | None = None, **_: Any,
 ) -> StepResult:
     if l1_mode == "legacy":
         summary = {"l1_mode": l1_mode, "abstract_claim_count": 0, "reason": "legacy_l1_mode"}
@@ -454,6 +455,7 @@ def run_abstract_l1_step(
         max_l1_calls=(l1_budget_policy or {}).get("max_l1_calls_per_prompt"),
         budget_policy=l1_budget_policy, llm_client=l1_llm_client,
         allow_budget_overrun=allow_budget_overrun,
+        pilot_profile=pilot_profile,
     )
     new_claims = _attach_run_provenance(output["claims"], run_dir)
     reusable_claims = _attach_run_provenance(reusable_claims, run_dir)
@@ -672,7 +674,8 @@ def run_fulltext_l1_step(
     l1_llm_client=None, global_corpus_dir: str | Path | None = None,
     l1_task_cache_enabled: bool = True, allow_compatible_l1_task_reuse: bool = False,
     force_reprocess_l1: bool = False, force_reprocess_paper: list[str] | None = None,
-    update_global_corpus: bool = False, entity_registry_path: str | Path | None = None, **_: Any,
+    update_global_corpus: bool = False, entity_registry_path: str | Path | None = None,
+    pilot_profile: str | None = None, **_: Any,
 ) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
     acquisition_records_path = run_dir / "artifacts" / "fulltext_acquisition_records.jsonl"
@@ -757,6 +760,7 @@ def run_fulltext_l1_step(
         run_dir / "artifacts", execute=execute and enabled, api_enabled=api and enabled,
         budget_policy=l1_budget_policy, llm_client=l1_llm_client,
         allow_budget_overrun=allow_budget_overrun,
+        pilot_profile=pilot_profile,
     )
     new_evidence = _attach_run_provenance(output["evidence_records"], run_dir)
     new_claims = _attach_run_provenance(output["claims"], run_dir)

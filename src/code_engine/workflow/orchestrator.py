@@ -323,6 +323,10 @@ def run_workflow(
         "conflict_timeline_enabled": enable_conflict_timeline, "network_enabled": network,
         "api_enabled": api, "execute_enabled": execute,
         **run_triple_metadata,
+        "static_journal_weight_used": False,
+        "belief_weight_used_for_reasoning": False,
+        "impact_factor_used_for_reasoning": False,
+        "paper_quality_metadata_used_for_display_only": True,
     }
     (directory / "artifacts").mkdir(parents=True, exist_ok=True)
     runtime_provenance = build_runtime_provenance(

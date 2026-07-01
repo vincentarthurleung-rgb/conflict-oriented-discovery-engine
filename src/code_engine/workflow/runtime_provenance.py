@@ -69,6 +69,8 @@ def build_runtime_provenance(
     fulltext_acquisition = _json(artifacts / "fulltext_acquisition_summary.json", {})
     abstract_cache = _json(artifacts / "abstract_l1_cache_report.json", {})
     fulltext_cache = _json(artifacts / "fulltext_l1_cache_report.json", {})
+    abstract_l1 = _json(artifacts / "abstract_l1_summary.json", {})
+    fulltext_l1 = _json(artifacts / "fulltext_l1_summary.json", {})
     intake_triple = (intake.get("unified_seed_triple") or {}).get("triple_id")
     search_triple = (search_plan.get("seed_triple") or {}).get("triple_id")
     identity_values = [value for value in (triple_id, intake_triple, search_triple) if value]
@@ -127,8 +129,21 @@ def build_runtime_provenance(
         "l1_task_cache_hits": int(abstract_cache.get("hit_count", 0)) + int(fulltext_cache.get("hit_count", 0)),
         "l1_task_cache_misses": int(abstract_cache.get("miss_count", 0)) + int(fulltext_cache.get("miss_count", 0)),
         "l1_task_cache_fingerprint_complete": True,
+        "static_journal_weight_used": False,
+        "belief_weight_used_for_reasoning": False,
+        "impact_factor_used_for_reasoning": False,
+        "paper_quality_metadata_used_for_display_only": True,
+        "prompt_profile_id": abstract_l1.get("prompt_profile_id") or fulltext_l1.get("prompt_profile_id"),
+        "prompt_profile_version": abstract_l1.get("prompt_profile_version") or fulltext_l1.get("prompt_profile_version"),
+        "abstract_l1_prompt_uses_compiled_profile": bool(abstract_l1.get("abstract_l1_prompt_uses_compiled_profile")),
+        "fulltext_l1_prompt_uses_compiled_profile": bool(fulltext_l1.get("fulltext_l1_prompt_uses_compiled_profile")),
+        "hardcoded_abstract_l1_prompt_used": bool(abstract_l1.get("hardcoded_abstract_l1_prompt_used", False)),
+        "l1_prompt_calls": list(abstract_l1.get("prompt_calls") or []) + list(fulltext_l1.get("prompt_calls") or []),
         "warnings": [],
     }
+    for warning in [*abstract_l1.get("warnings", []), *fulltext_l1.get("warnings", [])]:
+        if str(warning).startswith(("l1_response_", "legacy_causal_tuples_")):
+            provenance["warnings"].append(str(warning))
     if shadowing:
         provenance["warnings"].append("top_level_code_engine_package_shadows_src_package")
     if legacy_artifacts:
@@ -149,6 +164,11 @@ def contamination_check(provenance: dict[str, Any]) -> dict[str, Any]:
     if provenance.get("historical_runs_read") and not provenance.get("resume_explicit"): blockers.append("historical_runs_read_without_explicit_resume")
     if provenance.get("global_evidence_injected_before_reasoning"): blockers.append("global_evidence_injected_before_reasoning")
     if provenance.get("ketamine_specific_defaults_used"): blockers.append("ketamine_specific_defaults_used")
+    if any(provenance.get(key) for key in (
+        "static_journal_weight_used", "belief_weight_used_for_reasoning",
+        "impact_factor_used_for_reasoning",
+    )):
+        blockers.append("static_belief_weight_used_in_core_reasoning")
     warnings = list(provenance.get("warnings", []))
     return {
         "status": "blocked" if blockers else ("warning" if warnings else "pass"),

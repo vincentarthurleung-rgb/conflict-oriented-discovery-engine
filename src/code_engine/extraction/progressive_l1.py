@@ -10,6 +10,11 @@ from typing import Any
 from code_engine.extraction.evidence_tiers import EvidenceTier
 from code_engine.extraction.l1_budget import build_l1_budget_report, enforce_l1_budget, estimate_l1_cost
 from code_engine.extraction.polarity import normalize_directional_relation
+from code_engine.domain.prompt_compiler import compile_l1_prompt
+from code_engine.extraction.l1_response import (
+    L1ResponseError, normalize_l1_json_response, resolve_l1_prompt_profile,
+    write_l1_diagnostic,
+)
 
 
 def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
@@ -53,12 +58,20 @@ def _records_from_response(
             "section_id": str(span.get("section_id") or ""),
             "section_type": str(span.get("section_type") or "unknown"),
             "subject_raw": str(raw.get("subject_raw") or raw.get("subject") or ""),
+            "subject_type": str(raw.get("subject_type") or "unknown"),
             "relation_raw": relation_raw,
             "object_raw": str(raw.get("object_raw") or raw.get("object") or ""),
+            "object_type": str(raw.get("object_type") or "unknown"),
             "relation_family": str(raw.get("relation_family") or direction.relation_family),
             "polarity_type": str(raw.get("polarity_type") or direction.polarity_type),
             "direction": str(raw.get("direction") or direction.direction),
             "direction_confidence": float(raw.get("direction_confidence", direction.confidence)),
+            "direct_relation_sign": raw.get("direct_relation_sign", 0),
+            "therapeutic_direction": str(raw.get("therapeutic_direction") or "unknown"),
+            "negated": bool(raw.get("negated", False)),
+            "null_or_no_effect": bool(raw.get("null_or_no_effect", False)),
+            "speculative": bool(raw.get("speculative", False)),
+            "confidence": float(raw.get("confidence", 0.0)),
             "context_slots": context,
             "assay": raw.get("assay") or context.get("assay") or context.get("assay_or_readout"),
             "species": raw.get("species") or context.get("species"),
@@ -87,10 +100,12 @@ def run_fulltext_evidence_l1(
     *,
     llm_client: Any | None = None,
     allow_budget_overrun: bool = False,
+    pilot_profile: str | None = None,
 ) -> dict:
     """Extract only selected full-text spans after budget and cache checks."""
 
     profile = dict(domain_profile or {})
+    prompt_profile = resolve_l1_prompt_profile(profile, pilot_profile)
     policy = dict(budget_policy or {})
     estimate = estimate_l1_cost([str(item.get("text") or "") for item in evidence_spans], model_pricing_profile=policy.get("model_pricing_profile", "deepseek_default"))
     decision = enforce_l1_budget(estimate, policy, execute=execute and api_enabled, allow_budget_overrun=allow_budget_overrun)
@@ -107,6 +122,8 @@ def run_fulltext_evidence_l1(
     claims: list[dict[str, Any]] = []
     calls = 0
     cache_hits = 0
+    recovery_warnings: list[str] = []
+    prompt_calls: list[dict[str, Any]] = []
     for span in evidence_spans:
         if str(span.get("source_scope")) != "full_text":
             continue
@@ -117,12 +134,30 @@ def run_fulltext_evidence_l1(
             span_claims = list(cached.get("claims", []))
             cache_hits += 1
         elif execute and api_enabled and not decision["blocked"] and llm_client is not None:
-            response = llm_client.extract_json(
-                "Extract only claims explicitly supported by this selected full-text evidence span. "
-                "Return JSON claims with exact evidence_sentence and context slots.\n" + str(span.get("text") or "")
-            )
-            calls += 1
+            compiled = compile_l1_prompt(prompt_profile, str(span.get("text") or ""))
+            metadata = {
+                "prompt_profile_id": compiled.prompt_profile_id, "prompt_version": compiled.prompt_version,
+                "compiled_prompt_hash": compiled.compiled_prompt_hash,
+                "compiled_prompt_chars": compiled.compiled_prompt_char_count,
+                "context_slots_used": list(prompt_profile.context_slots), "pilot_profile": pilot_profile,
+                "domain_id": compiled.domain_id,
+            }
+            prompt_calls.append(metadata)
+            try:
+                response = llm_client.extract_json(compiled.text)
+                calls += 1
+                raw_response = response.pop("__l1_raw_response", response) if isinstance(response, dict) else response
+                response, warnings = normalize_l1_json_response(response)
+                for warning in warnings:
+                    recovery_warnings.append(warning)
+                    write_l1_diagnostic(output_dir, stage="fulltext_l1", paper_id=str(span.get("paper_id") or "UNKNOWN"), pmid=span.get("pmid"), prompt_metadata=metadata, raw_response=raw_response, error_type=warning, parsed_json_type="list" if "list" in warning else "dict", recoverable=True, recovery_action=warning)
+            except Exception as exc:
+                calls += 1
+                write_l1_diagnostic(output_dir, stage="fulltext_l1", paper_id=str(span.get("paper_id") or "UNKNOWN"), pmid=span.get("pmid"), prompt_metadata=metadata, raw_response=getattr(exc, "raw_response", ""), error_type=getattr(exc, "error_type", "schema_validation_failed"), parsed_json_type=getattr(exc, "parsed_json_type", "unknown"), recoverable=False, recovery_action="blocked_no_claims_emitted")
+                raise
             span_evidence, span_claims = _records_from_response(response, span, candidates, profile, key)
+            for item in [*span_evidence, *span_claims]:
+                item.update(metadata)
             cache.setdefault("entries", {})[key] = {"evidence_records": span_evidence, "claims": span_claims}
         else:
             span_evidence, span_claims = [], []
@@ -138,7 +173,11 @@ def run_fulltext_evidence_l1(
         "api_calls_made": calls,
         "cache_hit_count": cache_hits,
         "budget_report": budget_report,
-        "warnings": ["l1_budget_blocked"] if decision["blocked"] else [],
+        "warnings": (["l1_budget_blocked"] if decision["blocked"] else []) + list(dict.fromkeys(recovery_warnings)),
+        "prompt_profile_id": prompt_profile.profile_id,
+        "prompt_profile_version": prompt_profile.version,
+        "fulltext_l1_prompt_uses_compiled_profile": True,
+        "prompt_calls": prompt_calls,
     }
     if execute and api_enabled and llm_client is None:
         summary["warnings"].append("llm_client_not_configured")
