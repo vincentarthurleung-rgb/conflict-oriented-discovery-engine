@@ -68,7 +68,11 @@ def default_domain_profiles() -> list[DomainProfile]:
             validator_profile_id="neuropharmacology_validation",
             preferred_validators=("CuratedOmicsValidator", "GEOValidator", "PathwayValidator"),
             required_context_slots=neuro_slots,
-            optional_context_slots=("sex", "age", "genotype", "oxygen_condition", "localization"),
+            optional_context_slots=(
+                "sex", "age", "clinical_condition", "drug_form", "metabolite",
+                "control_or_comparator", "receptor_target", "pathway",
+                "molecular_readout", "genotype", "oxygen_condition", "localization",
+            ),
             key_entity_types=("compound", "gene", "protein", "receptor_complex", "pathway", "phenotype", "behavioral_assay"),
             key_relation_types=("drug_gene_expression", "drug_receptor_modulation", "pathway_activation", "behavioral_outcome"),
         ),

@@ -6,7 +6,7 @@ import hashlib
 import json
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from code_engine.schemas.models import CODEBaseModel
 from code_engine.schemas.evidence import EvidenceType, StatementType
@@ -29,6 +29,7 @@ class L1ExtractedClaim(CODEBaseModel):
     model_family: str = "unknown"
     validator_profile_id: str = "general_validation"
     required_context_slots: list[str] = Field(default_factory=list)
+    context_slots_used: list[str] = Field(default_factory=list)
     missing_required_context_slots: list[str] = Field(default_factory=list)
     domain_specific_warnings: list[str] = Field(default_factory=list)
     compiled_prompt_hash: str
@@ -45,6 +46,7 @@ class L1ExtractedClaim(CODEBaseModel):
     therapeutic_direction: Literal["beneficial", "adverse", "mixed", "not_applicable", "unknown"] = "unknown"
     object_raw: str
     object_type: str = "unknown"
+    context: dict[str, Any] = Field(default_factory=dict)
 
     evidence_sentence: str = ""
     evidence_quote: str = ""
@@ -53,6 +55,7 @@ class L1ExtractedClaim(CODEBaseModel):
     evidence_type: EvidenceType = "unknown"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     negated: bool = False
+    null_or_no_effect: bool = False
     speculative: bool = False
 
     subject_span: str = ""
@@ -93,6 +96,13 @@ class L1ExtractedClaim(CODEBaseModel):
     timepoint: str = ""
     extraction_warnings: list[str] = Field(default_factory=list)
 
+    @field_validator("direct_relation_sign", mode="before")
+    @classmethod
+    def normalize_direct_relation_sign(cls, value: Any) -> Any:
+        if isinstance(value, int):
+            return {1: "positive", -1: "negative", 0: "neutral_or_association"}.get(value, "unknown")
+        return value
+
     @model_validator(mode="after")
     def enforce_grounding_rules(self):
         if not self.evidence_sentence.strip() and self.confidence > 0.6:
@@ -121,7 +131,18 @@ class L1ExtractedClaim(CODEBaseModel):
             json.dumps(fingerprint_values, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
         self.prompt_fingerprint = fingerprint_values
-        missing = [slot for slot in self.required_context_slots if not str(getattr(self, slot, "") or "").strip()]
+        for field in L1_CONTEXT_FIELDS:
+            value = self.context.get(field, getattr(self, field, ""))
+            if value not in (None, ""):
+                setattr(self, field, str(value))
+            elif getattr(self, field, ""):
+                self.context[field] = getattr(self, field)
+        missing_markers = {"", "unspecified", "unknown", "not stated", "n/a", "na", "null", "none"}
+        missing = []
+        for slot in self.required_context_slots:
+            value = self.context.get(slot, getattr(self, slot, ""))
+            if str(value or "").strip().lower() in missing_markers:
+                missing.append(slot)
         self.missing_required_context_slots = missing
         if missing and "missing_required_domain_context" not in self.domain_specific_warnings:
             self.domain_specific_warnings.append("missing_required_domain_context")

@@ -36,16 +36,19 @@ def build_l1_dry_run_plan(
     domain_profile: DomainProfile | None = None,
     auto_domain: bool = False,
     prompt_profile: str | None = None,
-    prompt_version: str = "2.0",
+    prompt_version: str = "2.1",
     schema_version: str = DEFAULT_L1_SCHEMA_VERSION,
     model_name: str = DEFAULT_L1_MODEL_NAME,
     model_family: str = DEFAULT_L1_MODEL_FAMILY,
     experimental_temperature_schedule: bool = False,
     cache_path: str = "data/index/llm_cache_index.json",
+    pilot_profile: str | None = None,
 ) -> dict[str, Any]:
     """Compile prompt metadata, fingerprint, and cache decision without API use."""
 
     router = default_domain_router()
+    if pilot_profile == "ketamine" and domain_profile is None and domain is None:
+        domain = "neuropharmacology"
     selected_profile = domain_profile or (router.resolve(domain) if domain else None)
     if selected_profile is None and auto_domain:
         selected_profile = router.route_text(chunk_text)
@@ -54,7 +57,10 @@ def build_l1_dry_run_plan(
         raise RuntimeError("The general_biomedical domain profile is not configured")
     selected_domain = selected_profile.domain_id
     profile_id = prompt_profile or selected_profile.prompt_profile_id
-    profile = default_prompt_registry().get_profile(profile_id)
+    if pilot_profile == "ketamine" and not prompt_profile:
+        profile_id = "neuropharmacology_ketamine_l1_v2_1"
+    registry = default_prompt_registry()
+    profile = registry.get_profile(profile_id)
     if prompt_profile and not domain and not auto_domain:
         selected_profile = router.resolve(profile.domain_id) or selected_profile
         selected_domain = selected_profile.domain_id
@@ -104,6 +110,8 @@ def build_l1_dry_run_plan(
         "prompt_profile_id": profile.profile_id,
         "prompt_version": compiled.prompt_version,
         "compiled_prompt_hash": compiled.compiled_prompt_hash,
+        "compiled_prompt_char_count": compiled.compiled_prompt_char_count,
+        "compiled_prompt_word_count": compiled.compiled_prompt_word_count,
         "output_schema_version": compiled.output_schema_version,
         "extraction_policy_version": DEFAULT_L1_POLICY_VERSION,
         "model_name": model_name,
@@ -113,11 +121,13 @@ def build_l1_dry_run_plan(
         "max_retries": sampling.max_retries,
         "experimental_temperature_schedule": sampling.experimental_temperature_schedule,
         "context_slots": list(profile.context_slots),
+        "context_slots_used": list(profile.context_slots),
         "required_context_slots": list(selected_profile.required_context_slots),
         "prompt_fingerprint": fingerprint.model_dump(),
         "cache_key": cache_key,
         "cache_compatible": cache_key in cache.get("entries", {}),
         "would_extract": cache_key not in cache.get("entries", {}),
+        **registry.resolution_metadata(profile_id),
     }
 
 
@@ -141,11 +151,12 @@ def execute_l1_extraction(
     domain_profile: DomainProfile | None = None,
     auto_domain: bool = True,
     prompt_profile: str | None = None,
-    prompt_version: str = "2.0",
+    prompt_version: str = "2.1",
     schema_version: str = DEFAULT_L1_SCHEMA_VERSION,
     model_name: str = DEFAULT_L1_MODEL_NAME,
     model_family: str = DEFAULT_L1_MODEL_FAMILY,
     experimental_temperature_schedule: bool = False,
+    pilot_profile: str | None = None,
 ) -> dict[str, Any]:
     """Execute chunk extraction only when both execute and api are explicit."""
 
@@ -170,6 +181,7 @@ def execute_l1_extraction(
             model_name=model_name, model_family=model_family,
             experimental_temperature_schedule=experimental_temperature_schedule,
             cache_path=str(root / "data/index/llm_cache_index.json"),
+            pilot_profile=pilot_profile,
         )
         if plan["cache_compatible"]:
             result["chunks_reused"].append({"paper_id": paper_id, "chunk_id": chunk_id, "cache_key": plan["cache_key"]})
@@ -217,6 +229,7 @@ def execute_l1_extraction(
                     domain_profile_id=plan["domain_profile_id"],
                     validator_profile_id=plan["validator_profile_id"],
                     required_context_slots=plan["required_context_slots"],
+                    context_slots_used=plan["context_slots_used"],
                     prompt_version=prompt_version, output_schema_version=schema_version,
                     extraction_policy_version=plan["extraction_policy_version"],
                     model_name=model_name, model_family=model_family,
@@ -232,13 +245,16 @@ def execute_l1_extraction(
                     therapeutic_direction=raw_claim.get("therapeutic_direction", "unknown"),
                     object_raw=str(raw_claim.get("object_raw") or raw_claim.get("object") or ""),
                     object_type=str(raw_claim.get("object_type") or "unknown"),
+                    context=context,
                     evidence_sentence=str(raw_claim.get("evidence_sentence") or ""),
                     evidence_quote=str(raw_claim.get("evidence_quote") or raw_claim.get("evidence_sentence") or ""),
                     section=str(raw_claim.get("section") or chunk.get("section") or ""),
                     statement_type=raw_claim.get("statement_type", "unknown"),
                     evidence_type=raw_claim.get("evidence_type", "unknown"),
                     confidence=float(raw_claim.get("confidence", 0.0)),
-                    negated=bool(raw_claim.get("negated", False)), speculative=bool(raw_claim.get("speculative", False)),
+                    negated=bool(raw_claim.get("negated", False)),
+                    null_or_no_effect=bool(raw_claim.get("null_or_no_effect", False)),
+                    speculative=bool(raw_claim.get("speculative", False)),
                     subject_span=str(raw_claim.get("subject_span") or ""), relation_span=str(raw_claim.get("relation_span") or ""), object_span=str(raw_claim.get("object_span") or ""),
                     context_spans=dict(raw_claim.get("context_spans") or {}),
                     domain_specific_warnings=list(directional.warnings),
@@ -250,7 +266,17 @@ def execute_l1_extraction(
                 output.write_text(claim.model_dump_json(indent=2), encoding="utf-8")
                 chunk_outputs.append(output)
                 legacy_by_paper.setdefault(paper_id, []).append(l1_claim_to_legacy_tuple(claim))
-                result["chunks_extracted"].append({"paper_id": paper_id, "chunk_id": chunk_id, "claim_id": claim.claim_id, "output_path": str(output.relative_to(root))})
+                result["chunks_extracted"].append({
+                    "paper_id": paper_id,
+                    "chunk_id": chunk_id,
+                    "claim_id": claim.claim_id,
+                    "output_path": str(output.relative_to(root)),
+                    "prompt_profile_id": claim.prompt_profile_id,
+                    "prompt_version": claim.prompt_version,
+                    "context_slots_used": claim.context_slots_used,
+                    "missing_required_context_slots": claim.missing_required_context_slots,
+                    "compiled_prompt_char_count": compiled.compiled_prompt_char_count,
+                })
             if chunk_outputs:
                 record_cached_extraction(plan["cache_key"], str(chunk_outputs[0]), {"prompt_fingerprint": plan["prompt_fingerprint"]}, path=root / "data/index/llm_cache_index.json")
         except Exception as exc:

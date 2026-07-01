@@ -22,8 +22,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--chunk-index", type=int, default=0)
     parser.add_argument("--domain", choices=("general_biomedical", "neuropharmacology", "drug_target_binding", "pathway_biology", "clinical_outcome", "protein_interaction"))
     parser.add_argument("--auto-domain", action="store_true")
-    parser.add_argument("--prompt-profile", choices=("general_biomedical", "neuropharmacology", "general_biomedical_l1_v2", "neuropharmacology_l1_v2", "drug_target_binding_l1_v2", "pathway_biology_l1_v2", "clinical_outcome_l1_v2", "protein_interaction_l1_v2"))
-    parser.add_argument("--prompt-version", default="2.0")
+    parser.add_argument("--prompt-profile", choices=("general_biomedical", "neuropharmacology", "general_biomedical_l1_v2", "neuropharmacology_l1_v2", "neuropharmacology_ketamine_l1_v2_1", "drug_target_binding_l1_v2", "pathway_biology_l1_v2", "clinical_outcome_l1_v2", "protein_interaction_l1_v2"))
+    parser.add_argument("--prompt-version", default="2.1")
+    parser.add_argument("--pilot-profile", choices=("ketamine",))
     parser.add_argument("--schema-version", default=DEFAULT_L1_SCHEMA_VERSION)
     parser.add_argument("--model-name", default=DEFAULT_L1_MODEL_NAME)
     parser.add_argument("--model-family", default=DEFAULT_L1_MODEL_FAMILY)
@@ -54,6 +55,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             model_name=args.model_name,
             model_family=args.model_family,
             experimental_temperature_schedule=args.experimental_temperature_schedule,
+            pilot_profile=args.pilot_profile,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
@@ -71,6 +73,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         model_family=args.model_family,
         experimental_temperature_schedule=args.experimental_temperature_schedule,
         cache_path=args.cache_path,
+        pilot_profile=args.pilot_profile,
     )
     plan["allow_legacy_l1_reuse"] = args.allow_legacy_l1_reuse
     print(json.dumps(plan, ensure_ascii=False, indent=2))

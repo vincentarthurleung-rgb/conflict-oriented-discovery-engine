@@ -871,7 +871,14 @@ def run_l1_step(*, run_dir: Path, execute: bool, api: bool, l1_mode: str = "lega
         for key in ("aliases", "preferred_validators", "fallback_validators", "required_context_slots", "optional_context_slots", "key_entity_types", "key_relation_types", "key_evidence_types", "warnings"):
             if key in profile_payload:
                 profile_payload[key] = tuple(profile_payload[key])
-        result = execute_l1_extraction(chunks, repository_root=str(kwargs["repository_root"]), execute=execute, api=api, domain_profile=DomainProfile(**profile_payload))
+        result = execute_l1_extraction(
+            chunks,
+            repository_root=str(kwargs["repository_root"]),
+            execute=execute,
+            api=api,
+            domain_profile=DomainProfile(**profile_payload),
+            pilot_profile=kwargs.get("pilot_profile"),
+        )
     summary = {**plan, "reused_chunks": len(result["chunks_reused"]), "chunks_need_l1": len(result["extraction_needed"]), "extracted_claim_count": len(result["chunks_extracted"]), "api_calls_made": int(result["api_calls_made"]), "outputs": result["chunks_extracted"], "errors": result["errors"]}
     summary_path = _write(run_dir, "l1_summary.json", summary)
     reason = "no_weighted_payloads" if not chunks else ("api_disabled_l1_plan_only" if not api else None)

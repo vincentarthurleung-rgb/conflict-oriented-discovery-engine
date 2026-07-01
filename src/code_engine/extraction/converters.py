@@ -70,11 +70,12 @@ def l1_claim_to_evidence_record(claim: L1ExtractedClaim) -> EvidenceRecord:
 def l1_claim_to_legacy_tuple(claim: L1ExtractedClaim) -> dict[str, Any]:
     """Return the tuple shape consumed by existing L1.5/L2 code."""
 
-    context = {
+    context = dict(claim.context)
+    context.update({
         field: getattr(claim, field)
         for field in L1_CONTEXT_FIELDS
         if getattr(claim, field)
-    }
+    })
     return {
         "subject": claim.subject_raw,
         "relation_raw": claim.relation_raw,
@@ -87,6 +88,7 @@ def l1_claim_to_legacy_tuple(claim: L1ExtractedClaim) -> dict[str, Any]:
         "object": claim.object_raw,
         "context": context,
         "negated": claim.negated,
+        "null_or_no_effect": claim.null_or_no_effect,
         "evidence_sentence": claim.evidence_sentence,
         "confidence": claim.confidence,
         "claim_id": claim.claim_id,
@@ -96,6 +98,7 @@ def l1_claim_to_legacy_tuple(claim: L1ExtractedClaim) -> dict[str, Any]:
         "domain_profile_id": claim.domain_profile_id,
         "validator_profile_id": claim.validator_profile_id,
         "required_context_slots": claim.required_context_slots,
+        "context_slots_used": claim.context_slots_used,
         "extraction_warnings": list(claim.extraction_warnings),
     }
 
@@ -128,6 +131,7 @@ def legacy_tuple_to_l1_claim(
         domain_profile_id=str(metadata.get("domain_profile_id") or metadata.get("domain_id") or "legacy_unknown"),
         validator_profile_id=str(metadata.get("validator_profile_id") or "general_validation"),
         required_context_slots=list(metadata.get("required_context_slots") or []),
+        context_slots_used=list(metadata.get("context_slots_used") or tuple_dict.get("context_slots_used") or context.keys()),
         prompt_profile_id=str(metadata.get("prompt_profile_id") or "legacy_unknown"),
         prompt_version=str(metadata.get("prompt_version") or "legacy_unknown"),
         output_schema_version=str(metadata.get("output_schema_version") or "legacy_tuple_v1"),
@@ -154,11 +158,13 @@ def legacy_tuple_to_l1_claim(
         evidence_type=str(tuple_dict.get("evidence_type") or "unknown"),
         confidence=float(tuple_dict.get("confidence", 0.6 if evidence_sentence else 0.0)),
         negated=bool(tuple_dict.get("negated", False)),
+        null_or_no_effect=bool(tuple_dict.get("null_or_no_effect", False)),
         speculative=bool(tuple_dict.get("speculative", False)),
         subject_span=str(tuple_dict.get("subject_span") or ""),
         relation_span=str(tuple_dict.get("relation_span") or ""),
         object_span=str(tuple_dict.get("object_span") or ""),
         context_spans=dict(tuple_dict.get("context_spans") or {}),
+        context=context,
         extraction_warnings=warnings,
         **values,
     )

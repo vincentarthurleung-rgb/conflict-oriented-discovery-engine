@@ -46,7 +46,7 @@ def refine_l1_claims(claims: list[L1ExtractedClaim]) -> dict[str, Any]:
             "direction_confidence": claim.direction_confidence,
             "object_raw": claim.object_raw,
             "direct_relation_sign": claim.direct_relation_sign,
-            "refined_context": {
+            "refined_context": dict(claim.context) | {
                 key: getattr(claim, key)
                 for key in ("species", "sex", "age", "disease_model", "brain_region", "cell_type", "treatment", "dose", "route", "treatment_duration", "time_after_treatment", "assay_or_readout", "behavioral_assay", "clinical_outcome", "genotype", "oxygen_condition", "localization")
                 if getattr(claim, key)

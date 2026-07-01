@@ -21,6 +21,8 @@ class CompiledPrompt:
     compiled_prompt_hash: str
     output_schema_version: str
     extraction_policy_version: str
+    compiled_prompt_char_count: int
+    compiled_prompt_word_count: int
 
 
 def compile_l1_prompt(
@@ -52,4 +54,6 @@ def compile_l1_prompt(
         compiled_prompt_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
         output_schema_version=schema_version,
         extraction_policy_version=profile.extraction_policy_version,
+        compiled_prompt_char_count=len(text),
+        compiled_prompt_word_count=len(text.split()),
     )
