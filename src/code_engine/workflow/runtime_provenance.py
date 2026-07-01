@@ -102,6 +102,8 @@ def build_runtime_provenance(
     abstract_l1 = _json(artifacts / "abstract_l1_summary.json", {})
     fulltext_l1 = _json(artifacts / "fulltext_l1_summary.json", {})
     acquisition_year = _json(artifacts / "acquisition_report.json", {})
+    search_intent = _json(artifacts / "semantic_search_intent.json", {})
+    query_guard = _json(artifacts / "search_query_guard_report.json", {})
     intake_triple = (intake.get("unified_seed_triple") or {}).get("triple_id")
     search_triple = (search_plan.get("seed_triple") or {}).get("triple_id")
     identity_values = [value for value in (triple_id, intake_triple, search_triple) if value]
@@ -178,6 +180,18 @@ def build_runtime_provenance(
             abstract_l1.get("temporal_filter_violation_detected") or fulltext_l1.get("temporal_filter_violation_detected") or
             _reasoning_year_violation(artifacts, dict(paper_year_filter or {}))
         ),
+        "semantic_search_intent": {
+            "enabled": True, "mode": search_intent.get("mode"),
+            "confidence": search_intent.get("confidence", 0.0),
+            "planner_prompt_profile_id": search_intent.get("planner_prompt_profile_id"),
+            "planner_prompt_version": search_intent.get("planner_prompt_version"),
+            "planner_prompt_hash": search_intent.get("planner_prompt_hash"),
+            "llm_search_intent_used": bool(search_intent.get("llm_search_intent_used")),
+            "deterministic_search_fallback_used": bool(search_intent.get("deterministic_search_fallback_used")),
+            "allow_deterministic_search_fallback": bool(search_intent.get("allow_deterministic_search_fallback")),
+            "real_api_run_with_uncertain_search_intent": bool(search_intent.get("real_api_run_with_uncertain_search_intent")),
+        },
+        "query_guard": query_guard,
         "prompt_profile_id": abstract_l1.get("prompt_profile_id") or fulltext_l1.get("prompt_profile_id"),
         "prompt_profile_version": abstract_l1.get("prompt_profile_version") or fulltext_l1.get("prompt_profile_version"),
         "abstract_l1_prompt_uses_compiled_profile": bool(abstract_l1.get("abstract_l1_prompt_uses_compiled_profile")),

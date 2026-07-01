@@ -80,11 +80,22 @@ def finalize_triple_card(
         "hypothesis_count": int(state.hypothesis_count),
         "timeline_count": int(state.counts.get("conflict_timeline_count", 0)),
     }
+    search_intent_path = directory / "artifacts/semantic_search_intent.json"
+    search_intent = json.loads(search_intent_path.read_text(encoding="utf-8")) if search_intent_path.exists() else {}
+    search_seed = search_intent.get("seed_triple") or {}
+    retrieval_aliases = {
+        "subject": list((search_seed.get("subject") or {}).get("aliases") or []),
+        "object": list((search_seed.get("object") or {}).get("aliases") or []),
+    }
     card = {
         **triple_metadata(seed, batch_id), "display_title": seed.display_title,
         "run_id": state.run_id, "run_dir": str(directory), "artifact_paths": paths,
         "summary": summary, "status": status, "warnings": list(state.warnings),
         "created_at": state.created_at,
+        "seed_triple_source": "semantic_search_intent" if search_intent.get("llm_search_intent_used") else "intake",
+        "search_intent_mode": search_intent.get("mode"),
+        "search_intent_confidence": search_intent.get("confidence"),
+        "aliases_used_for_retrieval": retrieval_aliases,
     }
     card_path = directory / "triple_card.json"
     card_path.write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")

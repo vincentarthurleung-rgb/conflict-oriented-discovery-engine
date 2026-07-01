@@ -99,6 +99,7 @@ def run_workflow(
     temporal_role: str = "unrestricted",
     resume: Path | None = None, allow_legacy: bool = False,
     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
+    allow_deterministic_search_fallback: bool = False, disable_llm_search_intent: bool = False,
     semantic_llm_client=None,
     entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
     entity_resolution_policy=None, entity_registry_path: str | Path | None = None,
@@ -332,6 +333,8 @@ def run_workflow(
         "api_enabled": api, "execute_enabled": execute,
         "l1_timeout_config": dict(l1_timeout_config),
         "paper_year_filter": paper_year_filter.to_dict(),
+        "llm_search_intent_required_for_real_api_run": bool(execute and api and network),
+        "allow_deterministic_search_fallback": allow_deterministic_search_fallback,
         **run_triple_metadata,
         "static_journal_weight_used": False,
         "belief_weight_used_for_reasoning": False,
@@ -359,6 +362,17 @@ def run_workflow(
         paper_year_filter=paper_year_filter.to_dict(),
     )
     contamination = contamination_check(runtime_provenance)
+    search_provenance = runtime_provenance.get("semantic_search_intent", {})
+    readiness.update({
+        "llm_search_intent_required_for_real_api_run": bool(execute and api and network),
+        "llm_search_intent_used": bool(search_provenance.get("llm_search_intent_used")),
+        "deterministic_search_fallback_not_used_unless_explicitly_allowed": not bool(search_provenance.get("deterministic_search_fallback_used")) or allow_deterministic_search_fallback,
+        "off_seed_l1_queries_removed": int(runtime_provenance.get("query_guard", {}).get("off_seed_queries_removed", 0)),
+    })
+    if search_provenance.get("real_api_run_with_uncertain_search_intent"):
+        readiness["warnings"] = list(dict.fromkeys([*readiness.get("warnings", []), "real_api_run_with_uncertain_search_intent"]))
+    if search_provenance.get("mode") == "failed" and execute and api and network and not allow_deterministic_search_fallback:
+        readiness["blocking_reasons"] = list(dict.fromkeys([*readiness.get("blocking_reasons", []), "llm_search_intent_failed"]))
     readiness["domain_decoupling_check"] = {
         "status": "blocked" if runtime_provenance["ketamine_specific_defaults_used"] else "pass",
         "ketamine_specific_defaults_used": runtime_provenance["ketamine_specific_defaults_used"],
@@ -438,6 +452,17 @@ def run_workflow(
                     paper_year_filter=paper_year_filter.to_dict(),
                 )
                 contamination = contamination_check(runtime_provenance)
+                search_provenance = runtime_provenance.get("semantic_search_intent", {})
+                readiness.update({
+                    "llm_search_intent_required_for_real_api_run": bool(execute and api and network),
+                    "llm_search_intent_used": bool(search_provenance.get("llm_search_intent_used")),
+                    "deterministic_search_fallback_not_used_unless_explicitly_allowed": not bool(search_provenance.get("deterministic_search_fallback_used")) or allow_deterministic_search_fallback,
+                    "off_seed_l1_queries_removed": int(runtime_provenance.get("query_guard", {}).get("off_seed_queries_removed", 0)),
+                })
+                if search_provenance.get("real_api_run_with_uncertain_search_intent"):
+                    readiness["warnings"] = list(dict.fromkeys([*readiness.get("warnings", []), "real_api_run_with_uncertain_search_intent"]))
+                if search_provenance.get("mode") == "failed" and execute and api and network and not allow_deterministic_search_fallback:
+                    readiness["blocking_reasons"] = list(dict.fromkeys([*readiness.get("blocking_reasons", []), "llm_search_intent_failed"]))
                 core_design = _core_design_report(runtime_provenance)
                 readiness["legacy_contamination_check"] = contamination
                 readiness["core_design_semantics_check"] = core_design
@@ -459,6 +484,8 @@ def run_workflow(
                     execute=execute, api=bool(execute and api), network=bool(execute and network),
                     max_papers=state.max_papers, allow_legacy=allow_legacy,
                     allow_uncertain_intake=allow_uncertain_intake,
+                    allow_deterministic_search_fallback=allow_deterministic_search_fallback,
+                    disable_llm_search_intent=disable_llm_search_intent,
                     semantic_confidence_threshold=semantic_confidence_threshold,
                     semantic_llm_client=semantic_llm_client,
                     entity_network_lookup=entity_network_lookup,

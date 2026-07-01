@@ -48,6 +48,14 @@ class LiteratureSearchQuery(CODEBaseModel):
     paper_year_to: int | None = None
     temporal_role: str = "unrestricted"
     year_filter_applied_to_query: bool = False
+    search_intent_mode: str = "deterministic_fallback"
+    search_intent_confidence: float = 0.0
+    query_group: str = "direct_relation"
+    allowed_for_l1_acquisition: bool = True
+    seed_subject_required: bool = True
+    seed_object_required: bool = True
+    passed_query_guard: bool = False
+    coverage_only: bool = False
 
     @model_validator(mode="after")
     def align_query_alias(self):

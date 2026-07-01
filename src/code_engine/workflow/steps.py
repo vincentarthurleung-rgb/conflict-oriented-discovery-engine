@@ -141,6 +141,9 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
 
     from code_engine.normalization.registry import LocalBiomedicalRegistry
     from code_engine.normalization.resolver import ResolverCascade
+    from code_engine.normalization.layered_grounding import (
+        decide_l2_evidence_layer, load_runtime_entity_hints, match_runtime_hint,
+    )
 
     registry_path = Path(entity_registry_path) if entity_registry_path else None
     try:
@@ -157,12 +160,20 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
         adjudicator_policy=entity_resolution_policy,
     )
+    hints = load_runtime_entity_hints(run_dir)
     observations = []
     for item in records:
         subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {"expected_entity_type": item.get("subject_type") or ""})
         obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {"expected_entity_type": item.get("object_type") or ""})
-        usable = bool(subject.allow_high_confidence_graph_use and obj.allow_high_confidence_graph_use)
+        subject_hint = match_runtime_hint(str(item.get("subject_raw") or ""), hints)
+        object_hint = match_runtime_hint(str(item.get("object_raw") or ""), hints)
+        decision = decide_l2_evidence_layer(item, subject, obj, subject_hint, object_hint, hints)
+        usable = bool(decision["canonical_graph_eligible"])
         observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
+        subject_name = subject.canonical_name if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("canonical_name") or item.get("subject_raw")
+        object_name = obj.canonical_name if obj.allow_high_confidence_graph_use else (object_hint or {}).get("canonical_name") or item.get("object_raw")
+        subject_id = subject.canonical_id if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("canonical_id")
+        object_id = obj.canonical_id if obj.allow_high_confidence_graph_use else (object_hint or {}).get("canonical_id")
         observations.append({
             **item,
             "observation_id": observation_id,
@@ -170,24 +181,23 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             "claim_id": item.get("claim_id"),
             "evidence_id": item.get("evidence_id") or item.get("claim_id"),
             "paper_id": item.get("paper_id"),
-            "subject": subject.canonical_name or item.get("subject_raw"),
-            "object": obj.canonical_name or item.get("object_raw"),
-            "normalized_subject": subject.canonical_name,
-            "normalized_object": obj.canonical_name,
-            "subject_canonical_id": subject.canonical_id,
-            "object_canonical_id": obj.canonical_id,
-            "subject_canonical_name": subject.canonical_name,
-            "object_canonical_name": obj.canonical_name,
-            "subject_entity_type": subject.entity_type,
-            "object_entity_type": obj.entity_type,
-            "subject_normalization_status": subject.normalization_status,
-            "object_normalization_status": obj.normalization_status,
+            "subject": subject_name, "object": object_name,
+            "normalized_subject": subject_name, "normalized_object": object_name,
+            "subject_canonical_id": subject_id, "object_canonical_id": object_id,
+            "subject_canonical_name": subject_name, "object_canonical_name": object_name,
+            "subject_entity_type": subject.entity_type if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("entity_type", "unknown"),
+            "object_entity_type": obj.entity_type if obj.allow_high_confidence_graph_use else (object_hint or {}).get("entity_type", "unknown"),
+            "subject_normalization_status": subject.normalization_status if subject.allow_high_confidence_graph_use else ("resolved_runtime_hint" if subject_hint else subject.normalization_status),
+            "object_normalization_status": obj.normalization_status if obj.allow_high_confidence_graph_use else ("resolved_runtime_hint" if object_hint else obj.normalization_status),
             "normalization_status": "resolved" if usable else "low_confidence",
             "normalization_quality": "resolved_or_acceptable" if usable else "low_confidence",
             "allow_high_confidence_graph_use": usable,
+            "allow_high_confidence_graph_use_legacy": usable,
             "exclude_from_high_confidence_conflict": not usable,
             "context": dict(item.get("context_slots") or item.get("context_mentions") or {}),
             "normalization": {"subject": subject.model_dump(), "object": obj.model_dump()},
+            "runtime_hint_matches": {"subject": subject_hint, "object": object_hint},
+            **decision,
         })
     return observations
 
@@ -264,9 +274,12 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
     return StepResult(status="blocked" if blocked else "completed", summary=summary, artifacts={"intake": intake_path, "domain_profile": profile_path}, counts={"seed_triple_count": len(intake.seed_triples)}, warnings=warnings, api_calls_made=intake.api_calls_made, skipped_reason="uncertain_semantic_intake" if blocked else None)
 
 
-def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int | None,
+def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = False, max_papers: int | None,
                     pilot_search_expansions: list[str] | None = None,
-                    paper_year_filter: dict | None = None, **_: Any) -> StepResult:
+                    paper_year_filter: dict | None = None, semantic_llm_client: Any | None = None,
+                    query: str = "", pilot_profile: str | None = None,
+                    allow_deterministic_search_fallback: bool = False,
+                    disable_llm_search_intent: bool = False, **_: Any) -> StepResult:
     intake_data = _read(run_dir, "intake.json")
     profile_data = _read(run_dir, "domain_profile.json")
     if not intake_data or not profile_data:
@@ -279,6 +292,35 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
         if key in profile_data:
             profile_data[key] = tuple(profile_data[key])
     profile = DomainProfile(**profile_data)
+    real_api_run = bool(execute and api and network)
+    llm_required = real_api_run
+    search_intent = None
+    planner_error = None
+    if not disable_llm_search_intent and semantic_llm_client is not None:
+        try:
+            from code_engine.search.semantic_search_intent import plan_semantic_search_intent
+            search_intent = plan_semantic_search_intent(
+                query or intake.research_intent.raw_user_input, domain_id=profile.domain_id,
+                seed_triple=intake.unified_seed_triple, llm_client=semantic_llm_client,
+                paper_year_filter=paper_year_filter, pilot_profile=pilot_profile,
+            )
+        except Exception as exc:
+            planner_error = str(exc)[:1000]
+    fallback_allowed = not real_api_run or allow_deterministic_search_fallback
+    if search_intent is None and llm_required and not fallback_allowed:
+        blocked = {
+            "mode": "failed", "confidence": 0.0, "manual_review_required": True,
+            "seed_triple": intake.unified_seed_triple, "query_groups": {},
+            "warnings": ["llm_search_intent_failed"], "planner_error": planner_error or "llm_client_not_configured",
+            "llm_search_intent_used": False, "deterministic_search_fallback_used": False,
+            "allow_deterministic_search_fallback": False,
+            "real_api_run_with_uncertain_search_intent": False,
+        }
+        intent_path = _write(run_dir, "semantic_search_intent.json", blocked)
+        guard_path = _write(run_dir, "search_query_guard_report.json", {"total_queries_before_guard": 0, "allowed_l1_acquisition_queries": 0, "removed_queries": [], "off_seed_queries_removed": 0, "context_only_queries_removed": 0, "broad_recall_queries_removed": 0})
+        return StepResult(status="blocked", summary={**blocked, "blocked_reason": "llm_search_intent_failed"},
+                          artifacts={"semantic_search_intent": intent_path, "search_query_guard_report": guard_path},
+                          warnings=["llm_search_intent_failed"], skipped_reason="llm_search_intent_failed")
     plan = build_literature_search_plan(
         intake.research_intent, seed_triples=intake.seed_triples, domain_profile=profile,
         use_llm=False, semantic_intake=intake.semantic_intake,
@@ -286,6 +328,66 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
         unified_seed_triple=intake.unified_seed_triple,
         paper_year_filter=paper_year_filter,
     )
+    seed = search_intent.seed_triple.model_dump(mode="json") if search_intent else intake.unified_seed_triple
+    subject = seed.get("subject") or {}; obj = seed.get("object") or {}
+    subject_aliases = list(dict.fromkeys([str(subject.get("name") or ""), *list(subject.get("aliases") or [])]))
+    object_aliases = list(dict.fromkeys([str(obj.get("name") or ""), *list(obj.get("aliases") or [])]))
+    raw_queries: list[dict[str, Any]] = []
+    if search_intent:
+        for group, queries in search_intent.query_groups.items():
+            for item in queries:
+                raw_queries.append({**item.model_dump(mode="json"), "query_group": group,
+                                    "search_intent_mode": "llm", "search_intent_confidence": search_intent.confidence})
+    else:
+        for item in plan.pubmed_queries:
+            raw_queries.append({"query": item.query_string, "query_string": item.query_string,
+                                "query_group": "direct_relation", "purpose": "direct_relation",
+                                "allowed_for_l1_acquisition": True, "search_intent_mode": "deterministic_fallback",
+                                "search_intent_confidence": float(intake.semantic_confidence)})
+    from code_engine.search.query_guard import guard_search_queries
+    allowed_queries, guard_report = guard_search_queries(raw_queries, subject_aliases=subject_aliases, object_aliases=object_aliases)
+    from code_engine.query.search_planner import LiteratureSearchQuery
+    from code_engine.temporal.paper_year_filter import paper_year_filter_from_dict, pubmed_date_clause
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
+    date_clause = pubmed_date_clause(year_filter)
+    safe_queries = []
+    for index, item in enumerate(allowed_queries):
+        text = str(item.get("query") or item.get("query_string") or "")
+        if date_clause and date_clause not in text:
+            text = f"({text}) AND {date_clause}"
+        safe_queries.append(LiteratureSearchQuery(
+            query_id=hashlib.sha256(f"pubmed|{text}".encode()).hexdigest()[:16], query_string=text,
+            source="pubmed", purpose=str(item.get("query_group") or "direct_relation"), priority=1,
+            expected_domain=profile.domain_id, expected_prompt_profile=profile.prompt_profile_id,
+            max_results=max_papers or 50, year_from=year_filter.paper_year_from, year_to=year_filter.paper_year_to,
+            paper_year_filter_enabled=year_filter.enabled, paper_year_from=year_filter.paper_year_from,
+            paper_year_to=year_filter.paper_year_to, temporal_role=year_filter.temporal_role,
+            year_filter_applied_to_query=year_filter.enabled, search_intent_mode=str(item.get("search_intent_mode")),
+            search_intent_confidence=float(item.get("search_intent_confidence") or 0.0),
+            query_group=str(item.get("query_group")), allowed_for_l1_acquisition=True,
+            seed_subject_required=True, seed_object_required=True, passed_query_guard=True,
+        ))
+    plan.pubmed_queries = safe_queries
+    plan.query_groups = [{"group": "l1_acquisition", "stage": "abstract_retrieval", "source": "pubmed",
+                          "queries": [item.model_dump(mode="json") for item in safe_queries]}]
+    intent_payload = search_intent.model_dump(mode="json") if search_intent else {
+        "mode": "deterministic_fallback", "confidence": float(intake.semantic_confidence),
+        "manual_review_required": bool(intake.requires_manual_review), "seed_triple": seed,
+        "query_groups": {}, "warnings": ["deterministic_search_fallback_used"],
+        "llm_search_intent_used": False, "deterministic_search_fallback_used": True,
+        "allow_deterministic_search_fallback": allow_deterministic_search_fallback,
+        "real_api_run_with_uncertain_search_intent": real_api_run,
+    }
+    if search_intent:
+        intent_payload["allow_deterministic_search_fallback"] = allow_deterministic_search_fallback
+        intake_seed = intake.unified_seed_triple
+        old_pair = (str((intake_seed.get("subject") or {}).get("name", "")).casefold(), str((intake_seed.get("object") or {}).get("name", "")).casefold())
+        new_pair = (search_intent.seed_triple.subject.name.casefold(), search_intent.seed_triple.object.name.casefold())
+        if old_pair != new_pair:
+            intent_payload["warnings"] = list(dict.fromkeys([*intent_payload.get("warnings", []), "semantic_search_intent_seed_mismatch"]))
+            intent_payload["manual_review_required"] = True
+    intent_path = _write(run_dir, "semantic_search_intent.json", intent_payload)
+    guard_path = _write(run_dir, "search_query_guard_report.json", guard_report)
     if max_papers is not None:
         plan.max_total_results = max_papers
         for query in plan.pubmed_queries + plan.pmc_queries:
@@ -295,7 +397,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
     warnings = list(plan.warnings)
     if execute and api:
         warnings.append("api_enabled_but_search_query_generation_remains_deterministic")
-    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation, "paper_year_filter": plan.paper_year_filter}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
+    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation, "paper_year_filter": plan.paper_year_filter, "search_intent_mode": intent_payload["mode"], "llm_search_intent_used": intent_payload["llm_search_intent_used"], "deterministic_search_fallback_used": intent_payload["deterministic_search_fallback_used"], "query_guard": guard_report}, artifacts={"search_plan": path, "semantic_search_intent": intent_path, "search_query_guard_report": guard_path}, counts={"search_query_count": count}, warnings=warnings, api_calls_made=int(intent_payload.get("api_calls_made", 0)))
 
 
 def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None,

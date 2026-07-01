@@ -31,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--temporal-role", choices=("discovery", "validation", "unrestricted"), default="unrestricted")
     parser.add_argument("--allow-legacy", action="store_true")
     parser.add_argument("--allow-uncertain-intake", action="store_true")
+    parser.add_argument("--allow-deterministic-search-fallback", action="store_true")
+    parser.add_argument("--disable-llm-search-intent", action="store_true")
     parser.add_argument("--semantic-confidence-threshold", type=float, default=0.6)
     entity_network = parser.add_mutually_exclusive_group()
     entity_network.add_argument("--entity-network-lookup", action="store_true")
@@ -157,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
         temporal_role=args.temporal_role,
         allow_legacy=args.allow_legacy,
         allow_uncertain_intake=args.allow_uncertain_intake,
+        allow_deterministic_search_fallback=args.allow_deterministic_search_fallback,
+        disable_llm_search_intent=args.disable_llm_search_intent,
         semantic_confidence_threshold=args.semantic_confidence_threshold,
         entity_network_lookup=args.entity_network_lookup,
         entity_llm_proposer=args.entity_llm_proposer,
