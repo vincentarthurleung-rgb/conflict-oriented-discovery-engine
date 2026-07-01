@@ -12,7 +12,8 @@ def _contains(query: str, aliases: list[str]) -> bool:
 
 
 def guard_search_queries(queries: list[dict[str, Any]], *, subject_aliases: list[str],
-                         object_aliases: list[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+                         object_aliases: list[str], context_terms: list[str] | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from code_engine.search.context_guard import annotate_query_context
     allowed, removed = [], []
     context_removed = broad_removed = off_seed = 0
     for item in queries:
@@ -34,13 +35,17 @@ def guard_search_queries(queries: list[dict[str, Any]], *, subject_aliases: list
             off_seed += 1
         row.update({"seed_subject_required": True, "seed_object_required": group in {"direct_relation", "mechanism"},
                     "passed_query_guard": reason is None})
+        row = annotate_query_context(row, context_terms=context_terms or [])
         if reason:
             removed.append({"query": query, "query_group": group, "reason": reason})
         else:
             allowed.append(row)
     report = {"total_queries_before_guard": len(queries), "allowed_l1_acquisition_queries": len(allowed),
               "removed_queries": removed, "off_seed_queries_removed": off_seed,
-              "context_only_queries_removed": context_removed, "broad_recall_queries_removed": broad_removed}
+              "context_only_queries_removed": context_removed, "broad_recall_queries_removed": broad_removed,
+              "context_guard_enabled": bool(context_terms),
+              "context_strict_query_count": sum(bool(item.get("context_strict")) for item in allowed),
+              "cross_context_mechanism_query_count": sum(item.get("query_scope") == "cross_context_mechanism" for item in allowed)}
     return allowed, report
 
 

@@ -161,13 +161,26 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         adjudicator_policy=entity_resolution_policy,
     )
     hints = load_runtime_entity_hints(run_dir)
+    intent_payload = _read(run_dir, "semantic_search_intent.json", {})
+    intake_payload = _read(run_dir, "intake.json", {})
+    seed_triple = intent_payload.get("seed_triple") or intake_payload.get("unified_seed_triple") or {}
+    acquisition = _read(run_dir, "acquisition_report.json", {})
+    paper_by_id = {}
+    for bucket in ("candidate_papers", "reused_papers", "downloaded_papers"):
+        for paper in acquisition.get(bucket, []):
+            for key in (paper.get("paper_id"), paper.get("canonical_paper_id"), paper.get("pmid"), paper.get("pmcid")):
+                if key: paper_by_id[str(key)] = paper
     observations = []
     for item in records:
         subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {"expected_entity_type": item.get("subject_type") or ""})
         obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {"expected_entity_type": item.get("object_type") or ""})
         subject_hint = match_runtime_hint(str(item.get("subject_raw") or ""), hints)
         object_hint = match_runtime_hint(str(item.get("object_raw") or ""), hints)
-        decision = decide_l2_evidence_layer(item, subject, obj, subject_hint, object_hint, hints)
+        paper = paper_by_id.get(str(item.get("paper_id") or ""), {})
+        decision = decide_l2_evidence_layer(item, subject, obj, subject_hint, object_hint, hints,
+                                            seed_triple=seed_triple, semantic_search_intent=intent_payload,
+                                            query_record=item.get("query_record") or paper.get("query_record"),
+                                            paper_metadata=paper)
         usable = bool(decision["canonical_graph_eligible"])
         observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
         subject_name = subject.canonical_name if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("canonical_name") or item.get("subject_raw")
@@ -341,6 +354,8 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
     subject = seed.get("subject") or {}; obj = seed.get("object") or {}
     subject_aliases = list(dict.fromkeys([str(subject.get("name") or ""), *list(subject.get("aliases") or [])]))
     object_aliases = list(dict.fromkeys([str(obj.get("name") or ""), *list(obj.get("aliases") or [])]))
+    seed_context = seed.get("context") or {}
+    context_terms = list(seed_context.get("terms") or seed_context.get("context_terms") or [])
     raw_queries: list[dict[str, Any]] = []
     if search_intent:
         for group, queries in search_intent.query_groups.items():
@@ -354,7 +369,19 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                                 "allowed_for_l1_acquisition": True, "search_intent_mode": "deterministic_fallback",
                                 "search_intent_confidence": float(intake.semantic_confidence)})
     from code_engine.search.query_guard import guard_search_queries
-    allowed_queries, guard_report = guard_search_queries(raw_queries, subject_aliases=subject_aliases, object_aliases=object_aliases)
+    allowed_queries, guard_report = guard_search_queries(raw_queries, subject_aliases=subject_aliases,
+                                                          object_aliases=object_aliases, context_terms=context_terms)
+    if search_intent is not None:
+        from code_engine.search.semantic_search_intent import resolve_search_intent_confidence
+        raw_confidence = search_intent.confidence if search_intent.confidence_source == "llm_response_confidence" else None
+        search_intent.confidence, search_intent.confidence_source = resolve_search_intent_confidence(
+            raw_confidence, intake.semantic_confidence, intake.unified_seed_triple.get("confidence"),
+            schema_valid=search_intent.search_intent_schema_valid,
+            llm_search_intent_used=search_intent.llm_search_intent_used,
+            allowed_l1_query_count=len(allowed_queries),
+        )
+        for item in allowed_queries:
+            item["search_intent_confidence"] = search_intent.confidence
     if search_intent is not None and not allowed_queries:
         from code_engine.search.semantic_search_intent import SearchIntentValidationError, write_search_intent_diagnostic
         exc = SearchIntentValidationError("no_seed_aligned_l1_queries_after_guard", "No seed-aligned L1 acquisition queries remain after query guard", raw_response=search_intent.model_dump(mode="json"))
@@ -385,8 +412,18 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
             search_intent_confidence=float(item.get("search_intent_confidence") or 0.0),
             query_group=str(item.get("query_group")), allowed_for_l1_acquisition=True,
             seed_subject_required=True, seed_object_required=True, passed_query_guard=True,
+            passed_context_guard=bool(item.get("passed_context_guard")), context_strict=bool(item.get("context_strict")),
+            allowed_for_context_specific_core=bool(item.get("allowed_for_context_specific_core")),
+            context_terms_required=list(item.get("context_terms_required") or []),
+            context_terms_matched=list(item.get("context_terms_matched") or []),
+            context_guard_reason=str(item.get("context_guard_reason") or "context_not_required"),
+            query_scope=str(item.get("query_scope") or "general"),
         ))
     plan.pubmed_queries = safe_queries
+    plan.primary_queries = []; plan.secondary_queries = []; plan.mechanism_queries = []
+    plan.comparison_queries = []; plan.clinical_queries = []; plan.pmc_queries = []
+    plan.query_generation_mode = "llm" if search_intent else "deterministic_fallback"
+    plan.semantic_confidence = float(search_intent.confidence if search_intent else intake.semantic_confidence)
     plan.query_groups = [{"group": "l1_acquisition", "stage": "abstract_retrieval", "source": "pubmed",
                           "queries": [item.model_dump(mode="json") for item in safe_queries]}]
     intent_payload = search_intent.model_dump(mode="json") if search_intent else {
@@ -665,17 +702,19 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
     from code_engine.normalization.layered_grounding import load_runtime_entity_hints
     hints = load_runtime_entity_hints(run_dir)
     layers = {name: [item for item in observations if item.get("graph_layer") == name] for name in
-              ("core_canonical_graph", "mechanism_layer", "context_layer", "review_layer", "excluded")}
+              ("core_canonical_graph", "cross_context_mechanism_layer", "mechanism_layer", "context_layer", "review_layer", "excluded")}
     retained = [item for item in observations if item.get("retained")]
     layer_paths = {
         "l2_retained_observations": run_dir / "artifacts/l2_retained_observations.jsonl",
         "l2_core_graph_observations": run_dir / "artifacts/l2_core_graph_observations.jsonl",
         "l2_mechanism_observations": run_dir / "artifacts/l2_mechanism_observations.jsonl",
+        "l2_cross_context_mechanism_observations": run_dir / "artifacts/l2_cross_context_mechanism_observations.jsonl",
         "l2_context_observations": run_dir / "artifacts/l2_context_observations.jsonl",
         "l2_review_observations": run_dir / "artifacts/l2_review_observations.jsonl",
         "l2_excluded_observations": run_dir / "artifacts/l2_excluded_observations.jsonl",
     }
     for key, values in (("l2_retained_observations", retained), ("l2_core_graph_observations", layers["core_canonical_graph"]),
+                        ("l2_cross_context_mechanism_observations", layers["cross_context_mechanism_layer"]),
                         ("l2_mechanism_observations", layers["mechanism_layer"]), ("l2_context_observations", layers["context_layer"]),
                         ("l2_review_observations", layers["review_layer"]), ("l2_excluded_observations", layers["excluded"])):
         atomic_write_jsonl(layer_paths[key], iter(values))
@@ -684,6 +723,18 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                         "excluded_from_retention_reason": item.get("excluded_from_retention_reason"),
                         "retention_reason": item.get("retention_reason")} for item in observations if not item.get("canonical_graph_eligible")]
     exclusion_path = run_dir / "artifacts/l2_exclusion_audit.jsonl"; atomic_write_jsonl(exclusion_path, iter(exclusion_audit))
+    context_audit_path = run_dir / "artifacts/context_compatibility_audit.jsonl"
+    atomic_write_jsonl(context_audit_path, iter({"observation_id": item.get("observation_id"), "paper_id": item.get("paper_id"),
+                                                "graph_layer": item.get("graph_layer"), "context_compatibility_status": item.get("context_compatibility_status"),
+                                                "context_compatibility_score": item.get("context_compatibility_score"),
+                                                "strong_context_match": (item.get("context_compatibility") or {}).get("strong_context_match", False),
+                                                "weak_context_match": (item.get("context_compatibility") or {}).get("weak_context_match", False),
+                                                "query_context_only": (item.get("context_compatibility") or {}).get("query_context_only", False),
+                                                "strong_context_terms_matched": (item.get("context_compatibility") or {}).get("strong_context_terms_matched", []),
+                                                "weak_context_terms_matched": (item.get("context_compatibility") or {}).get("weak_context_terms_matched", []),
+                                                "context_sources": (item.get("context_compatibility") or {}).get("context_sources", []),
+                                                "core_context_eligible": item.get("core_context_eligible"),
+                                                "excluded_from_core_reason": item.get("excluded_from_core_reason")} for item in observations))
     candidate_records = []
     entity_audit_records = []
     for item in observations:
@@ -705,10 +756,29 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
     observations_path = _write(run_dir, "l2_abstract_observations.json", observations)
     excluded_reasons = Counter(item.get("excluded_from_retention_reason") or item.get("excluded_from_core_reason") or "unknown" for item in observations if not item.get("retained"))
     summary = {
+        "layered_retention_enabled": True,
         "normalized_observation_count": len(observations),
-        "high_confidence_observation_count": sum(bool(item.get("allow_high_confidence_graph_use")) for item in observations),
-        "excluded_low_confidence_count": sum(not bool(item.get("allow_high_confidence_graph_use")) for item in observations),
+        "high_confidence_observation_count": len(layers["core_canonical_graph"]),
+        "high_confidence_observation_count_semantics": "legacy_core_graph_count",
+        "non_core_observation_count": sum(not bool(item.get("canonical_graph_eligible")) for item in observations),
+        "excluded_from_core_count": sum(not bool(item.get("canonical_graph_eligible")) for item in observations),
+        "excluded_from_retention_count": sum(not bool(item.get("retained")) for item in observations),
+        "low_confidence_excluded_from_retention_count": sum(not item.get("retained") and "low_confidence" in str(item.get("excluded_from_retention_reason") or "") for item in observations),
+        "off_seed_excluded_from_retention_count": sum(not item.get("retained") and item.get("excluded_from_retention_reason") == "off_seed_relation" for item in observations),
+        "excluded_low_confidence_count": sum(not item.get("retained") and "low_confidence" in str(item.get("excluded_from_retention_reason") or "") for item in observations),
+        "excluded_low_confidence_count_semantics": "excluded_from_retention_due_to_low_confidence_only",
+        "excluded_low_confidence_count_deprecated_previous_semantics": True,
+        "legacy_excluded_low_confidence_count": sum(not bool(item.get("canonical_graph_eligible")) for item in observations),
         "core_canonical_observation_count": len(layers["core_canonical_graph"]),
+        "cross_context_mechanism_observation_count": len(layers["cross_context_mechanism_layer"]),
+        "context_matched_core_observation_count": sum(item.get("context_compatibility_status") in {"context_matched", "context_not_required"} for item in layers["core_canonical_graph"]),
+        "strong_context_matched_core_observation_count": sum(bool((item.get("context_compatibility") or {}).get("strong_context_match")) for item in layers["core_canonical_graph"]),
+        "context_query_only_observation_count": sum(item.get("context_compatibility_status") == "context_query_only" for item in observations),
+        "context_query_only_downgraded_from_core_count": sum(item.get("excluded_from_core_reason") == "query_context_only_insufficient_for_context_specific_core" for item in observations),
+        "context_mismatch_downgraded_from_core_count": sum(item.get("excluded_from_core_reason") in {"context_mismatch", "context_missing_for_context_specific_core"} for item in observations),
+        "anchored_core_candidate_count": sum(str(item.get("predicate_anchor_status", "")).endswith("anchored") or item.get("predicate_anchor_status") == "multiple_predicates_resolved" for item in observations),
+        "ambiguous_predicate_anchor_count": sum(item.get("excluded_from_core_reason") == "ambiguous_seed_predicate_anchor" for item in observations),
+        "predicate_direction_inconsistency_count": sum(item.get("excluded_from_core_reason") == "predicate_direction_inconsistent" for item in observations),
         "mechanism_observation_count": len(layers["mechanism_layer"]),
         "context_observation_count": len(layers["context_layer"]),
         "review_observation_count": len(layers["review_layer"]),
@@ -727,7 +797,7 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         status="completed" if observations else "planned", summary=summary,
         artifacts={"l2_abstract_observations": observations_path, "l2_abstract_summary": summary_path,
                    **{key: str(value) for key, value in layer_paths.items()},
-                   "l2_exclusion_audit": str(exclusion_path), "run_entity_registry": str(registry_path),
+                   "l2_exclusion_audit": str(exclusion_path), "context_compatibility_audit": str(context_audit_path), "run_entity_registry": str(registry_path),
                    "entity_resolution_candidates": str(candidates_path), "entity_resolution_audit_jsonl": str(entity_audit_path)},
         counts={key: value for key, value in summary.items() if key.endswith("_count")},
         warnings=(["entity_resolution_low_coverage_for_pilot_query"] if low_pilot_coverage else []) + ([] if observations else ["no_abstract_claims_to_normalize"]),

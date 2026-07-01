@@ -184,6 +184,7 @@ def build_runtime_provenance(
         "semantic_search_intent": {
             "enabled": True, "mode": search_intent.get("mode"),
             "confidence": search_intent.get("confidence", 0.0),
+            "confidence_source": search_intent.get("confidence_source", "failed_zero"),
             "planner_prompt_profile_id": search_intent.get("planner_prompt_profile_id"),
             "planner_prompt_version": search_intent.get("planner_prompt_version"),
             "planner_prompt_hash": search_intent.get("planner_prompt_hash"),
@@ -201,6 +202,29 @@ def build_runtime_provenance(
             "blocked_reason": search_intent.get("blocked_reason"),
         },
         "query_guard": query_guard,
+        "context_aware_evidence_layering": {
+            "enabled": True,
+            "context_specific_run": bool(((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("terms") or ((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("context_terms")),
+            "context_terms": list(((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("terms") or ((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("context_terms") or []),
+            "context_guard_enabled": bool(query_guard.get("context_guard_enabled")),
+            "context_mismatch_core_block_enabled": True,
+            "query_context_alone_sufficient_for_core": False,
+            "strong_context_required_for_context_specific_core": True,
+            "strong_context_sources": ["evidence_sentence", "abstract", "title", "metadata", "l1_context_slots"],
+            "weak_context_sources": ["retrieval_query", "user_query", "semantic_intent"],
+            "cross_context_mechanism_retention_enabled": True,
+        },
+        "seed_predicate_anchoring": {
+            "enabled": True, "core_requires_seed_predicate_anchor": True,
+            "predicate_direction_consistency_required": True,
+        },
+        "search_plan_provenance_consistent": all(
+            query.get("search_intent_mode") == search_intent.get("mode")
+            and bool(query.get("passed_query_guard"))
+            and query.get("paper_year_filter_enabled") == bool((search_plan.get("paper_year_filter") or {}).get("enabled"))
+            and query.get("temporal_role") == (search_plan.get("paper_year_filter") or {}).get("temporal_role")
+            for query in search_plan.get("pubmed_queries", [])
+        ) if search_plan.get("pubmed_queries") else True,
         "l2_layered_retention": {
             "enabled": True,
             "binary_high_confidence_gate_used_as_only_retention_gate": False,
@@ -209,8 +233,14 @@ def build_runtime_provenance(
             "external_entity_resolution_enabled": False,
             "core_graph_remains_strict": True,
         },
+        "l2_summary_semantics": {
+            "layered_retention_enabled": True,
+            "excluded_low_confidence_count_uses_legacy_semantics": False,
+            "non_core_observation_count_available": "non_core_observation_count" in l2_summary,
+            "excluded_from_retention_count_available": "excluded_from_retention_count" in l2_summary,
+        },
         "l2_counts": {key: int(l2_summary.get(key, 0)) for key in (
-            "core_canonical_observation_count", "mechanism_observation_count",
+            "core_canonical_observation_count", "cross_context_mechanism_observation_count", "mechanism_observation_count",
             "context_observation_count", "review_observation_count", "excluded_observation_count",
         )},
         "prompt_profile_id": abstract_l1.get("prompt_profile_id") or fulltext_l1.get("prompt_profile_id"),

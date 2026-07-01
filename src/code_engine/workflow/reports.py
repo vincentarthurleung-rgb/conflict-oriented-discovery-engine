@@ -62,6 +62,26 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
               f"- Legacy pipelines used: `{str(contamination.get('legacy_pipeline_used', False)).lower()}`",
               f"- Historical runs read: `{str(contamination.get('historical_runs_read', False)).lower()}`",
               f"- Global evidence injected before reasoning: `{str(contamination.get('global_evidence_injected_before_reasoning', False)).lower()}`", ""]
+    l2_context = state.steps["l2_abstract"].summary
+    lines += ["## L2 layered retention", "",
+              f"- normalized observations: {l2_context.get('normalized_observation_count', 0)}",
+              f"- retained observations: {l2_context.get('retained_observation_count', 0)}",
+              f"- excluded from retention: {l2_context.get('excluded_from_retention_count', 0)}",
+              f"- non-core observations: {l2_context.get('non_core_observation_count', 0)}",
+              f"- core observations: {l2_context.get('core_canonical_observation_count', 0)}",
+              f"- mechanism / context / review / excluded: {l2_context.get('mechanism_observation_count', 0)} / {l2_context.get('context_observation_count', 0)} / {l2_context.get('review_observation_count', 0)} / {l2_context.get('excluded_observation_count', 0)}",
+              "", "Non-core does not mean discarded; retained mechanism, context, and review evidence remains available for downstream non-core reasoning.", ""]
+    lines += ["## Context grounding", "",
+              f"- context-specific run: `{str((provenance.get('context_aware_evidence_layering') or {}).get('context_specific_run', False)).lower()}`",
+              f"- strong-context core observations: {l2_context.get('strong_context_matched_core_observation_count', 0)}",
+              f"- query-only context downgraded from core: {l2_context.get('context_query_only_downgraded_from_core_count', 0)}",
+              f"- cross-context mechanism observations: {l2_context.get('cross_context_mechanism_observation_count', 0)}",
+              f"- context mismatch downgraded from core: {l2_context.get('context_mismatch_downgraded_from_core_count', 0)}", "",
+              "Retrieval query context is used for acquisition but is insufficient for context-specific core graph admission.", "",
+              "## Seed predicate anchoring", "",
+              f"- anchored core candidates: {l2_context.get('anchored_core_candidate_count', 0)}",
+              f"- ambiguous predicate anchors: {l2_context.get('ambiguous_predicate_anchor_count', 0)}",
+              f"- predicate direction inconsistencies blocked from core: {l2_context.get('predicate_direction_inconsistency_count', 0)}", ""]
     for name in STEP_ORDER:
         record = state.steps[name]
         detail = record.skipped_reason or ", ".join(record.warnings[:2])

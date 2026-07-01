@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from code_engine.search.context_guard import expand_context_terms
+
 
 @dataclass(frozen=True)
 class RuntimeEntityHint:
@@ -26,6 +28,167 @@ class RuntimeEntityHint:
     def to_dict(self) -> dict[str, Any]:
         return {**asdict(self), "aliases": list(self.aliases), "canonical_id": self.canonical_id,
                 "curated": False, "used_for_core_graph": self.role in {"seed_subject", "seed_object"}}
+
+
+@dataclass(frozen=True)
+class ContextSourceEvidence:
+    source: str
+    strength: str
+    matched_terms: tuple[str, ...]
+    text_excerpt: str | None = None
+
+
+@dataclass(frozen=True)
+class ContextCompatibilityResult:
+    score: float
+    status: str
+    matched_terms: tuple[str, ...]
+    missing_terms: tuple[str, ...]
+    mismatch_reasons: tuple[str, ...]
+    evidence_context_terms: tuple[str, ...]
+    abstract_context_terms: tuple[str, ...]
+    title_context_terms: tuple[str, ...]
+    metadata_context_terms: tuple[str, ...]
+    seed_context_terms: tuple[str, ...]
+    query_context_terms: tuple[str, ...]
+    semantic_intent_context_terms: tuple[str, ...]
+    paper_context_terms: tuple[str, ...]
+    strong_context_terms_matched: tuple[str, ...]
+    weak_context_terms_matched: tuple[str, ...]
+    strong_context_match: bool
+    weak_context_match: bool
+    query_context_only: bool
+    core_context_eligible: bool
+    context_sources: tuple[ContextSourceEvidence, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        value = asdict(self)
+        for key, item in list(value.items()):
+            if isinstance(item, tuple): value[key] = list(item)
+        return value
+
+
+@dataclass(frozen=True)
+class PredicateAnchorResult:
+    anchor_status: str
+    seed_predicate_span: str | None
+    seed_predicate_direction: str | None
+    seed_relation_family: str | None
+    sentence_primary_predicate: str | None
+    direct_relation_sign: int
+    confidence: float
+    warnings: tuple[str, ...]
+    predicate_direction_consistent: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        value = asdict(self); value["warnings"] = list(self.warnings)
+        value["predicate_anchor_status"] = value.pop("anchor_status")
+        return value
+
+
+_PREDICATES = {
+    "activation": (("activate", "activates", "activated", "activating", "activation", "increase", "increases", "increased"), 1, "activate"),
+    "inhibition": (("inhibit", "inhibits", "inhibited", "inhibiting", "inhibition", "suppress", "suppresses", "suppressed"), -1, "inhibit"),
+}
+
+
+def _mentions(text: str, terms: list[str] | tuple[str, ...]) -> list[str]:
+    lowered = text.casefold()
+    return [term for term in terms if re.search(r"(?<!\w)" + re.escape(str(term).casefold()) + r"(?!\w)", lowered)]
+
+
+def compute_context_compatibility(observation: dict[str, Any], seed_triple: dict[str, Any],
+                                  semantic_search_intent: dict[str, Any] | None = None,
+                                  query_record: dict[str, Any] | None = None,
+                                  paper_metadata: dict[str, Any] | None = None) -> ContextCompatibilityResult:
+    context = seed_triple.get("context") or {}
+    raw_seed = list(context.get("terms") or context.get("context_terms") or [])
+    if semantic_search_intent:
+        intent_context = ((semantic_search_intent.get("seed_triple") or {}).get("context") or {})
+        raw_seed.extend(intent_context.get("terms") or intent_context.get("context_terms") or [])
+    aliases = expand_context_terms([str(term) for term in raw_seed])
+    if not aliases:
+        return ContextCompatibilityResult(1.0, "context_not_required", (), (), (), (), (), (), (), (), (), (), (), (), (),
+                                          False, False, False, True, ())
+    evidence_text = str(observation.get("evidence_sentence") or observation.get("evidence_span") or "")
+    l1_context_text = " ".join(str(observation.get(key) or "") for key in ("context", "context_mentions", "context_slots"))
+    paper = paper_metadata or {}
+    title_text = str(paper.get("title") or "")
+    abstract_text = str(paper.get("abstract") or paper.get("abstract_text") or "")
+    metadata_text = " ".join(str(paper.get(key) or "") for key in
+                             ("journal", "journal_title", "keywords", "mesh_terms", "disease", "condition", "tissue", "cell_type", "species"))
+    query_text = str((query_record or {}).get("query") or (query_record or {}).get("query_string") or "")
+    evidence_matches = _mentions(evidence_text, aliases)
+    l1_matches = _mentions(l1_context_text, aliases)
+    abstract_matches = _mentions(abstract_text, aliases)
+    title_matches = _mentions(title_text, aliases)
+    metadata_matches = _mentions(metadata_text, aliases)
+    query_matches = _mentions(query_text, aliases)
+    intent_context = ((semantic_search_intent or {}).get("seed_triple") or {}).get("context") or {}
+    semantic_terms = _mentions(" ".join(str(x) for x in intent_context.get("terms") or intent_context.get("context_terms") or []), aliases)
+    strong = list(dict.fromkeys([*evidence_matches, *l1_matches, *abstract_matches, *title_matches, *metadata_matches]))
+    weak = list(dict.fromkeys([*query_matches, *semantic_terms]))
+    matched = list(dict.fromkeys([*strong, *weak]))
+    sources = tuple(ContextSourceEvidence(source, strength, tuple(terms), text[:240] or None) for source, strength, terms, text in (
+        ("evidence_sentence", "strong", evidence_matches, evidence_text),
+        ("l1_context_slots", "strong", l1_matches, l1_context_text),
+        ("abstract", "strong", abstract_matches, abstract_text),
+        ("title", "strong", title_matches, title_text),
+        ("metadata", "strong", metadata_matches, metadata_text),
+        ("retrieval_query", "weak", query_matches, query_text),
+        ("semantic_intent", "weak", semantic_terms, " ".join(str(x) for x in intent_context.get("terms") or [])),
+    ) if terms)
+    if strong:
+        status, score, eligible, reasons = "context_matched", 1.0, True, ()
+    elif weak or (query_record or {}).get("context_strict"):
+        status, score, eligible, reasons = "context_query_only", 0.35, False, ("query_context_only_insufficient_for_context_specific_core",)
+    else:
+        status, score, eligible, reasons = "context_missing", 0.2, False, ("required_context_not_grounded",)
+    return ContextCompatibilityResult(score, status, tuple(matched), tuple(x for x in aliases if x not in matched), reasons,
+                                      tuple(evidence_matches), tuple(abstract_matches), tuple(title_matches), tuple(metadata_matches),
+                                      tuple(aliases), tuple(query_matches), tuple(semantic_terms),
+                                      tuple(dict.fromkeys([*abstract_matches, *title_matches, *metadata_matches])),
+                                      tuple(strong), tuple(weak), bool(strong), bool(weak), bool(weak and not strong), eligible, sources)
+
+
+def anchor_seed_predicate(evidence_sentence: str, subject_aliases: list[str], object_aliases: list[str],
+                          seed_relation_family: str, l1_claim: dict[str, Any]) -> PredicateAnchorResult:
+    sentence = str(evidence_sentence or ""); lowered = sentence.casefold()
+    primary_hits = [(match.start(), word) for family in _PREDICATES.values() for word in family[0]
+                    for match in re.finditer(r"(?<!\w)" + re.escape(word) + r"(?!\w)", lowered)]
+    primary = min(primary_hits)[1] if primary_hits else None
+    candidates: list[tuple[int, int, str, str, int, str]] = []
+    for family, (words, sign, direction) in _PREDICATES.items():
+        for word in words:
+            for match in re.finditer(r"(?<!\w)" + re.escape(word) + r"(?!\w)", lowered):
+                for alias in object_aliases:
+                    object_match = re.search(r"(?<!\w)" + re.escape(alias.casefold()) + r"(?!\w)", lowered[match.end():match.end() + 100])
+                    if object_match:
+                        end = match.end() + object_match.end()
+                        candidates.append((end - match.start(), match.start(), sentence[match.start():end], family, sign, direction))
+        for alias in object_aliases:
+            for object_match in re.finditer(r"(?<!\w)" + re.escape(alias.casefold()) + r"(?!\w)", lowered):
+                tail = lowered[object_match.end():object_match.end() + 40]
+                for word in words:
+                    predicate_match = re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", tail)
+                    if predicate_match:
+                        end = object_match.end() + predicate_match.end()
+                        candidates.append((end - object_match.start(), object_match.start(), sentence[object_match.start():end], family, sign, direction))
+    if not candidates:
+        return PredicateAnchorResult("no_seed_predicate_found", None, None, None, primary, 0, 0.0,
+                                     ("ambiguous_seed_predicate_anchor",), False)
+    candidates.sort(key=lambda item: (item[0], item[1])); best = candidates[0]
+    tied_families = {item[3] for item in candidates if item[0] <= best[0] + 8}
+    if len(tied_families) > 1:
+        return PredicateAnchorResult("ambiguous_multiple_predicates", best[2], None, None, primary, 0, 0.35,
+                                     ("ambiguous_seed_predicate_anchor",), False)
+    multiple = len({item[3] for item in candidates}) > 1 or sum(lowered.count(word) for values in _PREDICATES.values() for word in values[0]) > 1
+    status = "multiple_predicates_resolved" if multiple or (primary and primary not in best[2].casefold()) else "seed_object_anchored"
+    expected = str(seed_relation_family or "").casefold()
+    expected_family = "activation" if any(x in expected for x in ("activat", "increase", "promot", "upregulat")) else "inhibition" if any(x in expected for x in ("inhibit", "decrease", "suppress", "downregulat")) else ""
+    consistent = not expected_family or best[3] == expected_family
+    warnings = () if consistent else ("predicate_direction_inconsistent",)
+    return PredicateAnchorResult(status, best[2], best[5], best[3], primary, best[4], 0.95, warnings, consistent)
 
 
 PROCESS_PATTERNS = (
@@ -88,7 +251,10 @@ def match_runtime_hint(mention: str, hints: list[RuntimeEntityHint]) -> dict[str
 
 def decide_l2_evidence_layer(item: dict[str, Any], subject_resolution: Any, object_resolution: Any,
                              subject_hint: dict[str, Any] | None, object_hint: dict[str, Any] | None,
-                             hints: list[RuntimeEntityHint]) -> dict[str, Any]:
+                             hints: list[RuntimeEntityHint], *, seed_triple: dict[str, Any] | None = None,
+                             semantic_search_intent: dict[str, Any] | None = None,
+                             query_record: dict[str, Any] | None = None,
+                             paper_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     sentence = str(item.get("evidence_sentence") or "")
     combined = " ".join((str(item.get("subject_raw") or ""), str(item.get("object_raw") or ""), sentence)).casefold()
     roles = {hint.role: hint for hint in hints}
@@ -100,8 +266,23 @@ def decide_l2_evidence_layer(item: dict[str, Any], subject_resolution: Any, obje
     strict_subject = bool(subject_resolution.allow_high_confidence_graph_use or (subject_hint and subject_hint["role"] == "seed_subject" and subject_hint["match_type"] == "exact_alias"))
     strict_object = bool(object_resolution.allow_high_confidence_graph_use or (object_hint and object_hint["role"] == "seed_object" and object_hint["match_type"] == "exact_alias"))
     relation_confidence = float(item.get("direction_confidence", item.get("confidence", 0.0)) or 0.0)
+    seed = seed_triple or {}
+    relation = seed.get("relation") or {}
+    anchor = anchor_seed_predicate(sentence,
+        list(subject_seed.aliases) if subject_seed else [], list(object_seed.aliases) if object_seed else [],
+        str(relation.get("family") or relation.get("name") or ""), item)
+    compatibility = compute_context_compatibility(item, seed, semantic_search_intent, query_record, paper_metadata)
     if not sentence.strip():
         layer, retained, reason, excluded = "excluded", False, None, "missing_evidence_sentence"
+    elif strict_subject and strict_object and subject_mentioned and object_mentioned and not anchor.predicate_direction_consistent:
+        layer, retained, reason, excluded = "review_layer", True, "seed_relation_retained_for_predicate_review", "predicate_direction_inconsistent"
+    elif strict_subject and strict_object and subject_mentioned and object_mentioned and anchor.anchor_status in {"no_seed_predicate_found", "ambiguous_multiple_predicates"}:
+        layer, retained, reason, excluded = "review_layer", True, "seed_relation_retained_for_predicate_review", "ambiguous_seed_predicate_anchor"
+    elif strict_subject and strict_object and subject_mentioned and object_mentioned and not compatibility.core_context_eligible:
+        if compatibility.status == "context_query_only":
+            layer, retained, reason, excluded = "cross_context_mechanism_layer", True, "seed_relation_supported_but_context_not_evidence_grounded", "query_context_only_insufficient_for_context_specific_core"
+        else:
+            layer, retained, reason, excluded = "cross_context_mechanism_layer", True, "seed_relation_supported_but_context_mismatch", "context_mismatch" if compatibility.status == "context_mismatch" else "context_missing_for_context_specific_core"
     elif strict_subject and strict_object and subject_mentioned and object_mentioned:
         layer, retained, reason, excluded = "core_canonical_graph", True, "high_confidence_seed_aligned_canonical_entities", None
     elif subject_mentioned and object_mentioned:
@@ -116,15 +297,24 @@ def decide_l2_evidence_layer(item: dict[str, Any], subject_resolution: Any, obje
         layer, retained, reason, excluded = "excluded", False, None, "off_seed_relation"
     core = layer == "core_canonical_graph"
     relevance = "direct_seed_relation" if core else "mechanistic_intermediate" if layer == "mechanism_layer" else "context_only" if layer == "context_layer" else "off_seed" if not retained else "unknown"
+    anchored_fields = anchor.to_dict()
+    if anchor.seed_predicate_direction and anchor.predicate_direction_consistent:
+        seed_family_text = str(relation.get("family") or relation.get("name") or "").casefold()
+        relation_family = anchor.seed_relation_family if any(token in seed_family_text for token in ("activat", "inhibit", "increase", "decrease", "promot", "suppress", "upregulat", "downregulat")) else str(item.get("relation_family") or anchor.seed_relation_family)
+        anchored_fields.update({"direction": anchor.seed_predicate_direction, "relation_family": relation_family,
+                                "relation_raw": anchor.seed_predicate_span, "direct_relation_sign": anchor.direct_relation_sign})
     return {"retained": retained, "graph_layer": layer, "canonical_graph_eligible": core,
             "seed_alignment_score": seed_score,
             "entity_grounding_score": round((float(subject_resolution.confidence) + float(object_resolution.confidence) + (subject_hint or {}).get("score", 0) + (object_hint or {}).get("score", 0)) / 4, 3),
             "relation_confidence_score": relation_confidence,
             "context_completeness_score": 1.0 if item.get("context") or item.get("context_mentions") or item.get("context_slots") else 0.0,
-            "excluded_from_core_reason": None if core else ("object_is_process_or_outcome_not_canonical_entity" if layer == "mechanism_layer" else "not_strict_canonical_seed_relation"),
-            "excluded_from_retention_reason": excluded, "retention_reason": reason,
+            "excluded_from_retention_reason": None if retained else excluded, "retention_reason": reason,
+            "excluded_from_core_reason": None if core else (excluded or ("object_is_process_or_outcome_not_canonical_entity" if layer == "mechanism_layer" else "not_strict_canonical_seed_relation")),
+            "context_compatibility_score": compatibility.score, "context_compatibility_status": compatibility.status,
+            "core_context_eligible": compatibility.core_context_eligible, "context_compatibility": compatibility.to_dict(),
+            **anchored_fields,
             "computed_seed_subject_mentioned": subject_mentioned, "computed_seed_object_mentioned": object_mentioned,
             "computed_context_mentioned": context_mentioned, "computed_seed_relevance": relevance}
 
 
-__all__ = ["RuntimeEntityHint", "decide_l2_evidence_layer", "load_runtime_entity_hints", "match_runtime_hint", "normalize_mention"]
+__all__ = ["ContextCompatibilityResult", "ContextSourceEvidence", "PredicateAnchorResult", "RuntimeEntityHint", "anchor_seed_predicate", "compute_context_compatibility", "decide_l2_evidence_layer", "load_runtime_entity_hints", "match_runtime_hint", "normalize_mention"]

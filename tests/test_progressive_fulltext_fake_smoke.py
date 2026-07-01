@@ -25,7 +25,7 @@ class ProgressiveFulltextFakeSmokeTests(unittest.TestCase):
                          global_corpus_dir=Path(tmp) / "corpus", merge_knowledge_store=False)
             papers = [{"paper_id": f"P{i}", "canonical_paper_id": f"P{i}", "pmid": str(i),
                        "pmcid": f"PMC{i}", "title": f"Paper {i}", "publication_year": 2010 + i,
-                       "abstract": "Ketamine decreased BDNF." if i == 1 else "Ketamine increased BDNF."}
+                       "abstract": "Ketamine decreased BDNF in depression." if i == 1 else "Ketamine increased BDNF in depression."}
                       for i in range(1, 4)]
             artifacts = root / "artifacts"
             (artifacts / "acquisition_report.json").write_text(json.dumps({"candidate_papers": papers, "reused_papers": [], "downloaded_papers": [], "initial_fulltext_download_count": 0}))
@@ -33,7 +33,7 @@ class ProgressiveFulltextFakeSmokeTests(unittest.TestCase):
             state_payload["steps"]["acquisition"]["status"] = "completed"
             (root / "run_state.json").write_text(json.dumps(state_payload))
             fulltext = Path(tmp) / "P1.txt"
-            fulltext.write_text("Results. Ketamine increased BDNF in human cells.")
+            fulltext.write_text("Results. Ketamine increased BDNF in depression human cells.")
 
             def availability(item):
                 yes = str(item.get("pmid")) == "1" or item["canonical_paper_id"] == "P1"

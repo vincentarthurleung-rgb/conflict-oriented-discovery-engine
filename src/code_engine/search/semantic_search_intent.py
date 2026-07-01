@@ -23,6 +23,24 @@ _ALLOWED_DEFAULT = {"direct_relation": True, "mechanism": True, "context_only": 
                     "broad_recall": False, "validation_only": False}
 
 
+def resolve_search_intent_confidence(raw_intent_confidence: Any = None,
+                                     semantic_intake_confidence: Any = None,
+                                     seed_triple_confidence: Any = None, *,
+                                     schema_valid: bool, llm_search_intent_used: bool,
+                                     allowed_l1_query_count: int) -> tuple[float, str]:
+    """Resolve an auditable confidence without treating successful planning as failure."""
+    if not schema_valid or not llm_search_intent_used:
+        return 0.0, "failed_zero"
+    for value, source in ((raw_intent_confidence, "llm_response_confidence"),
+                          (semantic_intake_confidence, "semantic_intake_confidence"),
+                          (seed_triple_confidence, "seed_triple_confidence")):
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and float(value) > 0:
+            return round(max(0.0, min(1.0, float(value))), 4), source
+    if allowed_l1_query_count > 0:
+        return 0.6, "schema_valid_guarded_default"
+    return 0.0, "failed_zero"
+
+
 @dataclass
 class SearchIntentNormalizationResult:
     normalized: dict[str, Any]
@@ -173,11 +191,14 @@ class IntentQuery(CODEBaseModel):
     must_include_subject: bool = True
     must_include_object: bool = True
     allowed_for_l1_acquisition: bool = False
+    context_strict: bool = False
+    allowed_for_context_specific_core: bool = False
 
 
 class SemanticSearchIntent(CODEBaseModel):
     mode: Literal["llm", "deterministic_fallback"] = "llm"
     confidence: float = 0.0
+    confidence_source: str = "failed_zero"
     manual_review_required: bool = False
     seed_triple: SearchSeedTriple
     query_groups: dict[str, list[IntentQuery]] = Field(default_factory=dict)
@@ -213,6 +234,10 @@ def build_search_intent_prompt(user_query: str, domain_id: str, seed_triple: dic
     return f"""You are a biomedical Search Intent Planner.
 Return JSON object only. Preserve the seed subject and seed object in every L1 acquisition query.
 Do not permit object-only, context-only, broad-recall, or validation-only queries for L1 acquisition.
+If the user query contains disease, phenotype, tissue, cell, species, or experimental context, preserve it.
+Generate both context-strict direct queries (subject + object + context aliases) and seed mechanism
+background queries (subject + object; context optional). Background queries remain useful for acquisition
+but are not context-specific core evidence. Never silently drop user context terms.
 If relation is ambiguous, use the most conservative biomedical relation family and lower confidence.
 Use only common biomedical aliases. Do not invent disease subtypes.
 Output seed_triple with subject/name/aliases/type, relation/name/family/directional,
@@ -295,6 +320,11 @@ def plan_semantic_search_intent(user_query: str, *, domain_id: str, seed_triple:
     value.normalization_warnings = result.warnings
     value.warnings = list(dict.fromkeys([*value.warnings, *result.warnings]))
     value.search_intent_schema_valid_after_normalization = True
+    value.confidence, value.confidence_source = resolve_search_intent_confidence(
+        clean_payload.get("confidence") if isinstance(clean_payload, dict) and "confidence" in clean_payload else None,
+        None, seed_triple.get("confidence") if isinstance(seed_triple, dict) else None,
+        schema_valid=True, llm_search_intent_used=True, allowed_l1_query_count=0,
+    )
     if run_dir is not None:
         report = {"normalization_applied": result.normalization_applied, "repair_count": len(result.repairs),
                   "warnings": result.warnings, "repairs": result.repairs,
@@ -307,4 +337,4 @@ def plan_semantic_search_intent(user_query: str, *, domain_id: str, seed_triple:
     return value
 
 
-__all__ = ["SearchIntentNormalizationResult", "SearchIntentValidationError", "SemanticSearchIntent", "build_search_intent_prompt", "normalize_search_intent_response", "plan_semantic_search_intent", "validate_search_intent_json", "write_search_intent_diagnostic"]
+__all__ = ["SearchIntentNormalizationResult", "SearchIntentValidationError", "SemanticSearchIntent", "build_search_intent_prompt", "normalize_search_intent_response", "plan_semantic_search_intent", "resolve_search_intent_confidence", "validate_search_intent_json", "write_search_intent_diagnostic"]

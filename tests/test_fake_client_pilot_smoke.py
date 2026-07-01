@@ -19,7 +19,7 @@ class FakeClientPilotSmokeTests(unittest.TestCase):
     def test_claim_to_graph_hypothesis_timeline_report(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); artifacts=root/"artifacts"; artifacts.mkdir()
-            papers=[{"paper_id":f"P{i}","canonical_paper_id":f"P{i}","title":f"Paper {i}","publication_year":2010+i,"abstract":"Ketamine decreased BDNF." if i==1 else "Ketamine increased BDNF."} for i in range(3)]
+            papers=[{"paper_id":f"P{i}","canonical_paper_id":f"P{i}","title":f"Ketamine BDNF in depression {i}","publication_year":2010+i,"abstract":"Ketamine decreased BDNF in depression." if i==1 else "Ketamine increased BDNF in depression."} for i in range(3)]
             (artifacts/"acquisition_report.json").write_text(json.dumps({"candidate_papers":papers,"reused_papers":[],"downloaded_papers":[]}))
             (artifacts/"domain_profile.json").write_text(json.dumps(default_domain_router().get_or_default("neuropharmacology").to_dict()))
             (artifacts/"run_paper_manifest.jsonl").write_text("".join(json.dumps(p)+"\n" for p in papers))

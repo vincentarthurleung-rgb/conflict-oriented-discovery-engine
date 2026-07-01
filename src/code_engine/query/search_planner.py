@@ -55,6 +55,13 @@ class LiteratureSearchQuery(CODEBaseModel):
     seed_subject_required: bool = True
     seed_object_required: bool = True
     passed_query_guard: bool = False
+    passed_context_guard: bool = True
+    context_strict: bool = False
+    allowed_for_context_specific_core: bool = True
+    context_terms_required: list[str] = Field(default_factory=list)
+    context_terms_matched: list[str] = Field(default_factory=list)
+    context_guard_reason: str = "context_not_required"
+    query_scope: str = "general"
     coverage_only: bool = False
 
     @model_validator(mode="after")
