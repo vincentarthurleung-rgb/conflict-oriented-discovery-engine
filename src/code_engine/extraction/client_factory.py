@@ -43,7 +43,7 @@ class OpenAIJSONClient:
         self.api_key, self.model_name = api_key, model_name
 
     def extract_json(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
-        from code_engine.extraction.l1_response import normalize_l1_json_response
+        from code_engine.extraction.l1_response import parse_json_object_response
         body = json.dumps({
             "model": kwargs.get("model") or self.model_name,
             "messages": [{"role": "system", "content": prompt}],
@@ -55,9 +55,9 @@ class OpenAIJSONClient:
         with urllib.request.urlopen(request, timeout=int(kwargs.get("timeout", 60))) as response:
             payload = json.loads(response.read().decode("utf-8"))
         content = payload["choices"][0]["message"]["content"]
-        parsed, warnings = normalize_l1_json_response(content)
-        parsed["__l1_warnings"] = warnings
-        parsed["__l1_raw_response"] = content
+        parsed, warnings = parse_json_object_response(content)
+        parsed["__json_warnings"] = warnings
+        parsed["__json_raw_response"] = content
         return parsed
 
 

@@ -27,7 +27,7 @@ class L1ResponseNormalizationTests(unittest.TestCase):
     def test_l1_response_unrecognized_object_blocks(self):
         with self.assertRaises(L1ResponseError) as caught:
             normalize_l1_json_response({"result": []})
-        self.assertEqual(caught.exception.error_type, "missing_claims_root")
+        self.assertEqual(caught.exception.error_type, "l1_response_missing_claims_root")
 
     def test_l1_parse_error_diagnostics_written_and_secrets_redacted(self):
         with tempfile.TemporaryDirectory() as tmp:

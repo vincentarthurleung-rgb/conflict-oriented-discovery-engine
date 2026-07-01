@@ -30,7 +30,7 @@ class DeepSeekClient:
         self.sleep_fn = sleep_fn
 
     def extract_json(self, prompt: str, model: str = "deepseek-v4-pro", temperature: float = 0.0, top_p: float = 1.0, **_: Any) -> dict[str, Any]:
-        from code_engine.extraction.l1_response import L1ResponseError, normalize_l1_json_response
+        from code_engine.extraction.l1_response import GenericJSONResponseError, parse_json_object_response
         body = json.dumps({
             "model": model,
             "messages": [{"role": "system", "content": prompt}],
@@ -52,12 +52,12 @@ class DeepSeekClient:
                 payload = response.json()
                 content = payload["choices"][0]["message"]["content"]
                 try:
-                    parsed, warnings = normalize_l1_json_response(content)
-                except L1ResponseError as exc:
+                    parsed, warnings = parse_json_object_response(content)
+                except GenericJSONResponseError as exc:
                     exc.raw_response = content
                     raise
-                parsed["__l1_warnings"] = warnings
-                parsed["__l1_raw_response"] = content
+                parsed["__json_warnings"] = warnings
+                parsed["__json_raw_response"] = content
                 return parsed
             except (httpx.HTTPError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as exc:
                 last_error = str(exc)

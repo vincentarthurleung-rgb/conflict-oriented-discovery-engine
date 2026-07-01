@@ -378,6 +378,8 @@ def run_workflow(
         readiness["warnings"] = list(dict.fromkeys([*readiness.get("warnings", []), "real_api_run_with_uncertain_search_intent"]))
     if search_provenance.get("mode") == "failed" and execute and api and network and not allow_deterministic_search_fallback:
         readiness["blocking_reasons"] = list(dict.fromkeys([*readiness.get("blocking_reasons", []), "llm_search_intent_failed"]))
+        if search_provenance.get("planner_error_type") == "search_intent_schema_validation_failed":
+            readiness["blocking_reasons"].append("search_intent_schema_validation_failed")
     readiness["domain_decoupling_check"] = {
         "status": "blocked" if runtime_provenance["ketamine_specific_defaults_used"] else "pass",
         "ketamine_specific_defaults_used": runtime_provenance["ketamine_specific_defaults_used"],
@@ -473,6 +475,8 @@ def run_workflow(
                     readiness["warnings"] = list(dict.fromkeys([*readiness.get("warnings", []), "real_api_run_with_uncertain_search_intent"]))
                 if search_provenance.get("mode") == "failed" and execute and api and network and not allow_deterministic_search_fallback:
                     readiness["blocking_reasons"] = list(dict.fromkeys([*readiness.get("blocking_reasons", []), "llm_search_intent_failed"]))
+                    if search_provenance.get("planner_error_type") == "search_intent_schema_validation_failed":
+                        readiness["blocking_reasons"].append("search_intent_schema_validation_failed")
                 core_design = _core_design_report(runtime_provenance)
                 readiness["legacy_contamination_check"] = contamination
                 readiness["core_design_semantics_check"] = core_design

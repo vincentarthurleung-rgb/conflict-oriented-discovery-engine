@@ -19,6 +19,11 @@ class L1ResponseError(ValueError):
         self.parsed_json_type = parsed_json_type
 
 
+class GenericJSONResponseError(ValueError):
+    def __init__(self, error_type: str, message: str, *, raw_response: Any = None, parsed_json_type: str = "unknown"):
+        super().__init__(message); self.error_type = error_type; self.raw_response = raw_response; self.parsed_json_type = parsed_json_type
+
+
 def _type_name(value: Any) -> str:
     if value is None:
         return "null"
@@ -29,6 +34,23 @@ def _type_name(value: Any) -> str:
     if isinstance(value, str):
         return "string"
     return type(value).__name__
+
+
+def parse_json_object_response(value: Any) -> tuple[dict[str, Any], list[str]]:
+    """Provider-neutral JSON parsing. This function knows nothing about L1 claims."""
+    warnings: list[str] = []; raw = value
+    if isinstance(value, str):
+        text = value.strip()
+        fence = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.IGNORECASE | re.DOTALL)
+        if fence:
+            text = fence.group(1).strip(); warnings.append("json_response_markdown_fence_stripped")
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise GenericJSONResponseError("json_parse_failed", str(exc), raw_response=raw, parsed_json_type="string") from exc
+    if not isinstance(value, dict):
+        raise GenericJSONResponseError("response_not_object", "LLM response JSON must be an object", raw_response=raw, parsed_json_type=_type_name(value))
+    return value, warnings
 
 
 def normalize_l1_json_response(value: Any) -> tuple[dict[str, Any], list[str]]:
@@ -56,10 +78,11 @@ def normalize_l1_json_response(value: Any) -> tuple[dict[str, Any], list[str]]:
         value.pop("causal_tuples", None)
         warnings.append("legacy_causal_tuples_converted_to_claims")
     if "claims" not in value:
-        raise L1ResponseError("missing_claims_root", "L1 response object must contain claims", raw_response=raw, parsed_json_type="dict")
+        raise L1ResponseError("l1_response_missing_claims_root", "L1 response object must contain claims", raw_response=raw, parsed_json_type="dict")
     if not isinstance(value["claims"], list) or any(not isinstance(item, dict) for item in value["claims"]):
         raise L1ResponseError("schema_validation_failed", "claims must be a list of objects", raw_response=raw, parsed_json_type="dict")
-    inherited = value.pop("__l1_warnings", [])
+    inherited = [*value.pop("__l1_warnings", []), *value.pop("__json_warnings", [])]
+    value.pop("__json_raw_response", None)
     warnings.extend(str(item) for item in inherited)
     return value, list(dict.fromkeys(warnings))
 
@@ -159,4 +182,4 @@ def l1_failure_record(*, stage: str, paper_id: str, paper: dict[str, Any],
     }
 
 
-__all__ = ["L1ResponseError", "classify_l1_exception", "l1_failure_record", "normalize_l1_json_response", "resolve_l1_prompt_profile", "write_l1_diagnostic"]
+__all__ = ["GenericJSONResponseError", "L1ResponseError", "classify_l1_exception", "l1_failure_record", "normalize_l1_json_response", "parse_json_object_response", "resolve_l1_prompt_profile", "write_l1_diagnostic"]

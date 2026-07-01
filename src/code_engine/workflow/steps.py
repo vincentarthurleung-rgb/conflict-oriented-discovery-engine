@@ -296,6 +296,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
     llm_required = real_api_run
     search_intent = None
     planner_error = None
+    planner_error_type = None
     if not disable_llm_search_intent and semantic_llm_client is not None:
         try:
             from code_engine.search.semantic_search_intent import plan_semantic_search_intent
@@ -303,18 +304,22 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                 query or intake.research_intent.raw_user_input, domain_id=profile.domain_id,
                 seed_triple=intake.unified_seed_triple, llm_client=semantic_llm_client,
                 paper_year_filter=paper_year_filter, pilot_profile=pilot_profile,
+                run_dir=run_dir,
             )
         except Exception as exc:
             planner_error = str(exc)[:1000]
+            planner_error_type = getattr(exc, "error_type", "search_intent_schema_validation_failed")
     fallback_allowed = not real_api_run or allow_deterministic_search_fallback
     if search_intent is None and llm_required and not fallback_allowed:
         blocked = {
             "mode": "failed", "confidence": 0.0, "manual_review_required": True,
             "seed_triple": intake.unified_seed_triple, "query_groups": {},
-            "warnings": ["llm_search_intent_failed"], "planner_error": planner_error or "llm_client_not_configured",
+            "warnings": list(dict.fromkeys(["llm_search_intent_failed", *( [planner_error_type] if planner_error_type else [])])), "planner_error": planner_error or "llm_client_not_configured",
+            "planner_error_type": planner_error_type,
             "llm_search_intent_used": False, "deterministic_search_fallback_used": False,
             "allow_deterministic_search_fallback": False,
             "real_api_run_with_uncertain_search_intent": False,
+            "search_intent_schema_valid": False,
         }
         intent_path = _write(run_dir, "semantic_search_intent.json", blocked)
         guard_path = _write(run_dir, "search_query_guard_report.json", {"total_queries_before_guard": 0, "allowed_l1_acquisition_queries": 0, "removed_queries": [], "off_seed_queries_removed": 0, "context_only_queries_removed": 0, "broad_recall_queries_removed": 0})
@@ -346,6 +351,16 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                                 "search_intent_confidence": float(intake.semantic_confidence)})
     from code_engine.search.query_guard import guard_search_queries
     allowed_queries, guard_report = guard_search_queries(raw_queries, subject_aliases=subject_aliases, object_aliases=object_aliases)
+    if search_intent is not None and not allowed_queries:
+        from code_engine.search.semantic_search_intent import SearchIntentValidationError, write_search_intent_diagnostic
+        exc = SearchIntentValidationError("no_seed_aligned_l1_queries_after_guard", "No seed-aligned L1 acquisition queries remain after query guard", raw_response=search_intent.model_dump(mode="json"))
+        prompt = "semantic_search_intent query guard"
+        write_search_intent_diagnostic(run_dir, exc=exc, prompt=prompt, raw_response=search_intent.model_dump(mode="json"))
+        blocked = {**search_intent.model_dump(mode="json"), "mode": "failed", "llm_search_intent_used": False,
+                   "deterministic_search_fallback_used": False, "search_intent_schema_valid": True,
+                   "planner_error": str(exc), "blocked_reason": "no_seed_aligned_l1_queries_after_guard"}
+        intent_path = _write(run_dir, "semantic_search_intent.json", blocked); guard_path = _write(run_dir, "search_query_guard_report.json", guard_report)
+        return StepResult(status="blocked", summary=blocked, artifacts={"semantic_search_intent": intent_path, "search_query_guard_report": guard_path}, warnings=["no_seed_aligned_l1_queries_after_guard"], skipped_reason="no_seed_aligned_l1_queries_after_guard")
     from code_engine.query.search_planner import LiteratureSearchQuery
     from code_engine.temporal.paper_year_filter import paper_year_filter_from_dict, pubmed_date_clause
     year_filter = paper_year_filter_from_dict(paper_year_filter)
