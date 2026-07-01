@@ -369,6 +369,11 @@ def run_workflow(
         "deterministic_search_fallback_not_used_unless_explicitly_allowed": not bool(search_provenance.get("deterministic_search_fallback_used")) or allow_deterministic_search_fallback,
         "off_seed_l1_queries_removed": int(runtime_provenance.get("query_guard", {}).get("off_seed_queries_removed", 0)),
     })
+    l2_provenance = runtime_provenance.get("l2_layered_retention", {})
+    readiness.update({"l2_no_longer_depends_only_on_static_registry": not l2_provenance.get("binary_high_confidence_gate_used_as_only_retention_gate", True),
+                      "l2_runtime_entity_hints_available": bool(l2_provenance.get("runtime_entity_hints_used")),
+                      "l2_core_graph_strictness_preserved": bool(l2_provenance.get("core_graph_remains_strict")),
+                      "l2_exclusion_audit_available": (directory / "artifacts/l2_exclusion_audit.jsonl").exists()})
     if search_provenance.get("real_api_run_with_uncertain_search_intent"):
         readiness["warnings"] = list(dict.fromkeys([*readiness.get("warnings", []), "real_api_run_with_uncertain_search_intent"]))
     if search_provenance.get("mode") == "failed" and execute and api and network and not allow_deterministic_search_fallback:
@@ -459,6 +464,11 @@ def run_workflow(
                     "deterministic_search_fallback_not_used_unless_explicitly_allowed": not bool(search_provenance.get("deterministic_search_fallback_used")) or allow_deterministic_search_fallback,
                     "off_seed_l1_queries_removed": int(runtime_provenance.get("query_guard", {}).get("off_seed_queries_removed", 0)),
                 })
+                l2_provenance = runtime_provenance.get("l2_layered_retention", {})
+                readiness.update({"l2_no_longer_depends_only_on_static_registry": not l2_provenance.get("binary_high_confidence_gate_used_as_only_retention_gate", True),
+                                  "l2_runtime_entity_hints_available": bool(l2_provenance.get("runtime_entity_hints_used")),
+                                  "l2_core_graph_strictness_preserved": bool(l2_provenance.get("core_graph_remains_strict")),
+                                  "l2_exclusion_audit_available": (directory / "artifacts/l2_exclusion_audit.jsonl").exists()})
                 if search_provenance.get("real_api_run_with_uncertain_search_intent"):
                     readiness["warnings"] = list(dict.fromkeys([*readiness.get("warnings", []), "real_api_run_with_uncertain_search_intent"]))
                 if search_provenance.get("mode") == "failed" and execute and api and network and not allow_deterministic_search_fallback:

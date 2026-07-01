@@ -642,11 +642,62 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
         entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
     )
+    from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    from code_engine.normalization.layered_grounding import load_runtime_entity_hints
+    hints = load_runtime_entity_hints(run_dir)
+    layers = {name: [item for item in observations if item.get("graph_layer") == name] for name in
+              ("core_canonical_graph", "mechanism_layer", "context_layer", "review_layer", "excluded")}
+    retained = [item for item in observations if item.get("retained")]
+    layer_paths = {
+        "l2_retained_observations": run_dir / "artifacts/l2_retained_observations.jsonl",
+        "l2_core_graph_observations": run_dir / "artifacts/l2_core_graph_observations.jsonl",
+        "l2_mechanism_observations": run_dir / "artifacts/l2_mechanism_observations.jsonl",
+        "l2_context_observations": run_dir / "artifacts/l2_context_observations.jsonl",
+        "l2_review_observations": run_dir / "artifacts/l2_review_observations.jsonl",
+        "l2_excluded_observations": run_dir / "artifacts/l2_excluded_observations.jsonl",
+    }
+    for key, values in (("l2_retained_observations", retained), ("l2_core_graph_observations", layers["core_canonical_graph"]),
+                        ("l2_mechanism_observations", layers["mechanism_layer"]), ("l2_context_observations", layers["context_layer"]),
+                        ("l2_review_observations", layers["review_layer"]), ("l2_excluded_observations", layers["excluded"])):
+        atomic_write_jsonl(layer_paths[key], iter(values))
+    exclusion_audit = [{"observation_id": item.get("observation_id"), "paper_id": item.get("paper_id"),
+                        "graph_layer": item.get("graph_layer"), "excluded_from_core_reason": item.get("excluded_from_core_reason"),
+                        "excluded_from_retention_reason": item.get("excluded_from_retention_reason"),
+                        "retention_reason": item.get("retention_reason")} for item in observations if not item.get("canonical_graph_eligible")]
+    exclusion_path = run_dir / "artifacts/l2_exclusion_audit.jsonl"; atomic_write_jsonl(exclusion_path, iter(exclusion_audit))
+    candidate_records = []
+    entity_audit_records = []
+    for item in observations:
+        for role in ("subject", "object"):
+            match = (item.get("runtime_hint_matches") or {}).get(role)
+            candidate_records.append({"mention": item.get(f"{role}_raw"), "normalized_mention": str(item.get(f"{role}_raw") or "").casefold(),
+                                      "candidate_entities": [match] if match else [], "selected_entity": (match or {}).get("canonical_name"),
+                                      "selected_score": (match or {}).get("score"), "selected_source": (match or {}).get("source"),
+                                      "used_for_core_graph": bool(item.get("canonical_graph_eligible")),
+                                      "reason": (match or {}).get("mention_role") or "no_runtime_hint_match"})
+            entity_audit_records.append({"observation_id": item.get("observation_id"), "mention_role": role,
+                                         "runtime_hint_match": match, "canonical_graph_eligible": item.get("canonical_graph_eligible"),
+                                         "graph_layer": item.get("graph_layer")})
+    candidates_path = run_dir / "artifacts/entity_resolution_candidates.jsonl"; atomic_write_jsonl(candidates_path, iter(candidate_records))
+    entity_audit_path = run_dir / "artifacts/entity_resolution_audit.jsonl"; atomic_write_jsonl(entity_audit_path, iter(entity_audit_records))
+    registry_path = run_dir / "artifacts/run_entity_registry.json"
+    atomic_write_json(registry_path, {"source": "runtime_l2_resolution", "curated": False,
+                                     "entities": [hint.to_dict() for hint in hints]})
     observations_path = _write(run_dir, "l2_abstract_observations.json", observations)
+    excluded_reasons = Counter(item.get("excluded_from_retention_reason") or item.get("excluded_from_core_reason") or "unknown" for item in observations if not item.get("retained"))
     summary = {
         "normalized_observation_count": len(observations),
         "high_confidence_observation_count": sum(bool(item.get("allow_high_confidence_graph_use")) for item in observations),
         "excluded_low_confidence_count": sum(not bool(item.get("allow_high_confidence_graph_use")) for item in observations),
+        "core_canonical_observation_count": len(layers["core_canonical_graph"]),
+        "mechanism_observation_count": len(layers["mechanism_layer"]),
+        "context_observation_count": len(layers["context_layer"]),
+        "review_observation_count": len(layers["review_layer"]),
+        "excluded_observation_count": len(layers["excluded"]),
+        "retained_observation_count": len(retained),
+        "excluded_reason_counts": dict(excluded_reasons),
+        "runtime_entity_hints_used": bool(hints),
+        "run_entity_registry_entity_count": len(hints),
         "source_scope": "abstract",
     }
     summary_path = _write(run_dir, "l2_abstract_summary.json", summary)
@@ -655,7 +706,10 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
     low_pilot_coverage = bool(pilot_mentions and summary["high_confidence_observation_count"] < max(1, pilot_mentions // 2))
     return StepResult(
         status="completed" if observations else "planned", summary=summary,
-        artifacts={"l2_abstract_observations": observations_path, "l2_abstract_summary": summary_path},
+        artifacts={"l2_abstract_observations": observations_path, "l2_abstract_summary": summary_path,
+                   **{key: str(value) for key, value in layer_paths.items()},
+                   "l2_exclusion_audit": str(exclusion_path), "run_entity_registry": str(registry_path),
+                   "entity_resolution_candidates": str(candidates_path), "entity_resolution_audit_jsonl": str(entity_audit_path)},
         counts={key: value for key, value in summary.items() if key.endswith("_count")},
         warnings=(["entity_resolution_low_coverage_for_pilot_query"] if low_pilot_coverage else []) + ([] if observations else ["no_abstract_claims_to_normalize"]),
     )
@@ -673,7 +727,7 @@ def run_abstract_conflict_screening_step(
     from code_engine.graph.abstract_conflict_screening import build_abstract_conflict_candidates
 
     claims = _read_jsonl(run_dir / "artifacts" / "abstract_l1_claims.jsonl")
-    observations = _read(run_dir, "l2_abstract_observations.json", [])
+    observations = _read_jsonl(run_dir / "artifacts/l2_core_graph_observations.jsonl")
     output = build_abstract_conflict_candidates(
         claims, observations, min_evidence_count=min_abstract_evidence_count,
         min_entropy=min_abstract_conflict_entropy, run_dir=run_dir / "artifacts",

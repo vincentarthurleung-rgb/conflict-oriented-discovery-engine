@@ -104,6 +104,7 @@ def build_runtime_provenance(
     acquisition_year = _json(artifacts / "acquisition_report.json", {})
     search_intent = _json(artifacts / "semantic_search_intent.json", {})
     query_guard = _json(artifacts / "search_query_guard_report.json", {})
+    l2_summary = _json(artifacts / "l2_abstract_summary.json", {})
     intake_triple = (intake.get("unified_seed_triple") or {}).get("triple_id")
     search_triple = (search_plan.get("seed_triple") or {}).get("triple_id")
     identity_values = [value for value in (triple_id, intake_triple, search_triple) if value]
@@ -192,6 +193,18 @@ def build_runtime_provenance(
             "real_api_run_with_uncertain_search_intent": bool(search_intent.get("real_api_run_with_uncertain_search_intent")),
         },
         "query_guard": query_guard,
+        "l2_layered_retention": {
+            "enabled": True,
+            "binary_high_confidence_gate_used_as_only_retention_gate": False,
+            "runtime_entity_hints_used": bool(l2_summary.get("runtime_entity_hints_used")),
+            "run_entity_registry_enabled": True,
+            "external_entity_resolution_enabled": False,
+            "core_graph_remains_strict": True,
+        },
+        "l2_counts": {key: int(l2_summary.get(key, 0)) for key in (
+            "core_canonical_observation_count", "mechanism_observation_count",
+            "context_observation_count", "review_observation_count", "excluded_observation_count",
+        )},
         "prompt_profile_id": abstract_l1.get("prompt_profile_id") or fulltext_l1.get("prompt_profile_id"),
         "prompt_profile_version": abstract_l1.get("prompt_profile_version") or fulltext_l1.get("prompt_profile_version"),
         "abstract_l1_prompt_uses_compiled_profile": bool(abstract_l1.get("abstract_l1_prompt_uses_compiled_profile")),
