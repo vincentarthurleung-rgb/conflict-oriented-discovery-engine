@@ -26,6 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
     network.add_argument("--network", action="store_true")
     network.add_argument("--no-network", action="store_true")
     parser.add_argument("--max-papers", type=int)
+    parser.add_argument("--paper-year-from", type=int)
+    parser.add_argument("--paper-year-to", type=int)
+    parser.add_argument("--temporal-role", choices=("discovery", "validation", "unrestricted"), default="unrestricted")
     parser.add_argument("--allow-legacy", action="store_true")
     parser.add_argument("--allow-uncertain-intake", action="store_true")
     parser.add_argument("--semantic-confidence-threshold", type=float, default=0.6)
@@ -150,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
         query=args.query or "", run_dir=args.run_dir, until=args.until,
         execute=args.execute, api=args.api, network=args.network,
         max_papers=args.max_papers, resume=args.resume,
+        paper_year_from=args.paper_year_from, paper_year_to=args.paper_year_to,
+        temporal_role=args.temporal_role,
         allow_legacy=args.allow_legacy,
         allow_uncertain_intake=args.allow_uncertain_intake,
         semantic_confidence_threshold=args.semantic_confidence_threshold,

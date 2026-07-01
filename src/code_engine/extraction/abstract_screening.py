@@ -59,6 +59,7 @@ def _normalize_claims(
             "claim_id": claim_id,
             "paper_id": paper_id,
             "pmid": paper.get("pmid"),
+            "publication_year": paper.get("publication_year") or paper.get("year"),
             "source_scope": "abstract",
             "evidence_tier": EvidenceTier.ABSTRACT_SCREENING.value,
             "full_text_status": _fulltext_status(paper),
@@ -100,12 +101,17 @@ def run_abstract_l1_screening(
     llm_client: Any | None = None,
     allow_budget_overrun: bool = False,
     pilot_profile: str | None = None,
+    paper_year_filter: dict | None = None,
 ) -> dict:
     """Plan or execute abstract-only extraction; never emits full-text evidence."""
 
     profile = dict(domain_profile or {})
     prompt_profile = resolve_l1_prompt_profile(profile, pilot_profile)
-    selected = list(papers[:max_papers] if max_papers is not None else papers)
+    from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
+    input_papers = list(papers[:max_papers] if max_papers is not None else papers)
+    selected, year_counts = filter_papers_by_year(input_papers, year_filter)
+    temporal_violation = bool(year_filter.enabled and year_counts["papers_excluded_by_year_filter"])
     abstracts = [str(item.get("abstract") or item.get("abstract_text") or "").strip() for item in selected]
     callable_inputs = [text for text in abstracts if text]
     if max_l1_calls is not None:
@@ -238,6 +244,10 @@ def run_abstract_l1_screening(
         "schema_error_count": sum(item["error_type"] == "schema_validation_failed" for item in errors),
         "workflow_continued_after_l1_errors": bool(errors),
         "blocked_reason": "all_l1_extractions_failed" if all_failed else None,
+        "paper_year_filter": year_filter.to_dict(),
+        "papers_excluded_by_year_filter": year_counts["papers_excluded_by_year_filter"],
+        "papers_missing_year_excluded": year_counts["papers_missing_year_excluded"],
+        "temporal_filter_violation_detected": temporal_violation,
     }
     artifacts = {}
     if output_dir:

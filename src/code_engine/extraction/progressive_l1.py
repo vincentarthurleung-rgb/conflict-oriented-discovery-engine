@@ -51,6 +51,7 @@ def _records_from_response(
             "evidence_id": evidence_id,
             "paper_id": str(span.get("paper_id") or "UNKNOWN"),
             "pmid": raw.get("pmid"),
+            "publication_year": span.get("publication_year") or raw.get("publication_year"),
             "source_scope": "full_text",
             "evidence_tier": EvidenceTier.FULLTEXT_EVIDENCE.value,
             "evidence_sentence": sentence,
@@ -101,11 +102,17 @@ def run_fulltext_evidence_l1(
     llm_client: Any | None = None,
     allow_budget_overrun: bool = False,
     pilot_profile: str | None = None,
+    paper_year_filter: dict | None = None,
 ) -> dict:
     """Extract only selected full-text spans after budget and cache checks."""
 
     profile = dict(domain_profile or {})
     prompt_profile = resolve_l1_prompt_profile(profile, pilot_profile)
+    from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
+    original_spans = list(evidence_spans)
+    evidence_spans, year_counts = filter_papers_by_year(original_spans, year_filter)
+    temporal_violation = bool(year_filter.enabled and year_counts["papers_excluded_by_year_filter"])
     policy = dict(budget_policy or {})
     estimate = estimate_l1_cost([str(item.get("text") or "") for item in evidence_spans], model_pricing_profile=policy.get("model_pricing_profile", "deepseek_default"))
     decision = enforce_l1_budget(estimate, policy, execute=execute and api_enabled, allow_budget_overrun=allow_budget_overrun)
@@ -198,6 +205,10 @@ def run_fulltext_evidence_l1(
         "schema_error_count": sum(item["error_type"] == "schema_validation_failed" for item in errors),
         "workflow_continued_after_l1_errors": bool(errors),
         "blocked_reason": "all_l1_extractions_failed" if all_failed else None,
+        "paper_year_filter": year_filter.to_dict(),
+        "papers_excluded_by_year_filter": year_counts["papers_excluded_by_year_filter"],
+        "papers_missing_year_excluded": year_counts["papers_missing_year_excluded"],
+        "temporal_filter_violation_detected": temporal_violation,
     }
     if execute and api_enabled and llm_client is None:
         summary["warnings"].append("llm_client_not_configured")

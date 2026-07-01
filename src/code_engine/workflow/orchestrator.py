@@ -95,6 +95,8 @@ def _annotate_jsonl_metadata(paths, metadata: dict, run_dir: Path) -> None:
 def run_workflow(
     query: str = "", run_dir: Path | None = None, until: str = "report", execute: bool = False,
     api: bool = False, network: bool = False, max_papers: int | None = None,
+    paper_year_from: int | None = None, paper_year_to: int | None = None,
+    temporal_role: str = "unrestricted",
     resume: Path | None = None, allow_legacy: bool = False,
     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
     semantic_llm_client=None,
@@ -155,6 +157,9 @@ def run_workflow(
     if not 0.0 <= semantic_confidence_threshold <= 1.0:
         raise WorkflowConfigurationError("semantic confidence threshold must be between 0 and 1")
     root = _repository_root()
+    from code_engine.temporal.paper_year_filter import PaperYearFilter
+    paper_year_filter = PaperYearFilter(paper_year_from, paper_year_to, temporal_role,
+                                        "cli_argument" if paper_year_from is not None or paper_year_to is not None else "default")
     if l1_timeout_config is None:
         from code_engine.extraction.client_factory import resolve_l1_timeout_config
         l1_timeout_config = resolve_l1_timeout_config()
@@ -326,6 +331,7 @@ def run_workflow(
         "conflict_timeline_enabled": enable_conflict_timeline, "network_enabled": network,
         "api_enabled": api, "execute_enabled": execute,
         "l1_timeout_config": dict(l1_timeout_config),
+        "paper_year_filter": paper_year_filter.to_dict(),
         **run_triple_metadata,
         "static_journal_weight_used": False,
         "belief_weight_used_for_reasoning": False,
@@ -350,6 +356,7 @@ def run_workflow(
         paper_artifact_cache_misses=paper_artifact_cache_misses,
         cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
         l1_timeout_config=l1_timeout_config,
+        paper_year_filter=paper_year_filter.to_dict(),
     )
     contamination = contamination_check(runtime_provenance)
     readiness["domain_decoupling_check"] = {
@@ -428,6 +435,7 @@ def run_workflow(
                     paper_artifact_cache_misses=paper_artifact_cache_misses,
                     cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
                     l1_timeout_config=l1_timeout_config,
+                    paper_year_filter=paper_year_filter.to_dict(),
                 )
                 contamination = contamination_check(runtime_provenance)
                 core_design = _core_design_report(runtime_provenance)
@@ -473,6 +481,7 @@ def run_workflow(
                     allow_budget_overrun=allow_budget_overrun,
                     l1_llm_client=l1_llm_client,
                     l1_timeout_config=l1_timeout_config,
+                    paper_year_filter=paper_year_filter.to_dict(),
                     external_validation=external_validation,
                     validation_query_mode=effective_validation_mode,
                     validation_index_dir=validation_index_dir,

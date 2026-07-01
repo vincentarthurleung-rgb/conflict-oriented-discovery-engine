@@ -17,6 +17,7 @@ from code_engine.domain.router import default_domain_router
 from code_engine.schemas.models import CODEBaseModel
 from code_engine.encoder.models import SemanticIntakeResult
 from code_engine.encoder.semantic_verifier import sanitize_semantic_query
+from code_engine.temporal.paper_year_filter import PaperYearFilter, paper_year_filter_from_dict, pubmed_date_clause
 
 
 class LiteratureSearchQuery(CODEBaseModel):
@@ -42,6 +43,11 @@ class LiteratureSearchQuery(CODEBaseModel):
     expansion_sources: list[str] = Field(default_factory=list)
     allowed_for_conflict_source: bool = True
     query: str = ""
+    paper_year_filter_enabled: bool = False
+    paper_year_from: int | None = None
+    paper_year_to: int | None = None
+    temporal_role: str = "unrestricted"
+    year_filter_applied_to_query: bool = False
 
     @model_validator(mode="after")
     def align_query_alias(self):
@@ -89,6 +95,7 @@ class LiteratureSearchPlan(CODEBaseModel):
         "only_for_selected_conflict_candidates": True,
     })
     query_groups: list[dict[str, Any]] = Field(default_factory=list)
+    paper_year_filter: dict[str, Any] = Field(default_factory=lambda: PaperYearFilter().to_dict())
 
 
 def sanitize_query(query: str) -> tuple[str, list[str]]:
@@ -140,7 +147,9 @@ def build_literature_search_plan(
     semantic_intake: SemanticIntakeResult | dict[str, Any] | None = None,
     explicit_profile_expansions: list[str] | None = None,
     unified_seed_triple: dict[str, Any] | None = None,
+    paper_year_filter: PaperYearFilter | dict[str, Any] | None = None,
 ) -> LiteratureSearchPlan:
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
     profile = domain_profile or default_domain_router().resolve(intent.domain_id) or default_domain_router().route_text(intent.raw_user_input)
     primary = intent.primary_entities[0] if intent.primary_entities else intent.primary_entity
     disease = intent.disease_or_condition
@@ -242,6 +251,19 @@ def build_literature_search_plan(
                                                    "purpose": purpose_map.get(item.purpose, item.purpose),
                                                    "precision_level": precision_map.get(item.purpose, "medium"),
                                                    "requires_open_access": False, "requires_fulltext": False}) for item in base]
+    if year_filter.enabled:
+        clause = pubmed_date_clause(year_filter)
+        pubmed_queries = [item.model_copy(update={
+            "query_string": f"({item.query_string}) AND {clause}", "query": f"({item.query_string}) AND {clause}",
+            "year_from": year_filter.paper_year_from, "year_to": year_filter.paper_year_to,
+            "paper_year_filter_enabled": True, "paper_year_from": year_filter.paper_year_from,
+            "paper_year_to": year_filter.paper_year_to, "temporal_role": year_filter.temporal_role,
+            "year_filter_applied_to_query": True,
+        }) for item in pubmed_queries]
+    else:
+        pubmed_queries = [item.model_copy(update={"paper_year_filter_enabled": False,
+            "paper_year_from": None, "paper_year_to": None, "temporal_role": year_filter.temporal_role,
+            "year_filter_applied_to_query": False}) for item in pubmed_queries]
     # Full-text escalation resolves PMCID/OA availability for selected papers; it
     # does not replay the broad abstract query against PMC.
     pmc_queries: list[LiteratureSearchQuery] = []
@@ -250,6 +272,14 @@ def build_literature_search_plan(
         query_groups.append({"group": group, "stage": "abstract_retrieval", "source": "pubmed", "queries": [item.model_copy(update={"source": "pubmed", "stage": "abstract_retrieval", "purpose": purpose_map.get(item.purpose, item.purpose), "precision_level": precision_map.get(item.purpose, "medium"), "requires_open_access": False, "requires_fulltext": False}).model_dump(mode="json") for item in queries]})
     query_groups.insert(1, {"group": "entity_alias_expansion", "stage": "abstract_retrieval", "source": "pubmed", "queries": []})
     query_groups.append({"group": "fulltext_escalation", "stage": "fulltext_escalation", "source": "pmc", "queries": [], "only_for_selected_conflict_candidates": True})
+    pubmed_by_id = {item.query_id: item.model_dump(mode="json") for item in pubmed_queries}
+    for group in query_groups:
+        group["queries"] = [pubmed_by_id.get(str(item.get("query_id")), item) for item in group.get("queries", [])]
+        group.update({"paper_year_filter_enabled": year_filter.enabled,
+                      "paper_year_from": year_filter.paper_year_from,
+                      "paper_year_to": year_filter.paper_year_to,
+                      "temporal_role": year_filter.temporal_role,
+                      "year_filter_applied_to_query": bool(year_filter.enabled and group.get("queries"))})
     plan = LiteratureSearchPlan(
         intent_id=intent.intent_id,
         primary_queries=primary_queries,
@@ -274,6 +304,7 @@ def build_literature_search_plan(
         semantic_confidence=min(semantic.research_intent.confidence, semantic.domain_routing.confidence) if semantic else intent.confidence,
         manual_review_required=semantic.domain_routing.requires_manual_review if semantic else False,
         seed_triple=unified_seed_triple or {}, query_groups=query_groups,
+        paper_year_filter=year_filter.to_dict(),
     )
     if write_outputs:
         root = Path(output_root)

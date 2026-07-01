@@ -32,7 +32,8 @@ def build_fulltext_escalation_candidates(
         row = selected.setdefault(canonical, {
             "canonical_paper_id": canonical, "paper_id": paper.get("paper_id") or paper_key,
             "pmid": paper.get("pmid"), "pmcid": paper.get("pmcid"), "doi": paper.get("doi"),
-            "title": paper.get("title"), "selected_for_fulltext": True,
+            "title": paper.get("title"), "publication_year": paper.get("publication_year") or paper.get("year"),
+            "selected_for_fulltext": True,
             "selection_reasons": [], "linked_conflict_candidate_ids": [],
             "linked_relation_bundle_ids": [], "triple_id": triple_id, "query_hash": query_hash,
         })

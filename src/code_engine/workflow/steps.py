@@ -265,7 +265,8 @@ def run_intake_step(*, query: str, run_dir: Path, execute: bool, api: bool,
 
 
 def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int | None,
-                    pilot_search_expansions: list[str] | None = None, **_: Any) -> StepResult:
+                    pilot_search_expansions: list[str] | None = None,
+                    paper_year_filter: dict | None = None, **_: Any) -> StepResult:
     intake_data = _read(run_dir, "intake.json")
     profile_data = _read(run_dir, "domain_profile.json")
     if not intake_data or not profile_data:
@@ -283,6 +284,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
         use_llm=False, semantic_intake=intake.semantic_intake,
         explicit_profile_expansions=pilot_search_expansions,
         unified_seed_triple=intake.unified_seed_triple,
+        paper_year_filter=paper_year_filter,
     )
     if max_papers is not None:
         plan.max_total_results = max_papers
@@ -293,11 +295,13 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, max_papers: int 
     warnings = list(plan.warnings)
     if execute and api:
         warnings.append("api_enabled_but_search_query_generation_remains_deterministic")
-    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
+    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation, "paper_year_filter": plan.paper_year_filter}, artifacts={"search_plan": path}, counts={"search_query_count": count}, warnings=warnings)
 
 
 def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None,
-                         literature_client: Any | None = None, **_: Any) -> StepResult:
+                         literature_client: Any | None = None, paper_year_filter: dict | None = None, **_: Any) -> StepResult:
+    from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
     plan_data = _read(run_dir, "search_plan.json")
     if not plan_data:
         return StepResult(status="blocked", warnings=["search_plan_missing"], skipped_reason="search_plan_missing")
@@ -322,9 +326,17 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
         from code_engine.acquisition.literature_search import execute_acquisition_plan
         report = execute_acquisition_plan(plan, repository_root=repository_root, execute=True, network=True,
                                           source="pubmed", max_papers=max_papers or plan.max_total_results,
+                                          year_from=year_filter.paper_year_from, year_to=year_filter.paper_year_to,
                                           client=literature_client, cached_papers=cached_papers)
     else:
         report = {"intent_id": plan.intent_id, "execution_mode": "plan_only", "candidate_papers": list(plan.candidate_papers), "reused_papers": cached_papers, "downloaded_papers": [], "skipped_duplicates": [], "network_calls_made": 0, "initial_fulltext_download_count": 0, "paper_cache_consumed_by_acquisition": bool(cached_papers), "warnings": ["network_disabled_acquisition_plan_only"]}
+    all_before = [paper for name in ("candidate_papers", "reused_papers", "downloaded_papers") for paper in report.get(name, [])]
+    _kept, year_counts = filter_papers_by_year(all_before, year_filter)
+    for name in ("candidate_papers", "reused_papers", "downloaded_papers"):
+        report[name], _ = filter_papers_by_year(report.get(name, []), year_filter)
+    report.update(year_filter.to_dict())
+    report["paper_year_filter_enabled"] = year_filter.enabled
+    report.update(year_counts)
     report_path = _write(run_dir, "acquisition_report.json", report)
     summary = {key: len(report.get(key, [])) for key in ("candidate_papers", "reused_papers", "downloaded_papers", "skipped_duplicates")}
     calls = int(report.get("network_calls_made", 0))
@@ -397,7 +409,7 @@ def run_abstract_l1_step(
     allow_compatible_l1_task_reuse: bool = False, force_reprocess_l1: bool = False,
     force_reprocess_paper: list[str] | None = None, update_global_corpus: bool = False,
     repository_root: Path | None = None, entity_registry_path: str | Path | None = None,
-    pilot_profile: str | None = None, **_: Any,
+    pilot_profile: str | None = None, paper_year_filter: dict | None = None, **_: Any,
 ) -> StepResult:
     if l1_mode == "legacy":
         summary = {"l1_mode": l1_mode, "abstract_claim_count": 0, "reason": "legacy_l1_mode"}
@@ -456,7 +468,15 @@ def run_abstract_l1_step(
         budget_policy=l1_budget_policy, llm_client=l1_llm_client,
         allow_budget_overrun=allow_budget_overrun,
         pilot_profile=pilot_profile,
+        paper_year_filter=paper_year_filter,
     )
+    from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
+    reusable_claims, reusable_year_counts = filter_papers_by_year(reusable_claims, year_filter)
+    if reusable_year_counts["papers_excluded_by_year_filter"]:
+        output["summary"]["temporal_filter_violation_detected"] = True
+        output["summary"]["papers_excluded_by_year_filter"] += reusable_year_counts["papers_excluded_by_year_filter"]
+        output["summary"]["papers_missing_year_excluded"] += reusable_year_counts["papers_missing_year_excluded"]
     new_claims = _attach_run_provenance(output["claims"], run_dir)
     reusable_claims = _attach_run_provenance(reusable_claims, run_dir)
     output["claims"] = [*reusable_claims, *new_claims]
@@ -483,7 +503,7 @@ def run_abstract_l1_step(
     atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_hits.jsonl", iter(cache_hits))
     atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_misses.jsonl", iter(cache_misses))
     summary = {"l1_mode": l1_mode, **output["summary"], **cache_report, "abstract_claim_count": len(output["claims"])}
-    if summary["budget_report"].get("budget_status") == "blocked" or ("llm_client_not_configured" in summary.get("warnings", []) and bool(misses)) or summary.get("blocked_reason"):
+    if summary["budget_report"].get("budget_status") == "blocked" or ("llm_client_not_configured" in summary.get("warnings", []) and bool(misses)) or summary.get("blocked_reason") or summary.get("temporal_filter_violation_detected"):
         status = "blocked"
     else:
         status = "completed" if execute and api else "planned"
@@ -500,7 +520,7 @@ def run_abstract_l1_step(
         status=status, summary=summary, artifacts=artifacts,
         counts={"abstract_claim_count": len(output["claims"]), "abstract_processed_paper_count": summary["abstract_available_count"], "abstract_l1_cache_hit_count": len(cache_hits), "abstract_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])), api_calls_made=int(summary["api_calls_made"]),
-        skipped_reason=(summary.get("blocked_reason") or ("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "l1_llm_client_not_configured")) if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
+        skipped_reason=("temporal_filter_violation_detected" if summary.get("temporal_filter_violation_detected") else summary.get("blocked_reason") or ("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "l1_llm_client_not_configured")) if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
     )
 
 
@@ -577,7 +597,7 @@ def run_abstract_conflict_screening_step(
 def run_fulltext_escalation_step(
     *, run_dir: Path, l1_mode: str = "abstract_screening",
     enable_fulltext_escalation: bool = False,
-    max_fulltext_papers_per_conflict: int = 5, **_: Any,
+    max_fulltext_papers_per_conflict: int = 5, paper_year_filter: dict | None = None, **_: Any,
 ) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
     from code_engine.acquisition.fulltext_availability import build_fulltext_escalation_candidates
@@ -594,6 +614,9 @@ def run_fulltext_escalation_step(
         abstract, graph, bundles, papers,
         triple_id=str(metadata.get("triple_id") or ""), query_hash=str(metadata.get("query_hash") or ""),
     )
+    from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
+    selected, year_counts = filter_papers_by_year(selected, year_filter)
     selected = selected[: max_fulltext_papers_per_conflict * max(1, len(abstract) + len(graph))]
     candidates_path = run_dir / "artifacts/fulltext_escalation_candidates.jsonl"
     atomic_write_jsonl(candidates_path, iter(selected))
@@ -602,6 +625,8 @@ def run_fulltext_escalation_step(
     summary = {"enabled": enabled, "l1_mode": l1_mode, "conflict_candidate_count": len(abstract) + len(graph),
                "selected_paper_count": len(selected), "selection_count": len(selected),
                "coverage_gap_count": 0, "skipped_count": 0,
+               "fulltext_candidates_excluded_by_year_filter": year_counts["papers_excluded_by_year_filter"],
+               "paper_year_filter": year_filter.to_dict(),
                "candidates_from_conflicts_only": True, "max_papers_per_conflict": max_fulltext_papers_per_conflict}
     plan_path = run_dir / "artifacts/fulltext_escalation_plan.json"
     atomic_write_json(plan_path, {"summary": summary, "selected": selected})
@@ -676,7 +701,7 @@ def run_fulltext_l1_step(
     l1_task_cache_enabled: bool = True, allow_compatible_l1_task_reuse: bool = False,
     force_reprocess_l1: bool = False, force_reprocess_paper: list[str] | None = None,
     update_global_corpus: bool = False, entity_registry_path: str | Path | None = None,
-    pilot_profile: str | None = None, **_: Any,
+    pilot_profile: str | None = None, paper_year_filter: dict | None = None, **_: Any,
 ) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
     acquisition_records_path = run_dir / "artifacts" / "fulltext_acquisition_records.jsonl"
@@ -717,6 +742,7 @@ def run_fulltext_l1_step(
         selected_spans = select_evidence_spans(ranked, candidate, max_spans_per_paper=max_spans_per_paper)
         for span in selected_spans:
             span["canonical_paper_id"] = paper.get("canonical_paper_id") or span.get("paper_id")
+            span["publication_year"] = paper.get("publication_year") or paper.get("year")
         spans.extend(selected_spans)
     spans_path = run_dir / "artifacts" / "selected_fulltext_spans.jsonl"
     spans_path.write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in spans), encoding="utf-8")
@@ -762,7 +788,14 @@ def run_fulltext_l1_step(
         budget_policy=l1_budget_policy, llm_client=l1_llm_client,
         allow_budget_overrun=allow_budget_overrun,
         pilot_profile=pilot_profile,
+        paper_year_filter=paper_year_filter,
     )
+    from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
+    year_filter = paper_year_filter_from_dict(paper_year_filter)
+    reusable_evidence, reusable_evidence_year_counts = filter_papers_by_year(reusable_evidence, year_filter)
+    reusable_claims, reusable_claim_year_counts = filter_papers_by_year(reusable_claims, year_filter)
+    if reusable_evidence_year_counts["papers_excluded_by_year_filter"] or reusable_claim_year_counts["papers_excluded_by_year_filter"]:
+        output["summary"]["temporal_filter_violation_detected"] = True
     new_evidence = _attach_run_provenance(output["evidence_records"], run_dir)
     new_claims = _attach_run_provenance(output["claims"], run_dir)
     output["evidence_records"] = [*_attach_run_provenance(reusable_evidence, run_dir), *new_evidence]
@@ -788,7 +821,7 @@ def run_fulltext_l1_step(
     summary = {**output["summary"], **cache_report, "enabled": enabled, "ranked_span_count": len(spans), "l1_mode": l1_mode, "fulltext_evidence_count": len(output["evidence_records"]), "fulltext_claim_count": len(output["claims"])}
     budget_blocked = summary["budget_report"].get("budget_status") == "blocked"
     client_missing = "llm_client_not_configured" in summary.get("warnings", []) and bool(miss_spans)
-    extraction_blocked = bool(summary.get("blocked_reason"))
+    extraction_blocked = bool(summary.get("blocked_reason") or summary.get("temporal_filter_violation_detected"))
     return StepResult(
         status="blocked" if budget_blocked or client_missing or extraction_blocked else ("completed" if enabled and execute and api and spans else ("planned" if enabled else "skipped")),
         summary=summary,
@@ -805,7 +838,7 @@ def run_fulltext_l1_step(
         counts={"fulltext_evidence_count": len(output["evidence_records"]), "fulltext_l1_cache_hit_count": len(cache_hits), "fulltext_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])) + ([] if enabled else ["fulltext_escalation_not_enabled"]),
         api_calls_made=int(summary["api_calls_made"]),
-        skipped_reason="l1_budget_exceeded" if budget_blocked else ("l1_llm_client_not_configured" if client_missing else (summary.get("blocked_reason") if extraction_blocked else (None if enabled else "fulltext_escalation_not_enabled"))),
+        skipped_reason="l1_budget_exceeded" if budget_blocked else ("l1_llm_client_not_configured" if client_missing else (("temporal_filter_violation_detected" if summary.get("temporal_filter_violation_detected") else summary.get("blocked_reason")) if extraction_blocked else (None if enabled else "fulltext_escalation_not_enabled"))),
     )
 
 

@@ -48,6 +48,13 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         lines += ["Real L1 extraction did not run because no L1 client was configured.", ""]
     contamination = readiness.get("legacy_contamination_check", {})
     provenance = state.summary.get("runtime_provenance", {})
+    temporal_filter = provenance.get("paper_year_filter", readiness.get("paper_year_filter", {}))
+    lines += ["### Temporal filter", "",
+              f"- enabled: `{str(temporal_filter.get('enabled', False)).lower()}`",
+              f"- temporal_role: `{temporal_filter.get('temporal_role', 'unrestricted')}`",
+              f"- paper_year_from: `{temporal_filter.get('paper_year_from')}`",
+              f"- paper_year_to: `{temporal_filter.get('paper_year_to')}`",
+              f"- hardcoded_cutoff_used: `{str(temporal_filter.get('hardcoded_cutoff_used', False)).lower()}`", ""]
     lines += ["### Experiment Contamination Preflight", "",
               f"- Status: `{contamination.get('status', 'unknown')}`",
               f"- Import path: `{provenance.get('code_engine_import_path')}`",

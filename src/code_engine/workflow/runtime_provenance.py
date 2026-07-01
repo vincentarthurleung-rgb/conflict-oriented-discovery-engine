@@ -32,6 +32,34 @@ def _json(path: Path, default: Any) -> Any:
         return default
 
 
+def _reasoning_year_violation(artifacts: Path, config: dict[str, Any]) -> bool:
+    from code_engine.temporal.paper_year_filter import paper_year_filter_from_dict, publication_year
+    year_filter = paper_year_filter_from_dict(config)
+    if not year_filter.enabled:
+        return False
+    names = (
+        "abstract_l1_claims.jsonl", "l2_abstract_observations.json", "relation_evidence_bundles.jsonl",
+        "graph_conflict_candidates.jsonl", "hypothesis_hyperedges.jsonl",
+        "conflict_evidence_timelines.jsonl", "fulltext_l1_claims.jsonl",
+    )
+    for name in names:
+        path = artifacts / name
+        if not path.exists():
+            continue
+        try:
+            if path.suffix == ".jsonl":
+                records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            else:
+                value = json.loads(path.read_text(encoding="utf-8")); records = value if isinstance(value, list) else [value]
+        except (OSError, json.JSONDecodeError):
+            continue
+        for record in records:
+            year = publication_year(record)
+            if year is not None and not year_filter.includes(year):
+                return True
+    return False
+
+
 def build_runtime_provenance(
     run_dir: Path, *, repository_root: Path, resume_explicit: bool,
     entity_registry_path: str | Path | None, automatic_pilot_registry: bool,
@@ -49,6 +77,7 @@ def build_runtime_provenance(
     paper_artifact_cache_hits: int = 0, paper_artifact_cache_misses: int = 0,
     cache_hit_records: Iterable[dict[str, Any]] = (), cache_miss_records: Iterable[dict[str, Any]] = (),
     l1_timeout_config: dict[str, Any] | None = None,
+    paper_year_filter: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     import code_engine
     from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
@@ -72,6 +101,7 @@ def build_runtime_provenance(
     fulltext_cache = _json(artifacts / "fulltext_l1_cache_report.json", {})
     abstract_l1 = _json(artifacts / "abstract_l1_summary.json", {})
     fulltext_l1 = _json(artifacts / "fulltext_l1_summary.json", {})
+    acquisition_year = _json(artifacts / "acquisition_report.json", {})
     intake_triple = (intake.get("unified_seed_triple") or {}).get("triple_id")
     search_triple = (search_plan.get("seed_triple") or {}).get("triple_id")
     identity_values = [value for value in (triple_id, intake_triple, search_triple) if value]
@@ -141,6 +171,13 @@ def build_runtime_provenance(
             (int(abstract_l1.get("timeout_count", 0)) and abstract_l1.get("workflow_continued_after_l1_errors")) or
             (int(fulltext_l1.get("timeout_count", 0)) and fulltext_l1.get("workflow_continued_after_l1_errors"))
         ),
+        "paper_year_filter": dict(paper_year_filter or {}),
+        "papers_excluded_by_year_filter": int(acquisition_year.get("papers_excluded_by_year_filter", 0)),
+        "papers_missing_year_excluded": int(acquisition_year.get("papers_missing_year_excluded", 0)),
+        "temporal_filter_violation_detected": bool(
+            abstract_l1.get("temporal_filter_violation_detected") or fulltext_l1.get("temporal_filter_violation_detected") or
+            _reasoning_year_violation(artifacts, dict(paper_year_filter or {}))
+        ),
         "prompt_profile_id": abstract_l1.get("prompt_profile_id") or fulltext_l1.get("prompt_profile_id"),
         "prompt_profile_version": abstract_l1.get("prompt_profile_version") or fulltext_l1.get("prompt_profile_version"),
         "abstract_l1_prompt_uses_compiled_profile": bool(abstract_l1.get("abstract_l1_prompt_uses_compiled_profile")),
@@ -177,6 +214,8 @@ def contamination_check(provenance: dict[str, Any]) -> dict[str, Any]:
         "impact_factor_used_for_reasoning",
     )):
         blockers.append("static_belief_weight_used_in_core_reasoning")
+    if provenance.get("temporal_filter_violation_detected"):
+        blockers.append("temporal_filter_violation_detected")
     warnings = list(provenance.get("warnings", []))
     return {
         "status": "blocked" if blockers else ("warning" if warnings else "pass"),
