@@ -16,11 +16,12 @@ class ContextMismatchLayerTests(unittest.TestCase):
         result = decide_l2_evidence_layer({"evidence_sentence": sentence, "subject_raw": "metformin", "object_raw": "AMPK", "confidence": .9},
                                           RESOLVED, RESOLVED, None, None, HINTS,
                                           seed_triple={"relation": {"family": "activates"}, "context": {"terms": ["cancer"]}},
+                                          query_record={"query": "metformin AMPK cancer", "context_strict": True},
                                           paper_metadata={"title": "Metformin-Enhanced Cardiac AMPK Pathways"})
         self.assertTrue(result["retained"])
         self.assertEqual(result["graph_layer"], "cross_context_mechanism_layer")
         self.assertFalse(result["canonical_graph_eligible"])
-        self.assertEqual(result["excluded_from_core_reason"], "context_mismatch")
+        self.assertEqual(result["excluded_from_core_reason"], "query_context_only_insufficient_for_context_specific_core")
         self.assertEqual(result["direct_relation_sign"], 1)
 
 
