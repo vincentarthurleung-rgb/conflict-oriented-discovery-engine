@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -15,6 +17,120 @@ from code_engine.schemas.models import CODEBaseModel
 
 PROMPT_PROFILE_ID = "semantic_search_intent_v1"
 PROMPT_VERSION = "1.0"
+
+QUERY_GROUPS = ("direct_relation", "mechanism", "context_only", "broad_recall", "validation_only")
+_ALLOWED_DEFAULT = {"direct_relation": True, "mechanism": True, "context_only": False,
+                    "broad_recall": False, "validation_only": False}
+
+
+@dataclass
+class SearchIntentNormalizationResult:
+    normalized: dict[str, Any]
+    warnings: list[str]
+    repairs: list[dict[str, Any]]
+
+    @property
+    def normalization_applied(self) -> bool:
+        return bool(self.repairs)
+
+
+def normalize_search_intent_response(obj: dict[str, Any]) -> SearchIntentNormalizationResult:
+    """Repair bounded, auditable LLM formatting variants before strict validation."""
+    if not isinstance(obj, dict):
+        raise TypeError("Search intent normalization requires a dict")
+    value = deepcopy(obj); repairs: list[dict[str, Any]] = []; warnings: list[str] = []
+
+    def repair(field: str, old: Any, new: Any, reason: str) -> None:
+        repairs.append({"field": field, "from": old, "to": new, "reason": reason})
+        warnings.append(f"search_intent_{reason}")
+
+    seed = value.get("seed_triple")
+    if isinstance(seed, dict):
+        for role in ("subject", "object"):
+            entity = seed.get(role)
+            if isinstance(entity, dict):
+                aliases = entity.get("aliases")
+                if aliases is None:
+                    entity["aliases"] = []; repair(f"seed_triple.{role}.aliases", None, [], "aliases_defaulted")
+                elif isinstance(aliases, str):
+                    entity["aliases"] = [aliases]; repair(f"seed_triple.{role}.aliases", aliases, [aliases], "aliases_string_normalized")
+                if not entity.get("type"):
+                    old = entity.get("type"); entity["type"] = "unknown"
+                    repair(f"seed_triple.{role}.type", old, "unknown", "entity_type_defaulted")
+        context = seed.get("context")
+        if isinstance(context, list):
+            seed["context"] = {"terms": context}
+            repair("seed_triple.context", context, seed["context"], "context_list_normalized")
+        elif isinstance(context, dict) and "context_terms" in context:
+            old = context.pop("context_terms")
+            if "terms" not in context: context["terms"] = old
+            repair("seed_triple.context.context_terms", old, context.get("terms"), "context_terms_normalized")
+        relation = seed.get("relation")
+        if isinstance(relation, dict):
+            old = relation.get("directional")
+            if not isinstance(old, bool):
+                token = str(old or "").strip().casefold().replace(" → ", "->").replace("→", "->")
+                true_tokens = {"true", "yes", "y", "1", "directional", "directed", "subject>object",
+                               "subject->object", "subject_to_object", "drug->target"}
+                false_tokens = {"false", "no", "n", "0", "none", "undirected", "non_directional", "not directional"}
+                ambiguous = token in {"bidirectional", "both", "object>subject", "object->subject"}
+                if token in true_tokens or ambiguous or ("->" in token and token not in false_tokens):
+                    new, reason = True, "directional_string_normalized"
+                    if ambiguous: warnings.append("search_intent_directionality_ambiguous_or_bidirectional")
+                elif token in false_tokens:
+                    new, reason = False, "directional_string_normalized"
+                else:
+                    family = str(relation.get("family") or relation.get("name") or "").casefold()
+                    new = any(word in family for word in ("activate", "inhibit", "upregulat", "downregulat", "cause", "promot", "suppress"))
+                    reason = "directional_defaulted_from_relation_family"
+                relation["directional"] = new
+                repair("seed_triple.relation.directional", old, new, reason)
+
+    groups = value.get("query_groups")
+    if not isinstance(groups, dict) and isinstance(value.get("queries"), list) and isinstance(seed, dict):
+        subject = str(((seed.get("subject") or {}).get("name") or "")).casefold()
+        object_ = str(((seed.get("object") or {}).get("name") or "")).casefold()
+        if subject and object_:
+            recovered = {name: [] for name in QUERY_GROUPS}
+            for item in value["queries"]:
+                text = str(item.get("query") if isinstance(item, dict) else item)
+                recovered["direct_relation" if subject in text.casefold() and object_ in text.casefold() else "broad_recall"].append(item)
+            groups = value["query_groups"] = recovered
+            repair("query_groups", None, recovered, "query_groups_recovered_from_queries")
+    if isinstance(groups, dict):
+        for group in QUERY_GROUPS:
+            items = groups.get(group)
+            if items is None:
+                groups[group] = []; repair(f"query_groups.{group}", None, [], "query_group_defaulted")
+                continue
+            if not isinstance(items, list):
+                old_items = items; groups[group] = items = [items]
+                repair(f"query_groups.{group}", old_items, items, "query_group_wrapped_as_list")
+            normalized_items = []
+            for index, item in enumerate(items):
+                if isinstance(item, str):
+                    old = item; item = {"query": item}
+                    repair(f"query_groups.{group}.{index}", old, item, "query_string_normalized")
+                if not isinstance(item, dict):
+                    normalized_items.append(item); continue
+                old = item.get("purpose")
+                if old != group:
+                    item["purpose"] = group
+                    repair(f"query_groups.{group}.{index}.purpose", old, group, "purpose_normalized_from_query_group")
+                old_allowed = item.get("allowed_for_l1_acquisition")
+                if isinstance(old_allowed, str) and old_allowed.strip().casefold() in {"true", "false", "yes", "no", "1", "0"}:
+                    new_allowed = old_allowed.strip().casefold() in {"true", "yes", "1"}
+                    item["allowed_for_l1_acquisition"] = new_allowed
+                    repair(f"query_groups.{group}.{index}.allowed_for_l1_acquisition", old_allowed, new_allowed, "allowed_for_l1_boolean_normalized")
+                elif isinstance(old_allowed, int) and not isinstance(old_allowed, bool) and old_allowed in (0, 1):
+                    item["allowed_for_l1_acquisition"] = bool(old_allowed)
+                    repair(f"query_groups.{group}.{index}.allowed_for_l1_acquisition", old_allowed, bool(old_allowed), "allowed_for_l1_boolean_normalized")
+                elif not isinstance(old_allowed, bool):
+                    item["allowed_for_l1_acquisition"] = _ALLOWED_DEFAULT[group]
+                    repair(f"query_groups.{group}.{index}.allowed_for_l1_acquisition", old_allowed, _ALLOWED_DEFAULT[group], "allowed_for_l1_defaulted_from_query_group")
+                normalized_items.append(item)
+            groups[group] = normalized_items
+    return SearchIntentNormalizationResult(value, list(dict.fromkeys(warnings)), repairs)
 
 
 class SearchIntentValidationError(ValueError):
@@ -76,6 +192,10 @@ class SemanticSearchIntent(CODEBaseModel):
     allow_deterministic_search_fallback: bool = False
     real_api_run_with_uncertain_search_intent: bool = False
     api_calls_made: int = 0
+    normalization_applied: bool = False
+    normalization_repair_count: int = 0
+    normalization_warnings: list[str] = Field(default_factory=list)
+    search_intent_schema_valid_after_normalization: bool = True
 
     @model_validator(mode="after")
     def normalize_groups(self):
@@ -91,7 +211,7 @@ def build_search_intent_prompt(user_query: str, domain_id: str, seed_triple: dic
                                pilot_profile: str | None = None) -> str:
     pilot = "Explicit ketamine pilot: ketamine and BDNF aliases may be used when grounded." if pilot_profile == "ketamine" else "No pilot-specific examples or assumptions."
     return f"""You are a biomedical Search Intent Planner.
-Return one JSON object only. Preserve the seed subject and seed object in every L1 acquisition query.
+Return JSON object only. Preserve the seed subject and seed object in every L1 acquisition query.
 Do not permit object-only, context-only, broad-recall, or validation-only queries for L1 acquisition.
 If relation is ambiguous, use the most conservative biomedical relation family and lower confidence.
 Use only common biomedical aliases. Do not invent disease subtypes.
@@ -99,6 +219,9 @@ Output seed_triple with subject/name/aliases/type, relation/name/family/directio
 object/name/aliases/type, context/domain/terms; and query_groups named direct_relation,
 mechanism, context_only, broad_recall, validation_only. Every query needs query, purpose,
 must_include_subject, must_include_object, allowed_for_l1_acquisition.
+seed_triple.relation.directional MUST be boolean true or false; never write "subject>object".
+Query purpose MUST be exactly one of: direct_relation, mechanism, context_only, broad_recall,
+validation_only. Do not put explanatory prose in purpose; use rationale or notes instead.
 Domain: {domain_id}
 Runtime year filter: {json.dumps(paper_year_filter or {}, sort_keys=True)}
 Existing canonical seed triple: {json.dumps(seed_triple, ensure_ascii=False, sort_keys=True)}
@@ -152,15 +275,36 @@ def plan_semantic_search_intent(user_query: str, *, domain_id: str, seed_triple:
     prompt = build_search_intent_prompt(user_query, domain_id, seed_triple, paper_year_filter, pilot_profile)
     try:
         payload = llm_client.extract_json(prompt)
-        raw_response = payload.pop("__json_raw_response", payload) if isinstance(payload, dict) else payload
-        value = validate_search_intent_json(payload)
+        raw_response = payload.get("__json_raw_response", payload) if isinstance(payload, dict) else payload
+        clean_payload = {key: val for key, val in payload.items() if key != "__json_raw_response"} if isinstance(payload, dict) else payload
+        result = normalize_search_intent_response(clean_payload)
+        value = validate_search_intent_json(result.normalized)
     except Exception as exc:
+        if run_dir is not None:
+            report = {"normalization_applied": bool(locals().get("result") and result.normalization_applied),
+                      "repair_count": len(result.repairs) if locals().get("result") else 0,
+                      "warnings": result.warnings if locals().get("result") else [],
+                      "repairs": result.repairs if locals().get("result") else [],
+                      "search_intent_schema_valid_after_normalization": False}
+            artifacts = Path(run_dir) / "artifacts"; artifacts.mkdir(parents=True, exist_ok=True)
+            (artifacts / "search_intent_normalization_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         write_search_intent_diagnostic(run_dir, exc=exc, prompt=prompt, raw_response=locals().get("raw_response"))
         raise
+    value.normalization_applied = result.normalization_applied
+    value.normalization_repair_count = len(result.repairs)
+    value.normalization_warnings = result.warnings
+    value.warnings = list(dict.fromkeys([*value.warnings, *result.warnings]))
+    value.search_intent_schema_valid_after_normalization = True
+    if run_dir is not None:
+        report = {"normalization_applied": result.normalization_applied, "repair_count": len(result.repairs),
+                  "warnings": result.warnings, "repairs": result.repairs,
+                  "search_intent_schema_valid_after_normalization": True}
+        artifacts = Path(run_dir) / "artifacts"; artifacts.mkdir(parents=True, exist_ok=True)
+        (artifacts / "search_intent_normalization_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     value.planner_prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
     value.planner_prompt_chars = len(prompt); value.search_intent_schema_valid = True
     value.mode = "llm"; value.llm_search_intent_used = True; value.api_calls_made = 1
     return value
 
 
-__all__ = ["SearchIntentValidationError", "SemanticSearchIntent", "build_search_intent_prompt", "plan_semantic_search_intent", "validate_search_intent_json", "write_search_intent_diagnostic"]
+__all__ = ["SearchIntentNormalizationResult", "SearchIntentValidationError", "SemanticSearchIntent", "build_search_intent_prompt", "normalize_search_intent_response", "plan_semantic_search_intent", "validate_search_intent_json", "write_search_intent_diagnostic"]

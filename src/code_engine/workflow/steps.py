@@ -311,6 +311,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
             planner_error_type = getattr(exc, "error_type", "search_intent_schema_validation_failed")
     fallback_allowed = not real_api_run or allow_deterministic_search_fallback
     if search_intent is None and llm_required and not fallback_allowed:
+        normalization_report = _read(run_dir, "search_intent_normalization_report.json")
         blocked = {
             "mode": "failed", "confidence": 0.0, "manual_review_required": True,
             "seed_triple": intake.unified_seed_triple, "query_groups": {},
@@ -320,6 +321,9 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
             "allow_deterministic_search_fallback": False,
             "real_api_run_with_uncertain_search_intent": False,
             "search_intent_schema_valid": False,
+            "normalization_applied": bool(normalization_report.get("normalization_applied")),
+            "normalization_repair_count": int(normalization_report.get("repair_count", 0)),
+            "search_intent_schema_valid_after_normalization": False,
         }
         intent_path = _write(run_dir, "semantic_search_intent.json", blocked)
         guard_path = _write(run_dir, "search_query_guard_report.json", {"total_queries_before_guard": 0, "allowed_l1_acquisition_queries": 0, "removed_queries": [], "off_seed_queries_removed": 0, "context_only_queries_removed": 0, "broad_recall_queries_removed": 0})
