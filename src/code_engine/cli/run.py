@@ -58,6 +58,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--l1-pricing-profile", default="deepseek_default")
     parser.add_argument("--l1-provider", choices=("deepseek", "openai"))
     parser.add_argument("--l1-model")
+    parser.add_argument("--l1-read-timeout-seconds", type=float)
+    parser.add_argument("--l1-connect-timeout-seconds", type=float)
+    parser.add_argument("--l1-max-retries", type=int)
     parser.add_argument("--allow-budget-overrun", action="store_true")
     parser.add_argument("--global-corpus-dir", type=Path)
     registry = parser.add_mutually_exclusive_group()
@@ -131,10 +134,13 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if not args.resume and not args.query:
         build_parser().error("--query is required unless --resume is used")
+    from code_engine.extraction.client_factory import resolve_l1_timeout_config
+    l1_timeout_config = resolve_l1_timeout_config(connect_timeout_seconds=args.l1_connect_timeout_seconds,
+        read_timeout_seconds=args.l1_read_timeout_seconds, max_retries=args.l1_max_retries)
     l1_client = None
     if args.execute and args.api:
         from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
-        l1_client = build_l1_client_from_env_or_config(args.l1_provider, args.l1_model)
+        l1_client = build_l1_client_from_env_or_config(args.l1_provider, args.l1_model, **l1_timeout_config)
     if args.build_paper_artifact_cache_from_runs:
         from code_engine.corpus.paper_artifact_cache import build_paper_artifact_cache_index_from_runs
         build_paper_artifact_cache_index_from_runs(
@@ -167,6 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         allow_budget_overrun=args.allow_budget_overrun,
         l1_llm_client=l1_client,
         semantic_llm_client=l1_client,
+        l1_timeout_config=l1_timeout_config,
         external_validation=args.external_validation and not args.no_external_validation,
         validation_query_mode=args.validation_query_mode,
         validation_index_dir=args.validation_index_dir,

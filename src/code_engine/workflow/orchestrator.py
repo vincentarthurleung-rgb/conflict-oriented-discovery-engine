@@ -108,7 +108,7 @@ def run_workflow(
     max_spans_per_paper: int = 8, max_l1_calls_per_prompt: int | None = None,
     max_l1_input_tokens_per_prompt: int | None = None, l1_budget_usd: float | None = None,
     l1_pricing_profile: str = "deepseek_default", allow_budget_overrun: bool = False,
-    l1_llm_client=None,
+    l1_llm_client=None, l1_timeout_config: dict | None = None,
     external_validation: bool = False, validation_query_mode: str = "auto",
     validation_index_dir: str | None = None, validation_cache_dir: str | None = None,
     validation_cache_only: bool = False, validation_disable_cache: bool = False,
@@ -155,6 +155,9 @@ def run_workflow(
     if not 0.0 <= semantic_confidence_threshold <= 1.0:
         raise WorkflowConfigurationError("semantic confidence threshold must be between 0 and 1")
     root = _repository_root()
+    if l1_timeout_config is None:
+        from code_engine.extraction.client_factory import resolve_l1_timeout_config
+        l1_timeout_config = resolve_l1_timeout_config()
     from code_engine.config.pilots import load_pilot_profile
     from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
     pilot_config = load_pilot_profile(pilot_profile, root) if pilot_profile else {}
@@ -322,6 +325,7 @@ def run_workflow(
         "paper_registry_enabled": paper_registry_enabled, "evidence_graph_enabled": enable_evidence_graph,
         "conflict_timeline_enabled": enable_conflict_timeline, "network_enabled": network,
         "api_enabled": api, "execute_enabled": execute,
+        "l1_timeout_config": dict(l1_timeout_config),
         **run_triple_metadata,
         "static_journal_weight_used": False,
         "belief_weight_used_for_reasoning": False,
@@ -345,6 +349,7 @@ def run_workflow(
         paper_artifact_cache_hits=paper_artifact_cache_hits,
         paper_artifact_cache_misses=paper_artifact_cache_misses,
         cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
+        l1_timeout_config=l1_timeout_config,
     )
     contamination = contamination_check(runtime_provenance)
     readiness["domain_decoupling_check"] = {
@@ -422,6 +427,7 @@ def run_workflow(
                     paper_artifact_cache_hits=paper_artifact_cache_hits,
                     paper_artifact_cache_misses=paper_artifact_cache_misses,
                     cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
+                    l1_timeout_config=l1_timeout_config,
                 )
                 contamination = contamination_check(runtime_provenance)
                 core_design = _core_design_report(runtime_provenance)
@@ -466,6 +472,7 @@ def run_workflow(
                     l1_budget_policy=l1_budget_policy,
                     allow_budget_overrun=allow_budget_overrun,
                     l1_llm_client=l1_llm_client,
+                    l1_timeout_config=l1_timeout_config,
                     external_validation=external_validation,
                     validation_query_mode=effective_validation_mode,
                     validation_index_dir=validation_index_dir,

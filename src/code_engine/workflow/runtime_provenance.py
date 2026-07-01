@@ -48,6 +48,7 @@ def build_runtime_provenance(
     paper_artifact_cache_index: str | Path | None = None,
     paper_artifact_cache_hits: int = 0, paper_artifact_cache_misses: int = 0,
     cache_hit_records: Iterable[dict[str, Any]] = (), cache_miss_records: Iterable[dict[str, Any]] = (),
+    l1_timeout_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     import code_engine
     from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH
@@ -133,6 +134,13 @@ def build_runtime_provenance(
         "belief_weight_used_for_reasoning": False,
         "impact_factor_used_for_reasoning": False,
         "paper_quality_metadata_used_for_display_only": True,
+        "l1_timeout_config": dict(l1_timeout_config or {}),
+        "abstract_l1_timeout_count": int(abstract_l1.get("timeout_count", 0)),
+        "fulltext_l1_timeout_count": int(fulltext_l1.get("timeout_count", 0)),
+        "workflow_continued_after_l1_timeout": bool(
+            (int(abstract_l1.get("timeout_count", 0)) and abstract_l1.get("workflow_continued_after_l1_errors")) or
+            (int(fulltext_l1.get("timeout_count", 0)) and fulltext_l1.get("workflow_continued_after_l1_errors"))
+        ),
         "prompt_profile_id": abstract_l1.get("prompt_profile_id") or fulltext_l1.get("prompt_profile_id"),
         "prompt_profile_version": abstract_l1.get("prompt_profile_version") or fulltext_l1.get("prompt_profile_version"),
         "abstract_l1_prompt_uses_compiled_profile": bool(abstract_l1.get("abstract_l1_prompt_uses_compiled_profile")),

@@ -105,6 +105,7 @@ def write_l1_diagnostic(
         "raw_response_excerpt": _redact(raw_response)[:1000],
         "recoverable": recoverable, "recovery_action": recovery_action,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "raw_response_available": raw_response not in (None, ""),
     }
     if output_dir is None:
         record["raw_response_path"] = ""
@@ -122,4 +123,40 @@ def write_l1_diagnostic(
     return record
 
 
-__all__ = ["L1ResponseError", "normalize_l1_json_response", "resolve_l1_prompt_profile", "write_l1_diagnostic"]
+def classify_l1_exception(exc: Exception) -> str:
+    explicit = str(getattr(exc, "error_type", "") or "")
+    if explicit:
+        return explicit
+    message = str(exc).casefold()
+    if "timed out" in message or "timeout" in message:
+        return "timeout"
+    if "json" in message or "claims root" in message:
+        return "json_parse_failed"
+    return "api_error"
+
+
+def l1_failure_record(*, stage: str, paper_id: str, paper: dict[str, Any],
+                      prompt_metadata: dict[str, Any], exc: Exception) -> dict[str, Any]:
+    details = dict(getattr(exc, "details", {}) or {})
+    error_type = classify_l1_exception(exc)
+    return {
+        "stage": stage, "paper_id": paper_id, "pmid": paper.get("pmid"), "title": paper.get("title"),
+        "prompt_profile_id": prompt_metadata.get("prompt_profile_id"),
+        "prompt_version": prompt_metadata.get("prompt_version"),
+        "compiled_prompt_hash": prompt_metadata.get("compiled_prompt_hash"),
+        "error_type": error_type, "error_message": str(exc)[:1000],
+        "retry_count": max(0, int(getattr(exc, "attempts", details.get("attempts", 1))) - 1),
+        "recoverable": True, "continued": True,
+        "provider": getattr(exc, "provider", None), "model": getattr(exc, "model", None),
+        "timeout_type": getattr(exc, "timeout_type", None),
+        "timeout_seconds": getattr(exc, "timeout_seconds", None),
+        "max_retries": getattr(exc, "max_retries", None),
+        "attempts": getattr(exc, "attempts", details.get("attempts")),
+        "prompt_hash": prompt_metadata.get("compiled_prompt_hash"),
+        "prompt_chars": prompt_metadata.get("compiled_prompt_chars", 0),
+        "raw_response_available": getattr(exc, "raw_response", None) not in (None, ""),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+__all__ = ["L1ResponseError", "classify_l1_exception", "l1_failure_record", "normalize_l1_json_response", "resolve_l1_prompt_profile", "write_l1_diagnostic"]

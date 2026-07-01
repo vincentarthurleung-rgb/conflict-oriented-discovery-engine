@@ -483,7 +483,7 @@ def run_abstract_l1_step(
     atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_hits.jsonl", iter(cache_hits))
     atomic_write_jsonl(run_dir / "artifacts" / "abstract_l1_cache_misses.jsonl", iter(cache_misses))
     summary = {"l1_mode": l1_mode, **output["summary"], **cache_report, "abstract_claim_count": len(output["claims"])}
-    if summary["budget_report"].get("budget_status") == "blocked" or ("llm_client_not_configured" in summary.get("warnings", []) and bool(misses)):
+    if summary["budget_report"].get("budget_status") == "blocked" or ("llm_client_not_configured" in summary.get("warnings", []) and bool(misses)) or summary.get("blocked_reason"):
         status = "blocked"
     else:
         status = "completed" if execute and api else "planned"
@@ -491,6 +491,7 @@ def run_abstract_l1_step(
         "abstract_l1_claims": output["artifacts"].get("claims", ""),
         "abstract_l1_summary": output["artifacts"].get("summary", ""),
         "paper_processing_records": output["artifacts"].get("paper_records", ""),
+        "abstract_l1_errors": output["artifacts"].get("errors", ""),
         "abstract_l1_cache_report": str(run_dir / "artifacts" / "abstract_l1_cache_report.json"),
         "abstract_l1_cache_hits": str(run_dir / "artifacts" / "abstract_l1_cache_hits.jsonl"),
         "abstract_l1_cache_misses": str(run_dir / "artifacts" / "abstract_l1_cache_misses.jsonl"),
@@ -499,7 +500,7 @@ def run_abstract_l1_step(
         status=status, summary=summary, artifacts=artifacts,
         counts={"abstract_claim_count": len(output["claims"]), "abstract_processed_paper_count": summary["abstract_available_count"], "abstract_l1_cache_hit_count": len(cache_hits), "abstract_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])), api_calls_made=int(summary["api_calls_made"]),
-        skipped_reason=("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "l1_llm_client_not_configured") if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
+        skipped_reason=(summary.get("blocked_reason") or ("l1_budget_exceeded" if summary["budget_report"].get("budget_status") == "blocked" else "l1_llm_client_not_configured")) if status == "blocked" else ("abstract_l1_planning_only" if status == "planned" else None),
     )
 
 
@@ -787,14 +788,16 @@ def run_fulltext_l1_step(
     summary = {**output["summary"], **cache_report, "enabled": enabled, "ranked_span_count": len(spans), "l1_mode": l1_mode, "fulltext_evidence_count": len(output["evidence_records"]), "fulltext_claim_count": len(output["claims"])}
     budget_blocked = summary["budget_report"].get("budget_status") == "blocked"
     client_missing = "llm_client_not_configured" in summary.get("warnings", []) and bool(miss_spans)
+    extraction_blocked = bool(summary.get("blocked_reason"))
     return StepResult(
-        status="blocked" if budget_blocked or client_missing else ("completed" if enabled and execute and api and spans else ("planned" if enabled else "skipped")),
+        status="blocked" if budget_blocked or client_missing or extraction_blocked else ("completed" if enabled and execute and api and spans else ("planned" if enabled else "skipped")),
         summary=summary,
         artifacts={
             "selected_fulltext_spans": str(spans_path),
             "fulltext_evidence_records": output["artifacts"].get("evidence_records", ""),
             "fulltext_l1_claims": output["artifacts"].get("claims", ""),
             "fulltext_l1_summary": output["artifacts"].get("summary", ""),
+            "fulltext_l1_errors": output["artifacts"].get("errors", ""),
             "fulltext_l1_cache_report": str(run_dir / "artifacts" / "fulltext_l1_cache_report.json"),
             "fulltext_l1_cache_hits": str(run_dir / "artifacts" / "fulltext_l1_cache_hits.jsonl"),
             "fulltext_l1_cache_misses": str(run_dir / "artifacts" / "fulltext_l1_cache_misses.jsonl"),
@@ -802,7 +805,7 @@ def run_fulltext_l1_step(
         counts={"fulltext_evidence_count": len(output["evidence_records"]), "fulltext_l1_cache_hit_count": len(cache_hits), "fulltext_l1_cache_miss_count": len(cache_misses), "estimated_l1_api_calls_saved": len(cache_hits)},
         warnings=list(summary.get("warnings", [])) + ([] if enabled else ["fulltext_escalation_not_enabled"]),
         api_calls_made=int(summary["api_calls_made"]),
-        skipped_reason="l1_budget_exceeded" if budget_blocked else ("l1_llm_client_not_configured" if client_missing else (None if enabled else "fulltext_escalation_not_enabled")),
+        skipped_reason="l1_budget_exceeded" if budget_blocked else ("l1_llm_client_not_configured" if client_missing else (summary.get("blocked_reason") if extraction_blocked else (None if enabled else "fulltext_escalation_not_enabled"))),
     )
 
 

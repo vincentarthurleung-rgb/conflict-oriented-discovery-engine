@@ -12,7 +12,7 @@ from code_engine.extraction.l1_budget import build_l1_budget_report, enforce_l1_
 from code_engine.extraction.polarity import normalize_directional_relation
 from code_engine.domain.prompt_compiler import compile_l1_prompt
 from code_engine.extraction.l1_response import (
-    L1ResponseError, normalize_l1_json_response, resolve_l1_prompt_profile,
+    l1_failure_record, normalize_l1_json_response, resolve_l1_prompt_profile,
     write_l1_diagnostic,
 )
 
@@ -124,6 +124,8 @@ def run_fulltext_evidence_l1(
     cache_hits = 0
     recovery_warnings: list[str] = []
     prompt_calls: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    attempted_l1_papers = successful_l1_papers = 0
     for span in evidence_spans:
         if str(span.get("source_scope")) != "full_text":
             continue
@@ -134,6 +136,7 @@ def run_fulltext_evidence_l1(
             span_claims = list(cached.get("claims", []))
             cache_hits += 1
         elif execute and api_enabled and not decision["blocked"] and llm_client is not None:
+            attempted_l1_papers += 1
             compiled = compile_l1_prompt(prompt_profile, str(span.get("text") or ""))
             metadata = {
                 "prompt_profile_id": compiled.prompt_profile_id, "prompt_version": compiled.prompt_version,
@@ -148,13 +151,20 @@ def run_fulltext_evidence_l1(
                 calls += 1
                 raw_response = response.pop("__l1_raw_response", response) if isinstance(response, dict) else response
                 response, warnings = normalize_l1_json_response(response)
+                successful_l1_papers += 1
                 for warning in warnings:
                     recovery_warnings.append(warning)
                     write_l1_diagnostic(output_dir, stage="fulltext_l1", paper_id=str(span.get("paper_id") or "UNKNOWN"), pmid=span.get("pmid"), prompt_metadata=metadata, raw_response=raw_response, error_type=warning, parsed_json_type="list" if "list" in warning else "dict", recoverable=True, recovery_action=warning)
             except Exception as exc:
                 calls += 1
-                write_l1_diagnostic(output_dir, stage="fulltext_l1", paper_id=str(span.get("paper_id") or "UNKNOWN"), pmid=span.get("pmid"), prompt_metadata=metadata, raw_response=getattr(exc, "raw_response", ""), error_type=getattr(exc, "error_type", "schema_validation_failed"), parsed_json_type=getattr(exc, "parsed_json_type", "unknown"), recoverable=False, recovery_action="blocked_no_claims_emitted")
-                raise
+                paper_id = str(span.get("paper_id") or "UNKNOWN")
+                failure = l1_failure_record(stage="fulltext_l1", paper_id=paper_id, paper=span,
+                                            prompt_metadata=metadata, exc=exc)
+                errors.append(failure)
+                write_l1_diagnostic(output_dir, stage="fulltext_l1", paper_id=paper_id, pmid=span.get("pmid"), prompt_metadata=metadata, raw_response=getattr(exc, "raw_response", ""), error_type=failure["error_type"], parsed_json_type=getattr(exc, "parsed_json_type", "unknown"), recoverable=False, recovery_action="paper_failed_workflow_continued")
+                span_evidence, span_claims = [], []
+                evidence_records.extend(span_evidence); claims.extend(span_claims)
+                continue
             span_evidence, span_claims = _records_from_response(response, span, candidates, profile, key)
             for item in [*span_evidence, *span_claims]:
                 item.update(metadata)
@@ -164,6 +174,8 @@ def run_fulltext_evidence_l1(
         evidence_records.extend(span_evidence)
         claims.extend(span_claims)
     budget_report = build_l1_budget_report(estimate, decision, actual_calls=calls)
+    failed_l1_papers = len(errors)
+    all_failed = attempted_l1_papers > 0 and successful_l1_papers == 0
     summary = {
         "execution_mode": "execute_api" if execute and api_enabled else "dry_run_plan",
         "selected_span_count": len(evidence_spans),
@@ -178,6 +190,14 @@ def run_fulltext_evidence_l1(
         "prompt_profile_version": prompt_profile.version,
         "fulltext_l1_prompt_uses_compiled_profile": True,
         "prompt_calls": prompt_calls,
+        "attempted_l1_papers": attempted_l1_papers, "successful_l1_papers": successful_l1_papers,
+        "failed_l1_papers": failed_l1_papers,
+        "timeout_count": sum(item["error_type"] == "timeout" for item in errors),
+        "api_error_count": sum(item["error_type"] == "api_error" for item in errors),
+        "parse_error_count": sum(item["error_type"] == "json_parse_failed" for item in errors),
+        "schema_error_count": sum(item["error_type"] == "schema_validation_failed" for item in errors),
+        "workflow_continued_after_l1_errors": bool(errors),
+        "blocked_reason": "all_l1_extractions_failed" if all_failed else None,
     }
     if execute and api_enabled and llm_client is None:
         summary["warnings"].append("llm_client_not_configured")
@@ -189,10 +209,12 @@ def run_fulltext_evidence_l1(
         summary_path = output_dir / "fulltext_l1_summary.json"
         _write_jsonl(evidence_path, evidence_records)
         _write_jsonl(claims_path, claims)
+        _write_jsonl(output_dir / "fulltext_l1_errors.jsonl", errors)
         summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
         if execute and api_enabled and calls:
             cache_path.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
-        artifacts = {"evidence_records": str(evidence_path), "claims": str(claims_path), "summary": str(summary_path)}
+        artifacts = {"evidence_records": str(evidence_path), "claims": str(claims_path), "summary": str(summary_path),
+                     "errors": str(output_dir / "fulltext_l1_errors.jsonl")}
     return {"evidence_records": evidence_records, "claims": claims, "summary": summary, "artifacts": artifacts}
 
 
