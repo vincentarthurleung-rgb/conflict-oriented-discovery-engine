@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: conflict-oriented-discovery-engine
+Version: 4.0.0a0
+Summary: Package-oriented conflict discovery research software
+Requires-Python: >=3.10
+Provides-Extra: lincs
+Requires-Dist: numpy>=1.24; extra == "lincs"
+Requires-Dist: h5py>=3.8; extra == "lincs"
+Provides-Extra: lincs-columnar
+Requires-Dist: duckdb>=0.10; extra == "lincs-columnar"
+Requires-Dist: pyarrow>=14; extra == "lincs-columnar"

@@ -99,27 +99,74 @@ def _decode(values: Any) -> list[str]:
     return [value.decode() if isinstance(value, bytes) else str(value) for value in values]
 
 
-def _read_selected_matrix(path: Path, signature_ids: list[str], landmark_gene_ids: set[str]) -> tuple[list[str], list[str], np.ndarray]:
+def _detect_gctx_axes(matrix_shape: tuple[int, int], row_id_count: int, col_id_count: int) -> tuple[int, int]:
+    """Return ``(signature_axis, gene_axis)`` from GCTX metadata dimensions."""
+    if matrix_shape == (col_id_count, row_id_count):
+        return 0, 1
+    if matrix_shape == (row_id_count, col_id_count):
+        return 1, 0
+    raise ValueError(
+        f"gctx_axis_orientation_unresolved:matrix_shape={matrix_shape}:"
+        f"row_id_count={row_id_count}:col_id_count={col_id_count}"
+    )
+
+
+def _read_selected_matrix(path: Path, requested_signature_ids: list[str], landmark_gene_ids: set[str],
+                          diagnostics: dict[str, Any] | None = None) -> tuple[list[str], list[str], np.ndarray]:
+    """Read only requested GCTX signatures/genes as signatures x genes."""
     try:
         import h5py  # type: ignore
     except ImportError:
         h5py = None
-    if h5py is not None:
+    if h5py is not None and h5py.is_hdf5(path):
         with h5py.File(path, "r") as handle:
             matrix = handle["0/DATA/0/matrix"]
-            row_ids = _decode(handle["0/META/ROW/id"][:]); column_ids = _decode(handle["0/META/COL/id"][:])
-            row_indices = [index for index, value in enumerate(row_ids) if value in landmark_gene_ids]
-            col_lookup = {value: index for index, value in enumerate(column_ids)}
-            col_indices = [col_lookup[value] for value in signature_ids if value in col_lookup]
-            # Read one selected row at a time; never materialize the full matrix.
-            selected = np.vstack([np.asarray(matrix[index, col_indices], dtype=np.float32) for index in row_indices]) if row_indices and col_indices else np.empty((0, 0), np.float32)
-            return [row_ids[index] for index in row_indices], [column_ids[index] for index in col_indices], selected
+            gene_ids = _decode(handle["0/META/ROW/id"][:])
+            signature_ids = _decode(handle["0/META/COL/id"][:])
+            try:
+                signature_axis, gene_axis = _detect_gctx_axes(tuple(matrix.shape), len(gene_ids), len(signature_ids))
+            except ValueError as exc:
+                raise ValueError(f"{exc}:requested_signature_count={len(requested_signature_ids)}:requested_gene_count={len(landmark_gene_ids)}") from exc
+            selected_gene_indices = sorted(index for index, value in enumerate(gene_ids) if value in landmark_gene_ids)
+            signature_lookup = {value: index for index, value in enumerate(signature_ids)}
+            selected_signature_indices = [signature_lookup[value] for value in requested_signature_ids if value in signature_lookup]
+            selected_gene_ids = [gene_ids[index] for index in selected_gene_indices]
+            selected_signature_ids = [signature_ids[index] for index in selected_signature_indices]
+            selected_rows = []
+            for signature_index in selected_signature_indices:
+                if signature_axis == 0:
+                    row = np.asarray(matrix[signature_index, selected_gene_indices], dtype=np.float32)
+                else:
+                    row = np.asarray(matrix[selected_gene_indices, signature_index], dtype=np.float32)
+                selected_rows.append(row)
+            values_signatures_x_genes = np.vstack(selected_rows) if selected_rows else np.empty((0, len(selected_gene_indices)), np.float32)
+            if diagnostics is not None:
+                diagnostics.update({"gctx_matrix_shape": list(matrix.shape), "gctx_signature_axis": signature_axis,
+                    "gctx_gene_axis": gene_axis, "signature_metadata_count": len(signature_ids),
+                    "gene_metadata_count": len(gene_ids), "selected_signature_count": len(selected_signature_ids),
+                    "selected_gene_count": len(selected_gene_ids), "compact_matrix_orientation": "signatures_x_genes",
+                    "compact_values_shape": list(values_signatures_x_genes.shape)})
+            return selected_gene_ids, selected_signature_ids, values_signatures_x_genes
     # Tiny-fixture fallback: an NPZ payload may use a .gctx filename.
     with np.load(path, allow_pickle=False) as payload:
-        row_ids = _decode(payload["row_ids"]); column_ids = _decode(payload["col_ids"]); matrix = payload["matrix"]
-        row_indices = [i for i, value in enumerate(row_ids) if value in landmark_gene_ids]
-        col_lookup = {value: i for i, value in enumerate(column_ids)}; col_indices = [col_lookup[x] for x in signature_ids if x in col_lookup]
-        return [row_ids[i] for i in row_indices], [column_ids[i] for i in col_indices], np.asarray(matrix[np.ix_(row_indices, col_indices)], dtype=np.float32)
+        gene_ids = _decode(payload["row_ids"]); signature_ids = _decode(payload["col_ids"]); matrix = payload["matrix"]
+        try:
+            signature_axis, gene_axis = _detect_gctx_axes(tuple(matrix.shape), len(gene_ids), len(signature_ids))
+        except ValueError as exc:
+            raise ValueError(f"{exc}:requested_signature_count={len(requested_signature_ids)}:requested_gene_count={len(landmark_gene_ids)}") from exc
+        selected_gene_indices = sorted(i for i, value in enumerate(gene_ids) if value in landmark_gene_ids)
+        signature_lookup = {value: i for i, value in enumerate(signature_ids)}
+        selected_signature_indices = [signature_lookup[x] for x in requested_signature_ids if x in signature_lookup]
+        if signature_axis == 0:
+            values = np.asarray(matrix[np.ix_(selected_signature_indices, selected_gene_indices)], dtype=np.float32)
+        else:
+            values = np.asarray(matrix[np.ix_(selected_gene_indices, selected_signature_indices)].T, dtype=np.float32)
+        if diagnostics is not None:
+            diagnostics.update({"gctx_matrix_shape": list(matrix.shape), "gctx_signature_axis": signature_axis,
+                "gctx_gene_axis": gene_axis, "signature_metadata_count": len(signature_ids), "gene_metadata_count": len(gene_ids),
+                "selected_signature_count": len(selected_signature_indices), "selected_gene_count": len(selected_gene_indices),
+                "compact_matrix_orientation": "signatures_x_genes", "compact_values_shape": list(values.shape)})
+        return [gene_ids[i] for i in selected_gene_indices], [signature_ids[i] for i in selected_signature_indices], values
 
 
 def build_compact_lincs_index(*, dataset: str, data_root: str | Path, manifest_path: str | Path,
@@ -139,19 +186,30 @@ def build_compact_lincs_index(*, dataset: str, data_root: str | Path, manifest_p
     matrix_path = unpacked / matrix_spec["unpacked_filename"]
     if not matrix_path.exists():
         raise FileNotFoundError(f"unpacked_lincs_gctx_missing:{matrix_path}")
-    row_ids, matrix_sig_ids, values = _read_selected_matrix(matrix_path, signature_ids, landmark)
+    if not signature_ids:
+        summary = {"dataset_id": dataset, "status": "not_built", "index_built": False,
+            "reason": "no_matching_signatures", "perturbagen": perturbagen, "context": context,
+            "signature_count": 0, "selected_signature_count": 0, "selected_gene_count": 0,
+            "full_matrix_loaded": False, "warnings": []}
+        (output / f"{perturbagen}_index_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        return summary
+    matrix_diagnostics: dict[str, Any] = {}
+    selected_gene_ids, selected_signature_ids, values_signatures_x_genes = _read_selected_matrix(
+        matrix_path, signature_ids, landmark, matrix_diagnostics)
     meta_by_id = {str(row.get("sig_id") or row.get("id")): row for row in selected_meta}
     npz_path = output / f"{perturbagen}_landmark_vectors.npz"
     records = []; vectors = {}
-    for column, sig_id in enumerate(matrix_sig_ids):
-        vector = values[:, column]; order = np.argsort(vector); k = min(top_k_genes, len(vector)); meta = meta_by_id[sig_id]
-        top_down = [symbol_by_id.get(row_ids[i], row_ids[i]) for i in order[:k]]; top_up = [symbol_by_id.get(row_ids[i], row_ids[i]) for i in order[-k:][::-1]]
+    for signature_position, sig_id in enumerate(selected_signature_ids):
+        vector = values_signatures_x_genes[signature_position, :]
+        order = np.argsort(vector); k = min(top_k_genes, len(vector)); meta = meta_by_id[sig_id]
+        top_down = [symbol_by_id.get(selected_gene_ids[i], selected_gene_ids[i]) for i in order[:k]]
+        top_up = [symbol_by_id.get(selected_gene_ids[i], selected_gene_ids[i]) for i in order[-k:][::-1]]
         vectors[sig_id] = vector
         records.append({"sig_id": sig_id, "pert_iname": meta.get("pert_iname", perturbagen), "cell_id": meta.get("cell_id"),
             "pert_dose": meta.get("pert_dose"), "pert_time": meta.get("pert_time"), "landmark_vector_path": str(npz_path),
             "top_up_genes": top_up, "top_down_genes": top_down,
             "signature_quality": {key: meta.get(key) for key in ("distil_cc_q75", "pct_self_rank_q25", "is_gold") if key in meta}})
-    np.savez_compressed(npz_path, gene_ids=np.asarray(row_ids), **vectors)
+    np.savez_compressed(npz_path, gene_ids=np.asarray(selected_gene_ids), **vectors)
     jsonl = output / f"{perturbagen}_top_genes.jsonl"; jsonl.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in records), encoding="utf-8")
     sqlite_path = output / f"{perturbagen}_compact_index.sqlite"
     connection = sqlite3.connect(sqlite_path)
@@ -162,7 +220,9 @@ def build_compact_lincs_index(*, dataset: str, data_root: str | Path, manifest_p
     finally:
         connection.close()
     summary = {"dataset_id": dataset, "status": "completed", "strategy": "metadata_first_selected_rows_and_columns",
-        "perturbagen": perturbagen, "context": context, "signature_count": len(records), "landmark_gene_count": len(row_ids),
+        "perturbagen": perturbagen, "context": context, "signature_count": len(records),
+        "landmark_gene_count": len(selected_gene_ids), "selected_signature_count": len(selected_signature_ids),
+        "selected_gene_count": len(selected_gene_ids), **matrix_diagnostics,
         "full_matrix_loaded": False, "storage_backend": "sqlite_jsonl_numpy_npz", "sqlite_path": str(sqlite_path),
         "top_genes_path": str(jsonl), "vectors_path": str(npz_path), "warnings": []}
     (output / f"{perturbagen}_index_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")

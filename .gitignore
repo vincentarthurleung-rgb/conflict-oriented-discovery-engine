@@ -57,3 +57,4 @@ tmp_cleanup/
 # Minimal reproducibility metadata
 !data/metadata/global_manifest.json
 !data/metadata/literature_quality_audit.csv
+.egg-info/
