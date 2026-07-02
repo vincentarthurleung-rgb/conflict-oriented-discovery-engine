@@ -74,6 +74,23 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
               f"- LLM planner called: `{str(replay.get('llm_search_intent_called', not reproducibility.get('frozen_search_plan_used', False))).lower()}`",
               f"- deterministic fallback called: `{str(replay.get('deterministic_fallback_called', False)).lower()}`",
               f"- search plan drift detected: `{str(replay.get('search_plan_drift_detected', False)).lower()}`", ""]
+    rebuild = provenance.get("rebuild_from_run", {})
+    if rebuild.get("enabled"):
+        year_filter = provenance.get("paper_year_filter", {})
+        lines += ["## Rebuild provenance", "",
+                  f"- rebuilt run: `{rebuild.get('rebuilt_run_dir')}`",
+                  f"- source run: `{rebuild.get('source_run_dir')}`",
+                  f"- rebuild stages: `{', '.join(rebuild.get('rebuild_stages', []))}`",
+                  f"- API calls during rebuild: {rebuild.get('api_calls', 0)}",
+                  f"- Network calls during rebuild: {rebuild.get('network_calls', 0)}",
+                  f"- source L1 reused: `{str(rebuild.get('source_l1_reused', False)).lower()}`",
+                  f"- source L2 reused: `{str(rebuild.get('source_l2_reused', False)).lower()}`",
+                  f"- source acquisition reused: `{str(rebuild.get('source_acquisition_reused', False)).lower()}`", "",
+                  "## Inherited acquisition/search metadata", "",
+                  f"- frozen search plan used: `{str(reproducibility.get('frozen_search_plan_used', False)).lower()}`",
+                  f"- executable query hash: `{reproducibility.get('executable_query_hash')}`",
+                  f"- paper year window: `{year_filter.get('paper_year_from')}–{year_filter.get('paper_year_to')}`",
+                  f"- PubMed date syntax: `{reproducibility.get('pubmed_date_syntax')}`", ""]
     lines += ["## L2 layered retention", "",
               f"- normalized observations: {l2_context.get('normalized_observation_count', 0)}",
               f"- retained observations: {l2_context.get('retained_observation_count', 0)}",
@@ -187,6 +204,9 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
     lines += ["## Graph conflict source gate", "",
               f"- enabled: `{str(graph_gate.get('enabled', False)).lower()}`",
               f"- true graph conflicts: {graph_summary.get('true_graph_conflict_count', 0)}",
+              f"- graph conflict candidates: {graph_summary.get('graph_conflict_candidate_count', 0)}",
+              f"- timeline conflict attachments: {graph_summary.get('graph_conflict_candidates_used_by_timeline', 0)}",
+              f"- stale source timelines ignored: `{str(graph_summary.get('stale_source_timeline_artifacts_ignored', False)).lower()}`",
               f"- relation bundles: {graph_summary.get('graph_relation_bundle_count', graph_summary.get('relation_bundle_count', 0))}",
               f"- uncontested bundles: {graph_summary.get('graph_uncontested_relation_count', 0)}",
               f"- insufficient bundles: {graph_summary.get('graph_insufficient_conflict_bundle_count', graph_summary.get('graph_insufficient_evidence_count', 0))}",

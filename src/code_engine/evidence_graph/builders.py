@@ -420,9 +420,12 @@ def build_merged_evidence_graph_from_run_artifacts(
         add_node(EvidenceGraphNode(hypothesis_node, "hypothesis", str(hypothesis.get("hypothesis_text") or hypothesis.get("text") or hypothesis_id), hypothesis_id, hypothesis, provenance))
         matches = [candidate for candidate in candidates if _matches_hypothesis(hypothesis, candidate.to_dict())]
         if not matches:
-            unmatched_hypotheses.append(hypothesis_id)
-            nodes[-1].warnings.append("hypothesis_unmatched_to_graph_conflict")
-            nodes[-1].export_warnings.append("hypothesis_unmatched_to_graph_conflict")
+            if hypothesis.get("hypothesis_type") == "graph_conflict_hypothesis":
+                unmatched_hypotheses.append(hypothesis_id)
+                nodes[-1].warnings.append("hypothesis_unmatched_to_graph_conflict")
+                nodes[-1].export_warnings.append("hypothesis_unmatched_to_graph_conflict")
+            else:
+                nodes[-1].warnings.append("abstract_only_hypothesis_without_graph_conflict_match")
         for candidate in matches:
             matched_hypotheses.add(hypothesis_id)
             add_edge(hypothesis_node, candidate.graph_conflict_id, "hypothesis_explains_conflict")
@@ -519,6 +522,8 @@ def build_merged_evidence_graph_from_run_artifacts(
         "identity_incomplete_conflict_candidate_count": 0,
         "graph_conflict_candidates_used_by_hypothesis": int(hypothesis_summary.get("graph_conflict_candidates_used", 0)) if isinstance(hypothesis_summary, dict) else 0,
         "graph_conflict_candidates_used_by_timeline": int(timeline_summary.get("graph_conflict_candidates_used", 0)) if isinstance(timeline_summary, dict) else 0,
+        "timeline_rebuild_status": timeline_summary.get("timeline_rebuild_status") if isinstance(timeline_summary, dict) else None,
+        "stale_source_timeline_artifacts_ignored": bool(timeline_summary.get("stale_source_timeline_artifacts_ignored")) if isinstance(timeline_summary, dict) else False,
         "warnings": sorted(set(warnings)), "export_ready": contract["status"] == "valid", "export_warnings": contract["warnings"],
     }
     artifacts = {
