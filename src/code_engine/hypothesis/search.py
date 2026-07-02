@@ -82,7 +82,7 @@ def run_hypothesis_search_for_run(
     requirements_path = artifacts / "hypothesis_validation_requirements.jsonl"
 
     candidate_count = hypothesis_count = 0
-    high_confidence = abstract_only = fulltext = mechanism_count = manual = 0
+    high_confidence = abstract_only = fulltext = mechanism_count = manual = formal = 0
     source_modes: Counter[str] = Counter()
     types: Counter[str] = Counter()
     top: list[dict] = []
@@ -121,6 +121,7 @@ def run_hypothesis_search_for_run(
             fulltext += int(edge.source_scope == "full_text")
             mechanism_count += int(bool(edge.linked_mechanism_edge_ids or edge.linked_mechanism_path_ids) or edge.source_scope == "mechanism")
             manual += int(edge.requires_manual_review)
+            formal += int(edge.source_scope != "abstract" and edge.hypothesis_type != "weak_graph_followup_hypothesis" and not edge.requires_manual_review)
             source_modes[edge.source_mode] += 1
             types[edge.hypothesis_type] += 1
             top.append({"hypothesis_id": edge.hypothesis_id, "hypothesis_type": edge.hypothesis_type, "hypothesis_text": edge.hypothesis_text, "overall_score": edge.overall_score})
@@ -152,6 +153,19 @@ def run_hypothesis_search_for_run(
             entry.get("exclusion_reason") == "query_context_only"
             for entry in item.get("excluded_observation_provenance", [])) for item in graph_conflicts),
         "missing_observation_provenance_hypothesis_blocked_count": sum(not item.get("observation_provenance") for item in graph_conflicts),
+        "formal_hypothesis_count": formal,
+        "main_hypothesis_count": formal,
+        "high_confidence_hypothesis_count": high_confidence,
+        "graph_conflict_hypothesis_count": types.get("graph_conflict_hypothesis", 0),
+        "true_graph_conflict_hypothesis_count": types.get("graph_conflict_hypothesis", 0),
+        "manual_review_followup_count": abstract_only + types.get("weak_graph_followup_hypothesis", 0),
+        "abstract_only_followup_count": abstract_only,
+        "weak_followup_count": types.get("weak_graph_followup_hypothesis", 0),
+        "display_hypothesis_count": formal,
+        "display_followup_count": abstract_only + types.get("weak_graph_followup_hypothesis", 0),
+        "hypothesis_display_policy": {"main_hypotheses_include_high_confidence_only": True,
+            "abstract_only_followups_hidden_from_main_findings": True,
+            "manual_review_followups_reported_separately": True},
     }
     write_json(artifacts / "hypothesis_summary.json", summary)
     return summary

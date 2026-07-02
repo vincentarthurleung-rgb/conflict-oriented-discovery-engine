@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.rebuild_from_run:
         from code_engine.tools.rebuild_graph_hypothesis import rebuild_graph_hypothesis
         stages = tuple(value.strip() for value in args.rebuild_stages.split(",") if value.strip())
-        invalid = sorted(set(stages) - {"graph", "hypothesis", "report"})
+        invalid = sorted(set(stages) - {"graph", "hypothesis", "l4", "l5", "l6", "l7", "report"})
         if invalid:
             build_parser().error(f"unknown rebuild stages: {', '.join(invalid)}")
         output = rebuild_graph_hypothesis(args.rebuild_from_run, output_suffix=args.output_run_suffix, stages=stages)

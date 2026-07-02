@@ -123,8 +123,21 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
     ):
         title = "L2 Entity Resolution" if name == "l2" else name
         lines += [f"### {title}", "", f"```json\n{json.dumps(state.steps[name].summary, ensure_ascii=False, indent=2)}\n```", ""]
+    hypothesis_summary_path = directory / "artifacts" / "hypothesis_summary.json"
+    hypothesis_display = json.loads(hypothesis_summary_path.read_text(encoding="utf-8")) if hypothesis_summary_path.exists() else state.steps["hypothesis"].summary
     lines += [
-        "## Hypothesis Formation", "",
+        "## Hypothesis summary", "",
+        f"- Main hypotheses: {hypothesis_display.get('display_hypothesis_count', hypothesis_display.get('formal_hypothesis_count', 0))}",
+        f"- High-confidence hypotheses: {hypothesis_display.get('high_confidence_hypothesis_count', hypothesis_display.get('hypothesis_high_confidence_count', 0))}",
+        f"- True graph-conflict hypotheses: {hypothesis_display.get('true_graph_conflict_hypothesis_count', 0)}",
+        f"- Manual-review abstract-only follow-ups: {hypothesis_display.get('abstract_only_followup_count', hypothesis_display.get('hypothesis_abstract_only_count', 0))}", "",
+        "No formal hypothesis was generated under the current source gate." if not hypothesis_display.get("display_hypothesis_count") else "Formal hypotheses are listed in the hypothesis artifacts.",
+        "This is expected when evidence is directionally consistent or insufficient for true conflict.", "",
+        "Abstract-only follow-up signals are retained for manual review only. These are not counted as formal findings.", "",
+        "### Manual-review follow-up candidates", "",
+        *([f"{index}. `{item.get('hypothesis_id')}` — Type: `{item.get('hypothesis_type')}`; Score: `{item.get('score')}`; Reason: {item.get('reason')}; Not a graph-conflict hypothesis."
+           for index, item in enumerate(hypothesis_display.get("manual_review_followups", []), 1)] or ["- None"]), "",
+        "## Hypothesis Formation Audit", "",
         f"- Hypothesis source modes: `{json.dumps(state.hypothesis_source_mode_counts, sort_keys=True)}`",
         f"- Candidate count: {state.hypothesis_candidate_count}",
         f"- Generated hyperedge count: {state.hypothesis_count}",
@@ -132,7 +145,7 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         f"- Mechanism-grounded count: {state.hypothesis_mechanism_grounded_count}",
         f"- Abstract-only follow-up count: {state.hypothesis_abstract_only_count}",
         f"- Manual review count: {state.hypothesis_requires_manual_review_count}",
-        f"- Top hypotheses: `{json.dumps(state.steps['hypothesis'].summary.get('top_hypotheses', []), ensure_ascii=False)}`",
+        f"- Formal hypothesis candidates: `{json.dumps(hypothesis_display.get('formal_hypotheses', []), ensure_ascii=False)}`",
         f"- Warnings: `{json.dumps(state.steps['hypothesis'].warnings, ensure_ascii=False)}`", "",
         "## Coverage gaps", "",
         f"- Full-text unavailable papers: {state.counts.get('fulltext_unavailable_paper_count', 0)}",
@@ -148,7 +161,7 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         f"- Missing DOI / journal: {state.paper_missing_doi_count} / {state.paper_missing_journal_count}", "",
         "## Bibliographic Provenance", "",
         f"- Top conflicts: `{json.dumps(state.steps['abstract_conflict_screening'].summary.get('top_conflicts', []), ensure_ascii=False)}`",
-        f"- Top hypotheses with DOI/title/journal/year: `{json.dumps(state.steps['hypothesis'].summary.get('top_hypotheses', []), ensure_ascii=False)}`", "",
+        f"- Manual-review follow-up candidates: `{json.dumps(hypothesis_display.get('manual_review_followups', []), ensure_ascii=False)}`", "",
         "## L1 Task Cache", "",
         f"- Abstract hits / misses: {state.abstract_l1_cache_hit_count} / {state.abstract_l1_cache_miss_count}",
         f"- Full-text hits / misses: {state.fulltext_l1_cache_hit_count} / {state.fulltext_l1_cache_miss_count}",

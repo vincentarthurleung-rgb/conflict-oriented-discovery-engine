@@ -91,20 +91,37 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
     }
     provenance_path.write_text(json.dumps(provenance, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    def clean_no_conflict_timelines() -> None:
+        graph_summary = load(artifacts / "graph_conflict_summary.json") or load(artifacts / "merged_evidence_graph_summary.json")
+        if int(graph_summary.get("true_graph_conflict_count", graph_summary.get("graph_conflict_candidate_count", 0))) != 0:
+            return
+        (artifacts / "conflict_evidence_timelines.jsonl").write_text("", encoding="utf-8")
+        timeline_summary = {
+            "run_id": output.name, "source_run_id": source.name, "rebuilt_run_id": output.name,
+            "timeline_count": 0, "graph_conflict_candidates_used": 0, "timelines_from_graph_conflicts": 0,
+            "timeline_rebuild_status": "skipped_due_to_no_true_graph_conflicts",
+            "timeline_conflict_attachment_status": "not_applicable_no_true_graph_conflicts",
+            "stale_source_timeline_artifacts_ignored": True, "warnings": [], "export_warnings": [],
+        }
+        (artifacts / "conflict_evidence_timeline_summary.json").write_text(json.dumps(timeline_summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        for name in ("graph_conflict_summary.json", "merged_evidence_graph_summary.json"):
+            path = artifacts / name
+            if path.exists():
+                value = load(path); value.update(graph_conflict_candidates_used_by_timeline=0,
+                    timeline_rebuild_status="skipped_due_to_no_true_graph_conflicts",
+                    timeline_conflict_attachment_status="not_applicable_no_true_graph_conflicts",
+                    stale_source_timeline_artifacts_ignored=True)
+                value["export_warnings"] = [warning for warning in value.get("export_warnings", []) if warning != "timelines_without_conflict_match"]
+                path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+        contract_path = artifacts / "merged_evidence_graph_contract_report.json"
+        if contract_path.exists():
+            contract = load(contract_path); contract["timelines_without_conflict_match"] = []
+            contract["warnings"] = [warning for warning in contract.get("warnings", []) if warning != "timelines_without_conflict_match"]
+            contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
+
     if "graph" in stages:
         build_merged_evidence_graph_from_run_artifacts(output, include_hypotheses=False)
-        graph_summary = load(artifacts / "graph_conflict_summary.json")
-        if int(graph_summary.get("true_graph_conflict_count", 0)) == 0:
-            (artifacts / "conflict_evidence_timelines.jsonl").write_text("", encoding="utf-8")
-            timeline_summary = {
-                "run_id": output.name, "source_run_id": source.name, "rebuilt_run_id": output.name,
-                "timeline_count": 0, "graph_conflict_candidates_used": 0,
-                "timelines_from_graph_conflicts": 0,
-                "timeline_rebuild_status": "skipped_due_to_no_true_graph_conflicts",
-                "stale_source_timeline_artifacts_ignored": True, "warnings": [], "export_warnings": [],
-            }
-            (artifacts / "conflict_evidence_timeline_summary.json").write_text(
-                json.dumps(timeline_summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    clean_no_conflict_timelines()
     if "hypothesis" in stages:
         domain = json.loads((artifacts / "domain_profile.json").read_text()) if (artifacts / "domain_profile.json").exists() else {}
         mechanism = json.loads((artifacts / "mechanism_graph.json").read_text()) if (artifacts / "mechanism_graph.json").exists() else {}
@@ -112,6 +129,13 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
         run_hypothesis_search_for_run(conflict, mechanism, domain, output, dry_run=True)
         if "graph" in stages:
             build_merged_evidence_graph_from_run_artifacts(output)
+
+    if set(stages) & {"l4", "l5", "l6", "l7"}:
+        from code_engine.reporting.full_abstract_pipeline import generate_full_abstract_pipeline
+        generate_full_abstract_pipeline(output)
+    else:
+        from code_engine.reporting.whitebox_case import generate_whitebox_case_artifacts
+        generate_whitebox_case_artifacts(output)
 
     rebuild_metadata = {"enabled": True, "source_run_id": source.name,
                         "rebuilt_run_id": output.name, "rebuild_stages": list(stages)}

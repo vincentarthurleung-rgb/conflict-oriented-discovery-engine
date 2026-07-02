@@ -452,7 +452,8 @@ def build_merged_evidence_graph_from_run_artifacts(
 
     node_rows, graph_edge_rows = [item.to_dict() for item in nodes], [item.to_dict() for item in graph_edges]
     contract = validate_graph_contract(node_rows, graph_edge_rows, bundle_rows, candidate_rows,
-                                       hypotheses_without_match=unmatched_hypotheses, timelines_without_match=unmatched_timelines)
+                                       hypotheses_without_match=unmatched_hypotheses,
+                                       timelines_without_match=unmatched_timelines if candidate_rows else [])
     contract.update({
         "incomplete_evidence_edge_count": len(incomplete_evidence_edges),
         "excluded_from_bundle_reasoning_count": len(incomplete_evidence_edges),
@@ -524,6 +525,8 @@ def build_merged_evidence_graph_from_run_artifacts(
         "graph_conflict_candidates_used_by_timeline": int(timeline_summary.get("graph_conflict_candidates_used", 0)) if isinstance(timeline_summary, dict) else 0,
         "timeline_rebuild_status": timeline_summary.get("timeline_rebuild_status") if isinstance(timeline_summary, dict) else None,
         "stale_source_timeline_artifacts_ignored": bool(timeline_summary.get("stale_source_timeline_artifacts_ignored")) if isinstance(timeline_summary, dict) else False,
+        "timeline_conflict_attachment_status": ("not_applicable_no_true_graph_conflicts" if not candidate_rows
+            else "attached" if matched_timeline_ids else "no_matching_timeline"),
         "warnings": sorted(set(warnings)), "export_ready": contract["status"] == "valid", "export_warnings": contract["warnings"],
     }
     artifacts = {
