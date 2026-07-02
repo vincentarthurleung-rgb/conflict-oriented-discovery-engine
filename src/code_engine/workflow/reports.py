@@ -153,6 +153,8 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         "- Missing full text is a coverage gap, not contradictory evidence.", "",
     ]
     validation = state.steps["validation"].summary
+    lincs_summary_path = directory / "artifacts" / "l7_lincs_validation_summary.json"
+    lincs_summary = json.loads(lincs_summary_path.read_text(encoding="utf-8")) if lincs_summary_path.exists() else {}
     lines += [
         "## Global Corpus / Paper Registry", "",
         f"- Corpus directory: `{state.global_corpus_dir}`",
@@ -196,6 +198,15 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         "- No record found is not contradiction; cache miss is not no coverage.",
         "- Trial existence, binding activity, pathway membership, and cancer-cell dependency have limited interpretation.", "",
     ]
+    if lincs_summary:
+        lines += ["## External perturbation validation", "",
+                  f"- Status: `{lincs_summary.get('status')}`",
+                  f"- Validator: `LINCS L1000 local Level 5`",
+                  f"- Validation type: `{lincs_summary.get('validation_type', 'transcriptomic_consistency_validation')}`",
+                  f"- Matched metformin signatures: {lincs_summary.get('matched_signature_count', 0)}",
+                  f"- Validation executed: `{str(lincs_summary.get('validation_executed', False)).lower()}`",
+                  f"- Missing external data: `{json.dumps(lincs_summary.get('missing_external_data', []), ensure_ascii=False)}`",
+                  "- Limitation: L1000 validates transcriptomic consistency, not direct AMPK phosphorylation.", ""]
     timeline_path = directory / "artifacts" / "conflict_evidence_timelines.jsonl"
     timelines = []
     if timeline_path.exists():

@@ -8,10 +8,13 @@ version = "4.0.0a0"
 description = "Package-oriented conflict discovery research software"
 requires-python = ">=3.10"
 
+[project.optional-dependencies]
+lincs = ["numpy>=1.24", "h5py>=3.8"]
+lincs-columnar = ["duckdb>=0.10", "pyarrow>=14"]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["code_engine*"]
-

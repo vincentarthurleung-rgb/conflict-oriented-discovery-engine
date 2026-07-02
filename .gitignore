@@ -29,6 +29,7 @@ data/validation/indexes/
 data/validation/cache/
 data/layer6/indexes/
 data/layer6/cache/
+data/external/
 *.duckdb
 *.parquet
 *.sqlite

@@ -11,7 +11,10 @@ from code_engine.hypothesis.search import run_hypothesis_search_for_run
 
 
 def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "rebuilt_graph_gate",
-                             stages: tuple[str, ...] = ("graph", "hypothesis", "report")) -> Path:
+                             stages: tuple[str, ...] = ("graph", "hypothesis", "report"),
+                             external_data_root: str | Path = "data/external",
+                             enable_lincs_local_validation: bool = False,
+                             lincs_dataset: str = "GSE70138") -> Path:
     source = Path(source_run).resolve()
     if not (source / "artifacts").is_dir():
         raise FileNotFoundError(f"source run artifacts missing: {source}")
@@ -136,6 +139,9 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
     else:
         from code_engine.reporting.whitebox_case import generate_whitebox_case_artifacts
         generate_whitebox_case_artifacts(output)
+    if "l7" in stages and enable_lincs_local_validation:
+        from code_engine.validation.lincs_local import LincsLocalValidator
+        LincsLocalValidator().validate_run(output, external_data_root=external_data_root, dataset=lincs_dataset)
 
     rebuild_metadata = {"enabled": True, "source_run_id": source.name,
                         "rebuilt_run_id": output.name, "rebuild_stages": list(stages)}

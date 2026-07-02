@@ -1,0 +1,21 @@
+{
+  "dataset_id": "GSE70138",
+  "dataset_name": "LINCS L1000 Phase II",
+  "recommended_level": "Level5",
+  "external_data_root": "data/external",
+  "lincs_l1000_root": "data/external/lincs_l1000",
+  "api_cache_root": "data/external/api_cache",
+  "raw_dir": "data/external/lincs_l1000/raw/GSE70138",
+  "unpacked_dir": "data/external/lincs_l1000/working/unpacked/GSE70138",
+  "index_dir": "data/external/lincs_l1000/index/GSE70138",
+  "files": [
+    {"role": "level5_matrix", "filename": "GSE70138_Broad_LINCS_Level5_COMPZ_n118050x12328_2017-03-06.gctx.gz", "required": true, "unpack": true, "unpacked_filename": "GSE70138_Broad_LINCS_Level5_COMPZ_n118050x12328_2017-03-06.gctx"},
+    {"role": "gene_info", "filename": "GSE70138_Broad_LINCS_gene_info_2017-03-06.txt.gz", "required": true, "unpack": false},
+    {"role": "sig_info", "filename": "GSE70138_Broad_LINCS_sig_info_2017-03-06.txt.gz", "required": true, "unpack": false},
+    {"role": "pert_info", "filename": "GSE70138_Broad_LINCS_pert_info_2017-03-06.txt.gz", "required": true, "unpack": false},
+    {"role": "cell_info", "filename": "GSE70138_Broad_LINCS_cell_info_2017-04-28.txt.gz", "required": true, "unpack": false},
+    {"role": "sig_metrics", "filename": "GSE70138_Broad_LINCS_sig_metrics_2017-03-06.txt.gz", "required": false, "unpack": false},
+    {"role": "sha512sums", "filename": "GSE70138_SHA512SUMS.txt.gz", "required": false, "unpack": false},
+    {"role": "readme", "filename": "GSE70138_Broad_LINCS_README.pdf", "required": false, "unpack": false}
+  ]
+}
