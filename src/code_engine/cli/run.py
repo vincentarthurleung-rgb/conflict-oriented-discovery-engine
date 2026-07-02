@@ -13,6 +13,9 @@ from code_engine.workflow.orchestrator import run_workflow
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the C.O.D.E. research workflow")
     parser.add_argument("--query")
+    parser.add_argument("--rebuild-from-run", type=Path)
+    parser.add_argument("--rebuild-stages", default="graph,hypothesis,report")
+    parser.add_argument("--output-run-suffix", default="rebuilt_graph_gate")
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--until", choices=STEP_ORDER, default="report")
@@ -147,6 +150,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.rebuild_from_run:
+        from code_engine.tools.rebuild_graph_hypothesis import rebuild_graph_hypothesis
+        stages = tuple(value.strip() for value in args.rebuild_stages.split(",") if value.strip())
+        invalid = sorted(set(stages) - {"graph", "hypothesis", "report"})
+        if invalid:
+            build_parser().error(f"unknown rebuild stages: {', '.join(invalid)}")
+        output = rebuild_graph_hypothesis(args.rebuild_from_run, output_suffix=args.output_run_suffix, stages=stages)
+        payload = {"run_id": output.name, "run_dir": str(output), "mode": "offline_rebuild",
+                   "api_calls_made": 0, "network_calls_made": 0, "final_status": "completed",
+                   "report": str(output / "run_report.md")}
+        print(json.dumps(payload, ensure_ascii=False) if args.json_output else "\n".join(
+            [f"Run ID: {payload['run_id']}", f"Run dir: {output}", "Mode: offline_rebuild",
+             "API calls: 0", "Network calls: 0", f"Report: {payload['report']}"]))
+        return 0
     if not args.resume and not args.query:
         build_parser().error("--query is required unless --resume is used")
     from code_engine.extraction.client_factory import resolve_l1_timeout_config

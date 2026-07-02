@@ -227,6 +227,14 @@ def build_runtime_provenance(
             "weak_context_sources": ["retrieval_query", "user_query", "semantic_intent"],
             "cross_context_mechanism_retention_enabled": True,
         },
+        "graph_conflict_source_gate": {
+            "enabled": True, "requires_true_opposing_polarity": True,
+            "requires_observation_provenance": True,
+            "context_specific_run": bool(((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("terms") or ((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("context_terms")),
+            "requires_core_context_eligible": True, "requires_strong_context_match": True,
+            "requires_core_graph_layer": True, "allows_mechanism_layer_for_conflict": False,
+            "allows_review_layer_for_conflict": False, "allows_cross_context_for_conflict": False,
+        },
         "seed_predicate_anchoring": {
             "enabled": True, "core_requires_seed_predicate_anchor": True,
             "predicate_direction_consistency_required": True,

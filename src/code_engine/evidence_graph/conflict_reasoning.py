@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .bundle_builder import stable_id
+from .direction_polarity import is_opposing_polarity_conflict, polarity_distribution
 from .models import GraphConflictCandidate, GraphReasoningTrace, RelationEvidenceBundle
 
 
@@ -19,10 +20,12 @@ def reason_over_bundle(bundle: RelationEvidenceBundle, *, min_conflict_papers: i
     if bundle.subject_canonical_id in {"", "unknown"} or bundle.object_canonical_id in {"", "unknown"}:
         raise ValueError("identity-incomplete bundles must not enter graph conflict reasoning")
     reasoning_types = []
-    if bundle.paper_count < min_conflict_papers:
+    polarity_counts = polarity_distribution(bundle.direction_distribution)
+    opposing = is_opposing_polarity_conflict(bundle.direction_distribution)
+    if bundle.evidence_count < 2 or bundle.paper_count < min_conflict_papers:
         status, primary = "graph_insufficient_evidence", "insufficient_directional_evidence"
-    elif bundle.distinct_direction_count == 1:
-        status, primary = "graph_uncontested_relation", "single_direction_across_papers"
+    elif not opposing:
+        status, primary = "graph_uncontested_relation", "same_polarity_only"
     elif bundle.entropy >= conflict_entropy_threshold:
         status, primary = "graph_conflict_candidate", "opposing_direction_edges_in_same_bundle"
     else:
@@ -56,9 +59,11 @@ def reason_over_bundle(bundle: RelationEvidenceBundle, *, min_conflict_papers: i
         input_evidence_edge_ids=bundle.evidence_edge_ids,
         paper_level_direction_distribution=bundle.paper_level_direction_distribution,
         entropy_formula_inputs={"counts": bundle.paper_level_direction_distribution, "paper_count": bundle.paper_count},
-        thresholds={"min_conflict_papers": min_conflict_papers, "conflict_entropy_threshold": conflict_entropy_threshold},
+        thresholds={"min_conflict_observations": 2, "min_conflict_papers": min_conflict_papers,
+                    "conflict_entropy_threshold": conflict_entropy_threshold, "require_opposing_polarity": True},
         decision={"status": status, "reasoning_type": primary, "reasoning_types": reasoning_types,
-                  "system_judgment": "graph_candidate_only"},
+                  "system_judgment": "graph_candidate_only", "direction_polarity_distribution": polarity_counts,
+                  "opposing_polarity_present": opposing},
         warnings=bundle.warnings,
         run_id=bundle.run_id, topic_id=bundle.topic_id, query_id=bundle.query_id,
         export_ready=bundle.export_ready, export_warnings=bundle.export_warnings,

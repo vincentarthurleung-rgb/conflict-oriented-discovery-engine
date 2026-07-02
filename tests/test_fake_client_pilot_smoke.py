@@ -28,9 +28,10 @@ class FakeClientPilotSmokeTests(unittest.TestCase):
                 state.steps[name].status="completed"
             save_run_state(state,root)
             result=run_workflow(resume=root,until="report",execute=True,api=True,network=False,allow_uncertain_intake=True,l1_mode="abstract_screening",l1_llm_client=FakeClient(),global_corpus_dir=root/"corpus",merge_knowledge_store=False,pilot_profile="ketamine")
-            self.assertGreater(result.steps["evidence_graph_core"].summary["graph_conflict_candidate_count"],0)
-            self.assertGreater(result.steps["hypothesis"].summary["hypotheses_from_graph_conflicts"],0)
-            self.assertGreater(result.steps["conflict_timeline"].summary["timelines_from_graph_conflicts"],0)
+            self.assertEqual(result.steps["evidence_graph_core"].summary["graph_conflict_candidate_count"],0)
+            self.assertEqual(result.steps["hypothesis"].summary["hypotheses_from_graph_conflicts"],0)
+            self.assertEqual(result.steps["conflict_timeline"].summary["timelines_from_graph_conflicts"],0)
+            self.assertTrue((artifacts/"graph_insufficient_conflict_bundles.jsonl").exists())
             self.assertTrue((root/"final_report.md").exists())
             self.assertEqual(result.api_calls_made,3)
             self.assertEqual(result.network_calls_made,0)

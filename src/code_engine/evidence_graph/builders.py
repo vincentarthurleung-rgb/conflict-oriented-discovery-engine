@@ -9,6 +9,7 @@ from typing import Any
 
 from .bundle_builder import build_relation_evidence_bundles, stable_id
 from .conflict_reasoning import reason_over_bundle
+from .direction_polarity import direction_polarity, polarity_distribution
 from .graph_io import load_artifact, records, write_json, write_jsonl
 from .models import EvidenceEdge, EvidenceGraphEdge, EvidenceGraphNode
 from .validators import validate_graph_contract
@@ -108,9 +109,20 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
         source_entity_id=str(source) if source else None, target_entity_id=str(target) if target else None,
         relation_family=str(_first(item, "relation_family", "relation_type", "predicate") or "unknown"),
         polarity_type=str(_first(item, "polarity_type", "polarity") or "unknown"), direction=direction,
+        direction_polarity=direction_polarity(direction),
         context_variables=_first(item, "context_variables", "context_slots", "context", "conditions") or {},
         evidence_span=span, evidence_text=_first(item, "evidence_text", "evidence_sentence", "text", "sentence"),
         source_scope=_first(item, "source_scope", "scope"), evidence_tier=_first(item, "evidence_tier", "tier"),
+        graph_layer=_first(item, "graph_layer"),
+        canonical_graph_eligible=item.get("canonical_graph_eligible"),
+        allow_high_confidence_graph_use=item.get("allow_high_confidence_graph_use"),
+        context_compatibility_status=_first(item, "context_compatibility_status", "context_compatibility.status"),
+        strong_context_match=bool(_first(item, "strong_context_match", "context_compatibility.strong_context_match")),
+        query_context_only=bool(_first(item, "query_context_only", "context_compatibility.query_context_only")),
+        core_context_eligible=bool(_first(item, "core_context_eligible", "context_compatibility.core_context_eligible")),
+        excluded_from_core_reason=item.get("excluded_from_core_reason"),
+        strong_context_terms_matched=list(_first(item, "strong_context_terms_matched", "context_compatibility.strong_context_terms_matched") or []),
+        weak_context_terms_matched=list(_first(item, "weak_context_terms_matched", "context_compatibility.weak_context_terms_matched") or []),
         # Never promote legacy belief_weight into evidence confidence.
         confidence=_float(_first(item, "confidence", "score")),
         paper_id=str(paper_id) if paper_id else None, canonical_paper_id=str(canonical) if canonical else None,
@@ -157,6 +169,47 @@ def _dedup(values: list[Any], field: str) -> list[Any]:
     return list({str(getattr(item, field) if hasattr(item, field) else item[field]): item for item in values}.values())
 
 
+def _source_gate_exclusion(edge: EvidenceEdge, context_specific: bool) -> str | None:
+    if not edge.observation_id:
+        return "missing_observation_provenance"
+    if edge.query_context_only:
+        return "query_context_only"
+    if edge.graph_layer in {"mechanism_layer", "cross_context_mechanism_layer"}:
+        return "cross_context" if edge.graph_layer == "cross_context_mechanism_layer" else "mechanism_layer"
+    if edge.graph_layer == "review_layer":
+        return "review_layer"
+    if edge.graph_layer == "excluded":
+        return "not_core_graph_layer"
+    if context_specific:
+        if edge.graph_layer != "core_canonical_graph":
+            return "not_core_graph_layer"
+        if edge.canonical_graph_eligible is not True or edge.allow_high_confidence_graph_use is not True:
+            return "not_canonical_graph_eligible"
+        if edge.core_context_eligible is not True or edge.strong_context_match is not True:
+            return "context_mismatch"
+        if edge.context_compatibility_status != "context_matched":
+            return "context_mismatch"
+    else:
+        # Older non-context artifacts predate these flags. Explicit false still
+        # blocks high-confidence use; absent values remain backwards compatible.
+        if edge.canonical_graph_eligible is False or edge.allow_high_confidence_graph_use is False:
+            return "not_canonical_graph_eligible"
+    if edge.direction_polarity not in {"positive", "negative"}:
+        return "missing_polarity"
+    return None
+
+
+def _observation_provenance(edge: EvidenceEdge) -> dict[str, Any]:
+    value = {key: getattr(edge, key) for key in (
+        "observation_id", "claim_id", "paper_id", "canonical_paper_id", "title", "publication_year",
+        "subject_name", "object_name", "relation_family", "direction", "direction_polarity", "graph_layer",
+        "canonical_graph_eligible", "allow_high_confidence_graph_use", "context_compatibility_status",
+        "strong_context_match", "query_context_only", "core_context_eligible", "excluded_from_core_reason",
+        "evidence_text")}
+    value["evidence_sentence"] = edge.evidence_text or edge.evidence_span
+    return value
+
+
 def build_merged_evidence_graph_from_run_artifacts(
     run_dir: Path, *, output_dir: Path | None = None, include_abstract: bool = True,
     include_fulltext: bool = True, include_temporal: bool = True, include_hypotheses: bool = True,
@@ -167,6 +220,14 @@ def build_merged_evidence_graph_from_run_artifacts(
     source_dir, output = run_dir / "artifacts", Path(output_dir) if output_dir else run_dir / "artifacts"
     output.mkdir(parents=True, exist_ok=True)
     context = _context(run_dir)
+    runtime_provenance = load_artifact(source_dir / "runtime_provenance_report.json")
+    search_intent = load_artifact(source_dir / "semantic_search_intent.json")
+    intent_context = ((search_intent.get("seed_triple") or {}).get("context") or {}) if isinstance(search_intent, dict) else {}
+    context_specific = bool(
+        ((runtime_provenance.get("context_aware_evidence_layering") or {}).get("context_specific_run")
+         if isinstance(runtime_provenance, dict) else False)
+        or intent_context.get("context_terms") or intent_context.get("terms")
+    )
     manifest_items = records(load_artifact(source_dir / "run_paper_manifest.jsonl"))
     manifest = _manifest_index(manifest_items)
     raw = []
@@ -184,9 +245,52 @@ def build_merged_evidence_graph_from_run_artifacts(
         evidence_edges = evidence_edges[:max_edges]
         truncation_warning = "evidence_graph_max_edges_applied"
     bundles = build_relation_evidence_bundles(evidence_edges)
-    reasoned = [reason_over_bundle(bundle, min_conflict_papers=min_conflict_papers, conflict_entropy_threshold=conflict_entropy_threshold) for bundle in bundles]
-    candidates, traces = [pair[0] for pair in reasoned], [pair[1] for pair in reasoned]
-    candidate_rows, bundle_rows = [item.to_dict() for item in candidates], [item.to_dict() for item in bundles]
+    edge_by_id = {edge.evidence_edge_id: edge for edge in evidence_edges}
+    candidates, traces, candidate_rows = [], [], []
+    uncontested_rows, insufficient_rows = [], []
+    exclusion_counts: Counter[str] = Counter()
+    for bundle in bundles:
+        all_edges = [edge_by_id[value] for value in bundle.evidence_edge_ids if value in edge_by_id]
+        qualified = [edge for edge in all_edges if _source_gate_exclusion(edge, context_specific) is None]
+        excluded = [(edge, _source_gate_exclusion(edge, context_specific)) for edge in all_edges if _source_gate_exclusion(edge, context_specific) is not None]
+        exclusion_counts.update(reason for _, reason in excluded if reason)
+        qualified_bundles = build_relation_evidence_bundles(qualified)
+        reason_bundle = qualified_bundles[0] if qualified_bundles else bundle
+        candidate, trace = reason_over_bundle(reason_bundle, min_conflict_papers=min_conflict_papers,
+                                              conflict_entropy_threshold=conflict_entropy_threshold)
+        if not qualified_bundles:
+            candidate.status = "graph_insufficient_evidence"
+            candidate.reasoning_type = "source_gate_removed_all_observations"
+            candidate.reasoning_types = [candidate.reasoning_type]
+        row = candidate.to_dict()
+        polarity_counts = polarity_distribution(reason_bundle.direction_distribution)
+        row.update({
+            "candidate_id": candidate.graph_conflict_id,
+            "artifact_schema_version": "graph_conflict_candidate.v2",
+            "is_true_graph_conflict": candidate.status == "graph_conflict_candidate",
+            "conflict_definition": "opposing_direction_polarity_after_source_gate",
+            "min_conflict_observations": 2, "min_conflict_papers": min_conflict_papers,
+            "qualified_observation_count": len(qualified), "qualified_paper_count": reason_bundle.paper_count if qualified else 0,
+            "excluded_observation_count": len(excluded),
+            "normalized_observation_ids": sorted(str(edge.observation_id) for edge in all_edges if edge.observation_id),
+            "qualified_observation_ids": sorted(str(edge.observation_id) for edge in qualified if edge.observation_id),
+            "excluded_observation_ids": sorted(str(edge.observation_id) for edge, _ in excluded if edge.observation_id),
+            "direction_polarity_distribution": polarity_counts,
+            "opposing_polarity_present": polarity_counts["positive"] > 0 and polarity_counts["negative"] > 0,
+            "selection_reason": "opposing_polarity_core_context_qualified" if candidate.status == "graph_conflict_candidate" else candidate.reasoning_type,
+            "evidence_tier": "core_context_graph_conflict" if candidate.status == "graph_conflict_candidate" else "insufficient_or_uncontested",
+            "observation_provenance": [_observation_provenance(edge) for edge in qualified],
+            "excluded_observation_provenance": [{"observation_id": edge.observation_id,
+                "exclusion_reason": reason, **_observation_provenance(edge)} for edge, reason in excluded],
+            "source_gate_failed": not bool(qualified),
+        })
+        if candidate.status == "graph_conflict_candidate":
+            candidates.append(candidate); candidate_rows.append(row); traces.append(trace)
+        elif candidate.status == "graph_uncontested_relation":
+            uncontested_rows.append(row); traces.append(trace)
+        else:
+            insufficient_rows.append(row); traces.append(trace)
+    bundle_rows = [item.to_dict() for item in bundles]
 
     nodes: list[EvidenceGraphNode] = []
     graph_edges: list[EvidenceGraphEdge] = []
@@ -249,7 +353,9 @@ def build_merged_evidence_graph_from_run_artifacts(
             if observation_node:
                 add_edge(bundle_node, observation_node, "bundle_contains_observation", attributes={"evidence_edge_id": evidence_edge_id})
                 add_edge(bundle_node, observation_node, "bundle_contains_evidence_edge", attributes={"evidence_edge_id": evidence_edge_id})
-        candidate = candidate_by_bundle[bundle.bundle_id]
+        candidate = candidate_by_bundle.get(bundle.bundle_id)
+        if candidate is None:
+            continue
         conflict_node = candidate.graph_conflict_id
         add_node(EvidenceGraphNode(conflict_node, "conflict", candidate.conflict_key, conflict_node, candidate.to_dict(),
                                    {"canonical_paper_ids": candidate.linked_canonical_paper_ids, "dois": candidate.linked_dois}, candidate.warnings,
@@ -363,7 +469,9 @@ def build_merged_evidence_graph_from_run_artifacts(
         "existing_only_conflicts": [existing_keys[key] for key in sorted(set(existing_keys) - set(graph_keys))],
         "warnings": [], "export_ready": True, "export_warnings": [],
     }
-    status_counts = Counter(item.status for item in candidates)
+    status_counts = Counter({"graph_conflict_candidate": len(candidate_rows),
+                            "graph_uncontested_relation": len(uncontested_rows),
+                            "graph_insufficient_evidence": len(insufficient_rows)})
     hypothesis_summary = load_artifact(source_dir / "hypothesis_summary.json")
     timeline_summary = load_artifact(source_dir / "conflict_evidence_timeline_summary.json")
     evidence_with_span = sum(bool(item.evidence_span or item.evidence_text) for item in evidence_edges)
@@ -377,9 +485,22 @@ def build_merged_evidence_graph_from_run_artifacts(
         "query_id": context["query_id"], "artifact_schema_version": SCHEMA_VERSION, "scope": "run_level_graph_ready_reasoning_layer",
         "node_count": len(nodes), "edge_count": len(graph_edges),
         **{f"{kind}_node_count": sum(item.node_type == kind for item in nodes) for kind in ("paper", "entity", "observation", "evidence_span", "hypothesis")},
-        "relation_bundle_count": len(bundles), "graph_conflict_candidate_count": status_counts["graph_conflict_candidate"],
+        "relation_bundle_count": len(bundles), "graph_relation_bundle_count": len(bundles),
+        "graph_conflict_candidate_count": status_counts["graph_conflict_candidate"],
+        "true_graph_conflict_count": status_counts["graph_conflict_candidate"],
         "graph_uncontested_relation_count": status_counts["graph_uncontested_relation"],
         "graph_insufficient_evidence_count": status_counts["graph_insufficient_evidence"],
+        "graph_insufficient_conflict_bundle_count": status_counts["graph_insufficient_evidence"],
+        "single_paper_bundle_excluded_count": sum(row.get("qualified_paper_count", 0) < min_conflict_papers for row in insufficient_rows),
+        "same_polarity_bundle_excluded_count": len(uncontested_rows),
+        "missing_observation_provenance_excluded_count": exclusion_counts["missing_observation_provenance"],
+        "non_core_source_excluded_count": sum(exclusion_counts[key] for key in ("not_core_graph_layer", "not_canonical_graph_eligible")),
+        "query_context_only_excluded_count": exclusion_counts["query_context_only"],
+        "cross_context_excluded_count": exclusion_counts["cross_context"],
+        "review_layer_excluded_count": exclusion_counts["review_layer"],
+        "mechanism_layer_excluded_count": exclusion_counts["mechanism_layer"],
+        "direction_polarity_normalization_enabled": True, "source_gate_enabled": True,
+        "graph_conflict_source_gate_enabled": True,
         "timeline_node_count": sum(item.node_type in {"temporal_window", "timeline_evidence_item"} for item in nodes),
         "validation_node_count": validation_count,
         "bundle_with_conflict_rate": round(status_counts["graph_conflict_candidate"] / len(bundles), 6) if bundles else 0.0,
@@ -404,7 +525,11 @@ def build_merged_evidence_graph_from_run_artifacts(
         "nodes": write_jsonl(output / "merged_evidence_graph_nodes.jsonl", nodes),
         "edges": write_jsonl(output / "merged_evidence_graph_edges.jsonl", graph_edges),
         "bundles": write_jsonl(output / "relation_evidence_bundles.jsonl", bundles),
-        "conflicts": write_jsonl(output / "graph_conflict_candidates.jsonl", candidates),
+        "graph_relation_bundles": write_jsonl(output / "graph_relation_bundles.jsonl", bundles),
+        "uncontested": write_jsonl(output / "graph_uncontested_relation_bundles.jsonl", uncontested_rows),
+        "insufficient": write_jsonl(output / "graph_insufficient_conflict_bundles.jsonl", insufficient_rows),
+        "conflicts": write_jsonl(output / "graph_conflict_candidates.jsonl", candidate_rows),
+        "graph_conflict_summary": write_json(output / "graph_conflict_summary.json", summary),
         "reasoning_traces": write_jsonl(output / "graph_reasoning_traces.jsonl", traces),
         "summary": write_json(output / "merged_evidence_graph_summary.json", summary),
         "contract_report": write_json(output / "merged_evidence_graph_contract_report.json", contract),
@@ -412,5 +537,6 @@ def build_merged_evidence_graph_from_run_artifacts(
     }
     return {"summary": summary, "artifacts": artifacts, "contract_report": contract, "alignment_report": alignment,
             "evidence_edges": [item.to_dict() for item in evidence_edges], "bundles": bundle_rows,
-            "conflicts": candidate_rows, "reasoning_traces": [item.to_dict() for item in traces],
+            "conflicts": candidate_rows, "uncontested": uncontested_rows, "insufficient": insufficient_rows,
+            "reasoning_traces": [item.to_dict() for item in traces],
             "nodes": node_rows, "edges": graph_edge_rows}

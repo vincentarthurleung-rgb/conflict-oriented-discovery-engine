@@ -71,11 +71,23 @@ class EvidenceEdge(Serializable):
     relation_family: str
     polarity_type: str
     direction: str
+    direction_polarity: str = "unknown"
+    direction_polarity_source: str = "normalized_from_direction"
     context_variables: Any = field(default_factory=dict)
     evidence_span: Any = None
     evidence_text: str | None = None
     source_scope: str | None = None
     evidence_tier: str | None = None
+    graph_layer: str | None = None
+    canonical_graph_eligible: bool | None = None
+    allow_high_confidence_graph_use: bool | None = None
+    context_compatibility_status: str | None = None
+    strong_context_match: bool | None = None
+    query_context_only: bool | None = None
+    core_context_eligible: bool | None = None
+    excluded_from_core_reason: str | None = None
+    strong_context_terms_matched: list[str] = field(default_factory=list)
+    weak_context_terms_matched: list[str] = field(default_factory=list)
     confidence: float | None = None
     paper_id: str | None = None
     canonical_paper_id: str | None = None

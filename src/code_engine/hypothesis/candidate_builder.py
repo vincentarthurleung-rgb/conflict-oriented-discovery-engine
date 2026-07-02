@@ -185,7 +185,9 @@ def build_hypothesis_candidates_from_run_artifacts(
 
     confirmed_abstract_ids: set[str] = set()
     for graph_conflict in graph_conflict_candidates:
-        if graph_conflict.get("status") != "graph_conflict_candidate":
+        if (graph_conflict.get("status") != "graph_conflict_candidate"
+                or graph_conflict.get("is_true_graph_conflict") is not True
+                or not graph_conflict.get("observation_provenance")):
             continue
         item = _base("graph_conflict_hypothesis", graph_conflict, source_scope="graph_bundle", source_mode="merged_evidence_graph")
         item.update(
@@ -253,7 +255,11 @@ def build_hypothesis_candidates_from_run_artifacts(
         if abstract_id in confirmed_abstract_ids:
             continue
         item = _base("abstract_conflict_followup_hypothesis", abstract, source_scope="abstract", source_mode="abstract_conflict_screening")
-        item.update(hypothesis_text="The abstract-only directional conflict requires full-text confirmation before mechanism interpretation.", high_confidence=False, requires_fulltext_confirmation=True, requires_manual_review=True, validation_priority="low", tradeoffs_or_limitations=["Only abstract-level conflict evidence is available."])
+        item.update(hypothesis_text="The abstract-only directional conflict requires full-text confirmation before mechanism interpretation.",
+                    high_confidence=False, requires_fulltext_confirmation=True, requires_manual_review=True,
+                    validation_priority="low", context_grounding_status="abstract_only_unverified",
+                    not_context_specific_core=True,
+                    tradeoffs_or_limitations=["Only abstract-level conflict evidence is available."])
         item["warnings"] = list(dict.fromkeys([*item["warnings"], "abstract_only_not_high_confidence"]))
         result = emit(item)
         if result:

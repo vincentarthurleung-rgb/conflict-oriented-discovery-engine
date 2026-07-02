@@ -49,9 +49,9 @@ class ProgressiveFulltextFakeSmokeTests(unittest.TestCase):
                 l1_llm_client=FakeL1(), fulltext_availability_resolver=availability,
                 global_corpus_dir=Path(tmp) / "corpus", merge_knowledge_store=False,
             )
-            self.assertGreater(state.steps["evidence_graph_core"].summary["graph_conflict_candidate_count"], 0)
-            self.assertEqual(state.steps["fulltext_acquisition"].summary["selected_available_count"], 1)
-            self.assertEqual(state.steps["fulltext_l1"].summary["fulltext_claim_count"], 1)
+            self.assertEqual(state.steps["evidence_graph_core"].summary["graph_conflict_candidate_count"], 0)
+            self.assertEqual(state.steps["fulltext_acquisition"].summary["selected_available_count"], 0)
+            self.assertEqual(state.steps["fulltext_l1"].summary["fulltext_claim_count"], 0)
             for name in ("relation_evidence_bundles.jsonl", "graph_conflict_candidates.jsonl",
                          "fulltext_escalation_candidates.jsonl", "fulltext_availability_records.jsonl",
                          "fulltext_l1_claims.jsonl", "l2_fulltext_summary.json",

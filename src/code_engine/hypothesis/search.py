@@ -65,7 +65,10 @@ def run_hypothesis_search_for_run(
     }
     graph_conflicts_path = artifacts / "graph_conflict_candidates.jsonl"
     graph_conflicts = list(iter_jsonl(graph_conflicts_path))
-    usable_graph_conflicts = [item for item in graph_conflicts if item.get("status") == "graph_conflict_candidate"]
+    usable_graph_conflicts = [item for item in graph_conflicts
+                              if item.get("status") == "graph_conflict_candidate"
+                              and item.get("is_true_graph_conflict") is True
+                              and item.get("observation_provenance")]
     fulltext_summary = _json(artifacts / "fulltext_conflict_summary.json", {})
     for label, path in paths.items():
         if not path.exists():
@@ -141,6 +144,14 @@ def run_hypothesis_search_for_run(
         "formation_mode": source_default, "run_dir": str(run_dir), "warnings": list(dict.fromkeys(warnings)),
         "graph_conflict_candidates_used": len(usable_graph_conflicts),
         "hypotheses_from_graph_conflicts": types.get("graph_conflict_hypothesis", 0),
+        "hypotheses_from_true_graph_conflicts": types.get("graph_conflict_hypothesis", 0),
+        "hypotheses_from_weak_graph_bundles": types.get("weak_graph_followup_hypothesis", 0),
+        "weak_graph_bundle_candidates_used": 0,
+        "non_core_graph_hypothesis_blocked_count": max(0, len(graph_conflicts) - len(usable_graph_conflicts)),
+        "query_context_only_hypothesis_blocked_count": sum(any(
+            entry.get("exclusion_reason") == "query_context_only"
+            for entry in item.get("excluded_observation_provenance", [])) for item in graph_conflicts),
+        "missing_observation_provenance_hypothesis_blocked_count": sum(not item.get("observation_provenance") for item in graph_conflicts),
     }
     write_json(artifacts / "hypothesis_summary.json", summary)
     return summary

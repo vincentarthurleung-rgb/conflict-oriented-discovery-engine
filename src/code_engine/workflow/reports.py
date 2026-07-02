@@ -183,6 +183,16 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
         read_jsonl("graph_reasoning_traces.jsonl"), read_jsonl("merged_evidence_graph_nodes.jsonl"),
         read_jsonl("merged_evidence_graph_edges.jsonl"),
     )
+    graph_gate = provenance.get("graph_conflict_source_gate", {})
+    lines += ["## Graph conflict source gate", "",
+              f"- enabled: `{str(graph_gate.get('enabled', False)).lower()}`",
+              f"- true graph conflicts: {graph_summary.get('true_graph_conflict_count', 0)}",
+              f"- relation bundles: {graph_summary.get('graph_relation_bundle_count', graph_summary.get('relation_bundle_count', 0))}",
+              f"- uncontested bundles: {graph_summary.get('graph_uncontested_relation_count', 0)}",
+              f"- insufficient bundles: {graph_summary.get('graph_insufficient_conflict_bundle_count', graph_summary.get('graph_insufficient_evidence_count', 0))}",
+              f"- non-core evidence excluded from graph conflicts: {graph_summary.get('non_core_source_excluded_count', 0)}",
+              f"- query-only context evidence excluded from graph conflicts: {graph_summary.get('query_context_only_excluded_count', 0)}",
+              f"- mechanism/review/cross-context evidence excluded from graph conflicts: {sum(int(graph_summary.get(key, 0)) for key in ('mechanism_layer_excluded_count', 'review_layer_excluded_count', 'cross_context_excluded_count'))}", ""]
     lines += ["## Warnings", ""] + ([f"- {item}" for item in state.warnings] or ["- None"])
     failed_or_blocked = [f"{name}: {record.status}" for name, record in state.steps.items() if record.status in {"failed", "blocked", "skipped", "manual_review_required"}]
     lines += ["", "## Failed or skipped steps", ""] + ([f"- {item}" for item in failed_or_blocked] or ["- None"])
