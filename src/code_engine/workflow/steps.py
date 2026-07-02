@@ -1396,10 +1396,25 @@ def run_conflict_step(*, run_dir: Path, execute: bool, l1_mode: str = "legacy", 
     return StepResult(status="completed" if observations else "blocked", summary=summary, artifacts=artifacts, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=[reason] if reason else [], skipped_reason=reason)
 def run_mechanism_step(*, run_dir: Path, execute: bool, l1_mode: str = "legacy", **_: Any) -> StepResult:
     observations = _read(run_dir, "l2_observations.json", []) if l1_mode == "legacy" else _read(run_dir, "l2_fulltext_observations.json", [])
+    if not observations and l1_mode != "legacy" and execute:
+        from code_engine.reporting.full_abstract_pipeline import build_l6_mechanism_graph
+        summary = build_l6_mechanism_graph(run_dir)
+        if summary.get("status") == "completed":
+            names = ("l6_mechanism_graph_summary.json", "l6_mechanism_nodes.jsonl", "l6_mechanism_edges.jsonl",
+                     "l6_mechanism_paths.jsonl", "l6_mechanism_graph.md")
+            return StepResult(status="completed", summary=summary,
+                artifacts={Path(name).stem: str(run_dir / "artifacts" / name) for name in names},
+                counts={"mechanism_node_count": int(summary.get("node_count", 0)),
+                        "mechanism_edge_count": int(summary.get("edge_count", 0)),
+                        "mechanism_path_count": int(summary.get("path_count", 0))},
+                warnings=list(summary.get("warnings", [])))
     if not observations:
-        summary = {"mechanism_node_count": 0, "mechanism_edge_count": 0, "mechanism_path_count": 0, "mechanism_conflict_annotation_count": 0, "reason": "no_l2_observations_in_run"}
+        from code_engine.reporting.full_abstract_pipeline import resolve_l2_observations
+        _resolved, search_report = resolve_l2_observations(run_dir)
+        summary = {"mechanism_node_count": 0, "mechanism_edge_count": 0, "mechanism_path_count": 0, "mechanism_conflict_annotation_count": 0,
+                   "reason": "l2_observation_artifacts_not_found", "artifact_search_report": search_report}
         path = _write(run_dir, "mechanism_graph_summary.json", summary)
-        return StepResult(status="blocked", summary=summary, artifacts={"mechanism_graph_summary": path}, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=["mechanism_build_blocked_no_l2_observations"], skipped_reason="no_l2_observations_in_run")
+        return StepResult(status="blocked", summary=summary, artifacts={"mechanism_graph_summary": path}, counts={key: value for key, value in summary.items() if key.endswith("_count")}, warnings=["mechanism_build_blocked_l2_artifacts_not_found"], skipped_reason="l2_observation_artifacts_not_found")
     if not execute:
         summary = {"mechanism_node_count": 0, "mechanism_edge_count": 0, "mechanism_path_count": 0, "mechanism_conflict_annotation_count": 0, "candidate_observation_count": len(observations), "reason": "execute_required_for_mechanism_build"}
         path = _write(run_dir, "mechanism_graph_summary.json", summary)
@@ -1664,8 +1679,19 @@ def run_validation_step(
         "external_validation_aggregate_summary": aggregate.artifact_refs.get("summary", ""),
     }
     counts = {key: value for key, value in summary.items() if key.startswith("validation_") and isinstance(value, int)}
+    result_status = "completed" if execute and external_validation else "planned"
+    if execute and not external_validation:
+        from code_engine.reporting.full_abstract_pipeline import build_l7_validation_stub
+        l7 = build_l7_validation_stub(run_dir)
+        summary["l7_external_validation"] = l7
+        artifacts.update({name: str(run_dir / "artifacts" / filename) for name, filename in {
+            "l7_external_validation_summary": "l7_external_validation_summary.json",
+            "l7_validation_plan": "l7_validation_plan.json",
+            "l7_validation_targets": "l7_validation_targets.jsonl",
+            "l7_validation_status": "l7_validation_status.md"}.items()})
+        result_status = "completed"
     return StepResult(
-        status="completed" if execute and external_validation else "planned",
+        status=result_status,
         summary=summary, artifacts=artifacts, counts=counts,
         warnings=warnings + aggregate.warnings,
         network_calls_made=execution.network_calls_made,

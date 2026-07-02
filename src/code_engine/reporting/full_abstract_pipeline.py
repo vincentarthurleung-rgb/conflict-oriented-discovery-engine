@@ -66,6 +66,7 @@ def _terms(item: dict[str, Any], candidates: tuple[str, ...]) -> list[str]:
 
 def build_l4_context_mining(run_dir: str | Path) -> dict[str, Any]:
     run = Path(run_dir); artifacts = run / "artifacts"; observations, resolution = resolve_l2_observations(run)
+    l2_summary = _json(artifacts / "l2_abstract_summary.json")
     factors = []
     for item in observations:
         compatibility = item.get("context_compatibility") or {}
@@ -93,8 +94,8 @@ def build_l4_context_mining(run_dir: str | Path) -> dict[str, Any]:
         "treatment_combination_contexts": sorted({str(row["treatment_combination"]) for row in factors if row["treatment_combination"]}),
         "pathway_contexts": sorted({x for row in factors for x in row["pathway_contexts"]}),
         "graph_layer_distribution": dict(sorted(graph_layers.items())), "context_compatibility_distribution": dict(sorted(compat.items())),
-        "query_context_only_count": sum(row["query_context_only"] for row in factors),
-        "strong_context_match_count": sum(row["strong_context_match"] for row in factors),
+        "query_context_only_count": int(l2_summary.get("context_query_only_observation_count", sum(row["query_context_only"] for row in factors))),
+        "strong_context_match_count": int(l2_summary.get("strong_context_matched_observation_count", sum(row["strong_context_match"] for row in factors))),
         "artifact_resolution": resolution, "warnings": [] if observations else ["l2_observation_artifacts_not_found"]}
     _write_json(artifacts / "l4_context_mining_summary.json", summary); _write_jsonl(artifacts / "l4_context_factors.jsonl", factors)
     columns = ("observation_id", "title", "cancer_contexts", "cell_line_or_model", "drug_resistance_state", "mechanism_terms", "graph_layer")
@@ -105,6 +106,7 @@ def build_l4_context_mining(run_dir: str | Path) -> dict[str, Any]:
 
 def build_l5_context_attribution(run_dir: str | Path) -> dict[str, Any]:
     run = Path(run_dir); artifacts = run / "artifacts"; observations, resolution = resolve_l2_observations(run)
+    l2_summary = _json(artifacts / "l2_abstract_summary.json")
     rows=[]
     for item in observations:
         compatibility=item.get("context_compatibility") or {}; layer=str(item.get("graph_layer") or "excluded")
@@ -122,7 +124,7 @@ def build_l5_context_attribution(run_dir: str | Path) -> dict[str, Any]:
     layers=Counter(row["graph_layer"] for row in rows); reasons=Counter(str(row.get("excluded_from_core_reason") or "none") for row in rows if row["graph_layer"]!="core_canonical_graph")
     summary={"status":"completed" if observations else "blocked","mode":"abstract_context_attribution","fulltext_required":False,
         "source_l2_observation_count":len(observations),"core_canonical_observation_count":layers["core_canonical_graph"],
-        "query_context_only_downgraded_count":sum(row["query_context_only"] and row["graph_layer"]!="core_canonical_graph" for row in rows),
+        "query_context_only_downgraded_count":int(l2_summary.get("context_query_only_observation_count", sum(row["query_context_only"] and row["graph_layer"]!="core_canonical_graph" for row in rows))),
         "graph_layer_distribution":dict(sorted(layers.items())),"exclusion_reason_distribution":dict(sorted(reasons.items())),
         "no_high_confidence_hypothesis_reason":"core_evidence_directionally_consistent_without_opposing_polarity_conflict",
         "artifact_resolution":resolution,"warnings":[] if observations else ["l2_observation_artifacts_not_found"]}
@@ -177,7 +179,7 @@ def build_l7_validation_stub(run_dir: str | Path) -> dict[str, Any]:
     claims=("metformin activates AMPK in cancer contexts","metformin/AMPK/mTOR axis","metformin/AMPK/ERK-NF-kB axis",
             "metformin/AMPK/YAP-Hippo axis","metformin suppresses cancer stem cells through AMPK activation","metformin affects drug resistance via AMPK-related pathways")
     targets=[{"validation_target_id":_id("validation_target",claim),"claim":claim,"evidence_level":"abstract","source_observation_ids":ids,
-        "suggested_validation_source_types":["post-2020 PubMed abstracts","full-text confirmation","external curated pathway database","experimental validation paper"],
+        "suggested_validation_source_types":["post-window PubMed abstracts","full-text confirmation","external curated pathway database","experimental validation paper"],
         "status":"not_run_config_missing"} for claim in claims]
     summary={"status":"not_run_config_missing","external_index_configured":False,"validation_executed":False,"validation_plan_generated":True,
         "validation_target_count":len(targets),"reason":"external_validation_index_not_configured","api_calls":0,"network_calls":0}
