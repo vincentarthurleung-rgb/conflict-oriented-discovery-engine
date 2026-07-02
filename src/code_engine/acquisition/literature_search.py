@@ -21,6 +21,14 @@ class LiteratureClient(Protocol):
     def fetch(self, record: dict[str, Any], source: str) -> str: ...
 
 
+class SearchResults(list[dict[str, Any]]):
+    """Search records plus the ESearch total, which may exceed returned IDs."""
+
+    def __init__(self, values: list[dict[str, Any]], reported_total_count: int) -> None:
+        super().__init__(values)
+        self.reported_total_count = reported_total_count
+
+
 class NCBILiteratureClient:
     """Minimal NCBI E-utilities client used only after explicit network enablement."""
 
@@ -38,7 +46,7 @@ class NCBILiteratureClient:
         for identifier in payload.get("esearchresult", {}).get("idlist", []):
             paper_id = f"PMC{identifier}" if source == "pmc" and not str(identifier).startswith("PMC") else str(identifier)
             records.append({"paper_id": paper_id, "pmcid": paper_id if source == "pmc" else None, "pmid": identifier if source == "pubmed" else None})
-        return records
+        return SearchResults(records, int(payload.get("esearchresult", {}).get("count") or len(records)))
 
     def fetch(self, record: dict[str, Any], source: str) -> str:
         db = "pmc" if source == "pmc" else "pubmed"
@@ -116,6 +124,10 @@ def execute_acquisition_plan(
     year_to: int | None = None,
     client: LiteratureClient | None = None,
     cached_papers: list[dict[str, Any]] | None = None,
+    diversify_acquisition: bool = False,
+    per_query_max_results: int | None = None,
+    per_query_group_max_results: dict[str, int] | None = None,
+    reserve_query_group: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     root = Path(repository_root)
     manifest_path = root / "data/metadata/global_manifest.json"
@@ -143,42 +155,93 @@ def execute_acquisition_plan(
         "initial_fulltext_download_count": 0,
         "paper_cache_consumed_by_acquisition": False,
         "query_diagnostics": [],
+        "pubmed_esearch_reported_total_count": 0, "pubmed_esearch_returned_id_count": 0,
+        "pubmed_efetch_attempted_count": 0, "pubmed_efetch_returned_record_count": 0,
+        "pubmed_reused_existing_record_count": 0, "pubmed_new_raw_record_count": 0,
+        "pubmed_post_filter_record_count": 0, "pubmed_dedup_removed_count": 0,
     }
+    query_count = len(selected_queries)
+    even_caps = []
+    if query_count:
+        quotient, remainder = divmod(max_papers, query_count)
+        even_caps = [quotient + int(index < remainder) for index in range(query_count)]
+    report["diversified_acquisition"] = {
+        "enabled": bool(diversify_acquisition),
+        "strategy": "per_query_explicit" if per_query_max_results is not None else "per_query_even_split",
+        "global_max_papers": max_papers,
+        "per_query_cap_default": per_query_max_results or (max(even_caps) if even_caps else 0),
+        "group_quota_supported": False,
+    }
+    if diversify_acquisition and (per_query_group_max_results or reserve_query_group):
+        report["warnings"].append("query_group_quotas_not_implemented_even_split_used")
     if not execute or not network:
         report["warnings"].append("network_disabled_acquisition_plan_only")
     else:
         active_client = client or NCBILiteratureClient()
         candidates: list[dict[str, Any]] = []
+        candidate_by_key: dict[str, dict[str, Any]] = {}
         for query_index, query in enumerate(selected_queries):
-            if len(candidates) >= max_papers:
+            if len(candidates) >= max_papers and not diversify_acquisition:
                 for skipped_query in selected_queries[query_index:]:
-                    report["query_diagnostics"].append({"query_id": skipped_query.query_id, "query_string": skipped_query.query_string,
+                    report["query_diagnostics"].append({"intent_id": plan.intent_id, "pubmed_query_id": skipped_query.query_id,
+                    "query_id": skipped_query.query_id, "query_string": skipped_query.query_string,
+                    "query_group": skipped_query.query_group, "query_scope": skipped_query.query_scope,
                     "year_from": skipped_query.year_from, "year_to": skipped_query.year_to, "source": skipped_query.source, "attempt": 0,
                     "request_url_or_params_hash": "", "esearch_status": "skipped", "esearch_return_count": 0,
                     "esearch_reported_total_count": 0, "retstart": 0, "retmax": skipped_query.max_results,
-                    "efetch_attempted": False, "efetch_status": None, "downloaded_count": 0,
+                    "requested_retmax": 0, "effective_query_cap": 0, "limited_by_diversified_quota": False,
+                    "efetch_attempted": False, "efetch_status": None, "efetch_requested_count": 0,
+                    "efetch_returned_count": 0, "reused_existing_record_count": 0, "new_raw_record_count": 0,
+                    "post_filter_record_count": 0, "dedup_removed_count": 0, "downloaded_count": 0,
+                    "candidate_count": 0, "effective_acquisition_count": 0,
                     "excluded_by_year_filter_count": 0, "missing_year_count": 0,
                     "skip_reason": "global_max_papers_already_satisfied", "error_type": None,
                     "error_message": None, "elapsed_seconds": 0.0})
                 break
             report["network_calls_made"] += 1
-            requested = min(query.max_results, max_papers - len(candidates)); started = time.monotonic()
-            diagnostic = {"query_id": query.query_id, "query_string": query.query_string,
+            quota = (per_query_max_results if per_query_max_results is not None else even_caps[query_index]) if diversify_acquisition else max_papers - len(candidates)
+            requested = max(0, min(query.max_results, quota)); started = time.monotonic()
+            diagnostic = {"intent_id": plan.intent_id, "pubmed_query_id": query.query_id,
+                "query_id": query.query_id, "query_string": query.query_string,
+                "query_group": query.query_group, "query_scope": query.query_scope,
                 "year_from": year_from if year_from is not None else query.year_from,
                 "year_to": year_to if year_to is not None else query.year_to, "source": query.source, "attempt": 1,
                 "request_url_or_params_hash": hashlib.sha256(f"{query.source}|{query.query_string}|{requested}".encode()).hexdigest(),
                 "esearch_status": "success", "esearch_return_count": 0, "esearch_reported_total_count": 0,
-                "retstart": 0, "retmax": requested, "efetch_attempted": False, "efetch_status": None,
-                "downloaded_count": 0, "excluded_by_year_filter_count": 0, "missing_year_count": 0,
+                "retstart": 0, "retmax": requested, "requested_retmax": requested,
+                "effective_query_cap": requested, "limited_by_diversified_quota": bool(diversify_acquisition and requested < query.max_results),
+                "efetch_attempted": False, "efetch_status": None, "efetch_requested_count": 0,
+                "efetch_returned_count": 0, "reused_existing_record_count": 0, "new_raw_record_count": 0,
+                "post_filter_record_count": 0, "dedup_removed_count": 0, "downloaded_count": 0,
+                "candidate_count": 0, "effective_acquisition_count": 0,
+                "excluded_by_year_filter_count": 0, "missing_year_count": 0,
                 "skip_reason": None, "error_type": None, "error_message": None, "elapsed_seconds": 0.0}
             try:
                 found = active_client.search(query.query_string, query.source, requested,
                     year_from if year_from is not None else query.year_from,
                     year_to if year_to is not None else query.year_to)
-                diagnostic["esearch_return_count"] = diagnostic["esearch_reported_total_count"] = len(found)
+                diagnostic["esearch_return_count"] = len(found)
+                diagnostic["esearch_reported_total_count"] = int(getattr(found, "reported_total_count", len(found)))
                 diagnostic["esearch_status"] = "success" if found else "zero_results"
-                candidates.extend({**item, "source": query.source, "retrieval_query_id": query.query_id,
-                                   "query_record": query.model_dump(mode="json")} for item in found)
+                report["pubmed_esearch_reported_total_count"] += diagnostic["esearch_reported_total_count"]
+                report["pubmed_esearch_returned_id_count"] += len(found)
+                for item in found:
+                    record = {**item, "source": query.source, "retrieval_query_id": query.query_id,
+                              "first_seen_query_id": query.query_id, "matched_query_ids": [query.query_id],
+                              "matched_query_groups": [query.query_group], "matched_query_scopes": [query.query_scope],
+                              "query_record": query.model_dump(mode="json")}
+                    keys = sorted(_dedup_values(record)) or [f"paper_id:{record.get('paper_id')}"]
+                    prior = next((candidate_by_key[value] for value in keys if value in candidate_by_key), None)
+                    if prior is not None:
+                        report["pubmed_dedup_removed_count"] += 1
+                        diagnostic["dedup_removed_count"] += 1
+                        for field, value in (("matched_query_ids", query.query_id), ("matched_query_groups", query.query_group), ("matched_query_scopes", query.query_scope)):
+                            if value not in prior[field]: prior[field].append(value)
+                    elif len(candidates) < max_papers:
+                        for value in keys:
+                            candidate_by_key[value] = record
+                        candidates.append(record)
+                        diagnostic["candidate_count"] += 1
             except Exception as exc:
                 diagnostic.update(esearch_status="timeout" if isinstance(exc, TimeoutError) else "http_error",
                                   error_type=type(exc).__name__, error_message=str(exc)[:1000])
@@ -194,10 +257,12 @@ def execute_acquisition_plan(
         for record in report["candidate_papers"]:
             keys = _dedup_values(record)
             paper_id = str(record.get("paper_id") or record.get("pmcid") or record.get("pmid"))
+            diagnostic = next((item for item in report["query_diagnostics"] if item["query_id"] == record.get("retrieval_query_id")), None)
             cached = next((cached_index[key] for key in keys if key in cached_index), None) or cached_index.get(f"paper_id:{paper_id.casefold()}")
             if cached:
                 report["reused_papers"].append({**record, **cached, "reused_from_paper_artifact_cache": True})
                 report["paper_cache_consumed_by_acquisition"] = True
+                if diagnostic: diagnostic["reused_existing_record_count"] += 1
                 seen.update(keys)
                 continue
             raw_path = root / (f"data/raw/xml/{paper_id}.xml" if record["source"] == "pmc" else f"data/raw/abstracts/{paper_id}.json")
@@ -210,13 +275,19 @@ def execute_acquisition_plan(
                     except (OSError, json.JSONDecodeError):
                         pass
                 report["reused_papers"].append({**record, **existing, "raw_path": str(raw_path.relative_to(root)) if raw_path.exists() else existing.get("raw_path")})
+                if diagnostic: diagnostic["reused_existing_record_count"] += 1
                 continue
             report["network_calls_made"] += 1
-            diagnostic = next((item for item in report["query_diagnostics"] if item["query_id"] == record.get("retrieval_query_id")), None)
-            if diagnostic: diagnostic["efetch_attempted"] = True
+            if diagnostic:
+                diagnostic["efetch_attempted"] = True
+                diagnostic["efetch_requested_count"] += 1
+            report["pubmed_efetch_attempted_count"] += 1
             try:
                 content = active_client.fetch(record, record["source"])
-                if diagnostic: diagnostic["efetch_status"] = "success"
+                if diagnostic:
+                    diagnostic["efetch_status"] = "success"
+                    diagnostic["efetch_returned_count"] += 1
+                report["pubmed_efetch_returned_record_count"] += 1
             except Exception as exc:
                 if diagnostic:
                     diagnostic["efetch_status"] = "timeout" if isinstance(exc, TimeoutError) else "http_error"
@@ -235,11 +306,21 @@ def execute_acquisition_plan(
             papers[paper_id] = metadata
             seen.update(keys)
             report["downloaded_papers"].append({**record, **parsed, "raw_path": str(raw_path.relative_to(root)), "raw_xml_path": str(raw_path.relative_to(root))})
-            if diagnostic: diagnostic["downloaded_count"] += 1
+            if diagnostic:
+                diagnostic["new_raw_record_count"] += 1
+                diagnostic["downloaded_count"] += 1
+            report["pubmed_new_raw_record_count"] += 1
         report["initial_fulltext_download_count"] = sum(item.get("source") == "pmc" for item in report["downloaded_papers"])
         manifest.setdefault("metadata", {})["total_registered_assets"] = len(papers)
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    report["pubmed_reused_existing_record_count"] = len(report["reused_papers"])
+    report["downloaded_papers_count"] = len(report["downloaded_papers"])
+    report["candidate_papers_count"] = len(report["candidate_papers"])
+    report["retrieved_or_reused_papers_count"] = len(report["downloaded_papers"]) + len(report["reused_papers"])
+    report["effective_acquisition_count"] = report["retrieved_or_reused_papers_count"] or report["candidate_papers_count"]
+    for diagnostic in report["query_diagnostics"]:
+        diagnostic["effective_acquisition_count"] = diagnostic.get("downloaded_count", 0) + diagnostic.get("reused_existing_record_count", 0)
     diagnostics = report["query_diagnostics"]
     report.update({"query_diagnostics_available": True, "pubmed_query_count": len(selected_queries),
         "pubmed_query_success_count": sum(item["esearch_status"] == "success" for item in diagnostics),

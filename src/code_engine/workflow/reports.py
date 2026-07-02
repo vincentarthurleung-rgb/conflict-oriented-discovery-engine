@@ -68,9 +68,11 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
     lines += ["## Search reproducibility", "",
               f"- planner mode: `{reproducibility.get('planner_mode')}`",
               f"- frozen search plan used: `{str(reproducibility.get('frozen_search_plan_used', False)).lower()}`",
+              f"- frozen search plan hash: `{reproducibility.get('frozen_search_plan_hash')}`",
               f"- executable query hash: `{reproducibility.get('executable_query_hash')}`",
               f"- PubMed date syntax: `{reproducibility.get('pubmed_date_syntax', 'pdat_range')}`",
               f"- LLM planner called: `{str(replay.get('llm_search_intent_called', not reproducibility.get('frozen_search_plan_used', False))).lower()}`",
+              f"- deterministic fallback called: `{str(replay.get('deterministic_fallback_called', False)).lower()}`",
               f"- search plan drift detected: `{str(replay.get('search_plan_drift_detected', False)).lower()}`", ""]
     lines += ["## L2 layered retention", "",
               f"- normalized observations: {l2_context.get('normalized_observation_count', 0)}",

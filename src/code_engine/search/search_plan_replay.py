@@ -47,9 +47,13 @@ def load_frozen_search_plan(path: str | Path, *, fail_if_drift: bool = False) ->
     drift = bool(expected and actual != expected)
     if drift and fail_if_drift:
         raise ValueError("frozen_search_plan_drift_detected")
-    provenance = {"enabled": True, "search_plan_file": str(source.resolve()), "frozen_plan_hash": expected or actual,
+    content_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    provenance = {"enabled": True, "search_plan_file": str(source), "frozen_plan_hash": content_hash,
         "planner_called": False, "llm_search_intent_called": False, "deterministic_fallback_called": False,
-        "query_guard_reapplied": False, "query_guard_changed_plan": False, "search_plan_drift_detected": drift}
+        "query_guard_reapplied": True, "query_guard_changed_plan": False, "search_plan_drift_detected": drift,
+        "fail_if_search_plan_drift": bool(fail_if_drift),
+        "frozen_executable_query_hash": expected or actual,
+        "replayed_executable_query_hash": actual}
     return plan, provenance
 
 

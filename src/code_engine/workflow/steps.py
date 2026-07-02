@@ -295,6 +295,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                     disable_llm_search_intent: bool = False, search_plan_file: str | Path | None = None,
                     save_search_plan: str | Path | None = None, freeze_search_plan_requested: bool = False,
                     replay_search_plan: bool = False, fail_if_search_plan_drift: bool = False,
+                    diversify_acquisition: bool = False, per_query_max_results: int | None = None,
                     pubmed_date_syntax: str = "pdat_range", **_: Any) -> StepResult:
     intake_data = _read(run_dir, "intake.json")
     profile_data = _read(run_dir, "domain_profile.json")
@@ -316,6 +317,10 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
             plan, replay = load_frozen_search_plan(search_plan_file, fail_if_drift=fail_if_search_plan_drift)
         except Exception as exc:
             return StepResult(status="blocked", summary={"planner_mode": "frozen_replay", "error": str(exc)}, warnings=[str(exc)], skipped_reason=str(exc))
+        replay["runtime_acquisition_policy_overrides"] = {
+            "diversify_acquisition": bool(diversify_acquisition),
+            "per_query_max_results": per_query_max_results,
+        }
         replay_path = _write(run_dir, "search_plan_replay.json", replay); plan_path = _write(run_dir, "search_plan.json", plan)
         frozen = json.loads(Path(search_plan_file).read_text(encoding="utf-8"))
         intent_payload = frozen.get("semantic_search_intent") or {"seed_triple": plan.seed_triple, "query_groups": {}}
@@ -324,7 +329,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
         guard_path = _write(run_dir, "search_query_guard_report.json", frozen.get("query_guard_summary") or {})
         return StepResult(summary={"query_count": len(plan.pubmed_queries), "search_intent_mode": "frozen_replay",
             "llm_search_intent_used": False, "deterministic_search_fallback_used": False, "search_plan_replay": replay,
-            "executable_query_hash": replay["frozen_plan_hash"]}, artifacts={"search_plan": plan_path,
+            "executable_query_hash": replay["replayed_executable_query_hash"]}, artifacts={"search_plan": plan_path,
             "semantic_search_intent": intent_path, "search_query_guard_report": guard_path, "search_plan_replay": replay_path},
             counts={"search_query_count": len(plan.pubmed_queries)})
     real_api_run = bool(execute and api and network)
@@ -489,7 +494,10 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
 
 
 def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None,
-                         literature_client: Any | None = None, paper_year_filter: dict | None = None, **_: Any) -> StepResult:
+                         literature_client: Any | None = None, paper_year_filter: dict | None = None,
+                         diversify_acquisition: bool = False, per_query_max_results: int | None = None,
+                         per_query_group_max_results: dict[str, int] | None = None,
+                         reserve_query_group: dict[str, int] | None = None, **_: Any) -> StepResult:
     from code_engine.temporal.paper_year_filter import filter_papers_by_year, paper_year_filter_from_dict
     year_filter = paper_year_filter_from_dict(paper_year_filter)
     plan_data = _read(run_dir, "search_plan.json")
@@ -517,9 +525,15 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
         report = execute_acquisition_plan(plan, repository_root=repository_root, execute=True, network=True,
                                           source="pubmed", max_papers=max_papers or plan.max_total_results,
                                           year_from=year_filter.paper_year_from, year_to=year_filter.paper_year_to,
-                                          client=literature_client, cached_papers=cached_papers)
+                                          client=literature_client, cached_papers=cached_papers,
+                                          diversify_acquisition=diversify_acquisition,
+                                          per_query_max_results=per_query_max_results,
+                                          per_query_group_max_results=per_query_group_max_results,
+                                          reserve_query_group=reserve_query_group)
     else:
-        diagnostics = [{"query_id": item.query_id, "query_string": item.query_string, "year_from": item.year_from,
+        diagnostics = [{"intent_id": plan.intent_id, "pubmed_query_id": item.query_id,
+            "query_id": item.query_id, "query_string": item.query_string,
+            "query_group": item.query_group, "query_scope": item.query_scope, "year_from": item.year_from,
             "year_to": item.year_to, "source": item.source, "attempt": 0, "request_url_or_params_hash": "",
             "esearch_status": "skipped", "esearch_return_count": 0, "esearch_reported_total_count": 0,
             "retstart": 0, "retmax": item.max_results, "efetch_attempted": False, "efetch_status": None,
@@ -530,7 +544,18 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
             "query_diagnostics": diagnostics, "query_diagnostics_available": True, "pubmed_query_count": len(plan.pubmed_queries),
             "pubmed_query_success_count": 0, "pubmed_query_zero_result_count": 0, "pubmed_query_error_count": 0,
             "pubmed_query_skipped_count": len(plan.pubmed_queries), "acquisition_short_circuit_detected": True,
-            "acquisition_short_circuit_reason": "network_disabled", "reason": "network_disabled"}
+            "acquisition_short_circuit_reason": "network_disabled", "reason": "network_disabled",
+            "pubmed_esearch_reported_total_count": 0, "pubmed_esearch_returned_id_count": 0,
+            "pubmed_efetch_attempted_count": 0, "pubmed_efetch_returned_record_count": 0,
+            "pubmed_reused_existing_record_count": len(cached_papers), "pubmed_new_raw_record_count": 0,
+            "pubmed_post_filter_record_count": 0, "pubmed_dedup_removed_count": 0,
+            "downloaded_papers_count": 0, "candidate_papers_count": len(plan.candidate_papers),
+            "retrieved_or_reused_papers_count": len(cached_papers),
+            "effective_acquisition_count": len(cached_papers) or len(plan.candidate_papers),
+            "diversified_acquisition": {"enabled": bool(diversify_acquisition),
+                "strategy": "per_query_explicit" if per_query_max_results is not None else "per_query_even_split",
+                "global_max_papers": max_papers or plan.max_total_results,
+                "per_query_cap_default": per_query_max_results, "group_quota_supported": False}}
     all_before = [paper for name in ("candidate_papers", "reused_papers", "downloaded_papers") for paper in report.get(name, [])]
     _kept, year_counts = filter_papers_by_year(all_before, year_filter)
     for diagnostic in report.get("query_diagnostics", []):
@@ -540,6 +565,17 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
         diagnostic["missing_year_count"] = query_year_counts["papers_missing_year_excluded"]
     for name in ("candidate_papers", "reused_papers", "downloaded_papers"):
         report[name], _ = filter_papers_by_year(report.get(name, []), year_filter)
+    report["pubmed_post_filter_record_count"] = len(report.get("downloaded_papers", []))
+    report["downloaded_papers_count"] = len(report.get("downloaded_papers", []))
+    report["candidate_papers_count"] = len(report.get("candidate_papers", []))
+    report["pubmed_reused_existing_record_count"] = len(report.get("reused_papers", []))
+    report["retrieved_or_reused_papers_count"] = report["downloaded_papers_count"] + report["pubmed_reused_existing_record_count"]
+    report["effective_acquisition_count"] = report["retrieved_or_reused_papers_count"] or report["candidate_papers_count"]
+    for diagnostic in report.get("query_diagnostics", []):
+        matched = [paper for paper in report.get("downloaded_papers", []) + report.get("reused_papers", [])
+                   if diagnostic.get("query_id") in (paper.get("matched_query_ids") or [paper.get("retrieval_query_id")])]
+        diagnostic["post_filter_record_count"] = len(matched)
+        diagnostic["effective_acquisition_count"] = len(matched)
     report.update(year_filter.to_dict())
     report["paper_year_filter_enabled"] = year_filter.enabled
     report.update(year_counts)
@@ -547,10 +583,39 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
     from code_engine.corpus.io import atomic_write_jsonl
     diagnostics_path = run_dir / "artifacts/pubmed_query_diagnostics.jsonl"
     atomic_write_jsonl(diagnostics_path, iter(report.get("query_diagnostics", [])))
+    provenance_path = run_dir / "artifacts/acquired_paper_provenance.jsonl"
+    def provenance_dedup_key(paper: dict) -> str:
+        for field in ("pmid", "pmcid", "doi"):
+            if paper.get(field):
+                return f"{field}:{str(paper[field]).strip().casefold()}"
+        values = sorted(__import__("code_engine.acquisition.literature_search", fromlist=["_dedup_values"])._dedup_values(paper))
+        return values[0] if values else f"paper_id:{paper.get('paper_id')}"
+
+    acquired = report.get("reused_papers", []) + report.get("downloaded_papers", [])
+    acquired_keys = {provenance_dedup_key(paper) for paper in acquired}
+    candidate_only = [paper for paper in report.get("candidate_papers", []) if provenance_dedup_key(paper) not in acquired_keys]
+    provenance_rows = []
+    for mode, papers in (("candidate_only", candidate_only),
+                         ("reused_existing_record", report.get("reused_papers", [])),
+                         ("new_download", report.get("downloaded_papers", []))):
+        for paper in papers:
+            provenance_rows.append({"paper_id": paper.get("paper_id"), "pmid": paper.get("pmid"),
+                "title": paper.get("title"), "publication_year": paper.get("publication_year"),
+                "first_seen_query_id": paper.get("first_seen_query_id") or paper.get("retrieval_query_id"),
+                "matched_query_ids": paper.get("matched_query_ids") or [paper.get("retrieval_query_id")],
+                "matched_query_groups": paper.get("matched_query_groups") or [((paper.get("query_record") or {}).get("query_group"))],
+                "matched_query_scopes": paper.get("matched_query_scopes") or [((paper.get("query_record") or {}).get("query_scope"))],
+                "acquisition_mode": mode, "dedup_key": provenance_dedup_key(paper),
+                "source": paper.get("source") or "pubmed"})
+    # Prefer the strongest mode when a record appears in candidate plus downloaded/reused buckets.
+    unique_provenance = {}
+    for row in provenance_rows:
+        unique_provenance[row["dedup_key"]] = {**unique_provenance.get(row["dedup_key"], {}), **row}
+    atomic_write_jsonl(provenance_path, iter(unique_provenance.values()))
     summary = {key: len(report.get(key, [])) for key in ("candidate_papers", "reused_papers", "downloaded_papers", "skipped_duplicates")}
     calls = int(report.get("network_calls_made", 0))
     summary.update({key: report.get(key) for key in ("pubmed_query_count", "pubmed_query_success_count", "pubmed_query_zero_result_count", "pubmed_query_error_count", "pubmed_query_skipped_count", "acquisition_short_circuit_detected", "acquisition_short_circuit_reason", "reason")})
-    return StepResult(status="completed" if execute and network else "planned", summary=summary, artifacts={"acquisition_plan": plan_path, "acquisition_report": report_path, "pubmed_query_diagnostics": str(diagnostics_path)}, counts={key: value for key, value in summary.items() if isinstance(value, int)}, warnings=report.get("warnings", []), network_calls_made=calls)
+    return StepResult(status="completed" if execute and network else "planned", summary=summary, artifacts={"acquisition_plan": plan_path, "acquisition_report": report_path, "pubmed_query_diagnostics": str(diagnostics_path), "acquired_paper_provenance": str(provenance_path)}, counts={key: value for key, value in summary.items() if isinstance(value, int)}, warnings=report.get("warnings", []), network_calls_made=calls)
 
 
 def run_payload_step(

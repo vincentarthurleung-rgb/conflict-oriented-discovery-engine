@@ -26,6 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     network.add_argument("--network", action="store_true")
     network.add_argument("--no-network", action="store_true")
     parser.add_argument("--max-papers", type=int)
+    parser.add_argument("--diversify-acquisition", action="store_true")
+    parser.add_argument("--per-query-max-results", type=int)
+    parser.add_argument("--per-query-group-max-results", action="append", default=[], metavar="GROUP=N")
+    parser.add_argument("--reserve-query-group", action="append", default=[], metavar="GROUP=N")
     parser.add_argument("--paper-year-from", type=int)
     parser.add_argument("--paper-year-to", type=int)
     parser.add_argument("--temporal-role", choices=("discovery", "validation", "unrestricted"), default="unrestricted")
@@ -157,10 +161,23 @@ def main(argv: list[str] | None = None) -> int:
         build_paper_artifact_cache_index_from_runs(
             Path("runs"), args.paper_artifact_cache_index, include_batches=True, dry_run=False,
         )
+    def group_quotas(values: list[str]) -> dict[str, int]:
+        parsed = {}
+        for value in values:
+            group, separator, count = value.partition("=")
+            if not separator or not group or not count.isdigit():
+                build_parser().error(f"expected GROUP=N, got {value!r}")
+            parsed[group] = int(count)
+        return parsed
+
     state = run_workflow(
         query=args.query or "", run_dir=args.run_dir, until=args.until,
         execute=args.execute, api=args.api, network=args.network,
         max_papers=args.max_papers, resume=args.resume,
+        diversify_acquisition=args.diversify_acquisition,
+        per_query_max_results=args.per_query_max_results,
+        per_query_group_max_results=group_quotas(args.per_query_group_max_results),
+        reserve_query_group=group_quotas(args.reserve_query_group),
         paper_year_from=args.paper_year_from, paper_year_to=args.paper_year_to,
         temporal_role=args.temporal_role,
         pubmed_date_syntax=args.pubmed_date_syntax,

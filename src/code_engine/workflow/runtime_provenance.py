@@ -209,9 +209,11 @@ def build_runtime_provenance(
             "planner_nondeterminism_possible": bool(search_intent.get("mode") == "llm" and not search_replay.get("enabled")),
             "frozen_search_plan_used": bool(search_replay.get("enabled")),
             "frozen_search_plan_hash": search_replay.get("frozen_plan_hash"),
-            "executable_query_hash": search_replay.get("frozen_plan_hash") or __import__("hashlib").sha256(__import__("json").dumps([{key: q.get(key) for key in ("query_string", "source", "query_group", "query_scope", "year_from", "year_to", "max_results", "allowed_for_l1_acquisition", "context_strict", "allowed_for_context_specific_core", "context_terms_required")} for q in search_plan.get("pubmed_queries", [])], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest(),
+            "executable_query_hash": search_replay.get("replayed_executable_query_hash") or __import__("hashlib").sha256(__import__("json").dumps([{key: q.get(key) for key in ("query_string", "source", "query_group", "query_scope", "year_from", "year_to", "max_results", "allowed_for_l1_acquisition", "context_strict", "allowed_for_context_specific_core", "context_terms_required")} for q in search_plan.get("pubmed_queries", [])], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest(),
             "pubmed_query_strings": [q.get("query_string") for q in search_plan.get("pubmed_queries", [])],
             "pubmed_date_syntax": next((q.get("pubmed_date_syntax") for q in search_plan.get("pubmed_queries", []) if q.get("pubmed_date_syntax")), "pdat_range"),
+            "llm_planner_called": bool(search_replay.get("llm_search_intent_called", search_intent.get("llm_search_intent_used"))),
+            "deterministic_fallback_called": bool(search_replay.get("deterministic_fallback_called", search_intent.get("deterministic_search_fallback_used"))),
         },
         "context_aware_evidence_layering": {
             "enabled": True,

@@ -95,6 +95,9 @@ def _annotate_jsonl_metadata(paths, metadata: dict, run_dir: Path) -> None:
 def run_workflow(
     query: str = "", run_dir: Path | None = None, until: str = "report", execute: bool = False,
     api: bool = False, network: bool = False, max_papers: int | None = None,
+    diversify_acquisition: bool = False, per_query_max_results: int | None = None,
+    per_query_group_max_results: dict[str, int] | None = None,
+    reserve_query_group: dict[str, int] | None = None,
     paper_year_from: int | None = None, paper_year_to: int | None = None,
     temporal_role: str = "unrestricted",
     pubmed_date_syntax: str = "pdat_range", save_search_plan: str | Path | None = None,
@@ -345,25 +348,28 @@ def run_workflow(
         "paper_quality_metadata_used_for_display_only": True,
     }
     (directory / "artifacts").mkdir(parents=True, exist_ok=True)
-    runtime_provenance = build_runtime_provenance(
-        directory, repository_root=root, resume_explicit=bool(resume),
-        entity_registry_path=effective_entity_registry_path, automatic_pilot_registry=False,
-        l1_mode=l1_mode, l1_task_cache_enabled=l1_task_cache_enabled,
-        update_global_corpus=update_global_corpus, paper_registry_enabled=paper_registry_enabled,
-        coverage_precheck=coverage_precheck, allow_coverage_short_circuit=allow_coverage_short_circuit,
-        merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
-        execute=execute, legacy_modules_before=legacy_modules_before,
-        pilot_profile=pilot_profile, pilot_terms=pilot_terms,
-        batch_id=batch_id, triple_id=seed.triple_id, query_hash=seed.query_hash,
-        seed_triple=seed.model_dump(mode="json"),
-        paper_artifact_cache_enabled=paper_artifact_cache_enabled,
-        paper_artifact_cache_index=paper_artifact_cache_index,
-        paper_artifact_cache_hits=paper_artifact_cache_hits,
-        paper_artifact_cache_misses=paper_artifact_cache_misses,
-        cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
-        l1_timeout_config=l1_timeout_config,
-        paper_year_filter=paper_year_filter.to_dict(),
-    )
+    def current_runtime_provenance() -> dict:
+        return build_runtime_provenance(
+            directory, repository_root=root, resume_explicit=bool(resume),
+            entity_registry_path=effective_entity_registry_path, automatic_pilot_registry=False,
+            l1_mode=l1_mode, l1_task_cache_enabled=l1_task_cache_enabled,
+            update_global_corpus=update_global_corpus, paper_registry_enabled=paper_registry_enabled,
+            coverage_precheck=coverage_precheck, allow_coverage_short_circuit=allow_coverage_short_circuit,
+            merge_knowledge_store=merge_knowledge_store, update_global_knowledge_store=update_global_knowledge_store,
+            execute=execute, legacy_modules_before=legacy_modules_before,
+            pilot_profile=pilot_profile, pilot_terms=pilot_terms,
+            batch_id=batch_id, triple_id=seed.triple_id, query_hash=seed.query_hash,
+            seed_triple=seed.model_dump(mode="json"),
+            paper_artifact_cache_enabled=paper_artifact_cache_enabled,
+            paper_artifact_cache_index=paper_artifact_cache_index,
+            paper_artifact_cache_hits=paper_artifact_cache_hits,
+            paper_artifact_cache_misses=paper_artifact_cache_misses,
+            cache_hit_records=paper_cache_hit_records or (), cache_miss_records=paper_cache_miss_records or (),
+            l1_timeout_config=l1_timeout_config,
+            paper_year_filter=paper_year_filter.to_dict(),
+        )
+
+    runtime_provenance = current_runtime_provenance()
     contamination = contamination_check(runtime_provenance)
     search_provenance = runtime_provenance.get("semantic_search_intent", {})
     readiness.update({
@@ -529,6 +535,10 @@ def run_workflow(
                     pubmed_date_syntax=pubmed_date_syntax, save_search_plan=save_search_plan,
                     search_plan_file=search_plan_file, freeze_search_plan_requested=freeze_search_plan,
                     replay_search_plan=replay_search_plan, fail_if_search_plan_drift=fail_if_search_plan_drift,
+                    diversify_acquisition=diversify_acquisition,
+                    per_query_max_results=per_query_max_results,
+                    per_query_group_max_results=per_query_group_max_results,
+                    reserve_query_group=reserve_query_group,
                     external_validation=external_validation,
                     validation_query_mode=effective_validation_mode,
                     validation_index_dir=validation_index_dir,
@@ -625,6 +635,11 @@ def run_workflow(
             save_run_state(state, directory)
             if name == "intake" and state.steps[name].status == "blocked":
                 break
+        # Partial runs (for example --until acquisition) must not retain the
+        # pre-search provenance snapshot written during initialization.
+        runtime_provenance = current_runtime_provenance()
+        write_runtime_provenance(provenance_path, runtime_provenance)
+        state.summary["runtime_provenance"] = runtime_provenance
         blocked = any(record.status == "blocked" for record in state.steps.values())
         mark_run_completed(state, partial=bool(execute and (until != "report" or blocked)))
         state.summary["runtime_data_status"] = "partial" if blocked else ("executed" if execute else "planned")
