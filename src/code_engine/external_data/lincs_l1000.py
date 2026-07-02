@@ -6,6 +6,7 @@ import csv
 import gzip
 import hashlib
 import json
+import re
 import shutil
 import sqlite3
 from datetime import datetime, timezone
@@ -99,6 +100,36 @@ def _decode(values: Any) -> list[str]:
     return [value.decode() if isinstance(value, bytes) else str(value) for value in values]
 
 
+def _number_and_unit(value: Any) -> tuple[float | int | None, str | None, str | None]:
+    text = str(value or "").strip()
+    if not text or text in {"-666", "-666.0", "NA", "nan", "None"}:
+        return None, None, None
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*([A-Za-zµμ]+)?", text)
+    if not match:
+        return None, None, text
+    number = float(match.group(1)); number = int(number) if number.is_integer() else number
+    unit = match.group(2).upper().replace("Μ", "U").replace("µ", "U") if match.group(2) else None
+    label = f"{number}{unit or ''}"
+    return number, unit, label
+
+
+def extract_perturbation_metadata(metadata: dict[str, Any], sig_id: str) -> dict[str, Any]:
+    """Extract generic LINCS time/dose fields with sig-id time fallback."""
+    explicit_time = next((metadata.get(key) for key in ("pert_time", "pert_itime", "pert_timepoint", "time") if metadata.get(key) not in (None, "")), None)
+    time, time_unit, time_label = _number_and_unit(explicit_time)
+    time_source = "sig_info" if time is not None else "not_available"
+    if time is None:
+        match = re.search(r"_(\d+(?:\.\d+)?)(H|D|M)(?=[:_])", str(sig_id), re.IGNORECASE)
+        if match:
+            time, time_unit, time_label = _number_and_unit("".join(match.groups()))
+            time_source = "sig_id_fallback"
+    explicit_dose = next((metadata.get(key) for key in ("pert_dose", "pert_idose", "dose") if metadata.get(key) not in (None, "")), None)
+    dose, dose_unit, dose_label = _number_and_unit(explicit_dose)
+    return {"pert_time": time, "pert_time_unit": time_unit, "pert_time_label": time_label,
+        "pert_time_source": time_source, "pert_dose": dose, "pert_dose_unit": dose_unit,
+        "pert_dose_label": dose_label, "pert_dose_source": "sig_info" if dose is not None else "not_available"}
+
+
 def _detect_gctx_axes(matrix_shape: tuple[int, int], row_id_count: int, col_id_count: int) -> tuple[int, int]:
     """Return ``(signature_axis, gene_axis)`` from GCTX metadata dimensions."""
     if matrix_shape == (col_id_count, row_id_count):
@@ -175,6 +206,10 @@ def build_compact_lincs_index(*, dataset: str, data_root: str | Path, manifest_p
     manifest = load_lincs_manifest(manifest_path); root = Path(data_root); raw = root / "raw" / dataset
     unpacked = root / "working" / "unpacked" / dataset; output = root / "index" / dataset; output.mkdir(parents=True, exist_ok=True)
     sig_rows = _table(_file(manifest, raw, "sig_info")); gene_rows = _table(_file(manifest, raw, "gene_info"))
+    metrics_spec = next((item for item in manifest["files"] if item["role"] == "sig_metrics"), None)
+    metrics_path = raw / metrics_spec["filename"] if metrics_spec else None
+    metrics_available = bool(metrics_path and metrics_path.exists())
+    metrics_by_id = {str(row.get("sig_id")): row for row in _table(metrics_path)} if metrics_available and metrics_path else {}
     pert = perturbagen.casefold()
     selected_meta = [row for row in sig_rows if pert in str(row.get("pert_iname") or row.get("pert_id") or "").casefold()]
     signature_ids = [str(row.get("sig_id") or row.get("id")) for row in selected_meta]
@@ -205,10 +240,19 @@ def build_compact_lincs_index(*, dataset: str, data_root: str | Path, manifest_p
         top_down = [symbol_by_id.get(selected_gene_ids[i], selected_gene_ids[i]) for i in order[:k]]
         top_up = [symbol_by_id.get(selected_gene_ids[i], selected_gene_ids[i]) for i in order[-k:][::-1]]
         vectors[sig_id] = vector
+        perturbation = extract_perturbation_metadata(meta, sig_id)
+        metrics = metrics_by_id.get(sig_id)
+        signature_quality = {"sig_metrics_available": metrics_available,
+            "metrics_for_signature_found": metrics is not None}
+        if metrics is not None:
+            for key in ("distil_cc_q75", "distil_ss", "tas", "pct_self_rank_q25", "distil_nsample"):
+                if metrics.get(key) not in (None, ""):
+                    signature_quality[key] = metrics[key]
+            signature_quality["raw_metrics"] = {key: value for key, value in metrics.items() if key and key != "sig_id"}
         records.append({"sig_id": sig_id, "pert_iname": meta.get("pert_iname", perturbagen), "cell_id": meta.get("cell_id"),
-            "pert_dose": meta.get("pert_dose"), "pert_time": meta.get("pert_time"), "landmark_vector_path": str(npz_path),
+            **perturbation, "landmark_vector_path": str(npz_path),
             "top_up_genes": top_up, "top_down_genes": top_down,
-            "signature_quality": {key: meta.get(key) for key in ("distil_cc_q75", "pct_self_rank_q25", "is_gold") if key in meta}})
+            "signature_quality": signature_quality})
     np.savez_compressed(npz_path, gene_ids=np.asarray(selected_gene_ids), **vectors)
     jsonl = output / f"{perturbagen}_top_genes.jsonl"; jsonl.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in records), encoding="utf-8")
     sqlite_path = output / f"{perturbagen}_compact_index.sqlite"

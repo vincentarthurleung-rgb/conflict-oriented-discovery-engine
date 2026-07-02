@@ -203,7 +203,7 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
                   f"- Status: `{lincs_summary.get('status')}`",
                   f"- Validator: `LINCS L1000 local Level 5`",
                   f"- Validation type: `{lincs_summary.get('validation_type', 'transcriptomic_consistency_validation')}`",
-                  f"- Matched metformin signatures: {lincs_summary.get('matched_signature_count', 0)}",
+                  f"- Matched {lincs_summary.get('perturbagen', 'perturbagen')} signatures: {lincs_summary.get('matched_signature_count', 0)}",
                   f"- Validation executed: `{str(lincs_summary.get('validation_executed', False)).lower()}`",
                   f"- Missing external data: `{json.dumps(lincs_summary.get('missing_external_data', []), ensure_ascii=False)}`",
                   "- Limitation: L1000 validates transcriptomic consistency, not direct AMPK phosphorylation.", ""]
