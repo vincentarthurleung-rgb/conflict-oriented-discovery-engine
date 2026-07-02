@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -27,7 +29,7 @@ class NCBILiteratureClient:
     def search(self, query: str, source: str, max_results: int, year_from: int | None = None, year_to: int | None = None) -> list[dict[str, Any]]:
         db = "pmc" if source == "pmc" else "pubmed"
         term = query
-        if year_from or year_to:
+        if (year_from or year_to) and "[pdat]" not in term.casefold() and "[date - publication]" not in term.casefold():
             term += f" AND {year_from or 1900}:{year_to or 3000}[pdat]"
         params = urllib.parse.urlencode({"db": db, "term": term, "retmode": "json", "retmax": max_results})
         with urllib.request.urlopen(f"{self.base_url}/esearch.fcgi?{params}", timeout=30) as response:
@@ -140,18 +142,49 @@ def execute_acquisition_plan(
         "skipped_duplicates": [], "network_calls_made": 0, "warnings": [],
         "initial_fulltext_download_count": 0,
         "paper_cache_consumed_by_acquisition": False,
+        "query_diagnostics": [],
     }
     if not execute or not network:
         report["warnings"].append("network_disabled_acquisition_plan_only")
     else:
         active_client = client or NCBILiteratureClient()
         candidates: list[dict[str, Any]] = []
-        for query in selected_queries:
+        for query_index, query in enumerate(selected_queries):
             if len(candidates) >= max_papers:
+                for skipped_query in selected_queries[query_index:]:
+                    report["query_diagnostics"].append({"query_id": skipped_query.query_id, "query_string": skipped_query.query_string,
+                    "year_from": skipped_query.year_from, "year_to": skipped_query.year_to, "source": skipped_query.source, "attempt": 0,
+                    "request_url_or_params_hash": "", "esearch_status": "skipped", "esearch_return_count": 0,
+                    "esearch_reported_total_count": 0, "retstart": 0, "retmax": skipped_query.max_results,
+                    "efetch_attempted": False, "efetch_status": None, "downloaded_count": 0,
+                    "excluded_by_year_filter_count": 0, "missing_year_count": 0,
+                    "skip_reason": "global_max_papers_already_satisfied", "error_type": None,
+                    "error_message": None, "elapsed_seconds": 0.0})
                 break
-            found = active_client.search(query.query_string, query.source, min(query.max_results, max_papers - len(candidates)), year_from or query.year_from, year_to or query.year_to)
             report["network_calls_made"] += 1
-            candidates.extend({**item, "source": query.source} for item in found)
+            requested = min(query.max_results, max_papers - len(candidates)); started = time.monotonic()
+            diagnostic = {"query_id": query.query_id, "query_string": query.query_string,
+                "year_from": year_from if year_from is not None else query.year_from,
+                "year_to": year_to if year_to is not None else query.year_to, "source": query.source, "attempt": 1,
+                "request_url_or_params_hash": hashlib.sha256(f"{query.source}|{query.query_string}|{requested}".encode()).hexdigest(),
+                "esearch_status": "success", "esearch_return_count": 0, "esearch_reported_total_count": 0,
+                "retstart": 0, "retmax": requested, "efetch_attempted": False, "efetch_status": None,
+                "downloaded_count": 0, "excluded_by_year_filter_count": 0, "missing_year_count": 0,
+                "skip_reason": None, "error_type": None, "error_message": None, "elapsed_seconds": 0.0}
+            try:
+                found = active_client.search(query.query_string, query.source, requested,
+                    year_from if year_from is not None else query.year_from,
+                    year_to if year_to is not None else query.year_to)
+                diagnostic["esearch_return_count"] = diagnostic["esearch_reported_total_count"] = len(found)
+                diagnostic["esearch_status"] = "success" if found else "zero_results"
+                candidates.extend({**item, "source": query.source, "retrieval_query_id": query.query_id,
+                                   "query_record": query.model_dump(mode="json")} for item in found)
+            except Exception as exc:
+                diagnostic.update(esearch_status="timeout" if isinstance(exc, TimeoutError) else "http_error",
+                                  error_type=type(exc).__name__, error_message=str(exc)[:1000])
+                report["warnings"].append(f"pubmed_query_failed:{query.query_id}:{type(exc).__name__}")
+            diagnostic["elapsed_seconds"] = round(time.monotonic() - started, 6)
+            report["query_diagnostics"].append(diagnostic)
         report["candidate_papers"] = candidates[:max_papers]
         seen = set(existing_keys)
         cached_index: dict[str, dict[str, Any]] = {}
@@ -178,8 +211,18 @@ def execute_acquisition_plan(
                         pass
                 report["reused_papers"].append({**record, **existing, "raw_path": str(raw_path.relative_to(root)) if raw_path.exists() else existing.get("raw_path")})
                 continue
-            content = active_client.fetch(record, record["source"])
             report["network_calls_made"] += 1
+            diagnostic = next((item for item in report["query_diagnostics"] if item["query_id"] == record.get("retrieval_query_id")), None)
+            if diagnostic: diagnostic["efetch_attempted"] = True
+            try:
+                content = active_client.fetch(record, record["source"])
+                if diagnostic: diagnostic["efetch_status"] = "success"
+            except Exception as exc:
+                if diagnostic:
+                    diagnostic["efetch_status"] = "timeout" if isinstance(exc, TimeoutError) else "http_error"
+                    diagnostic["error_type"] = type(exc).__name__; diagnostic["error_message"] = str(exc)[:1000]
+                report["warnings"].append(f"pubmed_fetch_failed:{paper_id}:{type(exc).__name__}")
+                continue
             raw_path.parent.mkdir(parents=True, exist_ok=True)
             if record["source"] == "pmc":
                 raw_path.write_text(content, encoding="utf-8")
@@ -192,10 +235,25 @@ def execute_acquisition_plan(
             papers[paper_id] = metadata
             seen.update(keys)
             report["downloaded_papers"].append({**record, **parsed, "raw_path": str(raw_path.relative_to(root)), "raw_xml_path": str(raw_path.relative_to(root))})
+            if diagnostic: diagnostic["downloaded_count"] += 1
         report["initial_fulltext_download_count"] = sum(item.get("source") == "pmc" for item in report["downloaded_papers"])
         manifest.setdefault("metadata", {})["total_registered_assets"] = len(papers)
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    diagnostics = report["query_diagnostics"]
+    report.update({"query_diagnostics_available": True, "pubmed_query_count": len(selected_queries),
+        "pubmed_query_success_count": sum(item["esearch_status"] == "success" for item in diagnostics),
+        "pubmed_query_zero_result_count": sum(item["esearch_status"] == "zero_results" for item in diagnostics),
+        "pubmed_query_error_count": sum(item["esearch_status"] in {"http_error", "parse_error", "timeout"} for item in diagnostics),
+        "pubmed_query_skipped_count": sum(item["esearch_status"] == "skipped" for item in diagnostics),
+        "acquisition_short_circuit_detected": any(item["esearch_status"] == "skipped" for item in diagnostics),
+        "acquisition_short_circuit_reason": next((item["skip_reason"] for item in diagnostics if item["esearch_status"] == "skipped"), None)})
+    attempted = [item for item in diagnostics if item["esearch_status"] != "skipped"]
+    if not report["candidate_papers"]:
+        if attempted and all(item["esearch_status"] == "zero_results" for item in attempted): report["reason"] = "all_queries_zero_results"
+        elif attempted and all(item["esearch_status"] in {"http_error", "parse_error", "timeout"} for item in attempted): report["reason"] = "all_queries_failed"
+        elif not attempted: report["reason"] = "network_disabled" if not execute or not network else "all_queries_skipped"
+        else: report["reason"] = "no_candidates_after_query_attempts"
     data_path = root / f"data/query/acquisition_report_{plan.intent_id}.json"
     md_path = root / f"reports/acquisition_report_{plan.intent_id}.md"
     data_path.parent.mkdir(parents=True, exist_ok=True)

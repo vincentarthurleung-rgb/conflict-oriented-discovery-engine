@@ -73,12 +73,20 @@ def paper_year_filter_from_dict(value: dict[str, Any] | PaperYearFilter | None) 
                            source=data.get("source", "default"))
 
 
-def pubmed_date_clause(config: PaperYearFilter) -> str:
+def build_pubmed_date_filter(year_from: int | None, year_to: int | None, *, syntax: str = "pdat_range") -> str:
+    if syntax not in {"pdat_range", "date_publication_range"}:
+        raise ValueError("PubMed date syntax must be pdat_range or date_publication_range")
+    lower = str(year_from) if year_from is not None else "1900"
+    upper = str(year_to) if year_to is not None else "3000"
+    if syntax == "pdat_range":
+        return f'("{lower}/01/01"[PDAT] : "{upper}/12/31"[PDAT])'
+    return f'("{lower}"[Date - Publication] : "{upper}"[Date - Publication])'
+
+
+def pubmed_date_clause(config: PaperYearFilter, *, syntax: str = "pdat_range") -> str:
     if not config.enabled:
         return ""
-    lower = str(config.paper_year_from) if config.paper_year_from is not None else "1900"
-    upper = str(config.paper_year_to) if config.paper_year_to is not None else "3000"
-    return f'(\"{lower}\"[Date - Publication] : \"{upper}\"[Date - Publication])'
+    return build_pubmed_date_filter(config.paper_year_from, config.paper_year_to, syntax=syntax)
 
 
-__all__ = ["PaperYearFilter", "filter_papers_by_year", "paper_year_filter_from_dict", "publication_year", "pubmed_date_clause"]
+__all__ = ["PaperYearFilter", "build_pubmed_date_filter", "filter_papers_by_year", "paper_year_filter_from_dict", "publication_year", "pubmed_date_clause"]

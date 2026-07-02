@@ -63,6 +63,7 @@ class LiteratureSearchQuery(CODEBaseModel):
     context_guard_reason: str = "context_not_required"
     query_scope: str = "general"
     coverage_only: bool = False
+    pubmed_date_syntax: str = "pdat_range"
 
     @model_validator(mode="after")
     def align_query_alias(self):

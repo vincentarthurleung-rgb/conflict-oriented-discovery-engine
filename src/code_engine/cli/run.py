@@ -29,6 +29,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--paper-year-from", type=int)
     parser.add_argument("--paper-year-to", type=int)
     parser.add_argument("--temporal-role", choices=("discovery", "validation", "unrestricted"), default="unrestricted")
+    parser.add_argument("--pubmed-date-syntax", choices=("pdat_range", "date_publication_range"), default="pdat_range")
+    parser.add_argument("--save-search-plan", type=Path)
+    parser.add_argument("--search-plan-file", type=Path)
+    parser.add_argument("--freeze-search-plan", action="store_true")
+    parser.add_argument("--replay-search-plan", action="store_true")
+    parser.add_argument("--fail-if-search-plan-drift", action="store_true")
     parser.add_argument("--allow-legacy", action="store_true")
     parser.add_argument("--allow-uncertain-intake", action="store_true")
     parser.add_argument("--allow-deterministic-search-fallback", action="store_true")
@@ -157,6 +163,10 @@ def main(argv: list[str] | None = None) -> int:
         max_papers=args.max_papers, resume=args.resume,
         paper_year_from=args.paper_year_from, paper_year_to=args.paper_year_to,
         temporal_role=args.temporal_role,
+        pubmed_date_syntax=args.pubmed_date_syntax,
+        save_search_plan=args.save_search_plan, search_plan_file=args.search_plan_file,
+        freeze_search_plan=args.freeze_search_plan, replay_search_plan=args.replay_search_plan,
+        fail_if_search_plan_drift=args.fail_if_search_plan_drift,
         allow_legacy=args.allow_legacy,
         allow_uncertain_intake=args.allow_uncertain_intake,
         allow_deterministic_search_fallback=args.allow_deterministic_search_fallback,

@@ -9,8 +9,8 @@ class PubMedYearQueryTests(unittest.TestCase):
         plan = build_literature_search_plan(parse_research_intent("ketamine depression"), paper_year_filter=value)
         self.assertTrue(plan.pubmed_queries)
         for query in plan.pubmed_queries:
-            self.assertIn('"2016"[Date - Publication]', query.query_string)
-            self.assertIn('"2020"[Date - Publication]', query.query_string)
+            self.assertIn('"2016/01/01"[PDAT]', query.query_string)
+            self.assertIn('"2020/12/31"[PDAT]', query.query_string)
             self.assertTrue(query.year_filter_applied_to_query)
             self.assertEqual(query.temporal_role, "discovery")
 

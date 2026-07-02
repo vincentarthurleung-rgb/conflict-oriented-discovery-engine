@@ -292,7 +292,10 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                     paper_year_filter: dict | None = None, semantic_llm_client: Any | None = None,
                     query: str = "", pilot_profile: str | None = None,
                     allow_deterministic_search_fallback: bool = False,
-                    disable_llm_search_intent: bool = False, **_: Any) -> StepResult:
+                    disable_llm_search_intent: bool = False, search_plan_file: str | Path | None = None,
+                    save_search_plan: str | Path | None = None, freeze_search_plan_requested: bool = False,
+                    replay_search_plan: bool = False, fail_if_search_plan_drift: bool = False,
+                    pubmed_date_syntax: str = "pdat_range", **_: Any) -> StepResult:
     intake_data = _read(run_dir, "intake.json")
     profile_data = _read(run_dir, "domain_profile.json")
     if not intake_data or not profile_data:
@@ -305,6 +308,25 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
         if key in profile_data:
             profile_data[key] = tuple(profile_data[key])
     profile = DomainProfile(**profile_data)
+    if search_plan_file or replay_search_plan:
+        if not search_plan_file:
+            return StepResult(status="blocked", warnings=["replay_search_plan_requires_search_plan_file"], skipped_reason="replay_search_plan_requires_search_plan_file")
+        from code_engine.search.search_plan_replay import load_frozen_search_plan
+        try:
+            plan, replay = load_frozen_search_plan(search_plan_file, fail_if_drift=fail_if_search_plan_drift)
+        except Exception as exc:
+            return StepResult(status="blocked", summary={"planner_mode": "frozen_replay", "error": str(exc)}, warnings=[str(exc)], skipped_reason=str(exc))
+        replay_path = _write(run_dir, "search_plan_replay.json", replay); plan_path = _write(run_dir, "search_plan.json", plan)
+        frozen = json.loads(Path(search_plan_file).read_text(encoding="utf-8"))
+        intent_payload = frozen.get("semantic_search_intent") or {"seed_triple": plan.seed_triple, "query_groups": {}}
+        intent_payload = {**intent_payload, "mode": "frozen_replay", "llm_search_intent_used": False, "deterministic_search_fallback_used": False}
+        intent_path = _write(run_dir, "semantic_search_intent.json", intent_payload)
+        guard_path = _write(run_dir, "search_query_guard_report.json", frozen.get("query_guard_summary") or {})
+        return StepResult(summary={"query_count": len(plan.pubmed_queries), "search_intent_mode": "frozen_replay",
+            "llm_search_intent_used": False, "deterministic_search_fallback_used": False, "search_plan_replay": replay,
+            "executable_query_hash": replay["frozen_plan_hash"]}, artifacts={"search_plan": plan_path,
+            "semantic_search_intent": intent_path, "search_query_guard_report": guard_path, "search_plan_replay": replay_path},
+            counts={"search_query_count": len(plan.pubmed_queries)})
     real_api_run = bool(execute and api and network)
     llm_required = real_api_run
     search_intent = None
@@ -395,7 +417,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
     from code_engine.query.search_planner import LiteratureSearchQuery
     from code_engine.temporal.paper_year_filter import paper_year_filter_from_dict, pubmed_date_clause
     year_filter = paper_year_filter_from_dict(paper_year_filter)
-    date_clause = pubmed_date_clause(year_filter)
+    date_clause = pubmed_date_clause(year_filter, syntax=pubmed_date_syntax)
     safe_queries = []
     for index, item in enumerate(allowed_queries):
         text = str(item.get("query") or item.get("query_string") or "")
@@ -418,6 +440,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
             context_terms_matched=list(item.get("context_terms_matched") or []),
             context_guard_reason=str(item.get("context_guard_reason") or "context_not_required"),
             query_scope=str(item.get("query_scope") or "general"),
+            pubmed_date_syntax=pubmed_date_syntax,
         ))
     plan.pubmed_queries = safe_queries
     plan.primary_queries = []; plan.secondary_queries = []; plan.mechanism_queries = []
@@ -449,11 +472,20 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
         for query in plan.pubmed_queries + plan.pmc_queries:
             query.max_results = min(query.max_results, max_papers)
     path = _write(run_dir, "search_plan.json", plan)
+    from code_engine.search.search_plan_replay import executable_query_hash, freeze_search_plan as write_frozen_plan
+    executable_hash = executable_query_hash(plan)
+    frozen_artifact = None
+    if save_search_plan or freeze_search_plan_requested:
+        frozen_artifact = Path(save_search_plan) if save_search_plan else run_dir / "artifacts/frozen_search_plan.json"
+        write_frozen_plan(plan, frozen_artifact, run_id=run_dir.name, query_text=query or intake.research_intent.raw_user_input,
+                          semantic_search_intent=intent_payload, query_guard_summary=guard_report)
     count = len(plan.pubmed_queries)
     warnings = list(plan.warnings)
     if execute and api:
         warnings.append("api_enabled_but_search_query_generation_remains_deterministic")
-    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation, "paper_year_filter": plan.paper_year_filter, "search_intent_mode": intent_payload["mode"], "llm_search_intent_used": intent_payload["llm_search_intent_used"], "deterministic_search_fallback_used": intent_payload["deterministic_search_fallback_used"], "query_guard": guard_report}, artifacts={"search_plan": path, "semantic_search_intent": intent_path, "search_query_guard_report": guard_path}, counts={"search_query_count": count}, warnings=warnings, api_calls_made=int(intent_payload.get("api_calls_made", 0)))
+    artifacts = {"search_plan": path, "semantic_search_intent": intent_path, "search_query_guard_report": guard_path}
+    if frozen_artifact is not None: artifacts["frozen_search_plan"] = str(frozen_artifact)
+    return StepResult(summary={"query_count": count, "domain_id": plan.domain_id, "search_profile_id": plan.search_profile_id, "prompt_profile_id": plan.prompt_profile_id, "validator_profile_id": plan.validator_profile_id, "query_generation_mode": plan.query_generation_mode, "semantic_confidence": plan.semantic_confidence, "manual_review_required": plan.manual_review_required, "triple_id": plan.seed_triple.get("triple_id"), "seed_triple": plan.seed_triple, "abstract_retrieval": plan.abstract_retrieval, "fulltext_escalation": plan.fulltext_escalation, "paper_year_filter": plan.paper_year_filter, "search_intent_mode": intent_payload["mode"], "llm_search_intent_used": intent_payload["llm_search_intent_used"], "deterministic_search_fallback_used": intent_payload["deterministic_search_fallback_used"], "query_guard": guard_report, "executable_query_hash": executable_hash}, artifacts=artifacts, counts={"search_query_count": count}, warnings=warnings, api_calls_made=int(intent_payload.get("api_calls_made", 0)))
 
 
 def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool, network: bool, max_papers: int | None,
@@ -487,18 +519,38 @@ def run_acquisition_step(*, run_dir: Path, repository_root: Path, execute: bool,
                                           year_from=year_filter.paper_year_from, year_to=year_filter.paper_year_to,
                                           client=literature_client, cached_papers=cached_papers)
     else:
-        report = {"intent_id": plan.intent_id, "execution_mode": "plan_only", "candidate_papers": list(plan.candidate_papers), "reused_papers": cached_papers, "downloaded_papers": [], "skipped_duplicates": [], "network_calls_made": 0, "initial_fulltext_download_count": 0, "paper_cache_consumed_by_acquisition": bool(cached_papers), "warnings": ["network_disabled_acquisition_plan_only"]}
+        diagnostics = [{"query_id": item.query_id, "query_string": item.query_string, "year_from": item.year_from,
+            "year_to": item.year_to, "source": item.source, "attempt": 0, "request_url_or_params_hash": "",
+            "esearch_status": "skipped", "esearch_return_count": 0, "esearch_reported_total_count": 0,
+            "retstart": 0, "retmax": item.max_results, "efetch_attempted": False, "efetch_status": None,
+            "downloaded_count": 0, "excluded_by_year_filter_count": 0, "missing_year_count": 0,
+            "skip_reason": "network_disabled", "error_type": None, "error_message": None, "elapsed_seconds": 0.0}
+            for item in plan.pubmed_queries]
+        report = {"intent_id": plan.intent_id, "execution_mode": "plan_only", "candidate_papers": list(plan.candidate_papers), "reused_papers": cached_papers, "downloaded_papers": [], "skipped_duplicates": [], "network_calls_made": 0, "initial_fulltext_download_count": 0, "paper_cache_consumed_by_acquisition": bool(cached_papers), "warnings": ["network_disabled_acquisition_plan_only"],
+            "query_diagnostics": diagnostics, "query_diagnostics_available": True, "pubmed_query_count": len(plan.pubmed_queries),
+            "pubmed_query_success_count": 0, "pubmed_query_zero_result_count": 0, "pubmed_query_error_count": 0,
+            "pubmed_query_skipped_count": len(plan.pubmed_queries), "acquisition_short_circuit_detected": True,
+            "acquisition_short_circuit_reason": "network_disabled", "reason": "network_disabled"}
     all_before = [paper for name in ("candidate_papers", "reused_papers", "downloaded_papers") for paper in report.get(name, [])]
     _kept, year_counts = filter_papers_by_year(all_before, year_filter)
+    for diagnostic in report.get("query_diagnostics", []):
+        query_papers = [paper for paper in all_before if paper.get("retrieval_query_id") == diagnostic.get("query_id")]
+        _query_kept, query_year_counts = filter_papers_by_year(query_papers, year_filter)
+        diagnostic["excluded_by_year_filter_count"] = query_year_counts["papers_excluded_by_year_filter"]
+        diagnostic["missing_year_count"] = query_year_counts["papers_missing_year_excluded"]
     for name in ("candidate_papers", "reused_papers", "downloaded_papers"):
         report[name], _ = filter_papers_by_year(report.get(name, []), year_filter)
     report.update(year_filter.to_dict())
     report["paper_year_filter_enabled"] = year_filter.enabled
     report.update(year_counts)
     report_path = _write(run_dir, "acquisition_report.json", report)
+    from code_engine.corpus.io import atomic_write_jsonl
+    diagnostics_path = run_dir / "artifacts/pubmed_query_diagnostics.jsonl"
+    atomic_write_jsonl(diagnostics_path, iter(report.get("query_diagnostics", [])))
     summary = {key: len(report.get(key, [])) for key in ("candidate_papers", "reused_papers", "downloaded_papers", "skipped_duplicates")}
     calls = int(report.get("network_calls_made", 0))
-    return StepResult(status="completed" if execute and network else "planned", summary=summary, artifacts={"acquisition_plan": plan_path, "acquisition_report": report_path}, counts=summary, warnings=report.get("warnings", []), network_calls_made=calls)
+    summary.update({key: report.get(key) for key in ("pubmed_query_count", "pubmed_query_success_count", "pubmed_query_zero_result_count", "pubmed_query_error_count", "pubmed_query_skipped_count", "acquisition_short_circuit_detected", "acquisition_short_circuit_reason", "reason")})
+    return StepResult(status="completed" if execute and network else "planned", summary=summary, artifacts={"acquisition_plan": plan_path, "acquisition_report": report_path, "pubmed_query_diagnostics": str(diagnostics_path)}, counts={key: value for key, value in summary.items() if isinstance(value, int)}, warnings=report.get("warnings", []), network_calls_made=calls)
 
 
 def run_payload_step(

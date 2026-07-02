@@ -104,6 +104,7 @@ def build_runtime_provenance(
     acquisition_year = _json(artifacts / "acquisition_report.json", {})
     search_intent = _json(artifacts / "semantic_search_intent.json", {})
     query_guard = _json(artifacts / "search_query_guard_report.json", {})
+    search_replay = _json(artifacts / "search_plan_replay.json", {})
     l2_summary = _json(artifacts / "l2_abstract_summary.json", {})
     intake_triple = (intake.get("unified_seed_triple") or {}).get("triple_id")
     search_triple = (search_plan.get("seed_triple") or {}).get("triple_id")
@@ -202,6 +203,16 @@ def build_runtime_provenance(
             "blocked_reason": search_intent.get("blocked_reason"),
         },
         "query_guard": query_guard,
+        "search_plan_replay": search_replay,
+        "search_reproducibility": {
+            "planner_mode": "frozen_replay" if search_replay.get("enabled") else (search_intent.get("mode") or search_plan.get("query_generation_mode")),
+            "planner_nondeterminism_possible": bool(search_intent.get("mode") == "llm" and not search_replay.get("enabled")),
+            "frozen_search_plan_used": bool(search_replay.get("enabled")),
+            "frozen_search_plan_hash": search_replay.get("frozen_plan_hash"),
+            "executable_query_hash": search_replay.get("frozen_plan_hash") or __import__("hashlib").sha256(__import__("json").dumps([{key: q.get(key) for key in ("query_string", "source", "query_group", "query_scope", "year_from", "year_to", "max_results", "allowed_for_l1_acquisition", "context_strict", "allowed_for_context_specific_core", "context_terms_required")} for q in search_plan.get("pubmed_queries", [])], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest(),
+            "pubmed_query_strings": [q.get("query_string") for q in search_plan.get("pubmed_queries", [])],
+            "pubmed_date_syntax": next((q.get("pubmed_date_syntax") for q in search_plan.get("pubmed_queries", []) if q.get("pubmed_date_syntax")), "pdat_range"),
+        },
         "context_aware_evidence_layering": {
             "enabled": True,
             "context_specific_run": bool(((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("terms") or ((search_intent.get("seed_triple") or intake.get("unified_seed_triple") or {}).get("context") or {}).get("context_terms")),

@@ -63,6 +63,15 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
               f"- Historical runs read: `{str(contamination.get('historical_runs_read', False)).lower()}`",
               f"- Global evidence injected before reasoning: `{str(contamination.get('global_evidence_injected_before_reasoning', False)).lower()}`", ""]
     l2_context = state.steps["l2_abstract"].summary
+    reproducibility = provenance.get("search_reproducibility", {})
+    replay = provenance.get("search_plan_replay", {})
+    lines += ["## Search reproducibility", "",
+              f"- planner mode: `{reproducibility.get('planner_mode')}`",
+              f"- frozen search plan used: `{str(reproducibility.get('frozen_search_plan_used', False)).lower()}`",
+              f"- executable query hash: `{reproducibility.get('executable_query_hash')}`",
+              f"- PubMed date syntax: `{reproducibility.get('pubmed_date_syntax', 'pdat_range')}`",
+              f"- LLM planner called: `{str(replay.get('llm_search_intent_called', not reproducibility.get('frozen_search_plan_used', False))).lower()}`",
+              f"- search plan drift detected: `{str(replay.get('search_plan_drift_detected', False)).lower()}`", ""]
     lines += ["## L2 layered retention", "",
               f"- normalized observations: {l2_context.get('normalized_observation_count', 0)}",
               f"- retained observations: {l2_context.get('retained_observation_count', 0)}",
