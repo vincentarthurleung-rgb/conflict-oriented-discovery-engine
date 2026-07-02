@@ -48,6 +48,8 @@ quarantine/
 
 cleanup_reports/
 tmp_cleanup/
+audit_reports/
+runs_archive/
 
 # Explicitly allow small curated/demo fixtures if added later
 !data/fixtures/

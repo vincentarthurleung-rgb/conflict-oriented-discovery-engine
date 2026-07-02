@@ -14,7 +14,8 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
                              stages: tuple[str, ...] = ("graph", "hypothesis", "report"),
                              external_data_root: str | Path = "data/external",
                              enable_lincs_local_validation: bool = False,
-                             lincs_dataset: str = "GSE70138") -> Path:
+                             lincs_dataset: str = "GSE70138",
+                             case_profile: str | Path | None = None) -> Path:
     source = Path(source_run).resolve()
     if not (source / "artifacts").is_dir():
         raise FileNotFoundError(f"source run artifacts missing: {source}")
@@ -26,6 +27,25 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
 
     def load(path: Path, default: dict | list | None = None):
         return json.loads(path.read_text()) if path.exists() else ({} if default is None else default)
+
+    def replace_path_refs(value):
+        if isinstance(value, dict):
+            return {key: replace_path_refs(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [replace_path_refs(item) for item in value]
+        if isinstance(value, str):
+            rewritten = value.replace(str(source), str(output))
+            if "/runs/" in rewritten and "/artifacts/" in rewritten:
+                suffix = rewritten.split("/artifacts/", 1)[1]
+                rewritten = str(artifacts / suffix)
+            return rewritten
+        return value
+
+    # Copied plans must identify artifacts in the rebuilt run, not their source run.
+    for name in ("validation_plan.json", "external_validation_execution_summary.json"):
+        copied = artifacts / name
+        if copied.exists():
+            copied.write_text(json.dumps(replace_path_refs(load(copied)), ensure_ascii=False, indent=2), encoding="utf-8")
 
     source_provenance = load(source / "artifacts/runtime_provenance_report.json")
     source_state = load(source / "run_state.json")
@@ -139,9 +159,68 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
     else:
         from code_engine.reporting.whitebox_case import generate_whitebox_case_artifacts
         generate_whitebox_case_artifacts(output)
-    if "l7" in stages and enable_lincs_local_validation:
+    selection = None
+    case_profile_value = None
+    if case_profile:
+        from code_engine.validation.case_routing import load_case_domain_profile, route_case_validators
+        case_profile_value = load_case_domain_profile(case_profile)
+        (artifacts / "case_domain_profile.json").write_text(
+            case_profile_value.model_dump_json(indent=2), encoding="utf-8")
+        selection = route_case_validators(
+            case_profile_value, external_data_root=external_data_root,
+            lincs_dataset=lincs_dataset,
+            manual_cli_validators=["lincs_l1000"] if enable_lincs_local_validation else [],
+        )
+    elif enable_lincs_local_validation:
+        selection = {
+            "selection_mode": "manual_cli_override", "selected_validators": ["lincs_l1000"],
+            "recommended_but_unavailable": [], "manual_cli_overrides": ["lincs_l1000"],
+            "deduplicated": False, "decisions": [],
+        }
+    if "l7" in stages and selection and "lincs_l1000" in selection["selected_validators"]:
         from code_engine.validation.lincs_local import LincsLocalValidator
-        LincsLocalValidator().validate_run(output, external_data_root=external_data_root, dataset=lincs_dataset)
+        perturbagen = case_profile_value.query.split()[0] if case_profile_value and case_profile_value.query.split() else "metformin"
+        lincs_summary = LincsLocalValidator().validate_run(
+            output, external_data_root=external_data_root, dataset=lincs_dataset,
+            perturbagen=perturbagen,
+        )
+        selection["executed_validators"] = ["lincs_l1000"] if lincs_summary.get("validation_executed") else []
+    elif selection:
+        selection["executed_validators"] = []
+
+    if selection:
+        selection_report = {"validator_selection": selection}
+        (artifacts / "validator_selection_report.json").write_text(
+            json.dumps(selection_report, ensure_ascii=False, indent=2), encoding="utf-8")
+        lines = ["# Validator Selection Report", "", f"Selection mode: `{selection['selection_mode']}`", "",
+                 "## Decisions", ""]
+        for item in selection["decisions"]:
+            lines.append(f"- `{item['validator_id']}`: **{item['decision']}** — {item['reason']}")
+        (artifacts / "validator_selection_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    if case_profile_value and selection:
+        core = load(artifacts / "core_observation_summary.json")
+        conflict = load(artifacts / "conflict_graph_summary.json")
+        hypothesis = load(artifacts / "hypothesis_summary.json")
+        lincs = load(artifacts / "l7_lincs_validation_summary.json")
+        required = [artifacts / "case_domain_profile.json", artifacts / "validator_selection_report.json"]
+        executed = list(selection.get("executed_validators", []))
+        ready = all(path.exists() for path in required) and bool(executed)
+        bundle = {
+            "case_id": case_profile_value.case_id, "query": case_profile_value.query,
+            "source_run_id": source.name, "final_run_id": output.name,
+            "case_domain_profile_path": str(artifacts / "case_domain_profile.json"),
+            "executed_validators": executed,
+            "recommended_but_unavailable_validators": selection["recommended_but_unavailable"],
+            "core_observation_count": int(core.get("core_observation_count", core.get("count", 0)) or 0),
+            "true_graph_conflict_count": int(conflict.get("true_graph_conflict_count", 0) or 0),
+            "formal_hypothesis_count": int(hypothesis.get("hypothesis_count", 0) or 0),
+            "lincs_interpretation": max(lincs.get("interpretation_distribution", {"unavailable": 0}), key=lincs.get("interpretation_distribution", {"unavailable": 0}).get),
+            "ready_for_system_b": ready,
+            "readiness_warnings": [] if ready else ["required_case_bundle_artifacts_or_executed_validator_missing"],
+        }
+        (artifacts / "case_bundle_manifest.json").write_text(
+            json.dumps(bundle, ensure_ascii=False, indent=2), encoding="utf-8")
 
     rebuild_metadata = {"enabled": True, "source_run_id": source.name,
                         "rebuilt_run_id": output.name, "rebuild_stages": list(stages)}

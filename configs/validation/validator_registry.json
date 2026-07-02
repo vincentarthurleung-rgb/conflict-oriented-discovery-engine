@@ -1,0 +1,14 @@
+{
+  "registry_version": "1.0",
+  "validators": [
+    {"validator_id":"lincs_l1000","display_name":"LINCS L1000","status":"runnable","execution_mode":"local_index","validation_types":["transcriptomic_consistency_validation"],"supported_case_types":["drug_perturbation","positive_control_whitebox"],"supported_disease_areas":["cancer"],"supported_entity_types":["drug"],"requires":{"local_index":true,"api_key":false,"network":false},"artifacts":{"summary":"l7_lincs_validation_summary.json","results":"l7_lincs_validation_results.jsonl"},"limitations":["L1000 validates transcriptomic consistency, not direct phosphorylation."]},
+    {"validator_id":"reactome","display_name":"Reactome","status":"skeleton_only","unavailable_reason":"Reactome adapter exists but no configured production local index or real HTTP transport"},
+    {"validator_id":"enrichr","display_name":"Enrichr","status":"skeleton_only","unavailable_reason":"Enrichr has only an API adapter/cache skeleton"},
+    {"validator_id":"opentargets","display_name":"Open Targets","status":"skeleton_only","unavailable_reason":"Open Targets has no configured production index or real HTTP transport"},
+    {"validator_id":"chembl","display_name":"ChEMBL","status":"skeleton_only","unavailable_reason":"ChEMBL requires a configured schema-bound production index or provider"},
+    {"validator_id":"uniprot","display_name":"UniProt","status":"skeleton_only","unavailable_reason":"UniProt has no configured production index or real HTTP transport"},
+    {"validator_id":"string","display_name":"STRING","status":"skeleton_only","unavailable_reason":"STRING has no configured production index or remote client"},
+    {"validator_id":"geo","display_name":"GEO","status":"skeleton_only","unavailable_reason":"GEO has no configured production summary index or remote client"},
+    {"validator_id":"pubmed_post_cutoff","display_name":"PubMed post-cutoff","status":"skeleton_only","unavailable_reason":"The post-cutoff literature validator has no query/execution implementation"}
+  ]
+}

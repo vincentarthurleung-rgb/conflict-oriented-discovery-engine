@@ -19,6 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--external-data-root", type=Path, default=Path("data/external"))
     parser.add_argument("--enable-lincs-local-validation", action="store_true")
     parser.add_argument("--lincs-dataset", default="GSE70138")
+    parser.add_argument("--case-profile", type=Path)
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--until", choices=STEP_ORDER, default="report")
@@ -162,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         output = rebuild_graph_hypothesis(args.rebuild_from_run, output_suffix=args.output_run_suffix, stages=stages,
             external_data_root=args.external_data_root,
             enable_lincs_local_validation=args.enable_lincs_local_validation,
-            lincs_dataset=args.lincs_dataset)
+            lincs_dataset=args.lincs_dataset, case_profile=args.case_profile)
         payload = {"run_id": output.name, "run_dir": str(output), "mode": "offline_rebuild",
                    "api_calls_made": 0, "network_calls_made": 0, "final_status": "completed",
                    "report": str(output / "run_report.md")}

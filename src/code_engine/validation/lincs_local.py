@@ -90,7 +90,11 @@ class LincsLocalValidator:
         interpretation=max(distribution,key=distribution.get) if distribution else "insufficient"
         value.setdefault("stages",{})["L7"]={"status":"partially_completed","mode":"lincs_l1000_transcriptomic_consistency",
             "validation_executed":True,"matched_signature_count":summary.get("matched_signature_count",0),"interpretation":interpretation}
-        value["pipeline_complete_for_external_validation"]=False
+        value["pipeline_complete_for_external_validation"]=True
+        value["external_validation_status"]="partially_completed"
+        value["external_validation_executed_validators"]=["lincs_l1000"]
+        limitations=value.get("expected_non_blocking_limitations",[])
+        value["expected_non_blocking_limitations"]=[item for item in limitations if item != "external_validation_index_not_configured"]
         path.write_text(json.dumps(value,ensure_ascii=False,indent=2),encoding="utf-8")
         markdown=artifacts/"pipeline_stage_summary.md"
         if markdown.exists():

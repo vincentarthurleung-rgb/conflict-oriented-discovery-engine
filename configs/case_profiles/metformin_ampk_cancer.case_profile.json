@@ -1,0 +1,14 @@
+{
+  "case_id": "metformin_ampk_cancer",
+  "query": "metformin AMPK cancer",
+  "case_type": "positive_control_whitebox",
+  "disease_areas": ["cancer"],
+  "mechanism_areas": ["AMPK", "mTOR", "YAP", "NF-kB"],
+  "entity_types": ["drug", "pathway", "disease"],
+  "intervention_types": ["small_molecule"],
+  "validation_needs": ["transcriptomic_perturbation", "pathway_membership", "post_cutoff_literature"],
+  "expected_validators": ["lincs_l1000"],
+  "optional_validators": ["reactome", "opentargets", "pubmed_post_cutoff"],
+  "excluded_validators": [],
+  "profile_version": "1.0"
+}
