@@ -10,5 +10,9 @@
   "expected_validators": ["lincs_l1000"],
   "optional_validators": ["reactome", "opentargets", "pubmed_post_cutoff"],
   "excluded_validators": [],
+  "fulltext_policy": {
+    "enabled": false,
+    "reason": "positive-control whitebox case has no true graph conflict"
+  },
   "profile_version": "1.0"
 }

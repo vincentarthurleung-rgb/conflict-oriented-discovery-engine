@@ -23,6 +23,7 @@ class CaseDomainProfile(CODEBaseModel):
     expected_validators: list[str] = Field(default_factory=list)
     optional_validators: list[str] = Field(default_factory=list)
     excluded_validators: list[str] = Field(default_factory=list)
+    fulltext_policy: dict[str, Any] = Field(default_factory=dict)
     profile_version: str = "1.0"
 
     @classmethod

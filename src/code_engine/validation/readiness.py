@@ -16,7 +16,7 @@ def load_external_registry(path: str | Path = REGISTRY_PATH) -> dict[str, dict[s
     return {v["validator_id"]: v for v in data["validators"]}
 
 def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
-                         external_data_root: str | Path = "data/external") -> dict[str, Any]:
+                         external_data_root: str | Path = "data/external", *, network_allowed: bool = False) -> dict[str, Any]:
     blocking: list[str] = []
     provider, model = os.getenv("L1_PROVIDER", "").strip().lower(), os.getenv("MODEL_NAME", "").strip()
     key_name = "DEEPSEEK_API_KEY" if provider == "deepseek" else "OPENAI_API_KEY" if provider == "openai" else None
@@ -71,9 +71,14 @@ def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
                 "blocking": validator_id in routing["blocked_required_validators"], "decision": "selected_for_execution" if selected else "recommended_but_unavailable",
                 "reason": reason, "index_summary": {k: detail.get(k) for k in ("selected_signature_count","selected_gene_count","compact_matrix_orientation")} if detail else None})
         blocking.extend(f"required validator unavailable: {v}" for v in routing["blocked_required_validators"])
+    policy=dict(getattr(profile,"fulltext_policy",{}) or {}); fulltext_enabled=bool(policy.get("enabled") or (profile and ("full_text_conflict_confirmation" in profile.validation_needs or profile.case_type=="conflict_enriched")))
+    cache_ready=Path("data/cache/pmc_idconv").is_dir()
+    ft_blocking=[] if (not fulltext_enabled or network_allowed or cache_ready) else ["pmc_oa_fulltext_requires_network_or_cache"]
+    fulltext={"enabled":fulltext_enabled,"source":policy.get("source","pmc_oa"),"selection_policy":"conflict_related_only","copyright_policy":"oa_only_skip_non_oa","network_required":fulltext_enabled,"network_allowed":network_allowed,"max_papers":policy.get("max_papers",20),"publisher_scraping_enabled":False,"ready":not ft_blocking,"blocking_reasons":ft_blocking}
+    blocking.extend(ft_blocking)
     return {"schema_version":"case_readiness_report_v1", "created_at":datetime.now(timezone.utc).isoformat(), "case_id":getattr(profile,"case_id",None),
             "ready": not blocking, "blocking_reasons":blocking, "llm":llm, "search_plan":search, "case_profile":profile_status,
-            "routing":routing, "resources":resources}
+            "routing":routing, "resources":resources,"fulltext":fulltext}
 
 def write_readiness_report(report: dict[str, Any], output_root: str | Path = "readiness_reports") -> tuple[Path, Path]:
     root=Path(output_root); root.mkdir(parents=True, exist_ok=True); case_id=report.get("case_id") or "unknown_case"
