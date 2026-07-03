@@ -30,6 +30,8 @@ def make_handler(system_b_root, kg_root):
     return Handler
 
 
-def serve(system_b_root, kg_root, host="127.0.0.1", port=8765):
+def serve(system_b_root, kg_root, host="127.0.0.1", port=8765, on_ready=None):
     server = ThreadingHTTPServer((host, port), make_handler(system_b_root, kg_root))
+    if on_ready:
+        on_ready()
     server.serve_forever()
