@@ -63,3 +63,4 @@ runs_archive/
 !data/metadata/literature_quality_audit.csv
 **/*.egg-info/
 .env
+preserved_case_bundles/
