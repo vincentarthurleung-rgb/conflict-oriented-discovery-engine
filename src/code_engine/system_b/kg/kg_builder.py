@@ -35,20 +35,20 @@ class KGBuilder:
 
     def _build_case(self, bundle: Path) -> None:
         manifest = self._json(bundle / "case_bundle_manifest.json")
-        case_id = manifest.get("case_id") or bundle.name
-        self.case_ids.add(case_id)
-        case_node = f"case:{case_id}"
-        self._add_node(node(case_node, case_id, "case", [case_id], metadata={"case_role": manifest.get("case_type"), "bundle_path": str(bundle), "scientific_output_class": manifest.get("scientific_output_class"), "is_zero_claim_case": manifest.get("is_zero_claim_case", False), "zero_claim_reason": manifest.get("zero_claim_reason"), "case_execution_outcome": manifest.get("case_execution_outcome")}))
+        case_id = manifest.get("case_id") or bundle.name; version=manifest.get("case_version") or "v1"; case_key=case_id if version=="v1" else f"{case_id}__{version}"
+        self.case_ids.add(case_key)
+        case_node = f"case:{case_key}"
+        self._add_node(node(case_node, case_id if version=="v1" else f"{case_id} ({version})", "case", [case_key], metadata={"base_case_id":case_id,"case_version":version,"is_replay":bool(manifest.get("is_replay") or manifest.get("is_replay_run")),"source_case_version":manifest.get("source_case_version"),"case_role": manifest.get("case_type"), "bundle_path": str(bundle), "scientific_output_class": manifest.get("scientific_output_class"), "is_zero_claim_case": manifest.get("is_zero_claim_case", False), "zero_claim_reason": manifest.get("zero_claim_reason"), "case_execution_outcome": manifest.get("case_execution_outcome")}))
         abstract_name="l2_graph_observations.jsonl" if (bundle/"l2_graph_observations.jsonl").is_file() else "core_observations.jsonl"
         for name, scope in ((abstract_name, "abstract_graph"), ("l35_fulltext_l1_claims.jsonl", "full_text")):
-            self._read_claims(bundle / name, case_id, case_node, scope)
-        self._add_hypotheses(bundle / "hypothesis_summary.json", case_id, case_node)
-        self._add_validators(bundle, case_id, case_node)
+            self._read_claims(bundle / name, case_key, case_node, scope)
+        self._add_hypotheses(bundle / "hypothesis_summary.json", case_key, case_node)
+        self._add_validators(bundle, case_key, case_node)
         output_class = manifest.get("scientific_output_class")
         if output_class:
             status_id = f"status:{output_class}"
-            self._add_node(node(status_id, output_class, "status", [case_id], metadata={"non_biological_metadata": True, "explanation": manifest.get("zero_claim_reason")}))
-            self._link(stable_id("edge", case_node, status_id), case_node, status_id, "has_status", "has_status", case_id, metadata={"non_biological_metadata": True})
+            self._add_node(node(status_id, output_class, "status", [case_key], metadata={"non_biological_metadata": True, "explanation": manifest.get("zero_claim_reason")}))
+            self._link(stable_id("edge", case_node, status_id), case_node, status_id, "has_status", "has_status", case_key, metadata={"non_biological_metadata": True})
 
     def _read_claims(self, path: Path, case_id: str, case_node: str, scope: str) -> None:
         if not path.is_file():

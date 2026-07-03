@@ -28,7 +28,7 @@ class DashboardData:
         return {"schema_version": value.get("schema_version", "system_b_case_registry_v1"), "case_count": value.get("case_count", len(value.get("cases", []))), "cases": value.get("cases", []), "warnings": self.warnings()}
 
     def case(self, case_id: str) -> dict[str, Any] | None:
-        return next((item for item in self.cases()["cases"] if item.get("case_id") == case_id), None)
+        return next((item for item in self.cases()["cases"] if item.get("case_key") == case_id or item.get("case_id") == case_id), None)
 
     def case_card(self, case_id: str) -> dict[str, Any] | None:
         case = self.case(case_id)

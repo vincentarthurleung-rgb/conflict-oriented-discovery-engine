@@ -129,6 +129,8 @@ class SystemBBatchIngestor:
         selection = bundle.get("validator_selection", {}).get("validator_selection", {})
         return {
             "case_id": card["case_id"], "case_version": version,
+            "case_key": card["case_id"] if version == "v1" else f"{card['case_id']}__{version}",
+            "is_replay": bool(m.get("is_replay") or m.get("is_replay_run")), "source_case_version": m.get("source_case_version"), "replay_from_stage": m.get("replay_from_stage"), "replay_source_run": m.get("replay_source_run") or m.get("source_run"),
             "bundle_created_at": m.get("created_at"), "source_run_id": m.get("source_run_id"), "final_run_id": m.get("final_run_id"),
             "case_label": label, "bundle_path": str(path), "system_b_output_path": str(output_root / output_label),
             "quality_class": quality["quality_class"], "comparison_readiness": quality["comparison_readiness"],

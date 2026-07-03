@@ -6,6 +6,7 @@ from pathlib import Path
 from code_engine.validation.case_routing import load_case_domain_profile
 
 ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","l2_graph_observations.jsonl","l2_canonicalization_audit_summary.json","l2_canonicalization_audit_report.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l7_pubmed_post_cutoff_summary.json","l7_pubmed_post_cutoff_results.jsonl","l7_reactome_summary.json","l7_reactome_results.jsonl","l7_enrichr_summary.json","l7_enrichr_results.jsonl","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
+ARTIFACTS += ["replay_manifest.json", "replay_report.md"]
 REQUIRED = {"case_domain_profile.json","validator_selection_report.json","pipeline_stage_summary.json","l7_external_validation_summary.json","whitebox_case_report.md"}
 def _json(path:Path)->dict:
     try: return json.loads(path.read_text(encoding="utf-8"))
@@ -19,9 +20,11 @@ def _canonical(data:dict, field:str, warnings:list[str], artifact_name:str, *fal
         if fallback in data: return data[fallback]
     warnings.append(f"{artifact_name.removesuffix('.json')}_missing_field: {field}")
     return default
-def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:str|Path="case_bundles")->tuple[Path,dict]:
+def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:str|Path="case_bundles", *, bundle_id_suffix:str|None=None, overwrite_bundle:bool=False, manifest_overrides:dict|None=None)->tuple[Path,dict]:
     run=Path(final_run).resolve(); artifacts=run/"artifacts"; profile=load_case_domain_profile(case_profile)
-    out=Path(output_root)/profile.case_id; out.mkdir(parents=True,exist_ok=True)
+    bundle_id=profile.case_id+(f"__{bundle_id_suffix}" if bundle_id_suffix else "");out=Path(output_root)/bundle_id
+    if bundle_id_suffix and out.exists() and not overwrite_bundle: raise FileExistsError(f"replay bundle already exists: {out}")
+    out.mkdir(parents=True,exist_ok=True)
     missing=[]
     for name in ARTIFACTS:
         src=artifacts/name
@@ -59,6 +62,7 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
       "missing_artifacts":missing,"required_missing_artifacts":required_missing,"bundle_export_warnings":list(dict.fromkeys(export_warnings)),"bundle_complete":not missing,"ready_for_system_b":not required_missing and bool(executed),
       "created_at":datetime.now(timezone.utc).isoformat(),"schema_version":"case_bundle_manifest_v1"}
     manifest.update({"case_execution_outcome":"execution_passed" if manifest["pipeline_complete"] else "execution_incomplete","scientific_output_class":scientific_class,"zero_claim_reason":zero_reason,"is_zero_claim_case":not bool(core_count)})
+    manifest.update(manifest_overrides or {})
     pipeline=_json(out/"pipeline_stage_summary.json")
     if not pipeline:
         pipeline={"case_id":profile.case_id,"status":"completed_with_warnings" if manifest["pipeline_complete"] else "missing_source_artifact","stage_counts":{"core_observations":int(core_count or 0),"conflicts":conflict_count,"hypotheses":formal_count},"warnings":["source pipeline summary was empty; counts reconstructed from canonical artifacts"],"limitations":["Detailed upstream stage timing/status was unavailable."]}
