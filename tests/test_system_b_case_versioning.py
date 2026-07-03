@@ -12,7 +12,7 @@ class CaseVersioningTests(unittest.TestCase):
             root = Path(td)
             registry = root / "registry.json"
             ingestor = SystemBBatchIngestor()
-            first = ingestor.run(["case_bundles"], root, registry)
+            first = ingestor.run(["case_bundles"], root, registry, case_glob="metformin_ampk_cancer")
             duplicate_root = root / "preserved"
             shutil.copytree("case_bundles/metformin_ampk_cancer", duplicate_root / "case_001")
             second = ingestor.run([duplicate_root], root, registry)

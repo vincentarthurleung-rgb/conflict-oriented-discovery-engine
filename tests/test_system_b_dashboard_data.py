@@ -9,9 +9,9 @@ class DashboardDataTests(unittest.TestCase):
     def test_summary_and_case_data(self):
         data = DashboardData("system_b_outputs", "system_b_outputs/kg")
         summary = data.summary(); cases = data.cases()
-        self.assertEqual(summary["case_count"], 1)
+        self.assertGreaterEqual(summary["case_count"], 2)
         self.assertGreater(summary["kg"]["node_count"], 0)
-        self.assertEqual(cases["cases"][0]["case_id"], "metformin_ampk_cancer")
+        self.assertTrue(any(x["case_id"]=="metformin_ampk_cancer" for x in cases["cases"]))
         self.assertEqual(data.case_card("metformin_ampk_cancer")["quality_class"], "CASE_READY_FOR_ARCHIVE")
 
     def test_missing_optional_files_return_warnings(self):

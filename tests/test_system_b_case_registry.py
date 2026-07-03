@@ -9,7 +9,7 @@ class SystemBCaseRegistryTests(unittest.TestCase):
     def test_registry_contains_case_001_and_followup_count(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            result = SystemBBatchIngestor().run(["case_bundles"], root, root / "case_registry.json")
+            result = SystemBBatchIngestor().run(["case_bundles"], root, root / "case_registry.json", case_glob="metformin_ampk_cancer")
             case = result["registry"]["cases"][0]
             self.assertEqual(case["case_label"], "case_001")
             self.assertEqual(case["case_id"], "metformin_ampk_cancer")

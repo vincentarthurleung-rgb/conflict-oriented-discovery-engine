@@ -17,6 +17,10 @@ class CaseCardBuilder:
         return {
             "case_id": bundle["case_id"],
             "case_role": role,
+            "case_execution_outcome": m.get("case_execution_outcome"),
+            "scientific_output_class": m.get("scientific_output_class"),
+            "is_zero_claim_case": bool(m.get("is_zero_claim_case")),
+            "zero_claim_reason": m.get("zero_claim_reason"),
             "system_b_status": "ingested",
             "pipeline_status": {
                 "pipeline_complete": bool(m.get("pipeline_complete")),
@@ -39,6 +43,7 @@ class CaseCardBuilder:
             },
             "fulltext_summary": {"status": fulltext_status, "reason": reason},
             "scientific_interpretation": self._scientific_interpretation(role),
+            "zero_claim_explanation": "Execution passed, but no core observations survived." if m.get("is_zero_claim_case") else None,
         }
 
     @staticmethod

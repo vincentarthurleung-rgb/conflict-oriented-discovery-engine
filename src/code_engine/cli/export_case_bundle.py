@@ -27,32 +27,45 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
         src=artifacts/name
         if src.is_file(): shutil.copy2(src,out/name)
         else: missing.append(name)
-    selection=_json(artifacts/"validator_selection_report.json").get("validator_selection",{}); export_warnings=[]
+    selection_payload=_json(artifacts/"validator_selection_report.json"); selection=selection_payload.get("validator_selection",selection_payload); export_warnings=[]
     canonical_names=("hypothesis_summary.json","graph_conflict_summary.json","l7_external_validation_summary.json","l35_fulltext_retrieval_summary.json","l35_fulltext_l1_summary.json","l35_fulltext_conflict_confirmation_summary.json")
     for name in canonical_names:
         if not (artifacts/name).is_file(): export_warnings.append(f"missing_artifact: {name}")
     core=_json(artifacts/"core_observation_summary.json"); conflict=_json(artifacts/"graph_conflict_summary.json"); hypothesis=_json(artifacts/"hypothesis_summary.json"); ext=_json(artifacts/"l7_external_validation_summary.json"); lincs=_json(artifacts/"l7_lincs_validation_summary.json")
-    source_id=_json(run/"artifacts/rebuild_provenance.json").get("source_run_id") or _json(artifacts/"case_bundle_manifest.json").get("source_run_id")
-    required_missing=sorted(REQUIRED & set(missing)); executed=ext.get("executed_validators",selection.get("executed_validators",[]))
+    existing=_json(artifacts/"case_bundle_manifest.json")
+    source_id=_json(run/"artifacts/rebuild_provenance.json").get("source_run_id") or existing.get("source_run_id")
+    required_missing=sorted(REQUIRED & set(missing)); executed=ext.get("executed_validators",selection.get("executed_validators",[])); unavailable=[item for item in ext.get("recommended_but_unavailable",selection.get("recommended_but_unavailable",existing.get("recommended_but_unavailable_validators",[]))) if item not in executed]
     validation={**lincs,**ext}; interpretation=validation.get("interpretation") or validation.get("biological_interpretation"); retrieval=_json(artifacts/"l35_fulltext_retrieval_summary.json"); fulltext_l1=_json(artifacts/"l35_fulltext_l1_summary.json"); confirmation=_json(artifacts/"l35_fulltext_conflict_confirmation_summary.json"); fulltext={**retrieval,**fulltext_l1,**confirmation}
     if not interpretation and validation.get("interpretation_distribution"): interpretation=max(validation["interpretation_distribution"],key=validation["interpretation_distribution"].get)
-    existing=_json(artifacts/"case_bundle_manifest.json")
     core_count=_canonical(core,"core_observation_count",export_warnings,"core_observation_summary.json","count",default=None) if core else None
     if core_count is None: core_count=_line_count(artifacts/"core_observations.jsonl")
     if core_count is None: core_count=existing.get("core_observation_count",0); export_warnings.append("missing_artifact: core_observation_summary.json")
     hypothesis_counts={field:int(_canonical(hypothesis,field,export_warnings,"hypothesis_summary.json",default=existing.get(field,0)) or 0) for field in ("formal_hypothesis_count","high_confidence_hypothesis_count","manual_review_followup_count","abstract_only_followup_count","display_hypothesis_count","display_followup_count")}
+    conflict_count=int(_canonical(conflict,"true_graph_conflict_count",export_warnings,"graph_conflict_summary.json",default=existing.get("true_graph_conflict_count",0)) or 0)
+    formal_count=hypothesis_counts["formal_hypothesis_count"]
+    scientific_class="no_core_observations" if not core_count else "hypothesis_generated" if formal_count else "conflict_found" if conflict_count else "no_conflict"
+    zero_reason="No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace." if not core_count else None
     manifest={"case_id":profile.case_id,"query":profile.query,"case_type":profile.case_type,"source_run_id":source_id,"final_run_id":run.name,
       "source_run_dir":str(run.parent/source_id) if source_id else None,"final_run_dir":str(run),"pipeline_complete":not required_missing,
       "pipeline_mode":"abstract_plus_domain_routed_external_validation","executed_validators":executed,
       "skipped_validators":ext.get("skipped_validators",selection.get("skipped_validators",[])),
-      "recommended_but_unavailable_validators":selection.get("recommended_but_unavailable",[]),"blocked_validators":selection.get("blocked_required_validators",[]),
-      "core_observation_count":int(core_count or 0),"true_graph_conflict_count":int(_canonical(conflict,"true_graph_conflict_count",export_warnings,"graph_conflict_summary.json",default=existing.get("true_graph_conflict_count",0)) or 0),
+      "recommended_but_unavailable_validators":unavailable,"blocked_validators":selection.get("blocked_required_validators",[]),
+      "core_observation_count":int(core_count or 0),"true_graph_conflict_count":conflict_count,
       **hypothesis_counts,
       "external_validation_status":validation.get("status", "completed" if executed else "unavailable"),"external_validation_interpretation":interpretation,"matched_signature_count":int(validation.get("matched_signature_count",0) or 0),"validation_target_count":int(validation.get("validation_target_count",0) or 0),"overall_validation_score":validation.get("overall_validation_score"),
       "fulltext_confirmation_status":fulltext.get("status","not_enabled"),"fulltext_candidate_paper_count":int(fulltext.get("candidate_paper_count",0) or 0),"fulltext_available_count":int(fulltext.get("oa_available_count",0) or 0),"fulltext_confirmed_conflict_count":int(fulltext.get("fulltext_confirmed_conflict_count",0) or 0),
       "fulltext_l1_claim_count":int(fulltext.get("fulltext_l1_claim_count",0) or 0),"fulltext_l1_api_calls":int(fulltext.get("fulltext_l1_api_calls",0) or 0),"fulltext_limit_hit":bool(fulltext.get("fulltext_limit_hit",False)),"copyright_safe":bool(fulltext.get("copyright_safe",True)),"fulltext_layer":{"enabled":fulltext.get("status","not_enabled")!="not_enabled","source":"pmc_oa","selection_policy":"conflict_related_only","status":fulltext.get("status","not_enabled"),"candidate_paper_count":int(fulltext.get("candidate_paper_count",0) or 0),"oa_available_count":int(fulltext.get("oa_available_count",0) or 0),"claim_count":int(fulltext.get("fulltext_l1_claim_count",0) or 0),"confirmed_conflict_count":int(fulltext.get("fulltext_confirmed_conflict_count",0) or 0)},
       "missing_artifacts":missing,"required_missing_artifacts":required_missing,"bundle_export_warnings":list(dict.fromkeys(export_warnings)),"bundle_complete":not missing,"ready_for_system_b":not required_missing and bool(executed),
       "created_at":datetime.now(timezone.utc).isoformat(),"schema_version":"case_bundle_manifest_v1"}
+    manifest.update({"case_execution_outcome":"execution_passed" if manifest["pipeline_complete"] else "execution_incomplete","scientific_output_class":scientific_class,"zero_claim_reason":zero_reason,"is_zero_claim_case":not bool(core_count)})
+    pipeline=_json(out/"pipeline_stage_summary.json")
+    if not pipeline:
+        pipeline={"case_id":profile.case_id,"status":"completed_with_warnings" if manifest["pipeline_complete"] else "missing_source_artifact","stage_counts":{"core_observations":int(core_count or 0),"conflicts":conflict_count,"hypotheses":formal_count},"warnings":["source pipeline summary was empty; counts reconstructed from canonical artifacts"],"limitations":["Detailed upstream stage timing/status was unavailable."]}
+        (out/"pipeline_stage_summary.json").write_text(json.dumps(pipeline,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    exported_selection=_json(out/"validator_selection_report.json"); selected=exported_selection.get("validator_selection",exported_selection)
+    selected.update({"selected_validators":list(dict.fromkeys([*selected.get("selected_validators",[]),*ext.get("validator_results",{})])),"executed_validators":executed,"skipped_validators":ext.get("skipped_validators",selection.get("skipped_validators",[])),"recommended_but_unavailable":unavailable})
+    warnings=list(dict.fromkeys([*exported_selection.get("warnings",[]),*( ["source validator selection report was empty"] if not exported_selection else [])]))
+    (out/"validator_selection_report.json").write_text(json.dumps({"case_id":profile.case_id,"status":"completed_with_warnings" if warnings else "completed","validator_selection":selected,"warnings":warnings},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     (out/"case_bundle_manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return out,manifest
 def main(argv=None)->int:

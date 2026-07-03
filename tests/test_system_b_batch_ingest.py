@@ -12,6 +12,7 @@ class SystemBBatchIngestTests(unittest.TestCase):
             root = Path(td)
             result = SystemBBatchIngestor().run(
                 ["case_bundles"], root, root / "case_registry.json",
+                case_glob="metformin_ampk_cancer",
                 write_markdown=True, write_csv=True,
             )
             self.assertEqual(result["summary"]["case_count"], 1)

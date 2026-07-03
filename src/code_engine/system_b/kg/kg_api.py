@@ -66,6 +66,7 @@ class KGAPI:
         show_unavailable = str(one("show_unavailable", "false")).lower() == "true"
         if path == "/api/health": return 200, {"status": "OK"}
         if path == "/api/graph/overview": return 200, cytoscape(self.engine.overview(), self.engine, detail, "overview", show_unavailable)
+        if path == "/api/graph/global": return 200, cytoscape(self.engine.overview(), self.engine, detail, "global", show_unavailable)
         if path.startswith("/api/graph/case/"): return 200, cytoscape(self.engine.get_case_subgraph(unquote(path.removeprefix("/api/graph/case/"))), self.engine, detail, "case", show_unavailable)
         if path == "/api/entity/search": return 200, {"results": self.engine.search_entity(one("q", ""))}
         if path.startswith("/api/entity/") and path.endswith("/neighborhood"):

@@ -7,8 +7,8 @@ import re
 import unicodedata
 from typing import Any
 
-NODE_TYPES = {"entity", "paper", "case", "hypothesis", "validator", "evidence", "context", "pathway"}
-EDGE_TYPES = {"claim_relation", "supports", "contradicts", "mentioned_in", "derived_from", "validated_by", "has_context", "part_of_case"}
+NODE_TYPES = {"entity", "paper", "case", "hypothesis", "validator", "evidence", "context", "pathway", "status"}
+EDGE_TYPES = {"claim_relation", "supports", "contradicts", "mentioned_in", "derived_from", "validated_by", "has_validator_result", "has_status", "has_context", "part_of_case"}
 
 
 def normalize_entity(value: str) -> str:

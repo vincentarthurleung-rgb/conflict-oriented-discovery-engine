@@ -13,8 +13,13 @@ def build_queries(inputs: dict, maximum: int = 8) -> list[dict]:
         if value and value.casefold() not in {x.casefold() for x in terms}: terms.append(value)
     start=(inputs.get("time_window") or {}).get("post_cutoff_from")
     rows=[]
-    for term in terms[:maximum]:
-        bounded=f'"{term.replace(chr(34), "")}"'
+    anchors=terms[:2]
+    candidates=list(anchors)
+    if anchors:
+        candidates.extend(f"{anchors[0]} AND {term}" for term in terms[1:] if term not in anchors)
+    for term in candidates[:maximum]:
+        parts=[x.strip() for x in term.split(" AND ") if x.strip()]
+        bounded=" AND ".join(f'"{part.replace(chr(34), "")}"[Title/Abstract]' for part in parts)
         query=f"{bounded} AND ({start}:3000[dp])" if start else bounded
         rows.append({"query_id":hashlib.sha256(query.encode()).hexdigest()[:16],"query":query})
     return rows
@@ -23,25 +28,30 @@ class PubMedPostCutoffValidator:
     validator_id="pubmed_post_cutoff"
     def run(self, inputs:dict, artifact_root:str|Path, *, network_enabled:bool=False, transport:Transport|None=None, retmax:int=20)->dict:
         queries=build_queries(inputs); start=(inputs.get("time_window") or {}).get("post_cutoff_from")
-        base={"validator_id":self.validator_id,"status":"skipped","production_validator_version":"v1","network_used":False,"post_cutoff_from_year":start,"query_count":len(queries),"total_hits_estimate":0,"retrieved_record_count":0,"interpretation":"skipped_no_search_terms" if not queries else "post_cutoff_interpretation_not_attempted","limitations":[LIMITATION]}
+        base={"validator_id":self.validator_id,"status":"skipped","production_validator_version":"v1","network_used":False,"post_cutoff_from_year":start,"query_count":len(queries),"total_hits_estimate":0,"retrieved_record_count":0,"interpretation":"skipped_no_search_terms" if not queries else "post_cutoff_interpretation_not_attempted","query_quality":"ok","too_broad_query_count":0,"broadness_warnings":[],"limitations":[LIMITATION]}
         if not queries: return write_artifacts(artifact_root,self.validator_id,base,[])
         if not network_enabled:
             base["interpretation"]="network_disabled"; return write_artifacts(artifact_root,self.validator_id,base,[])
-        rows=[]; total=0; failed=0
+        rows=[]; total=0; failed=0; hit_counts=[]; seen_pmids=set()
         endpoint="https://eutils.ncbi.nlm.nih.gov/entrez/eutils"; common={"db":"pubmed","retmode":"json","tool":os.getenv("NCBI_TOOL","conflict_oriented_discovery_engine"),"email":os.getenv("NCBI_EMAIL","")}
         if os.getenv("NCBI_API_KEY"): common["api_key"]=os.environ["NCBI_API_KEY"]
         for query in queries:
             try:
                 search=call(transport,"GET",endpoint+"/esearch.fcgi?"+urllib.parse.urlencode({**common,"term":query["query"],"retmax":retmax}),None,{"Accept":"application/json"})["esearchresult"]
-                ids=list(search.get("idlist") or []); total+=int(search.get("count") or 0)
+                ids=list(search.get("idlist") or []); hits=int(search.get("count") or 0); total+=hits; hit_counts.append(hits)
                 summaries={}
                 if ids:
                     payload=call(transport,"GET",endpoint+"/esummary.fcgi?"+urllib.parse.urlencode({**common,"id":",".join(ids)}),None,{"Accept":"application/json"})
                     summaries=payload.get("result",{})
                 for pmid in ids:
+                    if str(pmid) in seen_pmids: continue
+                    seen_pmids.add(str(pmid))
                     item=summaries.get(str(pmid),{}); article_ids={x.get("idtype"):x.get("value") for x in item.get("articleids",[]) if isinstance(x,dict)}
                     year=next((int(x[:4]) for x in [str(item.get("pubdate") or "")] if x[:4].isdigit()),None)
                     rows.append({**query,"pmid":str(pmid),"title":item.get("title"),"year":year,"journal":item.get("fulljournalname") or item.get("source"),"doi":article_ids.get("doi"),"abstract_available":False,"matched_terms":[],"source":"ncbi_eutilities"})
             except Exception: failed+=1
-        base.update(status="completed" if not failed else ("partially_completed" if rows else "failed"),network_used=True,total_hits_estimate=total,retrieved_record_count=len(rows),interpretation="post_cutoff_literature_found" if rows else ("post_cutoff_literature_absent" if not failed else "post_cutoff_interpretation_not_attempted"))
+        broad=sum(x>50000 for x in hit_counts); narrow=sum(x<3 for x in hit_counts); warnings=[]
+        if broad or total>200000: warnings=["pubmed_query_too_broad","post_cutoff_literature_count_not_interpretable"]
+        quality="mixed" if broad and narrow else "too_broad" if broad or total>200000 else "too_narrow" if hit_counts and narrow==len(hit_counts) else "ok"
+        base.update(status="completed" if not failed else ("partially_completed" if rows else "failed"),network_used=True,total_hits_estimate=total,retrieved_record_count=len(rows),interpretation="post_cutoff_literature_found" if rows else ("post_cutoff_literature_absent" if not failed else "post_cutoff_interpretation_not_attempted"),query_quality=quality,too_broad_query_count=broad,broadness_warnings=warnings,query_hit_counts=hit_counts)
         return write_artifacts(artifact_root,self.validator_id,base,rows)

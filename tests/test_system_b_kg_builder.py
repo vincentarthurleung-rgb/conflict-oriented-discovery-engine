@@ -11,8 +11,9 @@ from code_engine.system_b.kg import KGBuilder, KGStore
 class KGBuilderTests(unittest.TestCase):
     def test_builds_case_validator_and_entities_without_network(self):
         with tempfile.TemporaryDirectory() as td, patch("urllib.request.urlopen", side_effect=AssertionError("network call")):
+            bundle_root=Path(td)/"bundles";shutil.copytree("case_bundles/metformin_ampk_cancer",bundle_root/"metformin_ampk_cancer")
             output = Path(td) / "kg"
-            summary = KGBuilder("case_bundles", output).build()
+            summary = KGBuilder(bundle_root, output).build()
             nodes, edges, evidence = KGStore(output).load()
             ids = {item["id"] for item in nodes}
             self.assertEqual(summary["case_count_indexed"], 1)

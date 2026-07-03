@@ -9,7 +9,7 @@ class ValidatorCoverageMatrixTests(unittest.TestCase):
     def test_executed_and_unavailable_are_infrastructure_statuses(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            result = SystemBBatchIngestor().run(["case_bundles"], root, root / "registry.json")
+            result = SystemBBatchIngestor().run(["case_bundles"], root, root / "registry.json", case_glob="metformin_ampk_cancer")
             row = result["matrix"]["cases"][0]
             self.assertEqual(row["lincs_l1000"], "executed")
             for validator in ("reactome", "enrichr", "chembl", "opentargets", "pubmed_post_cutoff"):

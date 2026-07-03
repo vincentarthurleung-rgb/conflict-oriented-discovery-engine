@@ -22,6 +22,7 @@ VALIDATORS = (
 )
 COMPARISON_COLUMNS = (
     "case_id", "case_role", "quality_class", "comparison_readiness", "ready_for_system_b",
+    "case_execution_outcome", "scientific_output_class", "is_zero_claim_case", "zero_claim_reason",
     "pipeline_complete", "core_observation_count", "true_graph_conflict_count",
     "formal_hypothesis_count", "manual_review_followup_count", "executed_validators",
     "unavailable_validators", "external_validation_status", "lincs_interpretation",
@@ -63,14 +64,14 @@ class SystemBBatchIngestor:
                 existing_path = Path(by_key[key].get("bundle_path", ""))
                 if existing_path and existing_path.resolve() == path.resolve():
                     by_key[key]["warnings"] = [item for item in by_key[key].get("warnings", []) if item != "duplicate_case_version"]
+                else:
+                    warning = f"duplicate_case_version: {key[0]}:{key[1]}"
+                    if strict:
+                        raise ValueError(warning)
+                    batch_warnings.append(warning)
+                    if "duplicate_case_version" not in by_key[key].setdefault("warnings", []):
+                        by_key[key]["warnings"].append("duplicate_case_version")
                     continue
-                warning = f"duplicate_case_version: {key[0]}:{key[1]}"
-                if strict:
-                    raise ValueError(warning)
-                batch_warnings.append(warning)
-                if "duplicate_case_version" not in by_key[key].setdefault("warnings", []):
-                    by_key[key]["warnings"].append("duplicate_case_version")
-                continue
             validation = BundleSchemaValidator().validate(bundle)
             if strict and (validation["errors"] or validation["warnings"]):
                 raise ValueError(f"strict ingestion rejected {path}: {validation}")
@@ -133,6 +134,7 @@ class SystemBBatchIngestor:
             "quality_class": quality["quality_class"], "comparison_readiness": quality["comparison_readiness"],
             "ready_for_system_b": validation["ready_for_system_b"], "pipeline_complete": card["pipeline_status"]["pipeline_complete"],
             "case_role": card["case_role"], "executed_validators": v["executed_validators"], "unavailable_validators": v["unavailable_validators"],
+            "case_execution_outcome": card.get("case_execution_outcome"), "scientific_output_class": card.get("scientific_output_class"), "is_zero_claim_case": card.get("is_zero_claim_case", False), "zero_claim_reason": card.get("zero_claim_reason"),
             "skipped_validators": v.get("skipped_validators", []),
             "selected_validators": selection.get("selected_validators", v["executed_validators"]),
             "core_observation_count": e["core_observation_count"], "true_graph_conflict_count": e["true_graph_conflict_count"],

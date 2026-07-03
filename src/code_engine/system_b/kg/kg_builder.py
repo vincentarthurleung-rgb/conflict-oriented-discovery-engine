@@ -38,11 +38,16 @@ class KGBuilder:
         case_id = manifest.get("case_id") or bundle.name
         self.case_ids.add(case_id)
         case_node = f"case:{case_id}"
-        self._add_node(node(case_node, case_id, "case", [case_id], metadata={"case_role": manifest.get("case_type"), "bundle_path": str(bundle)}))
+        self._add_node(node(case_node, case_id, "case", [case_id], metadata={"case_role": manifest.get("case_type"), "bundle_path": str(bundle), "scientific_output_class": manifest.get("scientific_output_class"), "is_zero_claim_case": manifest.get("is_zero_claim_case", False), "zero_claim_reason": manifest.get("zero_claim_reason"), "case_execution_outcome": manifest.get("case_execution_outcome")}))
         for name, scope in (("core_observations.jsonl", "abstract"), ("l35_fulltext_l1_claims.jsonl", "full_text")):
             self._read_claims(bundle / name, case_id, case_node, scope)
         self._add_hypotheses(bundle / "hypothesis_summary.json", case_id, case_node)
         self._add_validators(bundle, case_id, case_node)
+        output_class = manifest.get("scientific_output_class")
+        if output_class:
+            status_id = f"status:{output_class}"
+            self._add_node(node(status_id, output_class, "status", [case_id], metadata={"non_biological_metadata": True, "explanation": manifest.get("zero_claim_reason")}))
+            self._link(stable_id("edge", case_node, status_id), case_node, status_id, "has_status", "has_status", case_id, metadata={"non_biological_metadata": True})
 
     def _read_claims(self, path: Path, case_id: str, case_node: str, scope: str) -> None:
         if not path.is_file():
@@ -111,17 +116,20 @@ class KGBuilder:
 
     def _add_validators(self, bundle: Path, case_id: str, case_node: str) -> None:
         selection = self._json(bundle / "validator_selection_report.json").get("validator_selection", {})
-        executed = set(selection.get("executed_validators", []))
-        unavailable = set(selection.get("recommended_but_unavailable", []))
         external = self._json(bundle / "l7_external_validation_summary.json")
-        for validator in sorted(executed | unavailable):
+        executed = set(selection.get("executed_validators", external.get("executed_validators", [])))
+        skipped = set(selection.get("skipped_validators", external.get("skipped_validators", [])))
+        unavailable = set(selection.get("recommended_but_unavailable", []))
+        results = external.get("validator_results", {})
+        for validator in sorted(executed | skipped | unavailable | set(results)):
             validator_id = f"validator:{validator}"
-            status = "executed" if validator in executed else "recommended_unavailable"
-            metadata = {"status": status}
+            result = results.get(validator, {})
+            status = result.get("status") or ("executed" if validator in executed else "skipped" if validator in skipped else "recommended_unavailable")
+            metadata = {"status": status, "interpretation": result.get("interpretation"), "mapping_status": result.get("mapping_status"), "non_biological_metadata": True}
             if validator in executed:
                 metadata.update({"external_validation_status": external.get("status"), "interpretation_distribution": external.get("interpretation_distribution", {}), "biological_interpretation": external.get("biological_interpretation"), "overall_validation_score": external.get("overall_validation_score")})
             self._add_node(node(validator_id, validator, "validator", [case_id], metadata=metadata))
-            self._link(stable_id("edge", case_node, validator_id), case_node, validator_id, status, "validated_by", case_id, metadata=metadata)
+            self._link(stable_id("edge", case_node, validator_id), case_node, validator_id, "has_validator_result", "has_validator_result", case_id, metadata=metadata)
 
     def _entity(self, label: str, case_id: str) -> str:
         node_id = entity_id(label)
