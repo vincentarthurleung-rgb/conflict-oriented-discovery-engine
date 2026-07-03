@@ -61,7 +61,7 @@ class DashboardData:
             "executed_validator_counts": batch.get("executed_validator_counts", {}),
             "recommended_unavailable_validator_counts": batch.get("recommended_unavailable_validator_counts", {}),
             "primary_next_step": batch.get("primary_next_step") or self.read("recommendations").get("primary_recommendation"),
-            "warnings": self.warnings(),
+            "warnings": [item for item in self.warnings() if "duplicate_case_version" not in item],
         }
 
     def comparison(self):

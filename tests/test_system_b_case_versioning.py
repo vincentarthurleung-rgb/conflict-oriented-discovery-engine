@@ -1,3 +1,4 @@
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +13,9 @@ class CaseVersioningTests(unittest.TestCase):
             registry = root / "registry.json"
             ingestor = SystemBBatchIngestor()
             first = ingestor.run(["case_bundles"], root, registry)
-            second = ingestor.run(["case_bundles"], root, registry)
+            duplicate_root = root / "preserved"
+            shutil.copytree("case_bundles/metformin_ampk_cancer", duplicate_root / "case_001")
+            second = ingestor.run([duplicate_root], root, registry)
             self.assertEqual(first["registry"]["cases"][0]["case_version"], "v1")
             self.assertEqual(second["registry"]["case_count"], 1)
             self.assertIn("duplicate_case_version", second["registry"]["cases"][0]["warnings"])

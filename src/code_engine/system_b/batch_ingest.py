@@ -36,8 +36,8 @@ def discover_bundles(roots: Iterable[str | Path], case_glob: str = "*") -> list[
         root = Path(root_value)
         if not root.is_dir():
             continue
-        found.extend(path for path in root.glob(case_glob) if path.is_dir() and (path / "case_bundle_manifest.json").is_file())
-    return sorted(found, key=lambda path: str(path))
+        found.extend(sorted((path for path in root.glob(case_glob) if path.is_dir() and (path / "case_bundle_manifest.json").is_file()), key=lambda path: str(path)))
+    return found
 
 
 class SystemBBatchIngestor:
@@ -60,11 +60,16 @@ class SystemBBatchIngestor:
             version = manifest.get("case_version") or "v1"
             key = (bundle["case_id"], version)
             if key in by_key and not overwrite:
+                existing_path = Path(by_key[key].get("bundle_path", ""))
+                if existing_path and existing_path.resolve() == path.resolve():
+                    by_key[key]["warnings"] = [item for item in by_key[key].get("warnings", []) if item != "duplicate_case_version"]
+                    continue
                 warning = f"duplicate_case_version: {key[0]}:{key[1]}"
                 if strict:
                     raise ValueError(warning)
                 batch_warnings.append(warning)
-                by_key[key].setdefault("warnings", []).append("duplicate_case_version")
+                if "duplicate_case_version" not in by_key[key].setdefault("warnings", []):
+                    by_key[key]["warnings"].append("duplicate_case_version")
                 continue
             validation = BundleSchemaValidator().validate(bundle)
             if strict and (validation["errors"] or validation["warnings"]):
