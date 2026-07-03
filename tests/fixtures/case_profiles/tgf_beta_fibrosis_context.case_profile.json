@@ -1,0 +1,10 @@
+{
+  "case_id": "tgf_beta_fibrosis_context",
+  "query": "TGF-beta SMAD fibrosis EMT context",
+  "case_type": "conflict_enriched",
+  "domain_tags": ["pathway_mechanism", "fibrosis", "context_dependent_conflict"],
+  "mechanism_areas": ["TGF-beta", "SMAD2", "SMAD3", "fibrosis", "EMT"],
+  "genes": ["SMAD2", "SMAD3"],
+  "validation_needs": ["post_cutoff_literature", "pathway_membership", "gene_set_enrichment"],
+  "time_window": {"discovery_from": 2005, "discovery_to": 2019, "post_cutoff_from": 2020}
+}

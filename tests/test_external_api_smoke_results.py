@@ -21,6 +21,9 @@ class ExternalAPISmokeResultTests(unittest.TestCase):
         self.assertEqual(result["reachable_count"], 6)
         for validator in ("pubmed_post_cutoff", "reactome", "enrichr", "chembl", "opentargets"):
             self.assertEqual(result["results"][validator]["status"], "reachable")
+        for validator in ("pubmed_post_cutoff", "reactome", "enrichr"):
+            self.assertTrue(result["results"][validator]["production_validator_ready"])
+        for validator in ("chembl", "opentargets"):
             self.assertFalse(result["results"][validator]["production_validator_ready"])
         self.assertTrue(result["results"]["pmc_oa"]["production_validator_ready"])
 

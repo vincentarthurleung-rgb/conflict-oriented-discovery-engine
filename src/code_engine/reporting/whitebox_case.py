@@ -88,7 +88,7 @@ def _core_rows(artifacts: Path) -> list[dict[str, Any]]:
             "query_context_only": bool(item.get("query_context_only", compatibility.get("query_context_only"))),
             "evidence_sentence": item.get("evidence_sentence"), "mechanism_terms": mechanisms,
             "cancer_context_terms": contexts,
-            "case_relevance_label": "metformin_ampk_cancer_core_evidence",
+            "case_relevance_label": "positive_control_core_evidence",
         })
     return rows
 

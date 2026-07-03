@@ -60,7 +60,7 @@ class ExternalAPISmokeTester:
 
     def _request_validator(self, validator, base):
         if validator == "pubmed_post_cutoff":
-            params = {"db": "pubmed", "term": "autophagy cancer chemoresistance", "retmax": "1", "retmode": "json", "tool": os.getenv("NCBI_TOOL", "conflict_oriented_discovery_engine"), "email": os.getenv("NCBI_EMAIL", "")}
+            params = {"db": "pubmed", "term": "biomedical mechanism", "retmax": "1", "retmode": "json", "tool": os.getenv("NCBI_TOOL", "conflict_oriented_discovery_engine"), "email": os.getenv("NCBI_EMAIL", "")}
             if os.getenv("NCBI_API_KEY"): params["api_key"] = os.environ["NCBI_API_KEY"]
             return self._request(urllib.request.Request(base.rstrip("/") + "/esearch.fcgi?" + urllib.parse.urlencode(params), headers={"Accept": "application/json"}))
         if validator == "pmc_oa":
@@ -73,11 +73,11 @@ class ExternalAPISmokeTester:
             url = base.rstrip("/") + "/molecule/search.json?" + urllib.parse.urlencode({"q": "rapamycin", "limit": "1"})
             return self._request(urllib.request.Request(url, headers={"Accept": "application/json"}))
         if validator == "opentargets":
-            query = '{ search(queryString: "MTOR", entityNames: ["target"], page: {index: 0, size: 1}) { total hits { id name entity } } }'
+            query = '{ search(queryString: "TP53", entityNames: ["target"], page: {index: 0, size: 1}) { total hits { id name entity } } }'
             return self._request(urllib.request.Request(base, data=json.dumps({"query": query}).encode(), headers={"Content-Type": "application/json", "Accept": "application/json"}, method="POST"))
         if validator == "enrichr":
             boundary = "----SystemBSmokeBoundary"
-            fields = {"list": "ATG5\nATG7\nBECN1\nMTOR\nULK1", "description": "System B API smoke test"}
+            fields = {"list": "TP53\nEGFR", "description": "System B API smoke test"}
             chunks = []
             for name, value in fields.items():
                 chunks.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n")

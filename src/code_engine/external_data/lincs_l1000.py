@@ -77,7 +77,7 @@ def prepare_lincs_dataset(*, dataset: str, data_root: str | Path, manifest_path:
     status = {"dataset_id": dataset, "raw_files_present": not (missing_required or missing_optional),
         "required_files_present": not missing_required, "missing_required_files": missing_required,
         "missing_optional_files": missing_optional, "unpacked_gctx_present": unpacked_matrix.exists(),
-        "sha512_verified": checksum_status, "index_built": (_rooted(root, manifest["index_dir"], dataset, "index") / "metformin_index_summary.json").exists(),
+        "sha512_verified": checksum_status, "index_built": any(_rooted(root, manifest["index_dir"], dataset, "index").glob("*_index_summary.json")),
         "created_at": datetime.now(timezone.utc).isoformat(), "code_version": "code_engine", "file_sizes": sizes, "file_hashes": hashes,
         "raw_dir": str(raw), "unpacked_dir": str(unpacked), "check_requested": bool(check), "unpack_requested": bool(unpack)}
     local = _rooted(root, "", dataset, "manifests") / f"{dataset}_local_manifest.json"; local.parent.mkdir(parents=True, exist_ok=True)

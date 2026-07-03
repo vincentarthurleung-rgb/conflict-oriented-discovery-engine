@@ -133,6 +133,7 @@ class SystemBBatchIngestor:
             "quality_class": quality["quality_class"], "comparison_readiness": quality["comparison_readiness"],
             "ready_for_system_b": validation["ready_for_system_b"], "pipeline_complete": card["pipeline_status"]["pipeline_complete"],
             "case_role": card["case_role"], "executed_validators": v["executed_validators"], "unavailable_validators": v["unavailable_validators"],
+            "skipped_validators": v.get("skipped_validators", []),
             "selected_validators": selection.get("selected_validators", v["executed_validators"]),
             "core_observation_count": e["core_observation_count"], "true_graph_conflict_count": e["true_graph_conflict_count"],
             "formal_hypothesis_count": e["formal_hypothesis_count"], "manual_review_followup_count": e["manual_review_followup_count"],
@@ -153,9 +154,10 @@ class SystemBBatchIngestor:
         executed = set(case.get("executed_validators", []))
         selected = set(case.get("selected_validators", []))
         unavailable = set(case.get("unavailable_validators", []))
+        skipped = set(case.get("skipped_validators", []))
         row = {"case_id": case["case_id"]}
         for validator in VALIDATORS:
-            row[validator] = "executed" if validator in executed else ("selected_not_executed" if validator in selected else ("recommended_unavailable" if validator in unavailable else "unknown"))
+            row[validator] = "executed" if validator in executed else ("skipped" if validator in skipped else ("selected_not_executed" if validator in selected else ("recommended_unavailable" if validator in unavailable else "unknown")))
         return row
 
     @staticmethod
@@ -199,7 +201,7 @@ class SystemBBatchIngestor:
         infrastructure = [f"{validator} production validator" for validator in ("pubmed_post_cutoff", "reactome", "enrichr") if unavailable[validator]]
         return {
             "primary_recommendation": primary, "suggested_case_type": suggested,
-            "suggested_case_examples": ["autophagy_cancer_chemoresistance", "tgf_beta_cancer_context", "ros_apoptosis_cancer", "nfkb_inflammation_cancer", "ferroptosis_drug_resistance"],
+            "suggested_case_examples": [],
             "recommended_flags": ["--enable-fulltext-confirmation", "--fulltext-max-papers 20", "--fulltext-max-sections-per-paper 12", "--fulltext-max-total-chunks 200"],
             "infrastructure_gaps_to_address": infrastructure,
         }

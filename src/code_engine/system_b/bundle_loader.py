@@ -18,6 +18,9 @@ class CaseBundleLoader:
     }
     OPTIONAL_FILES = (
         "l7_lincs_validation_summary.json",
+        "l7_pubmed_post_cutoff_summary.json", "l7_pubmed_post_cutoff_results.jsonl",
+        "l7_reactome_summary.json", "l7_reactome_results.jsonl",
+        "l7_enrichr_summary.json", "l7_enrichr_results.jsonl",
         "l35_fulltext_retrieval_summary.json",
         "l35_fulltext_l1_summary.json",
         "l35_fulltext_conflict_confirmation_summary.json",

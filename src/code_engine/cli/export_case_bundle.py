@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from code_engine.validation.case_routing import load_case_domain_profile
 
-ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
+ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l7_pubmed_post_cutoff_summary.json","l7_pubmed_post_cutoff_results.jsonl","l7_reactome_summary.json","l7_reactome_results.jsonl","l7_enrichr_summary.json","l7_enrichr_results.jsonl","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
 REQUIRED = {"case_domain_profile.json","validator_selection_report.json","pipeline_stage_summary.json","l7_external_validation_summary.json","whitebox_case_report.md"}
 def _json(path:Path)->dict:
     try: return json.loads(path.read_text(encoding="utf-8"))
@@ -33,7 +33,7 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
         if not (artifacts/name).is_file(): export_warnings.append(f"missing_artifact: {name}")
     core=_json(artifacts/"core_observation_summary.json"); conflict=_json(artifacts/"graph_conflict_summary.json"); hypothesis=_json(artifacts/"hypothesis_summary.json"); ext=_json(artifacts/"l7_external_validation_summary.json"); lincs=_json(artifacts/"l7_lincs_validation_summary.json")
     source_id=_json(run/"artifacts/rebuild_provenance.json").get("source_run_id") or _json(artifacts/"case_bundle_manifest.json").get("source_run_id")
-    required_missing=sorted(REQUIRED & set(missing)); executed=selection.get("executed_validators",[])
+    required_missing=sorted(REQUIRED & set(missing)); executed=ext.get("executed_validators",selection.get("executed_validators",[]))
     validation={**lincs,**ext}; interpretation=validation.get("interpretation") or validation.get("biological_interpretation"); retrieval=_json(artifacts/"l35_fulltext_retrieval_summary.json"); fulltext_l1=_json(artifacts/"l35_fulltext_l1_summary.json"); confirmation=_json(artifacts/"l35_fulltext_conflict_confirmation_summary.json"); fulltext={**retrieval,**fulltext_l1,**confirmation}
     if not interpretation and validation.get("interpretation_distribution"): interpretation=max(validation["interpretation_distribution"],key=validation["interpretation_distribution"].get)
     existing=_json(artifacts/"case_bundle_manifest.json")
@@ -44,6 +44,7 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
     manifest={"case_id":profile.case_id,"query":profile.query,"case_type":profile.case_type,"source_run_id":source_id,"final_run_id":run.name,
       "source_run_dir":str(run.parent/source_id) if source_id else None,"final_run_dir":str(run),"pipeline_complete":not required_missing,
       "pipeline_mode":"abstract_plus_domain_routed_external_validation","executed_validators":executed,
+      "skipped_validators":ext.get("skipped_validators",selection.get("skipped_validators",[])),
       "recommended_but_unavailable_validators":selection.get("recommended_but_unavailable",[]),"blocked_validators":selection.get("blocked_required_validators",[]),
       "core_observation_count":int(core_count or 0),"true_graph_conflict_count":int(_canonical(conflict,"true_graph_conflict_count",export_warnings,"graph_conflict_summary.json",default=existing.get("true_graph_conflict_count",0)) or 0),
       **hypothesis_counts,

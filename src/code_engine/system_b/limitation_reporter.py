@@ -12,7 +12,7 @@ class LimitationReporter:
         if m.get("case_type") == "positive_control_whitebox":
             limitations.append("This is a positive-control white-box case, not a true conflict-discovery case.")
         if "lincs_l1000" in m.get("executed_validators", []):
-            limitations.append("LINCS L1000 provides transcriptomic consistency evidence, not direct AMPK phosphorylation validation.")
+            limitations.append("LINCS L1000 provides transcriptomic consistency evidence, not direct biochemical mechanism validation.")
         interpretation = card.get("validation_summary", {}).get("lincs_interpretation")
         if interpretation == "mixed":
             limitations.append("External validation is mixed, not supportive.")

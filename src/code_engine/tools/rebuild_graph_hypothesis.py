@@ -180,7 +180,7 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
         }
     if "l7" in stages and selection and "lincs_l1000" in selection["selected_validators"]:
         from code_engine.validation.lincs_local import LincsLocalValidator
-        perturbagen = case_profile_value.query.split()[0] if case_profile_value and case_profile_value.query.split() else "metformin"
+        perturbagen = case_profile_value.query.split()[0] if case_profile_value and case_profile_value.query.split() else None
         lincs_summary = LincsLocalValidator().validate_run(
             output, external_data_root=external_data_root, dataset=lincs_dataset,
             perturbagen=perturbagen,

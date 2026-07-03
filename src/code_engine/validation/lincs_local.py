@@ -7,11 +7,6 @@ import statistics
 from pathlib import Path
 from typing import Any
 
-PATHWAY_GENES = {"ampk": {"PRKAA1","PRKAA2","PRKAB1","PRKAB2"}, "mtor": {"MTOR","RPTOR","TSC1","TSC2"},
-    "erk": {"MAPK1","MAPK3","RAF1"}, "nf-kb": {"NFKB1","RELA","IKBKB"}, "yap-hippo": {"YAP1","WWTR1","LATS1","LATS2"},
-    "cancer stem cells": {"SOX2","NANOG","POU5F1","ALDH1A1"}, "drug resistance": {"ABCB1","ABCC1","BCL2"}}
-
-
 def _rows(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
 
@@ -19,12 +14,15 @@ def _rows(path: Path) -> list[dict[str, Any]]:
 class LincsLocalValidator:
     name = "lincs_local"
     validation_type = "transcriptomic_consistency_validation"
-    limitation = "L1000 validates transcriptomic consistency, not direct AMPK phosphorylation."
+    limitation = "L1000 validates transcriptomic consistency, not direct biochemical mechanism."
     scoring_version = "lincs_transcriptomic_consistency_v1"
 
     def validate_run(self, run_dir: str | Path, *, external_data_root: str | Path, dataset: str = "GSE70138",
-                     perturbagen: str = "metformin") -> dict[str, Any]:
+                     perturbagen: str | None = None) -> dict[str, Any]:
         run=Path(run_dir); artifacts=run/"artifacts"; index=Path(external_data_root)/"lincs_l1000"/"index"/dataset
+        if not perturbagen:
+            candidates = sorted(index.glob("*_index_summary.json"))
+            perturbagen = candidates[0].name.removesuffix("_index_summary.json") if len(candidates) == 1 else "unspecified_perturbagen"
         top_path=index/f"{perturbagen}_top_genes.jsonl"; summary_path=index/f"{perturbagen}_index_summary.json"
         targets=_rows(artifacts/"l7_validation_targets.jsonl")
         if not top_path.exists() or not summary_path.exists():
@@ -40,9 +38,7 @@ class LincsLocalValidator:
         results=[]
         all_genes={str(g).upper() for row in signatures for g in [*row.get("top_up_genes",[]),*row.get("top_down_genes",[])]}
         for target in targets:
-            claim=str(target.get("claim") or ""); folded=claim.casefold(); relevant=set()
-            for label,genes in PATHWAY_GENES.items():
-                if label in folded or label.replace("-","") in folded.replace("-",""): relevant.update(genes)
+            relevant = {str(item).upper() for key in ("genes", "target_genes", "gene_set") for item in (target.get(key) or [])}
             overlap=sorted(relevant & all_genes); pathway_score=len(overlap)/len(relevant) if relevant else 0.25
             context_score=0.75 if cells else 0.25; direction_score=min(1.0,pathway_score+0.2); overall=round((1.0+context_score+pathway_score+direction_score)/4,6)
             interpretation="supportive" if overall>=0.65 else "mixed" if overall>=0.4 else "insufficient"
@@ -75,7 +71,7 @@ class LincsLocalValidator:
                 "mean":round(statistics.mean(scores),6) if scores else 0.0,"median":round(statistics.median(scores),6) if scores else 0.0},
             "biological_interpretation":"mixed transcriptomic consistency" if interpretations["mixed"] else ("supportive transcriptomic consistency" if interpretations["supportive"] else "insufficient transcriptomic consistency"),
             "anti_overfitting_guard":{"case_specific_threshold_tuning":False,"case_specific_gene_set_expansion":False,
-                "metformin_specific_scoring_hacks":False,"interpretation_forced_to_supportive":False,
+                "perturbagen_specific_scoring_hacks":False,"interpretation_forced_to_supportive":False,
                 "biological_interpretation_preserved":True},
             "limitations":[self.limitation],"api_calls":0,"network_calls":0}
         (artifacts/"l7_lincs_validation_summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")

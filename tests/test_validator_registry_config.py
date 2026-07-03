@@ -8,7 +8,9 @@ class ValidatorRegistryConfigTests(unittest.TestCase):
         payload = json.loads(Path("configs/validation/validator_registry.json").read_text())
         specs = {item["validator_id"]: item for item in payload["validators"]}
         self.assertEqual(specs["lincs_l1000"]["status"], "runnable")
-        for name in ("reactome", "enrichr", "opentargets", "chembl", "uniprot", "string", "geo", "pubmed_post_cutoff"):
+        for name in ("reactome", "enrichr", "pubmed_post_cutoff"):
+            self.assertEqual(specs[name]["status"], "runnable")
+        for name in ("opentargets", "chembl", "uniprot", "string", "geo"):
             self.assertNotEqual(specs[name]["status"], "runnable")
 
 

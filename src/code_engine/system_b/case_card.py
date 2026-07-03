@@ -29,6 +29,7 @@ class CaseCardBuilder:
             )},
             "validation_summary": {
                 "executed_validators": m.get("executed_validators", []),
+                "skipped_validators": m.get("skipped_validators", ext.get("skipped_validators", [])),
                 "unavailable_validators": m.get("recommended_but_unavailable_validators", []),
                 "external_validation_status": m.get("external_validation_status", ext.get("status", "unknown")),
                 "lincs_interpretation": interpretation,
@@ -61,7 +62,7 @@ class CaseCardBuilder:
                     "positive-control evidence can be represented without false conflict inflation",
                 ],
                 "what_this_case_does_not_support": [
-                    "true conflict discovery", "direct AMPK phosphorylation validation", "strong external validation support",
+                    "true conflict discovery", "direct biochemical mechanism validation", "strong external validation support",
                     "production readiness of non-LINCS validators",
                 ],
             }

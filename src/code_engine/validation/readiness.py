@@ -59,7 +59,7 @@ def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
     except (OSError, json.JSONDecodeError, AttributeError):
         smoke_data = {}
     if profile:
-        routed = route_case_validators(profile, external_data_root=external_data_root)
+        routed = route_case_validators(profile, external_data_root=external_data_root, network_allowed=network_allowed)
         routing.update(routed); routing["executed_if_run"] = list(routed["selected_validators"])
         required = set(profile.expected_validators)
         validator_policy = dict(getattr(profile, "validator_policy", {}) or {})
@@ -92,6 +92,10 @@ def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
                 "api_reachable": smoke.get("status") == "reachable", "production_validator_ready": production_ready,
                 "index_summary": {k: detail.get(k) for k in ("selected_signature_count","selected_gene_count","compact_matrix_orientation")} if detail else None})
         blocking.extend(f"required validator unavailable: {v}" for v in routing["blocked_required_validators"])
+        network_blocked=[v for v in routed["recommended_but_unavailable"] if decisions.get(v,{}).get("availability")=="network_disabled" and v in required]
+        if network_blocked:
+            reason="network required for production v1 validators or PMC OA fulltext"
+            if reason not in blocking: blocking.append(reason)
     policy=dict(getattr(profile,"fulltext_policy",{}) or {}); fulltext_enabled=bool(policy.get("enabled") or (profile and ("full_text_conflict_confirmation" in profile.validation_needs or profile.case_type=="conflict_enriched")))
     cache_ready=Path("data/cache/pmc_idconv").is_dir()
     ft_blocking=[] if (not fulltext_enabled or network_allowed or cache_ready) else ["pmc_oa_fulltext_requires_network_or_cache"]

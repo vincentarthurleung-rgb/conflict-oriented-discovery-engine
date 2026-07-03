@@ -206,7 +206,7 @@ def render_run_report(state: RunState, run_dir: str | Path, *, final: bool = Fal
                   f"- Matched {lincs_summary.get('perturbagen', 'perturbagen')} signatures: {lincs_summary.get('matched_signature_count', 0)}",
                   f"- Validation executed: `{str(lincs_summary.get('validation_executed', False)).lower()}`",
                   f"- Missing external data: `{json.dumps(lincs_summary.get('missing_external_data', []), ensure_ascii=False)}`",
-                  "- Limitation: L1000 validates transcriptomic consistency, not direct AMPK phosphorylation.", ""]
+                  "- Limitation: L1000 validates transcriptomic consistency, not direct biochemical mechanism.", ""]
     timeline_path = directory / "artifacts" / "conflict_evidence_timelines.jsonl"
     timelines = []
     if timeline_path.exists():

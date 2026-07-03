@@ -14,6 +14,7 @@
   ],
   "disease_areas": ["cancer", "chemoresistance"],
   "mechanism_areas": ["autophagy", "apoptosis", "chemoresistance", "cell survival", "mTOR", "AMPK", "BECN1", "ATG5", "ATG7"],
+  "genes": ["BECN1", "ATG5", "ATG7", "MTOR", "ULK1", "PRKAA1", "PRKAA2"],
   "entity_types": ["pathway", "gene", "disease", "drug", "context"],
   "intervention_types": ["chemotherapy", "autophagy_modulator"],
   "validation_needs": ["post_cutoff_literature", "pathway_membership", "gene_set_enrichment", "drug_target_annotation", "target_disease_association", "full_text_conflict_confirmation"],

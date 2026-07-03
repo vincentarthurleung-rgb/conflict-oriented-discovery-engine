@@ -15,6 +15,8 @@ class CaseDomainProfile(CODEBaseModel):
     case_id: str
     query: str
     case_type: str
+    case_role: str | None = None
+    domain_tags: list[str] = Field(default_factory=list)
     disease_areas: list[str] = Field(default_factory=list)
     mechanism_areas: list[str] = Field(default_factory=list)
     entity_types: list[str] = Field(default_factory=list)
@@ -38,6 +40,7 @@ class CaseDomainProfile(CODEBaseModel):
         }
         return cls(
             case_id=case_id, query=query, case_type=domain_id,
+            domain_tags=[domain_id],
             entity_types=list(domain_profile.get("key_entity_types") or []),
             validation_needs=needs_by_domain.get(domain_id, []),
             expected_validators=list(domain_profile.get("preferred_validators") or []),
@@ -67,6 +70,7 @@ def route_case_validators(
     registry_path: str | Path = "configs/validation/validator_registry.json",
     mapping_path: str | Path = "configs/validation/domain_to_validator_map.json",
     manual_cli_validators: list[str] | None = None,
+    network_allowed: bool = False,
 ) -> dict[str, Any]:
     registry = {item["validator_id"]: item for item in _load(registry_path)["validators"]}
     matched: dict[str, list[str]] = {}
@@ -85,11 +89,15 @@ def route_case_validators(
             required.append(validator_id)
         matched.setdefault(validator_id, []).append("case_profile_expected_validator")
     for validator_id in profile.optional_validators:
+        if validator_id == "pmc_oa":
+            continue
         if validator_id not in optional and validator_id not in required:
             optional.append(validator_id)
         matched.setdefault(validator_id, []).append("case_profile_optional_validator")
 
     excluded = set(profile.excluded_validators)
+    profile_optional = [item for item in profile.optional_validators if item != "pmc_oa"]
+    optional = list(dict.fromkeys(profile_optional + optional))
     manual = list(dict.fromkeys(manual_cli_validators or []))
     candidates = list(dict.fromkeys(required + optional + manual))
     decisions = []
@@ -101,6 +109,8 @@ def route_case_validators(
             availability = "not_present"
         else:
             availability = spec["status"]
+        if spec and spec.get("network_required") and not network_allowed and availability == "runnable":
+            availability = "network_disabled"
         resource_available = True
         if validator_id == "lincs_l1000":
             root = Path(external_data_root) / "lincs_l1000" / "index" / lincs_dataset

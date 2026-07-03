@@ -6,6 +6,7 @@ from pathlib import Path
 from code_engine.cli.export_case_bundle import export_case_bundle
 from code_engine.validation.case_routing import load_case_domain_profile
 from code_engine.validation.readiness import check_case_readiness, write_readiness_report
+from code_engine.validation.external_api_smoke import load_dotenv
 
 FINAL_ARTIFACTS=("case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","case_bundle_manifest.json","pipeline_stage_summary.json","l7_external_validation_summary.json","whitebox_case_report.md")
 def build_parser():
@@ -28,7 +29,7 @@ def _audit(profile, decision, readiness, source_run=None, final_run=None, bundle
     lines=[f"# {profile.case_id} Run Case Audit","","## Executive Decision","",decision,"","## Runs","",f"- source run: {source_run or 'not created'}",f"- final run: {final_run or 'not created'}","","## Readiness","",f"- LLM ready: {readiness['llm']['ready']}",f"- search plan ready: {readiness['search_plan']['ready']}",f"- validator routing ready: {not readiness['routing']['blocked_required_validators']}","","## Stage Completeness","",f"- final artifacts present: {bool(final_run and all((Path(final_run)/'artifacts'/x).is_file() for x in FINAL_ARTIFACTS))}","","## Key Metrics","",f"- executed validators: {(manifest or {}).get('executed_validators',[])}",f"- unavailable validators: {(manifest or {}).get('recommended_but_unavailable_validators',readiness['routing']['recommended_but_unavailable'])}",f"- true graph conflicts: {(manifest or {}).get('true_graph_conflict_count',0)}",f"- external validation: {(manifest or {}).get('external_validation_status')}","","## Case Bundle","",f"- path: {bundle or 'not exported'}",f"- ready_for_system_b: {payload['ready_for_system_b']}","","## Warnings",""]+[f"- {x}" for x in warnings or ["none"]]+["","## Final Recommendation","","Configure missing resources or proceed with the exported bundle according to the decision above."]
     return payload,"\n".join(lines)+"\n"
 def main(argv=None)->int:
-    a=build_parser().parse_args(argv); profile=load_case_domain_profile(a.case_profile); policy=dict(profile.fulltext_policy or {})
+    a=build_parser().parse_args(argv); load_dotenv(); profile=load_case_domain_profile(a.case_profile); policy=dict(profile.fulltext_policy or {})
     fulltext_enabled=not a.disable_fulltext_confirmation and (a.enable_fulltext_confirmation or bool(policy.get("enabled")) or "full_text_conflict_confirmation" in profile.validation_needs or profile.case_type=="conflict_enriched")
     readiness=check_case_readiness(a.case_profile,a.search_plan_file,a.external_data_root,network_allowed=a.network); write_readiness_report(readiness)
     source=[sys.executable,"-m","code_engine.cli.run","--query",profile.query,"--execute",
@@ -49,6 +50,8 @@ def main(argv=None)->int:
     try:
         first=subprocess.run(source,check=True,text=True,capture_output=True); source_data=json.loads(first.stdout.strip().splitlines()[-1]); source_run=Path(source_data["run_dir"])
         second=subprocess.run(rebuild(source_run),check=True,text=True,capture_output=True); final_data=json.loads(second.stdout.strip().splitlines()[-1]); final_run=Path(final_data["run_dir"])
+        from code_engine.validation.production_v1_runner import run_production_v1_validators
+        run_production_v1_validators(final_run,a.case_profile,a.search_plan_file,readiness["routing"]["selected_validators"],network_enabled=a.network,unavailable=readiness["routing"]["recommended_but_unavailable"])
         from code_engine.fulltext.stage import run_l35_pmc_oa_stage
         from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
         fulltext_client=build_l1_client_from_env_or_config(os.getenv("L1_PROVIDER"),os.getenv("MODEL_NAME"),read_timeout_seconds=a.fulltext_l1_read_timeout_seconds,max_retries=a.fulltext_l1_max_retries) if a.api and fulltext_enabled else None

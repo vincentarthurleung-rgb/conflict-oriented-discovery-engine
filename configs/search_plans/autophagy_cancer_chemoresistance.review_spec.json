@@ -1,0 +1,25 @@
+{
+  "case_id": "autophagy_cancer_chemoresistance",
+  "case_type": "conflict_enriched",
+  "paper_year_from": 2000,
+  "paper_year_to": 2020,
+  "temporal_role": "discovery",
+  "context_terms_required": ["cancer", "tumor", "chemotherapy", "therapy", "chemoresistance"],
+  "required_conflict_groups": ["pro_survival_chemoresistance", "pro_death_sensitization"],
+  "intended_conflict_axes": [
+    "autophagy promotes chemoresistance/cell survival",
+    "autophagy promotes cell death/chemosensitization",
+    "autophagy tumor-suppressive vs tumor-promoting context"
+  ],
+  "query_specs": [
+    {"group": "pro_survival_chemoresistance", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND (chemoresistance[Title/Abstract] OR \"chemotherapy resistance\"[Title/Abstract]) AND (survival[Title/Abstract] OR protective[Title/Abstract]))"},
+    {"group": "pro_survival_chemoresistance", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND chemotherapy[Title/Abstract] AND \"cell survival\"[Title/Abstract])"},
+    {"group": "pro_death_sensitization", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND inhibition[Title/Abstract] AND (sensitization[Title/Abstract] OR chemosensitization[Title/Abstract]))"},
+    {"group": "pro_death_sensitization", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND induction[Title/Abstract] AND (\"cell death\"[Title/Abstract] OR apoptosis[Title/Abstract]))"},
+    {"group": "tumor_suppressive", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND (\"tumor suppression\"[Title/Abstract] OR \"tumor suppressive\"[Title/Abstract]))"},
+    {"group": "context_dual_role", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND (\"dual role\"[Title/Abstract] OR \"context dependent\"[Title/Abstract] OR context-dependent[Title/Abstract]))"},
+    {"group": "therapy_context", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND (therapy[Title/Abstract] OR treatment[Title/Abstract]) AND (resistance[Title/Abstract] OR sensitization[Title/Abstract] OR apoptosis[Title/Abstract]))"},
+    {"group": "mechanism_pathway", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND (BECN1[Title/Abstract] OR ATG5[Title/Abstract] OR ATG7[Title/Abstract]) AND (chemotherapy[Title/Abstract] OR resistance[Title/Abstract]))"},
+    {"group": "mechanism_pathway", "query": "(autophagy[Title/Abstract] AND cancer[Title/Abstract] AND (MTOR[Title/Abstract] OR ULK1[Title/Abstract] OR AMPK[Title/Abstract]) AND (survival[Title/Abstract] OR apoptosis[Title/Abstract]))"}
+  ]
+}

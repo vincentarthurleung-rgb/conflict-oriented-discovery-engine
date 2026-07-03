@@ -2,11 +2,12 @@
   "mapping_version": "1.0",
   "rules": [
     {"rule_id":"drug_perturbation_transcriptomic","when":{"validation_needs":["transcriptomic_perturbation"],"entity_types":["drug"]},"recommend":{"required":["lincs_l1000"],"optional":["chembl"]}},
-    {"rule_id":"pathway_mechanism","when":{"validation_needs":["pathway_membership"]},"recommend":{"required":[],"optional":["reactome","enrichr"]}},
+    {"rule_id":"pathway_mechanism","when":{"validation_needs":["pathway_membership"]},"recommend":{"required":[],"optional":["reactome"]}},
+    {"rule_id":"gene_set_enrichment","when":{"validation_needs":["gene_set_enrichment"]},"recommend":{"required":[],"optional":["enrichr"]}},
     {"rule_id":"target_disease","when":{"validation_needs":["target_disease_association"]},"recommend":{"required":[],"optional":["opentargets"]}},
     {"rule_id":"protein_interaction","when":{"validation_needs":["protein_interaction"]},"recommend":{"required":[],"optional":["string","uniprot"]}},
     {"rule_id":"temporal_literature","when":{"validation_needs":["post_cutoff_literature"]},"recommend":{"required":[],"optional":["pubmed_post_cutoff"]}},
     {"rule_id":"expression_dataset","when":{"validation_needs":["expression_dataset"]},"recommend":{"required":[],"optional":["geo"]}},
-    {"rule_id":"drug_target_annotation","when":{"validation_needs":["drug_target_annotation"]},"recommend":{"required":[],"optional":["chembl","uniprot"]}}
+    {"rule_id":"drug_target_annotation","when":{"validation_needs":["drug_target_annotation"]},"recommend":{"required":[],"optional":["chembl"]}}
   ]
 }
