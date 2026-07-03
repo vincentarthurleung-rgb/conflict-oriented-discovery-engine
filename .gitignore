@@ -49,6 +49,8 @@ quarantine/
 cleanup_reports/
 tmp_cleanup/
 audit_reports/
+readiness_reports/
+case_bundles/
 runs_archive/
 
 # Explicitly allow small curated/demo fixtures if added later
@@ -60,3 +62,4 @@ runs_archive/
 !data/metadata/global_manifest.json
 !data/metadata/literature_quality_audit.csv
 **/*.egg-info/
+.env
