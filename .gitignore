@@ -65,3 +65,4 @@ runs_archive/
 .env
 preserved_case_bundles/
 system_b_outputs/
+external_api_smoke_reports/

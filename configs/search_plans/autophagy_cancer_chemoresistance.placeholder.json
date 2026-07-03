@@ -1,0 +1,25 @@
+{
+  "artifact_schema_version": "search_plan_placeholder.v1",
+  "case_id": "autophagy_cancer_chemoresistance",
+  "plan_status": "placeholder",
+  "executable": false,
+  "llm_called": false,
+  "purpose": "planner dry-run scaffold; replace with a reviewed frozen_search_plan.v1 before execution",
+  "discovery_window": {
+    "year_from": 2000,
+    "year_to": 2020
+  },
+  "post_cutoff_validation_window": {
+    "year_from": 2021,
+    "year_to": null
+  },
+  "search_intents": [
+    "autophagy AND cancer AND chemoresistance",
+    "autophagy AND apoptosis AND cancer",
+    "autophagy AND chemotherapy resistance",
+    "autophagy AND cell survival AND cancer therapy",
+    "autophagy inhibition AND chemotherapy sensitization",
+    "autophagy induction AND cancer cell death"
+  ],
+  "next_step": "Generate and review a frozen search plan; do not pass this placeholder to a real run."
+}

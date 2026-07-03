@@ -1,0 +1,45 @@
+{
+  "schema_version": "case_domain_profile_v1",
+  "case_id": "autophagy_cancer_chemoresistance",
+  "case_version": "v1",
+  "query": "autophagy cancer chemotherapy resistance apoptosis cell survival",
+  "case_type": "conflict_enriched",
+  "case_role": "conflict_enriched_mechanism_case",
+  "domain_tags": [
+    "pathway_mechanism",
+    "cancer_biology",
+    "chemoresistance",
+    "cell_death_survival",
+    "context_dependent_conflict"
+  ],
+  "disease_areas": ["cancer", "chemoresistance"],
+  "mechanism_areas": ["autophagy", "apoptosis", "chemoresistance", "cell survival", "mTOR", "AMPK", "BECN1", "ATG5", "ATG7"],
+  "entity_types": ["pathway", "gene", "disease", "drug", "context"],
+  "intervention_types": ["chemotherapy", "autophagy_modulator"],
+  "validation_needs": ["post_cutoff_literature", "pathway_membership", "gene_set_enrichment", "drug_target_annotation", "target_disease_association", "full_text_conflict_confirmation"],
+  "expected_validators": ["pubmed_post_cutoff", "reactome", "enrichr"],
+  "optional_validators": ["chembl", "opentargets", "pmc_oa"],
+  "excluded_validators": [],
+  "validator_policy": {
+    "require_production_validators": false,
+    "api_reachability_is_not_runnability": true
+  },
+  "fulltext_policy": {
+    "enabled": true,
+    "source": "pmc_oa",
+    "selection_policy": "conflict_related_only",
+    "max_papers": 20,
+    "include_near_conflicts": true,
+    "require_oa": true,
+    "skip_non_oa": true
+  },
+  "scientific_notes": {
+    "intended_conflict": "Autophagy is reported both as a pro-survival chemoresistance mechanism and as a cell-death or tumor-suppressive mechanism depending on cancer type, treatment, timing, and context.",
+    "do_not_overclaim": [
+      "Do not assume all autophagy is protective or harmful.",
+      "Do not treat abstract-only conflict as full-text confirmed.",
+      "Do not interpret non-OA fulltext absence as negative evidence."
+    ]
+  },
+  "profile_version": "1.0"
+}
