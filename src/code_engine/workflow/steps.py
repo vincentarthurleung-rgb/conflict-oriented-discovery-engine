@@ -187,7 +187,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         object_name = obj.canonical_name if obj.allow_high_confidence_graph_use else (object_hint or {}).get("canonical_name") or item.get("object_raw")
         subject_id = subject.canonical_id if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("canonical_id")
         object_id = obj.canonical_id if obj.allow_high_confidence_graph_use else (object_hint or {}).get("canonical_id")
-        observations.append({
+        observation = {
             **item,
             "observation_id": observation_id,
             "triple_id": observation_id,
@@ -211,7 +211,13 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             "normalization": {"subject": subject.model_dump(), "object": obj.model_dump()},
             "runtime_hint_matches": {"subject": subject_hint, "object": object_hint},
             **decision,
-        })
+        }
+        from code_engine.normalization.graph_eligibility import apply_graph_eligibility
+        observation=apply_graph_eligibility(observation,existing_conflict_eligible=usable)
+        observation["canonical_graph_eligible"]=observation["conflict_reasoning_eligible"]
+        observation["allow_high_confidence_graph_use"]=observation["conflict_reasoning_eligible"]
+        observation["exclude_from_high_confidence_conflict"]=not observation["conflict_reasoning_eligible"]
+        observations.append(observation)
     return observations
 
 
@@ -824,16 +830,20 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
     layer_paths = {
         "l2_retained_observations": run_dir / "artifacts/l2_retained_observations.jsonl",
         "l2_core_graph_observations": run_dir / "artifacts/l2_core_graph_observations.jsonl",
+        "l2_graph_observations": run_dir / "artifacts/l2_graph_observations.jsonl",
         "l2_mechanism_observations": run_dir / "artifacts/l2_mechanism_observations.jsonl",
         "l2_cross_context_mechanism_observations": run_dir / "artifacts/l2_cross_context_mechanism_observations.jsonl",
         "l2_context_observations": run_dir / "artifacts/l2_context_observations.jsonl",
         "l2_review_observations": run_dir / "artifacts/l2_review_observations.jsonl",
         "l2_excluded_observations": run_dir / "artifacts/l2_excluded_observations.jsonl",
     }
-    for key, values in (("l2_retained_observations", retained), ("l2_core_graph_observations", layers["core_canonical_graph"]),
+    graph_observations=[item for item in retained if item.get("graph_observation_eligible")]
+    conflict_observations=[item for item in retained if item.get("conflict_reasoning_eligible")]
+    review_observations=[item for item in retained if item.get("requires_review")]
+    for key, values in (("l2_retained_observations", retained), ("l2_core_graph_observations", conflict_observations), ("l2_graph_observations", graph_observations),
                         ("l2_cross_context_mechanism_observations", layers["cross_context_mechanism_layer"]),
                         ("l2_mechanism_observations", layers["mechanism_layer"]), ("l2_context_observations", layers["context_layer"]),
-                        ("l2_review_observations", layers["review_layer"]), ("l2_excluded_observations", layers["excluded"])):
+                        ("l2_review_observations", review_observations), ("l2_excluded_observations", layers["excluded"])):
         atomic_write_jsonl(layer_paths[key], iter(values))
     exclusion_audit = [{"observation_id": item.get("observation_id"), "paper_id": item.get("paper_id"),
                         "graph_layer": item.get("graph_layer"), "excluded_from_core_reason": item.get("excluded_from_core_reason"),
@@ -901,6 +911,8 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "review_observation_count": len(layers["review_layer"]),
         "excluded_observation_count": len(layers["excluded"]),
         "retained_observation_count": len(retained),
+        "graph_observation_count": len(graph_observations),
+        "conflict_reasoning_observation_count": len(conflict_observations),
         "excluded_reason_counts": dict(excluded_reasons),
         "runtime_entity_hints_used": bool(hints),
         "run_entity_registry_entity_count": len(hints),

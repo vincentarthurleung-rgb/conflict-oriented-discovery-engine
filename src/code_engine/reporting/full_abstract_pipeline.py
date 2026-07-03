@@ -32,7 +32,7 @@ def resolve_l2_observations(run_dir: str | Path) -> tuple[list[dict[str, Any]], 
     provenance = _json(artifacts / "runtime_provenance_report.json")
     source_value = (provenance.get("rebuild_from_run") or {}).get("source_run_dir")
     source = Path(source_value) if source_value else None
-    names = ("core_observations.jsonl", "l2_retained_observations.jsonl", "l2_normalized_observations.jsonl")
+    names = ("l2_graph_observations.jsonl", "core_observations.jsonl", "l2_retained_observations.jsonl", "l2_normalized_observations.jsonl")
     paths = [artifacts / name for name in names]
     if source:
         paths += [source / "artifacts" / name for name in names]
@@ -140,33 +140,19 @@ def _id(prefix:str,value:str)->str: return prefix+"_"+hashlib.sha256(value.encod
 
 def build_l6_mechanism_graph(run_dir: str | Path) -> dict[str, Any]:
     run=Path(run_dir); artifacts=run/"artifacts"; observations,resolution=resolve_l2_observations(run)
-    core=[item for item in observations if item.get("graph_layer")=="core_canonical_graph"]
-    mechanism=[item for item in observations if item.get("graph_layer") in {"core_canonical_graph","mechanism_layer","cross_context_mechanism_layer"}]
-    terms=set()
-    for item in mechanism: terms.update(_terms(item,MECHANISM_TERMS))
-    terms.update(["metformin","AMPK"] if core else [])
-    nodes=[{"node_id":_id("mechanism_node",term),"label":term,"node_type":"mechanism_entity","evidence_level":"abstract"} for term in sorted(terms)]
-    for item in core:
-        oid=str(item.get("observation_id") or item.get("triple_id")); pid=str(item.get("paper_id") or "")
-        nodes += [{"node_id":_id("observation",oid),"label":oid,"node_type":"observation","observation_id":oid},
-                  {"node_id":_id("paper",pid),"label":item.get("title") or pid,"node_type":"paper","paper_id":pid}]
-    nodes=list({row["node_id"]:row for row in nodes}.values())
-    claims=[("metformin","AMPK","activates"),("AMPK","mTOR","inhibits"),("AMPK","ERK/NF-κB","associated_with_inhibition"),
-            ("AMPK","YAP","regulates"),("YAP","Hippo pathway","participates_in"),("AMPK","cancer stem cells","suppresses"),
-            ("AMPK","drug resistance","modulates")]
-    edges=[]
-    for source,target,relation in claims:
-        supporting=[str(item.get("observation_id") or item.get("triple_id")) for item in mechanism if source.casefold() in " ".join(map(str,item.values())).casefold() and target.casefold() in " ".join(map(str,item.values())).casefold()]
-        if supporting or (source,target)==("metformin","AMPK") and core:
-            edges.append({"edge_id":_id("mechanism_edge",f"{source}|{relation}|{target}"),"source":source,"target":target,"relation":relation,
-                          "source_observation_ids":supporting or [str(item.get("observation_id") or item.get("triple_id")) for item in core],
-                          "evidence_level":"abstract","requires_fulltext_confirmation_for_mechanistic_detail":True})
-    paths=[{"path_id":_id("mechanism_path",f"metformin|AMPK|{edge['target']}"),"nodes":["metformin","AMPK",edge["target"]],
-            "edge_ids":[_id("mechanism_edge","metformin|activates|AMPK"),edge["edge_id"]],"evidence_level":"abstract"}
-           for edge in edges if edge["source"]=="AMPK"]
+    mechanism=[item for item in observations if item.get("graph_observation_eligible", item.get("canonical_graph_eligible", item.get("graph_layer") in {"core_canonical_graph","mechanism_layer","cross_context_mechanism_layer"}))]
+    nodes_by_id={};edges=[]
+    for item in mechanism:
+        source_name=item.get("subject_canonical_name") or item.get("subject_raw") or item.get("subject");target_name=item.get("object_canonical_name") or item.get("object_raw") or item.get("object")
+        source_id=item.get("subject_canonical_id") or (_id("unresolved_entity",str(source_name)) if source_name else None);target_id=item.get("object_canonical_id") or (_id("unresolved_entity",str(target_name)) if target_name else None);relation=item.get("relation_family") or item.get("relation_raw")
+        if not all((source_id,target_id,relation)):continue
+        for role,node_id in (("subject",source_id),("object",target_id)):
+            nodes_by_id[node_id]={"node_id":node_id,"label":item.get(f"{role}_canonical_name") or item.get(f"{role}_raw"),"node_type":item.get(f"{role}_entity_type") or "entity","canonical_source":item.get(f"{role}_canonical_source") or ("external" if item.get(f"{role}_canonical_id") else "legacy_unresolved_display_only"),"requires_review":bool(item.get(f"{role}_requires_review") or not item.get(f"{role}_canonical_id"))}
+        oid=str(item.get("observation_id") or item.get("triple_id")); edges.append({"edge_id":_id("mechanism_edge",f"{source_id}|{relation}|{target_id}|{oid}"),"source":source_id,"target":target_id,"relation":relation,"direction":item.get("direction"),"source_observation_ids":[oid],"evidence_level":"abstract","requires_review":bool(item.get("requires_review")),"conflict_reasoning_eligible":bool(item.get("conflict_reasoning_eligible"))})
+    nodes=list(nodes_by_id.values());paths=[]
     summary={"status":"completed" if observations else "blocked","mode":"abstract_level_mechanism_graph","source_observation_count":len(observations),
-        "core_observation_count":len(core),"mechanism_observation_count":len(mechanism),"node_count":len(nodes),"edge_count":len(edges),"path_count":len(paths),
-        "core_paths":[row["nodes"] for row in paths],"mechanism_terms":[term for term in MECHANISM_TERMS if term in terms],"fulltext_required":False,
+        "core_observation_count":sum(bool(x.get("conflict_reasoning_eligible")) for x in mechanism),"graph_observation_count":len(mechanism),"mechanism_observation_count":len(mechanism),"node_count":len(nodes),"edge_count":len(edges),"path_count":len(paths),
+        "core_paths":[],"mechanism_terms":sorted({str(x.get("subject_canonical_name") or x.get("subject_raw")) for x in mechanism}|{str(x.get("object_canonical_name") or x.get("object_raw")) for x in mechanism}),"fulltext_required":False,
         "evidence_level":"abstract","requires_fulltext_confirmation_for_mechanistic_detail":True,"artifact_resolution":resolution,
         "warnings":[] if observations else ["l2_observation_artifacts_not_found"]}
     _write_json(artifacts/"l6_mechanism_graph_summary.json",summary); _write_jsonl(artifacts/"l6_mechanism_nodes.jsonl",nodes); _write_jsonl(artifacts/"l6_mechanism_edges.jsonl",edges); _write_jsonl(artifacts/"l6_mechanism_paths.jsonl",paths)

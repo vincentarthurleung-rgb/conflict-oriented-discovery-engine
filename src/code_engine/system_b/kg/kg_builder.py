@@ -39,7 +39,8 @@ class KGBuilder:
         self.case_ids.add(case_id)
         case_node = f"case:{case_id}"
         self._add_node(node(case_node, case_id, "case", [case_id], metadata={"case_role": manifest.get("case_type"), "bundle_path": str(bundle), "scientific_output_class": manifest.get("scientific_output_class"), "is_zero_claim_case": manifest.get("is_zero_claim_case", False), "zero_claim_reason": manifest.get("zero_claim_reason"), "case_execution_outcome": manifest.get("case_execution_outcome")}))
-        for name, scope in (("core_observations.jsonl", "abstract"), ("l35_fulltext_l1_claims.jsonl", "full_text")):
+        abstract_name="l2_graph_observations.jsonl" if (bundle/"l2_graph_observations.jsonl").is_file() else "core_observations.jsonl"
+        for name, scope in ((abstract_name, "abstract_graph"), ("l35_fulltext_l1_claims.jsonl", "full_text")):
             self._read_claims(bundle / name, case_id, case_node, scope)
         self._add_hypotheses(bundle / "hypothesis_summary.json", case_id, case_node)
         self._add_validators(bundle, case_id, case_node)
@@ -83,7 +84,7 @@ class KGBuilder:
         self.evidence[evidence_id] = evidence
         self._add_node(node(evidence_id, evidence["evidence_sentence"] or evidence_id, "evidence", [case_id], metadata={"source_scope": scope}))
         relation_id = stable_id("edge", case_id, observation_id, source_id, predicate, target_id)
-        self.edges[relation_id] = edge(relation_id, source_id, target_id, predicate, "claim_relation", case_id, polarity=record.get("direction_polarity") or record.get("polarity"), paper_ids=[paper_id] if paper_id else [], evidence_ids=[evidence_id], confidence=record.get("confidence"), source_scope=scope, metadata={"observation_id": observation_id})
+        self.edges[relation_id] = edge(relation_id, source_id, target_id, predicate, "claim_relation", case_id, polarity=record.get("direction") or record.get("direction_polarity") or record.get("polarity"), paper_ids=[paper_id] if paper_id else [], evidence_ids=[evidence_id], confidence=record.get("confidence"), source_scope=scope, metadata={"observation_id": observation_id,"requires_review":bool(record.get("requires_review")),"local_canonicalization_used":bool(record.get("local_canonicalization_used")),"conflict_reasoning_eligible":bool(record.get("conflict_reasoning_eligible"))})
         self._link(stable_id("edge", evidence_id, relation_id), evidence_id, source_id, "derived_from", "derived_from", case_id, evidence_ids=[evidence_id])
         if paper_id:
             self._link(stable_id("edge", evidence_id, paper_id), evidence_id, paper_id, "mentioned_in", "mentioned_in", case_id, evidence_ids=[evidence_id])

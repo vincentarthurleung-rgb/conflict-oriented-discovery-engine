@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from code_engine.validation.case_routing import load_case_domain_profile
 
-ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l7_pubmed_post_cutoff_summary.json","l7_pubmed_post_cutoff_results.jsonl","l7_reactome_summary.json","l7_reactome_results.jsonl","l7_enrichr_summary.json","l7_enrichr_results.jsonl","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
+ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","l2_graph_observations.jsonl","l2_canonicalization_audit_summary.json","l2_canonicalization_audit_report.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l7_pubmed_post_cutoff_summary.json","l7_pubmed_post_cutoff_results.jsonl","l7_reactome_summary.json","l7_reactome_results.jsonl","l7_enrichr_summary.json","l7_enrichr_results.jsonl","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
 REQUIRED = {"case_domain_profile.json","validator_selection_report.json","pipeline_stage_summary.json","l7_external_validation_summary.json","whitebox_case_report.md"}
 def _json(path:Path)->dict:
     try: return json.loads(path.read_text(encoding="utf-8"))
@@ -43,14 +43,15 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
     hypothesis_counts={field:int(_canonical(hypothesis,field,export_warnings,"hypothesis_summary.json",default=existing.get(field,0)) or 0) for field in ("formal_hypothesis_count","high_confidence_hypothesis_count","manual_review_followup_count","abstract_only_followup_count","display_hypothesis_count","display_followup_count")}
     conflict_count=int(_canonical(conflict,"true_graph_conflict_count",export_warnings,"graph_conflict_summary.json",default=existing.get("true_graph_conflict_count",0)) or 0)
     formal_count=hypothesis_counts["formal_hypothesis_count"]
-    scientific_class="no_core_observations" if not core_count else "hypothesis_generated" if formal_count else "conflict_found" if conflict_count else "no_conflict"
+    graph_count=int(_line_count(artifacts/"l2_graph_observations.jsonl") or 0)
+    scientific_class="graph_observations_no_conflict" if graph_count and not conflict_count else "no_core_observations" if not core_count else "hypothesis_generated" if formal_count else "conflict_found" if conflict_count else "no_conflict"
     zero_reason="No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace." if not core_count else None
     manifest={"case_id":profile.case_id,"query":profile.query,"case_type":profile.case_type,"source_run_id":source_id,"final_run_id":run.name,
       "source_run_dir":str(run.parent/source_id) if source_id else None,"final_run_dir":str(run),"pipeline_complete":not required_missing,
       "pipeline_mode":"abstract_plus_domain_routed_external_validation","executed_validators":executed,
       "skipped_validators":ext.get("skipped_validators",selection.get("skipped_validators",[])),
       "recommended_but_unavailable_validators":unavailable,"blocked_validators":selection.get("blocked_required_validators",[]),
-      "core_observation_count":int(core_count or 0),"true_graph_conflict_count":conflict_count,
+      "core_observation_count":int(core_count or 0),"graph_observation_count":graph_count,"true_graph_conflict_count":conflict_count,
       **hypothesis_counts,
       "external_validation_status":validation.get("status", "completed" if executed else "unavailable"),"external_validation_interpretation":interpretation,"matched_signature_count":int(validation.get("matched_signature_count",0) or 0),"validation_target_count":int(validation.get("validation_target_count",0) or 0),"overall_validation_score":validation.get("overall_validation_score"),
       "fulltext_confirmation_status":fulltext.get("status","not_enabled"),"fulltext_candidate_paper_count":int(fulltext.get("candidate_paper_count",0) or 0),"fulltext_available_count":int(fulltext.get("oa_available_count",0) or 0),"fulltext_confirmed_conflict_count":int(fulltext.get("fulltext_confirmed_conflict_count",0) or 0),
