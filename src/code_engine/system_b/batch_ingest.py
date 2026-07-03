@@ -61,6 +61,8 @@ class SystemBBatchIngestor:
             key = (bundle["case_id"], version)
             if key in by_key and not overwrite:
                 warning = f"duplicate_case_version: {key[0]}:{key[1]}"
+                if strict:
+                    raise ValueError(warning)
                 batch_warnings.append(warning)
                 by_key[key].setdefault("warnings", []).append("duplicate_case_version")
                 continue
@@ -70,10 +72,11 @@ class SystemBBatchIngestor:
             card = CaseCardBuilder().build(bundle)
             quality = QualityClassifier().classify(bundle, validation)
             limitations = LimitationReporter().generate(bundle, card)
-            ReportExporter().export(output_root, card, quality, validation, limitations)
+            output_label = card["case_id"] if version == "v1" else f"{card['case_id']}__{version}"
+            ReportExporter().export(output_root, card, quality, validation, limitations, output_label)
             label = manifest.get("case_label") or f"case_{next_label:03d}"
             next_label += 1
-            row = self._registry_row(bundle, card, quality, validation, path, output_root, label, version)
+            row = self._registry_row(bundle, card, quality, validation, path, output_root, output_label, label, version)
             by_key[key] = row
 
         cases = sorted(by_key.values(), key=lambda item: (item["case_id"], item.get("case_version", "v1")))
@@ -104,7 +107,7 @@ class SystemBBatchIngestor:
         if write_csv:
             _write_csv(output_root / "case_comparison_table.csv", COMPARISON_COLUMNS, comparison["cases"])
             _write_csv(output_root / "validator_coverage_matrix.csv", ("case_id",) + VALIDATORS, matrix["cases"])
-        warning_count = len(batch_warnings) + sum(len(case.get("warnings", [])) for case in cases)
+        warning_count = sum(len(case.get("warnings", [])) for case in cases)
         return {"registry": registry, "comparison": comparison, "matrix": matrix, "domain": domain, "recommendation": recommendation, "summary": summary, "warning_count": warning_count}
 
     @staticmethod
@@ -115,15 +118,17 @@ class SystemBBatchIngestor:
         return value.get("cases", []) if isinstance(value, dict) else []
 
     @staticmethod
-    def _registry_row(bundle, card, quality, validation, path, output_root, label, version):
+    def _registry_row(bundle, card, quality, validation, path, output_root, output_label, label, version):
         m, e, v = bundle["manifest"], card["evidence_summary"], card["validation_summary"]
+        selection = bundle.get("validator_selection", {}).get("validator_selection", {})
         return {
             "case_id": card["case_id"], "case_version": version,
             "bundle_created_at": m.get("created_at"), "source_run_id": m.get("source_run_id"), "final_run_id": m.get("final_run_id"),
-            "case_label": label, "bundle_path": str(path), "system_b_output_path": str(output_root / card["case_id"]),
+            "case_label": label, "bundle_path": str(path), "system_b_output_path": str(output_root / output_label),
             "quality_class": quality["quality_class"], "comparison_readiness": quality["comparison_readiness"],
             "ready_for_system_b": validation["ready_for_system_b"], "pipeline_complete": card["pipeline_status"]["pipeline_complete"],
             "case_role": card["case_role"], "executed_validators": v["executed_validators"], "unavailable_validators": v["unavailable_validators"],
+            "selected_validators": selection.get("selected_validators", v["executed_validators"]),
             "core_observation_count": e["core_observation_count"], "true_graph_conflict_count": e["true_graph_conflict_count"],
             "formal_hypothesis_count": e["formal_hypothesis_count"], "manual_review_followup_count": e["manual_review_followup_count"],
             "external_validation_status": v["external_validation_status"], "fulltext_confirmation_status": card["fulltext_summary"]["status"],
@@ -140,10 +145,12 @@ class SystemBBatchIngestor:
 
     @staticmethod
     def _validator_row(case):
-        executed, unavailable = set(case.get("executed_validators", [])), set(case.get("unavailable_validators", []))
+        executed = set(case.get("executed_validators", []))
+        selected = set(case.get("selected_validators", []))
+        unavailable = set(case.get("unavailable_validators", []))
         row = {"case_id": case["case_id"]}
         for validator in VALIDATORS:
-            row[validator] = "executed" if validator in executed else ("recommended_unavailable" if validator in unavailable else "unknown")
+            row[validator] = "executed" if validator in executed else ("selected_not_executed" if validator in selected else ("recommended_unavailable" if validator in unavailable else "unknown"))
         return row
 
     @staticmethod
@@ -201,7 +208,7 @@ class SystemBBatchIngestor:
             "schema_version": "system_b_batch_summary_v1", "case_count": len(cases), "ready_count": ready,
             "not_ready_count": len(cases) - ready,
             "positive_control_count": sum(case.get("case_role") == "positive_control_whitebox" for case in cases),
-            "conflict_enriched_count": sum(case.get("case_role") == "conflict_enriched" for case in cases),
+            "conflict_enriched_count": sum(case.get("case_role") == "conflict_enriched" or case.get("true_graph_conflict_count", 0) > 0 for case in cases),
             "cases_with_true_graph_conflicts": sum(case.get("true_graph_conflict_count", 0) > 0 for case in cases),
             "cases_with_fulltext_confirmation": sum(case.get("fulltext_confirmation_status") in {"completed", "confirmed"} for case in cases),
             "executed_validator_counts": dict(executed), "recommended_unavailable_validator_counts": dict(unavailable),

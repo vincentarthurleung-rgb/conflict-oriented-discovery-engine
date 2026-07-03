@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>System B Knowledge Graph</title><link rel="stylesheet" href="/style.css"><script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script></head>
+<body><header><h1>System B Knowledge Graph</h1><div class="actions"><button id="reset">Reset overview</button><button id="expand">Expand depth</button><button id="export">Export subgraph JSON</button></div></header>
+<main><aside>
+<section><h2>Entity</h2><form id="entity-form"><input id="entity" placeholder="AMPK"><button>Search</button></form><select id="entity-candidates" hidden></select></section>
+<section><h2>Triple</h2><form id="triple-form"><input id="subject" placeholder="subject"><input id="predicate" placeholder="predicate"><input id="object" placeholder="object"><button>Search</button></form></section>
+<section><h2>Path</h2><form id="path-form"><input id="path-source" placeholder="source"><input id="path-target" placeholder="target"><input id="max-depth" type="number" value="3" min="1" max="6"><button>Find</button></form></section>
+<section><h2>Case</h2><select id="case"><option value="">Choose from graph</option></select></section>
+<section><h2>Details</h2><pre id="details">Select a node or edge.</pre></section>
+</aside><div id="cy"></div></main><script src="/app.js"></script></body></html>
