@@ -20,6 +20,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--enable-lincs-local-validation", action="store_true")
     parser.add_argument("--lincs-dataset", default="GSE70138")
     parser.add_argument("--case-profile", type=Path)
+    parser.add_argument("--enable-fulltext-confirmation", action="store_true")
+    parser.add_argument("--fulltext-max-papers", type=int, default=20)
+    parser.add_argument("--fulltext-max-sections-per-paper", type=int, default=12)
+    parser.add_argument("--fulltext-max-chunks-per-paper", type=int, default=24)
+    parser.add_argument("--fulltext-max-chars-per-chunk", type=int, default=6000)
+    parser.add_argument("--fulltext-max-total-chunks", type=int, default=200)
+    parser.add_argument("--fulltext-l1-read-timeout-seconds", type=float, default=240)
+    parser.add_argument("--fulltext-l1-max-retries", type=int, default=1)
+    parser.add_argument("--fulltext-include-near-conflicts", action="store_true")
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--until", choices=STEP_ORDER, default="report")
@@ -164,6 +173,11 @@ def main(argv: list[str] | None = None) -> int:
             external_data_root=args.external_data_root,
             enable_lincs_local_validation=args.enable_lincs_local_validation,
             lincs_dataset=args.lincs_dataset, case_profile=args.case_profile)
+        if args.enable_fulltext_confirmation:
+            from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
+            from code_engine.fulltext.stage import run_l35_pmc_oa_stage
+            client=build_l1_client_from_env_or_config(args.l1_provider,args.l1_model,read_timeout_seconds=args.fulltext_l1_read_timeout_seconds,max_retries=args.fulltext_l1_max_retries) if args.api else None
+            run_l35_pmc_oa_stage(output,enabled=True,network_enabled=args.network,api_enabled=args.api,max_papers=args.fulltext_max_papers,include_near_conflicts=args.fulltext_include_near_conflicts,l1_client=client,l1_provider=args.l1_provider,l1_model=args.l1_model,max_sections_per_paper=args.fulltext_max_sections_per_paper,max_chunks_per_paper=args.fulltext_max_chunks_per_paper,max_chars_per_chunk=args.fulltext_max_chars_per_chunk,max_total_chunks=args.fulltext_max_total_chunks,l1_read_timeout_seconds=args.fulltext_l1_read_timeout_seconds,l1_max_retries=args.fulltext_l1_max_retries)
         payload = {"run_id": output.name, "run_dir": str(output), "mode": "offline_rebuild",
                    "api_calls_made": 0, "network_calls_made": 0, "final_status": "completed",
                    "report": str(output / "run_report.md")}

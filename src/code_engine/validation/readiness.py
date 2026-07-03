@@ -74,7 +74,7 @@ def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
     policy=dict(getattr(profile,"fulltext_policy",{}) or {}); fulltext_enabled=bool(policy.get("enabled") or (profile and ("full_text_conflict_confirmation" in profile.validation_needs or profile.case_type=="conflict_enriched")))
     cache_ready=Path("data/cache/pmc_idconv").is_dir()
     ft_blocking=[] if (not fulltext_enabled or network_allowed or cache_ready) else ["pmc_oa_fulltext_requires_network_or_cache"]
-    fulltext={"enabled":fulltext_enabled,"source":policy.get("source","pmc_oa"),"selection_policy":"conflict_related_only","copyright_policy":"oa_only_skip_non_oa","network_required":fulltext_enabled,"network_allowed":network_allowed,"max_papers":policy.get("max_papers",20),"publisher_scraping_enabled":False,"ready":not ft_blocking,"blocking_reasons":ft_blocking}
+    fulltext={"enabled":fulltext_enabled,"source":policy.get("source","pmc_oa"),"selection_policy":"conflict_related_only","copyright_policy":"oa_only_skip_non_oa","pmc_client_configured":True,"pmc_network_required":fulltext_enabled,"l1_required_if_oa_available":fulltext_enabled,"l1_ready":llm["ready"] if fulltext_enabled else None,"network_allowed":network_allowed,"max_papers":policy.get("max_papers",20),"publisher_scraping_enabled":False,"ready":not ft_blocking,"blocking_reasons":ft_blocking,"reason":policy.get("reason") if not fulltext_enabled else None}
     blocking.extend(ft_blocking)
     return {"schema_version":"case_readiness_report_v1", "created_at":datetime.now(timezone.utc).isoformat(), "case_id":getattr(profile,"case_id",None),
             "ready": not blocking, "blocking_reasons":blocking, "llm":llm, "search_plan":search, "case_profile":profile_status,

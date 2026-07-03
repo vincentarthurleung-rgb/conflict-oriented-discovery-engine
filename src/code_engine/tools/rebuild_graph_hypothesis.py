@@ -16,6 +16,7 @@ def rebuild_graph_hypothesis(source_run: str | Path, *, output_suffix: str = "re
                              enable_lincs_local_validation: bool = False,
                              lincs_dataset: str = "GSE70138",
                              case_profile: str | Path | None = None) -> Path:
+    """Rebuild deterministic stages; optional live L3.5 execution is orchestrated by the CLI."""
     source = Path(source_run).resolve()
     if not (source / "artifacts").is_dir():
         raise FileNotFoundError(f"source run artifacts missing: {source}")

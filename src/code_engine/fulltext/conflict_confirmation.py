@@ -1,12 +1,19 @@
 from __future__ import annotations
 from collections import Counter
-def confirm_fulltext_conflicts(candidates:list[dict], claims:list[dict], retrieval_results:list[dict])->dict:
+def _compatible(candidate, claim):
+    for key in ("relation_family","subject","object"):
+        expected=candidate.get(key); actual=claim.get(key)
+        if expected and actual and str(expected).casefold()!=str(actual).casefold(): return False
+    return True
+def confirm_fulltext_conflicts(candidates:list[dict], claims:list[dict], retrieval_results:list[dict], *, l1_status:str|None=None)->dict:
     available={str(x.get("paper_id")) for x in retrieval_results if x.get("full_text_status")=="available"}; rows=[]
     for c in candidates:
-        cid=str(c.get("candidate_id")); linked=[x for x in claims if cid in map(str,x.get("linked_conflict_candidate_ids",[]))]; polarities={str(x.get("polarity") or x.get("direction")) for x in linked}-{"neutral","unknown","None"}
+        cid=str(c.get("candidate_id")); linked=[x for x in claims if cid in map(str,x.get("linked_conflict_candidate_ids",[])) and _compatible(c,x)]; polarities={str(x.get("polarity") or x.get("direction")) for x in linked}-{"neutral","unknown","unclear","None"}
         paper_ids={str(x) for x in c.get("paper_ids",[])}
-        if {"positive","negative"} <= polarities or {"increase","decrease"} <= polarities: status="full_text_supported"
+        if l1_status=="blocked" and paper_ids & available: status="full_text_l1_not_run"
+        elif {"positive","negative"} <= polarities or {"increase","decrease"} <= polarities: status="full_text_supported"
         elif linked and paper_ids-available: status="full_text_partial"
+        elif linked and c.get("expected_polarities") and not (set(c["expected_polarities"]) & polarities): status="full_text_refuted_or_weakened"
         elif linked: status="full_text_mixed"
         elif paper_ids and not (paper_ids & available): status="full_text_unavailable"
         else: status="abstract_only"
