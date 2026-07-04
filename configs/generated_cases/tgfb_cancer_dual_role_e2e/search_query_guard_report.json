@@ -1,0 +1,67 @@
+{
+  "total_queries_before_guard": 18,
+  "allowed_l1_acquisition_queries": 7,
+  "removed_queries": [
+    {
+      "query": "TGF-beta tumor-suppressive roles early cancer",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "TGF-beta dual role cancer progression",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "Transforming growth factor beta tumor suppressor early-stage cancer",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "early cancer tumor suppression",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "advanced cancer EMT invasion",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "invasion and metastasis in cancer progression",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "tumor suppression EMT",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "metastasis invasion TGF-beta",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "\"TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer\"",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta tumor suppressor early cancer EMT advanced cancer specific study",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 3,
+  "context_only_queries_removed": 3,
+  "broad_recall_queries_removed": 3,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 7,
+  "cross_context_mechanism_query_count": 0
+}

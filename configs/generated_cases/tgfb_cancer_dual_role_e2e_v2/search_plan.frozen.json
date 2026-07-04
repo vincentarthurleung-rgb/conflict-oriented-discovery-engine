@@ -1,0 +1,743 @@
+{
+  "artifact_schema_version": "frozen_search_plan.v1",
+  "created_at": "2026-07-04T06:46:53.008106+00:00",
+  "created_by_run_id": "case_factory_tgfb_cancer_dual_role_e2e_v2_v8kjwxzm",
+  "query_text": {
+    "query_id": "0116055b2badea32",
+    "query_string": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+    "source": "pubmed",
+    "purpose": "direct_relation",
+    "priority": 1,
+    "must_include": [],
+    "should_include": [],
+    "exclude_terms": [],
+    "year_from": 2000,
+    "year_to": 2020,
+    "max_results": 60,
+    "expected_domain": "pathway_biology",
+    "from_seed_triples": [],
+    "warnings": [],
+    "expected_prompt_profile": "pathway_biology_l1_v2",
+    "stage": "abstract_retrieval",
+    "precision_level": "medium",
+    "requires_open_access": false,
+    "requires_fulltext": false,
+    "expansion_sources": [],
+    "allowed_for_conflict_source": true,
+    "query": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+    "paper_year_filter_enabled": true,
+    "paper_year_from": 2000,
+    "paper_year_to": 2020,
+    "temporal_role": "discovery",
+    "year_filter_applied_to_query": true,
+    "search_intent_mode": "llm",
+    "search_intent_confidence": 0.9,
+    "query_group": "direct_relation",
+    "allowed_for_l1_acquisition": true,
+    "seed_subject_required": true,
+    "seed_object_required": true,
+    "passed_query_guard": true,
+    "passed_context_guard": true,
+    "context_strict": true,
+    "allowed_for_context_specific_core": true,
+    "context_terms_required": [
+      "early",
+      "advanced",
+      "cancer",
+      "tumor",
+      "tumour",
+      "neoplasm",
+      "carcinoma",
+      "oncology",
+      "malignancy",
+      "hcc",
+      "hepatocellular carcinoma",
+      "liver cancer",
+      "cancer cell",
+      "tumor cell"
+    ],
+    "context_terms_matched": [
+      "early",
+      "cancer",
+      "tumor"
+    ],
+    "context_guard_reason": "context_term_present",
+    "query_scope": "context_specific",
+    "coverage_only": false,
+    "pubmed_date_syntax": "pdat_range"
+  },
+  "seed_triple": {
+    "triple_id": "15e97061f6011158207c659267d64c72722c3045c179fb9beb67c7adae5984db",
+    "subject": {
+      "name": "TGF-beta",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "exhibits",
+      "family": "exhibits"
+    },
+    "object": {
+      "name": "tumor-suppressive role",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "early",
+        "advanced",
+        "cancer"
+      ]
+    },
+    "query_text": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+    "query_hash": "891e0afac6cd9cf060b0cfb071ab1cd0812a6bb0684d38fcd661d7dc213eaa77",
+    "display_title": "TGF-beta — exhibits — tumor-suppressive role in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "semantic_search_intent": {
+    "mode": "llm",
+    "confidence": 0.9,
+    "confidence_source": "semantic_intake_confidence",
+    "manual_review_required": false,
+    "seed_triple": {
+      "subject": {
+        "name": "TGF-beta",
+        "aliases": [
+          "TGF-beta",
+          "Transforming Growth Factor-beta",
+          "TGFβ",
+          "TGF-β"
+        ],
+        "type": "unknown"
+      },
+      "relation": {
+        "name": "exhibits",
+        "family": "exhibits",
+        "directional": true
+      },
+      "object": {
+        "name": "tumor-suppressive role",
+        "aliases": [
+          "tumor-suppressive role",
+          "tumor suppressor function",
+          "tumor suppressive effect",
+          "growth inhibitory role"
+        ],
+        "type": "unknown"
+      },
+      "context": {
+        "domain": "pathway_biology",
+        "terms": [
+          "early",
+          "advanced",
+          "cancer"
+        ]
+      },
+      "confidence": 0.9
+    },
+    "query_groups": {
+      "direct_relation": [
+        {
+          "query": "TGF-beta tumor suppressive role early cancer",
+          "purpose": "direct_relation",
+          "must_include_subject": true,
+          "must_include_object": true,
+          "allowed_for_l1_acquisition": true,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "TGFβ tumor suppressor function in early cancer",
+          "purpose": "direct_relation",
+          "must_include_subject": true,
+          "must_include_object": true,
+          "allowed_for_l1_acquisition": true,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "Transforming Growth Factor-beta growth inhibitory effect early cancer",
+          "purpose": "direct_relation",
+          "must_include_subject": true,
+          "must_include_object": true,
+          "allowed_for_l1_acquisition": true,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        }
+      ],
+      "mechanism": [
+        {
+          "query": "TGF-beta signaling mechanism tumor suppression",
+          "purpose": "mechanism",
+          "must_include_subject": true,
+          "must_include_object": true,
+          "allowed_for_l1_acquisition": true,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "TGFβ tumor suppressive pathways early cancer",
+          "purpose": "mechanism",
+          "must_include_subject": true,
+          "must_include_object": true,
+          "allowed_for_l1_acquisition": true,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "how TGF-beta suppresses tumor growth early cancer",
+          "purpose": "mechanism",
+          "must_include_subject": true,
+          "must_include_object": true,
+          "allowed_for_l1_acquisition": true,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        }
+      ],
+      "context_only": [
+        {
+          "query": "early cancer tumor suppressor pathways",
+          "purpose": "context_only",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "advanced cancer TGF-beta biology",
+          "purpose": "context_only",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "tumor suppressive role early cancer mechanisms",
+          "purpose": "context_only",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        }
+      ],
+      "broad_recall": [
+        {
+          "query": "TGF-beta cancer",
+          "purpose": "broad_recall",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "TGF-beta role in cancer",
+          "purpose": "broad_recall",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "TGFβ cancer biology",
+          "purpose": "broad_recall",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        }
+      ],
+      "validation_only": [
+        {
+          "query": "TGF-beta tumor suppressor early cancer promote EMT advanced",
+          "purpose": "validation_only",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "dual role TGF-beta cancer early vs late stage",
+          "purpose": "validation_only",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        },
+        {
+          "query": "TGF-beta early cancer suppressive late cancer metastatic switch",
+          "purpose": "validation_only",
+          "must_include_subject": false,
+          "must_include_object": false,
+          "allowed_for_l1_acquisition": false,
+          "context_strict": false,
+          "allowed_for_context_specific_core": false
+        }
+      ]
+    },
+    "warnings": [],
+    "planner_prompt_profile_id": "semantic_search_intent_v1",
+    "planner_prompt_version": "1.0",
+    "planner_prompt_hash": "28d6b2f2ccdaee7d4ab56dcc6c47612e2272e31b4930d66d04f657bc0e8eb789",
+    "planner_prompt_chars": 2604,
+    "search_intent_schema_valid": true,
+    "llm_search_intent_used": true,
+    "deterministic_search_fallback_used": false,
+    "allow_deterministic_search_fallback": true,
+    "real_api_run_with_uncertain_search_intent": false,
+    "api_calls_made": 1,
+    "normalization_applied": false,
+    "normalization_repair_count": 0,
+    "normalization_warnings": [],
+    "search_intent_schema_valid_after_normalization": true
+  },
+  "planner_model": null,
+  "planner_prompt_hash": "28d6b2f2ccdaee7d4ab56dcc6c47612e2272e31b4930d66d04f657bc0e8eb789",
+  "query_guard_summary": {
+    "total_queries_before_guard": 15,
+    "allowed_l1_acquisition_queries": 1,
+    "removed_queries": [
+      {
+        "query": "TGF-beta tumor suppressive role early cancer",
+        "query_group": "direct_relation",
+        "reason": "seed_object_missing_from_direct_relation_query"
+      },
+      {
+        "query": "Transforming Growth Factor-beta growth inhibitory effect early cancer",
+        "query_group": "direct_relation",
+        "reason": "seed_object_missing_from_direct_relation_query"
+      },
+      {
+        "query": "TGF-beta signaling mechanism tumor suppression",
+        "query_group": "mechanism",
+        "reason": "seed_object_or_mechanism_alias_missing"
+      },
+      {
+        "query": "TGFβ tumor suppressive pathways early cancer",
+        "query_group": "mechanism",
+        "reason": "seed_object_or_mechanism_alias_missing"
+      },
+      {
+        "query": "how TGF-beta suppresses tumor growth early cancer",
+        "query_group": "mechanism",
+        "reason": "seed_object_or_mechanism_alias_missing"
+      },
+      {
+        "query": "early cancer tumor suppressor pathways",
+        "query_group": "context_only",
+        "reason": "context_only_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "advanced cancer TGF-beta biology",
+        "query_group": "context_only",
+        "reason": "context_only_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "tumor suppressive role early cancer mechanisms",
+        "query_group": "context_only",
+        "reason": "context_only_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "TGF-beta cancer",
+        "query_group": "broad_recall",
+        "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "TGF-beta role in cancer",
+        "query_group": "broad_recall",
+        "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "TGFβ cancer biology",
+        "query_group": "broad_recall",
+        "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "TGF-beta tumor suppressor early cancer promote EMT advanced",
+        "query_group": "validation_only",
+        "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "dual role TGF-beta cancer early vs late stage",
+        "query_group": "validation_only",
+        "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+      },
+      {
+        "query": "TGF-beta early cancer suppressive late cancer metastatic switch",
+        "query_group": "validation_only",
+        "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+      }
+    ],
+    "off_seed_queries_removed": 5,
+    "context_only_queries_removed": 3,
+    "broad_recall_queries_removed": 3,
+    "context_guard_enabled": true,
+    "context_strict_query_count": 1,
+    "cross_context_mechanism_query_count": 0
+  },
+  "paper_year_filter": {
+    "enabled": true,
+    "paper_year_from": 2000,
+    "paper_year_to": 2020,
+    "temporal_role": "discovery",
+    "source": "case_factory",
+    "hardcoded_cutoff_used": false
+  },
+  "pubmed_queries": [
+    {
+      "query_id": "0116055b2badea32",
+      "query_string": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+      "source": "pubmed",
+      "purpose": "direct_relation",
+      "priority": 1,
+      "must_include": [],
+      "should_include": [],
+      "exclude_terms": [],
+      "year_from": 2000,
+      "year_to": 2020,
+      "max_results": 60,
+      "expected_domain": "pathway_biology",
+      "from_seed_triples": [],
+      "warnings": [],
+      "expected_prompt_profile": "pathway_biology_l1_v2",
+      "stage": "abstract_retrieval",
+      "precision_level": "medium",
+      "requires_open_access": false,
+      "requires_fulltext": false,
+      "expansion_sources": [],
+      "allowed_for_conflict_source": true,
+      "query": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+      "paper_year_filter_enabled": true,
+      "paper_year_from": 2000,
+      "paper_year_to": 2020,
+      "temporal_role": "discovery",
+      "year_filter_applied_to_query": true,
+      "search_intent_mode": "llm",
+      "search_intent_confidence": 0.9,
+      "query_group": "direct_relation",
+      "allowed_for_l1_acquisition": true,
+      "seed_subject_required": true,
+      "seed_object_required": true,
+      "passed_query_guard": true,
+      "passed_context_guard": true,
+      "context_strict": true,
+      "allowed_for_context_specific_core": true,
+      "context_terms_required": [
+        "early",
+        "advanced",
+        "cancer",
+        "tumor",
+        "tumour",
+        "neoplasm",
+        "carcinoma",
+        "oncology",
+        "malignancy",
+        "hcc",
+        "hepatocellular carcinoma",
+        "liver cancer",
+        "cancer cell",
+        "tumor cell"
+      ],
+      "context_terms_matched": [
+        "early",
+        "cancer",
+        "tumor"
+      ],
+      "context_guard_reason": "context_term_present",
+      "query_scope": "context_specific",
+      "coverage_only": false,
+      "pubmed_date_syntax": "pdat_range"
+    }
+  ],
+  "search_plan": {
+    "intent_id": "891e0afac6cd9cf0",
+    "primary_queries": [],
+    "secondary_queries": [],
+    "mechanism_queries": [],
+    "comparison_queries": [],
+    "clinical_queries": [],
+    "pmc_queries": [],
+    "pubmed_queries": [
+      {
+        "query_id": "0116055b2badea32",
+        "query_string": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "direct_relation",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "llm",
+        "search_intent_confidence": 0.9,
+        "query_group": "direct_relation",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": true,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": true,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [
+          "early",
+          "advanced",
+          "cancer",
+          "tumor",
+          "tumour",
+          "neoplasm",
+          "carcinoma",
+          "oncology",
+          "malignancy",
+          "hcc",
+          "hepatocellular carcinoma",
+          "liver cancer",
+          "cancer cell",
+          "tumor cell"
+        ],
+        "context_terms_matched": [
+          "early",
+          "cancer",
+          "tumor"
+        ],
+        "context_guard_reason": "context_term_present",
+        "query_scope": "context_specific",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      }
+    ],
+    "negative_filters": [
+      "editorial",
+      "retracted publication"
+    ],
+    "max_total_results": 60,
+    "dedup_keys": [
+      "pmid",
+      "pmcid",
+      "doi",
+      "normalized_title_hash"
+    ],
+    "warnings": [],
+    "candidate_papers": [],
+    "exclusion_terms": [
+      "editorial",
+      "retracted publication"
+    ],
+    "priority": "high",
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "search_profile_id": "pathway_search",
+    "prompt_profile_id": "pathway_biology_l1_v2",
+    "validator_profile_id": "pathway_validation",
+    "source_domain_profile": {
+      "domain_id": "pathway_biology",
+      "aliases": [],
+      "prompt_id": "pathway_biology_l1_v2",
+      "subdomain_id": null,
+      "display_name": "Pathway Biology",
+      "description": "",
+      "search_profile_id": "pathway_search",
+      "prompt_profile_id": "pathway_biology_l1_v2",
+      "prompt_version": "2.0",
+      "output_schema_version": "l1_v2_evidence_mechanism_schema",
+      "extraction_policy_version": "evidence_grounded_v2",
+      "entity_registry_profile": "pathway_resolution_provider_policy",
+      "resolver_policy_id": "pathway_resolver_v2",
+      "validator_profile_id": "pathway_validation",
+      "preferred_validators": [
+        "ReactomeValidator",
+        "PathwayValidator"
+      ],
+      "fallback_validators": [
+        "NullValidator"
+      ],
+      "required_context_slots": [],
+      "optional_context_slots": [],
+      "key_entity_types": [],
+      "key_relation_types": [
+        "pathway_mechanism",
+        "pathway_activation"
+      ],
+      "key_evidence_types": [],
+      "warnings": []
+    },
+    "query_generation_mode": "llm",
+    "sanitizer_warnings": [],
+    "semantic_confidence": 0.9,
+    "manual_review_required": false,
+    "seed_triple": {
+      "triple_id": "15e97061f6011158207c659267d64c72722c3045c179fb9beb67c7adae5984db",
+      "subject": {
+        "name": "TGF-beta",
+        "canonical_id": "",
+        "type": "unknown"
+      },
+      "relation": {
+        "name": "exhibits",
+        "family": "exhibits"
+      },
+      "object": {
+        "name": "tumor-suppressive role",
+        "canonical_id": "",
+        "type": "unknown"
+      },
+      "context": {
+        "domain": "pathway_biology",
+        "context_terms": [
+          "early",
+          "advanced",
+          "cancer"
+        ]
+      },
+      "query_text": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+      "query_hash": "891e0afac6cd9cf060b0cfb071ab1cd0812a6bb0684d38fcd661d7dc213eaa77",
+      "display_title": "TGF-beta — exhibits — tumor-suppressive role in pathway_biology",
+      "identity_kind": "seed_triple",
+      "source": "semantic_intake",
+      "confidence": 0.9,
+      "human_review_required": false,
+      "intake_mode": "llm_semantic"
+    },
+    "abstract_retrieval": {
+      "sources": [
+        "pubmed"
+      ],
+      "source_order": [
+        "pubmed"
+      ],
+      "open_access_required": false,
+      "fulltext_required": false
+    },
+    "fulltext_escalation": {
+      "sources": [
+        "pmc",
+        "publisher",
+        "oa_resolver"
+      ],
+      "open_access_required": true,
+      "fulltext_required": true,
+      "only_for_selected_conflict_candidates": true
+    },
+    "query_groups": [
+      {
+        "group": "l1_acquisition",
+        "stage": "abstract_retrieval",
+        "source": "pubmed",
+        "queries": [
+          {
+            "query_id": "0116055b2badea32",
+            "query_string": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+            "source": "pubmed",
+            "purpose": "direct_relation",
+            "priority": 1,
+            "must_include": [],
+            "should_include": [],
+            "exclude_terms": [],
+            "year_from": 2000,
+            "year_to": 2020,
+            "max_results": 60,
+            "expected_domain": "pathway_biology",
+            "from_seed_triples": [],
+            "warnings": [],
+            "expected_prompt_profile": "pathway_biology_l1_v2",
+            "stage": "abstract_retrieval",
+            "precision_level": "medium",
+            "requires_open_access": false,
+            "requires_fulltext": false,
+            "expansion_sources": [],
+            "allowed_for_conflict_source": true,
+            "query": "(TGFβ tumor suppressor function in early cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+            "paper_year_filter_enabled": true,
+            "paper_year_from": 2000,
+            "paper_year_to": 2020,
+            "temporal_role": "discovery",
+            "year_filter_applied_to_query": true,
+            "search_intent_mode": "llm",
+            "search_intent_confidence": 0.9,
+            "query_group": "direct_relation",
+            "allowed_for_l1_acquisition": true,
+            "seed_subject_required": true,
+            "seed_object_required": true,
+            "passed_query_guard": true,
+            "passed_context_guard": true,
+            "context_strict": true,
+            "allowed_for_context_specific_core": true,
+            "context_terms_required": [
+              "early",
+              "advanced",
+              "cancer",
+              "tumor",
+              "tumour",
+              "neoplasm",
+              "carcinoma",
+              "oncology",
+              "malignancy",
+              "hcc",
+              "hepatocellular carcinoma",
+              "liver cancer",
+              "cancer cell",
+              "tumor cell"
+            ],
+            "context_terms_matched": [
+              "early",
+              "cancer",
+              "tumor"
+            ],
+            "context_guard_reason": "context_term_present",
+            "query_scope": "context_specific",
+            "coverage_only": false,
+            "pubmed_date_syntax": "pdat_range"
+          }
+        ]
+      }
+    ],
+    "paper_year_filter": {
+      "enabled": true,
+      "paper_year_from": 2000,
+      "paper_year_to": 2020,
+      "temporal_role": "discovery",
+      "source": "case_factory",
+      "hardcoded_cutoff_used": false
+    }
+  },
+  "executable_query_hash": "382677d001885fad5cd4c8303da277e1c153c1168531438f525b26052f8332bd",
+  "frozen": true,
+  "case_id": "tgfb_cancer_dual_role_e2e_v2",
+  "case_type": "conflict_enriched",
+  "planner_mode": "llm_semantic",
+  "model": "deepseek-v4-pro",
+  "query_count": 1,
+  "paper_year_from": 2000,
+  "paper_year_to": 2020,
+  "generated_at": "2026-07-04T06:46:53.010412+00:00",
+  "human_reviewed": false
+}

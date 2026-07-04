@@ -1,0 +1,82 @@
+{
+  "total_queries_before_guard": 15,
+  "allowed_l1_acquisition_queries": 1,
+  "removed_queries": [
+    {
+      "query": "TGF-beta tumor suppressive role early cancer",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "Transforming Growth Factor-beta growth inhibitory effect early cancer",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "TGF-beta signaling mechanism tumor suppression",
+      "query_group": "mechanism",
+      "reason": "seed_object_or_mechanism_alias_missing"
+    },
+    {
+      "query": "TGFβ tumor suppressive pathways early cancer",
+      "query_group": "mechanism",
+      "reason": "seed_object_or_mechanism_alias_missing"
+    },
+    {
+      "query": "how TGF-beta suppresses tumor growth early cancer",
+      "query_group": "mechanism",
+      "reason": "seed_object_or_mechanism_alias_missing"
+    },
+    {
+      "query": "early cancer tumor suppressor pathways",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "advanced cancer TGF-beta biology",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "tumor suppressive role early cancer mechanisms",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta role in cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGFβ cancer biology",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta tumor suppressor early cancer promote EMT advanced",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "dual role TGF-beta cancer early vs late stage",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta early cancer suppressive late cancer metastatic switch",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 5,
+  "context_only_queries_removed": 3,
+  "broad_recall_queries_removed": 3,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 1,
+  "cross_context_mechanism_query_count": 0
+}

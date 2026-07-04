@@ -1,0 +1,204 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "subject": {
+      "name": "TGF-beta",
+      "aliases": [
+        "TGF-beta",
+        "Transforming Growth Factor-beta",
+        "TGFβ",
+        "TGF-β"
+      ],
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "exhibits",
+      "family": "exhibits",
+      "directional": true
+    },
+    "object": {
+      "name": "tumor-suppressive role",
+      "aliases": [
+        "tumor-suppressive role",
+        "tumor suppressor function",
+        "tumor suppressive effect",
+        "growth inhibitory role"
+      ],
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "terms": [
+        "early",
+        "advanced",
+        "cancer"
+      ]
+    },
+    "confidence": 0.9
+  },
+  "query_groups": {
+    "direct_relation": [
+      {
+        "query": "TGF-beta tumor suppressive role early cancer",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGFβ tumor suppressor function in early cancer",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "Transforming Growth Factor-beta growth inhibitory effect early cancer",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "mechanism": [
+      {
+        "query": "TGF-beta signaling mechanism tumor suppression",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGFβ tumor suppressive pathways early cancer",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "how TGF-beta suppresses tumor growth early cancer",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "context_only": [
+      {
+        "query": "early cancer tumor suppressor pathways",
+        "purpose": "context_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "advanced cancer TGF-beta biology",
+        "purpose": "context_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "tumor suppressive role early cancer mechanisms",
+        "purpose": "context_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "broad_recall": [
+      {
+        "query": "TGF-beta cancer",
+        "purpose": "broad_recall",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta role in cancer",
+        "purpose": "broad_recall",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGFβ cancer biology",
+        "purpose": "broad_recall",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "validation_only": [
+      {
+        "query": "TGF-beta tumor suppressor early cancer promote EMT advanced",
+        "purpose": "validation_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "dual role TGF-beta cancer early vs late stage",
+        "purpose": "validation_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta early cancer suppressive late cancer metastatic switch",
+        "purpose": "validation_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "28d6b2f2ccdaee7d4ab56dcc6c47612e2272e31b4930d66d04f657bc0e8eb789",
+  "planner_prompt_chars": 2604,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true
+}

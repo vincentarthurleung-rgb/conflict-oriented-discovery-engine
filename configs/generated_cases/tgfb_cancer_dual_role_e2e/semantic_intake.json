@@ -1,0 +1,205 @@
+{
+  "research_intent": {
+    "raw_user_input": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+    "language": "en",
+    "task_type": "unknown",
+    "research_goal": "Semantic interpretation unavailable",
+    "primary_entities": [
+      "TGF-beta"
+    ],
+    "secondary_entities": [
+      "has",
+      "tumor-suppressive",
+      "roles",
+      "in",
+      "early",
+      "cancer",
+      "but",
+      "promotes",
+      "EMT",
+      "invasion",
+      "and"
+    ],
+    "disease_or_condition": [],
+    "mechanism_entities": [],
+    "comparison_entities": [],
+    "outcome_entities": [],
+    "intervention_entities": [],
+    "context_terms": [
+      "tumor-suppressive",
+      "roles",
+      "in",
+      "early",
+      "cancer",
+      "but",
+      "promotes",
+      "EMT",
+      "invasion",
+      "and"
+    ],
+    "domain_routing": {
+      "domain_id": "general_biomedical",
+      "subdomain_id": null,
+      "domain_profile_id": "general_biomedical",
+      "confidence": 0.3,
+      "alternative_domains": [],
+      "reasoning_summary": "No semantic classifier available; general profile selected.",
+      "ambiguities": [
+        "Domain semantics were not inferred without an LLM."
+      ],
+      "warnings": [],
+      "requires_manual_review": true
+    },
+    "confidence": 0.3,
+    "ambiguities": [
+      "Domain semantics were not inferred without an LLM."
+    ],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "general_biomedical",
+    "subdomain_id": null,
+    "domain_profile_id": "general_biomedical",
+    "confidence": 0.3,
+    "alternative_domains": [],
+    "reasoning_summary": "No semantic classifier available; general profile selected.",
+    "ambiguities": [
+      "Domain semantics were not inferred without an LLM."
+    ],
+    "warnings": [],
+    "requires_manual_review": true
+  },
+  "seed_triples": [
+    {
+      "triple_id": "1754d030a02a6df5",
+      "subject": "TGF-beta",
+      "relation": "unspecified_association",
+      "object": "has",
+      "subject_type": null,
+      "object_type": null,
+      "purpose": "literature_search_planning",
+      "source": "deterministic_degraded_fallback",
+      "is_evidence": false,
+      "confidence": 0.3,
+      "warnings": [
+        "weak_seed_triple_requires_human_review",
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "64787cfa37a6",
+      "text": "TGF-beta",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "9150c74c5f92",
+      "text": "has",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "412b45c25560",
+      "text": "tumor-suppressive",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "66cf5513b374",
+      "text": "roles",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "582967534d0f",
+      "text": "in",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "f408830bcc7f",
+      "text": "early",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "5600ae99b14e",
+      "text": "cancer",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "cdc299378871",
+      "text": "but",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "9e615221d901",
+      "text": "promotes",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "1865174d2046",
+      "text": "EMT",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "bb117886e6c1",
+      "text": "invasion",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    },
+    {
+      "concept_id": "6201111b83a0",
+      "text": "and",
+      "concept_type": "entity",
+      "importance": 0.5,
+      "source": "deterministic_degraded_fallback",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [],
+  "negative_filters": [],
+  "ambiguities": [
+    "Domain semantics were not inferred without an LLM."
+  ],
+  "warnings": [
+    "LLM semantic intake disabled; deterministic fallback used.",
+    "LLM semantic intake schema invalid; deterministic fallback used.",
+    "1 validation error for SemanticIntakeResult\nverification_warnings\n  Input should be a valid list [type=list_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.12/v/list_type"
+  ],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [
+    "semantic_confidence_below_review_threshold"
+  ],
+  "semantic_mode": "deterministic_degraded",
+  "api_calls_made": 0
+}

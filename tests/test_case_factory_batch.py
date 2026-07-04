@@ -9,7 +9,7 @@ class CaseFactoryBatchTests(unittest.TestCase):
     def _run(self,suffix,content):
         with tempfile.TemporaryDirectory() as tmp:
             source=Path(tmp)/f"seeds.{suffix}"; source.write_text(content,encoding="utf-8")
-            code=main(["--seed-inventory",str(source),"--output-root","generated","--repository-root",tmp,"--no-api","--no-network"])
+            code=main(["--seed-inventory",str(source),"--output-root","generated","--repository-root",tmp,"--no-api","--no-network","--allow-degraded-intake"])
             self.assertEqual(code,0); summary=json.loads((Path(tmp)/"generated/case_factory_batch_summary.json").read_text())
             self.assertEqual(summary["generated_count"],2)
     def test_jsonl_inventory(self):

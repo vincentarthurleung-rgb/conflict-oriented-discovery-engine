@@ -4,10 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field, model_validator
-
+from pydantic import Field, field_validator, model_validator
 from code_engine.schemas.models import CODEBaseModel
 
+
+class _NullableListsModel(CODEBaseModel):
+    """Treat JSON null like an omitted value for list-shaped LLM fields."""
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def normalize_nullable_lists(cls, value: Any, info):
+        field = cls.model_fields.get(info.field_name)
+        if value is None and field is not None and field.default_factory is list:
+            return []
+        return value
 
 class SemanticIntakeRequest(CODEBaseModel):
     query: str
@@ -19,7 +29,7 @@ class SemanticIntakeRequest(CODEBaseModel):
     model_name: str | None = None
 
 
-class DomainRoutingDecision(CODEBaseModel):
+class DomainRoutingDecision(_NullableListsModel):
     domain_id: str = "general_biomedical"
     subdomain_id: str | None = None
     domain_profile_id: str = "general_biomedical"
@@ -31,7 +41,7 @@ class DomainRoutingDecision(CODEBaseModel):
     requires_manual_review: bool = False
 
 
-class SemanticResearchIntent(CODEBaseModel):
+class SemanticResearchIntent(_NullableListsModel):
     raw_user_input: str
     language: str = "unknown"
     task_type: str = "unknown"
@@ -50,7 +60,7 @@ class SemanticResearchIntent(CODEBaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class SemanticSeedTriple(CODEBaseModel):
+class SemanticSeedTriple(_NullableListsModel):
     triple_id: str
     subject: str
     relation: str
@@ -73,7 +83,7 @@ class SemanticSeedTriple(CODEBaseModel):
         return self
 
 
-class SemanticSearchConcept(CODEBaseModel):
+class SemanticSearchConcept(_NullableListsModel):
     concept_id: str
     text: str
     concept_type: str = "entity"
@@ -82,7 +92,7 @@ class SemanticSearchConcept(CODEBaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class SemanticIntakeResult(CODEBaseModel):
+class SemanticIntakeResult(_NullableListsModel):
     research_intent: SemanticResearchIntent
     domain_routing: DomainRoutingDecision
     seed_triples: list[SemanticSeedTriple] = Field(default_factory=list)
