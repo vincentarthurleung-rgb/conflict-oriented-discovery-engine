@@ -12,20 +12,25 @@ from code_engine.schemas.models import CODEBaseModel
 
 
 class CaseDomainProfile(CODEBaseModel):
+    schema_version: str = "case_domain_profile_v1"
     case_id: str
+    case_version: str = "v1"
     query: str
     case_type: str
     case_role: str | None = None
     domain_tags: list[str] = Field(default_factory=list)
     disease_areas: list[str] = Field(default_factory=list)
     mechanism_areas: list[str] = Field(default_factory=list)
+    genes: list[str] = Field(default_factory=list)
     entity_types: list[str] = Field(default_factory=list)
     intervention_types: list[str] = Field(default_factory=list)
     validation_needs: list[str] = Field(default_factory=list)
     expected_validators: list[str] = Field(default_factory=list)
     optional_validators: list[str] = Field(default_factory=list)
     excluded_validators: list[str] = Field(default_factory=list)
+    validator_policy: dict[str, Any] = Field(default_factory=dict)
     fulltext_policy: dict[str, Any] = Field(default_factory=dict)
+    scientific_notes: dict[str, Any] = Field(default_factory=dict)
     profile_version: str = "1.0"
 
     @classmethod

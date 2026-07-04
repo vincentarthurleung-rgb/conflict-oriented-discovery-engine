@@ -1,0 +1,235 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "subject": {
+      "name": "TGF-beta",
+      "aliases": [
+        "TGF-beta",
+        "TGFB1",
+        "TGF-β",
+        "Transforming growth factor beta"
+      ],
+      "type": "protein"
+    },
+    "relation": {
+      "name": "has role in",
+      "family": "has role in",
+      "directional": false
+    },
+    "object": {
+      "name": "tumor suppression",
+      "aliases": [
+        "tumor suppression",
+        "tumor-suppressive",
+        "antineoplastic",
+        "tumor inhibition"
+      ],
+      "type": "biological process"
+    },
+    "context": {
+      "domain": "general_biomedical",
+      "terms": [
+        "early",
+        "advanced",
+        "roles",
+        "tumor-suppressive",
+        "promotes",
+        "EMT",
+        "invasion",
+        "metastasis"
+      ]
+    }
+  },
+  "query_groups": {
+    "direct_relation": [
+      {
+        "query": "TGF-beta tumor suppression early cancer",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta has tumor-suppressive role early cancer",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta mediates tumor suppression in early stage cancer",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta early cancer tumor suppressive function",
+        "purpose": "direct_relation",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "mechanism": [
+      {
+        "query": "TGF-beta tumor suppression signaling pathway",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta mechanism of tumor suppression early cancer",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta anti-tumor mechanism early stage",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta tumor inhibition signaling",
+        "purpose": "mechanism",
+        "must_include_subject": true,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "context_only": [
+      {
+        "query": "early cancer tumor suppressive roles",
+        "purpose": "context_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "advanced cancer EMT invasion metastasis",
+        "purpose": "context_only",
+        "must_include_subject": false,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta early versus advanced cancer roles",
+        "purpose": "context_only",
+        "must_include_subject": true,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "tumor suppression stage-dependent",
+        "purpose": "context_only",
+        "must_include_subject": false,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "broad_recall": [
+      {
+        "query": "TGF-beta cancer",
+        "purpose": "broad_recall",
+        "must_include_subject": true,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta tumor",
+        "purpose": "broad_recall",
+        "must_include_subject": true,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "tumor suppression cancer",
+        "purpose": "broad_recall",
+        "must_include_subject": false,
+        "must_include_object": true,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ],
+    "validation_only": [
+      {
+        "query": "TGF-beta promotes EMT",
+        "purpose": "validation_only",
+        "must_include_subject": true,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta invasion metastasis advanced cancer",
+        "purpose": "validation_only",
+        "must_include_subject": true,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      },
+      {
+        "query": "TGF-beta tumor suppressive early cancer",
+        "purpose": "validation_only",
+        "must_include_subject": true,
+        "must_include_object": false,
+        "allowed_for_l1_acquisition": false,
+        "context_strict": false,
+        "allowed_for_context_specific_core": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "f30c2d2ffab1548a4718db008e01fae9a32f94764774a6bc50d9edc614839902",
+  "planner_prompt_chars": 2677,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true
+}

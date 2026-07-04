@@ -1,0 +1,32 @@
+{
+  "schema_version": "case_factory_manifest_v1",
+  "case_id": "tgfb_cancer_dual_role",
+  "case_type": "conflict_enriched",
+  "query": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+  "year_from": 2000,
+  "year_to": 2020,
+  "semantic_mode": "llm_semantic",
+  "llm_used": true,
+  "network_used": true,
+  "generated_files": [
+    "case_profile.json",
+    "readiness_report.json",
+    "search_plan.frozen.json",
+    "search_query_guard_report.json",
+    "semantic_intake.json",
+    "semantic_search_intent.json",
+    "case_factory_manifest.json",
+    "case_factory_report.md"
+  ],
+  "case_profile_path": "configs/generated_cases/tgfb_cancer_dual_role/case_profile.json",
+  "search_plan_path": "configs/generated_cases/tgfb_cancer_dual_role/search_plan.frozen.json",
+  "frozen_search_plan": true,
+  "readiness_run": true,
+  "readiness_status": "READY",
+  "warnings": [
+    "validator production-unavailable: chembl",
+    "validator production-unavailable: opentargets"
+  ],
+  "created_at": "2026-07-04T04:30:30.143464+00:00",
+  "status": "CASE_FACTORY_GENERATED"
+}

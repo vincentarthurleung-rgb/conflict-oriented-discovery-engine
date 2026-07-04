@@ -103,7 +103,7 @@ def run_intake_workflow(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run guarded natural-language literature intake.")
+    parser = argparse.ArgumentParser(description="Run guarded natural-language literature intake. For modern run_case-compatible packages, use code_engine.cli.case_factory.")
     parser.add_argument("--query", required=True)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
