@@ -1,0 +1,229 @@
+{
+  "research_intent": {
+    "raw_user_input": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+    "language": "en",
+    "task_type": "information_gathering",
+    "research_goal": "Understand the dual role of TGF-beta in cancer progression, specifically how it acts as a tumor suppressor in early stages but promotes epithelial-mesenchymal transition (EMT), invasion, and metastasis in advanced cancer.",
+    "primary_entities": [
+      "TGF-beta",
+      "cancer"
+    ],
+    "secondary_entities": [
+      "EMT",
+      "invasion",
+      "metastasis"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "EMT",
+      "invasion",
+      "metastasis"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [],
+    "intervention_entities": [],
+    "context_terms": [
+      "early cancer",
+      "advanced cancer",
+      "tumor-suppressive",
+      "dual role"
+    ],
+    "domain_routing": {
+      "domain_id": "pathway_biology",
+      "subdomain_id": null,
+      "domain_profile_id": "pathway_biology",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "general_biomedical",
+          "confidence": 0.7
+        }
+      ],
+      "reasoning_summary": "The query describes the dual role of TGF-beta signaling in cancer progression, which is a pathway mechanism involving activation and downstream phenotypic outcomes. It aligns with pathway biology key relation types such as pathway_activation. General biomedical also fits as a fallback.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.95,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "domain_profile_id": "pathway_biology",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "general_biomedical",
+        "confidence": 0.7
+      }
+    ],
+    "reasoning_summary": "The query describes the dual role of TGF-beta signaling in cancer progression, which is a pathway mechanism involving activation and downstream phenotypic outcomes. It aligns with pathway biology key relation types such as pathway_activation. General biomedical also fits as a fallback.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "seed_1",
+      "subject": "TGF-beta",
+      "relation": "has_role",
+      "object": "tumor suppression",
+      "subject_type": "gene/protein",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed_2",
+      "subject": "TGF-beta",
+      "relation": "promotes",
+      "object": "EMT",
+      "subject_type": "gene/protein",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed_3",
+      "subject": "TGF-beta",
+      "relation": "promotes",
+      "object": "invasion",
+      "subject_type": "gene/protein",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed_4",
+      "subject": "TGF-beta",
+      "relation": "promotes",
+      "object": "metastasis",
+      "subject_type": "gene/protein",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed_5",
+      "subject": "TGF-beta",
+      "relation": "context_dependent_role",
+      "object": "cancer_progression",
+      "subject_type": "gene/protein",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "concept_1",
+      "text": "TGF-beta",
+      "concept_type": "entity",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_2",
+      "text": "tumor suppression",
+      "concept_type": "process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_3",
+      "text": "EMT",
+      "concept_type": "process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_4",
+      "text": "invasion",
+      "concept_type": "process",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_5",
+      "text": "metastasis",
+      "concept_type": "process",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_6",
+      "text": "early cancer",
+      "concept_type": "context",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_7",
+      "text": "advanced cancer",
+      "concept_type": "context",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "concept_8",
+      "text": "dual role",
+      "concept_type": "concept",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "TGF-beta tumor suppression early cancer",
+    "TGF-beta promotes EMT advanced cancer",
+    "dual role TGF-beta cancer invasion metastasis",
+    "TGF-beta signaling pathway cancer progression",
+    "context-dependent TGF-beta role tumor microenvironment"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.\",\n    \"language\": \"en\",\n    \"task_type\": \"information_gathering\",\n    \"research_goal\": \"Understand the dual role of TGF-beta in cancer progression, specifically how it acts as a tumor suppressor in early stages but promotes epithelial-mesenchymal transition (EMT), invasion, and metastasis in advanced cancer.\",\n    \"primary_entities\": [\n      \"TGF-beta\",\n      \"cancer\"\n    ],\n    \"secondary_entities\": [\n      \"EMT\",\n      \"invasion\",\n      \"metastasis\"\n    ],\n    \"disease_or_condition\": [\n      \"cancer\"\n    ],\n    \"mechanism_entities\": [\n      \"EMT\",\n      \"invasion\",\n      \"metastasis\"\n    ],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [],\n    \"intervention_entities\": [],\n    \"context_terms\": [\n      \"early cancer\",\n      \"advanced cancer\",\n      \"tumor-suppressive\",\n      \"dual role\"\n    ],\n    \"domain_routing\": {\n      \"domain_id\": \"pathway_biology\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"pathway_biology\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"general_biomedical\",\n          \"confidence\": 0.7\n        }\n      ],\n      \"reasoning_summary\": \"The query describes the dual role of TGF-beta signaling in cancer progression, which is a pathway mechanism involving activation and downstream phenotypic outcomes. It aligns with pathway biology key relation types such as pathway_activation. General biomedical also fits as a fallback.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.95,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"pathway_biology\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"pathway_biology\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"general_biomedical\",\n        \"confidence\": 0.7\n      }\n    ],\n    \"reasoning_summary\": \"The query describes the dual role of TGF-beta signaling in cancer progression, which is a pathway mechanism involving activation and downstream phenotypic outcomes. It aligns with pathway biology key relation types such as pathway_activation. General biomedical also fits as a fallback.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"seed_1\",\n      \"subject\": \"TGF-beta\",\n      \"relation\": \"has_role\",\n      \"object\": \"tumor suppression\",\n      \"subject_type\": \"gene/protein\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed_2\",\n      \"subject\": \"TGF-beta\",\n      \"relation\": \"promotes\",\n      \"object\": \"EMT\",\n      \"subject_type\": \"gene/protein\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed_3\",\n      \"subject\": \"TGF-beta\",\n      \"relation\": \"promotes\",\n      \"object\": \"invasion\",\n      \"subject_type\": \"gene/protein\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed_4\",\n      \"subject\": \"TGF-beta\",\n      \"relation\": \"promotes\",\n      \"object\": \"metastasis\",\n      \"subject_type\": \"gene/protein\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed_5\",\n      \"subject\": \"TGF-beta\",\n      \"relation\": \"context_dependent_role\",\n      \"object\": \"cancer_progression\",\n      \"subject_type\": \"gene/protein\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"concept_1\",\n      \"text\": \"TGF-beta\",\n      \"concept_type\": \"entity\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_2\",\n      \"text\": \"tumor suppression\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_3\",\n      \"text\": \"EMT\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_4\",\n      \"text\": \"invasion\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_5\",\n      \"text\": \"metastasis\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_6\",\n      \"text\": \"early cancer\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_7\",\n      \"text\": \"advanced cancer\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"concept_8\",\n      \"text\": \"dual role\",\n      \"concept_type\": \"concept\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"TGF-beta tumor suppression early cancer\",\n    \"TGF-beta promotes EMT advanced cancer\",\n    \"dual role TGF-beta cancer invasion metastasis\",\n    \"TGF-beta signaling pathway cancer progression\",\n    \"context-dependent TGF-beta role tumor microenvironment\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

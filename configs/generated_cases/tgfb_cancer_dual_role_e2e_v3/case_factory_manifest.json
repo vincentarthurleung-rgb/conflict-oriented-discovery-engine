@@ -1,0 +1,71 @@
+{
+  "schema_version": "case_factory_manifest_v1",
+  "case_id": "tgfb_cancer_dual_role_e2e_v3",
+  "case_type": "conflict_enriched",
+  "query": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+  "year_from": 2000,
+  "year_to": 2020,
+  "semantic_mode": "llm_semantic",
+  "semantic_intake_valid": true,
+  "semantic_intake_schema_valid": true,
+  "semantic_intake_degraded": false,
+  "semantic_confidence": 0.9,
+  "seed_triple_quality": "high",
+  "seed_triple_valid": true,
+  "seed_triple_validation_warnings": [],
+  "semantic_blocking_reason": null,
+  "discovery_blocking_reason": null,
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "EMT",
+    "invasion",
+    "metastasis",
+    "early cancer",
+    "advanced cancer",
+    "tumor-suppressive",
+    "dual role",
+    "TGF-beta has tumor-suppressive roles in early cancer",
+    "promotes EMT, invasion, and metastasis in advanced cancer",
+    "context-dependent role"
+  ],
+  "directional_terms_observed_in_user_query": [
+    "promotes",
+    "suppressive"
+  ],
+  "directional_terms_not_used_as_fixed_search_sides": true,
+  "full_run_recommended": true,
+  "llm_used": true,
+  "network_used": true,
+  "generated_files": [
+    "case_profile.json",
+    "readiness_report.json",
+    "search_plan.frozen.json",
+    "search_query_guard_report.json",
+    "semantic_intake.json",
+    "semantic_search_intent.json",
+    "case_factory_manifest.json",
+    "case_factory_report.md"
+  ],
+  "case_profile_path": "configs/generated_cases/tgfb_cancer_dual_role_e2e_v3/case_profile.json",
+  "search_plan_path": "configs/generated_cases/tgfb_cancer_dual_role_e2e_v3/search_plan.frozen.json",
+  "frozen_search_plan": true,
+  "readiness_run": true,
+  "readiness_status": "READY",
+  "warnings": [
+    "validator production-unavailable: chembl",
+    "validator production-unavailable: opentargets"
+  ],
+  "created_at": "2026-07-04T07:14:22.227487+00:00",
+  "status": "CASE_FACTORY_GENERATED"
+}

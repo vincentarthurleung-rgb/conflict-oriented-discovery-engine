@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-readiness", action="store_true"); parser.add_argument("--copy-to-configs", action="store_true")
     parser.add_argument("--overwrite-generated", action="store_true"); parser.add_argument("--overwrite-configs", action="store_true")
     parser.add_argument("--allow-degraded-intake", action="store_true")
+    parser.add_argument("--allow-narrow-discovery-plan", action="store_true")
     parser.add_argument("--repository-root", type=Path, default=Path("."))
     return parser
 
@@ -50,7 +51,8 @@ def main(argv=None) -> int:
                 freeze_search_plan=args.freeze_search_plan, run_readiness=args.run_readiness,
                 copy_to_configs=args.copy_to_configs, overwrite_generated=args.overwrite_generated,
                 overwrite_configs=args.overwrite_configs, repository_root=args.repository_root,
-                allow_degraded_intake=args.allow_degraded_intake))
+                allow_degraded_intake=args.allow_degraded_intake,
+                allow_narrow_discovery_plan=args.allow_narrow_discovery_plan))
         except (KeyError, FileExistsError, RuntimeError, ValueError) as exc:
             blocked.append({"case_id": seed.get("case_id"), "error": str(exc)})
     root=args.repository_root / args.output_root; root.mkdir(parents=True, exist_ok=True)

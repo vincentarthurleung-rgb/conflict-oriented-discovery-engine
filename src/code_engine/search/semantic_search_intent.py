@@ -229,8 +229,15 @@ class SemanticSearchIntent(CODEBaseModel):
 
 def build_search_intent_prompt(user_query: str, domain_id: str, seed_triple: dict[str, Any],
                                paper_year_filter: dict[str, Any] | None = None,
-                               pilot_profile: str | None = None) -> str:
+                               pilot_profile: str | None = None, discovery_mode: bool = False) -> str:
     pilot = "Explicit ketamine pilot: ketamine and BDNF aliases may be used when grounded." if pilot_profile == "ketamine" else "No pilot-specific examples or assumptions."
+    discovery = """DISCOVERY MODE: The goal is discovery-oriented retrieval, not verification of the user's stated belief.
+Do not collapse a contrastive statement into one directional seed object. Use a neutral relation such as
+associated_with, involved_in, modulates, has_context_dependent_role_in, participates_in, or affects.
+Preserve both contrast sides as context terms. Generate multiple direction-neutral acquisition strategies:
+entity/object core coverage, mechanism context, and context coverage. Map them into direct_relation and
+mechanism groups under the current schema. Optional conflict hints may use context-only, but must not dominate.
+Directional claims must be extracted from retrieved papers later, not asserted by acquisition queries.""" if discovery_mode else "Standard semantic search planning mode."
     return f"""You are a biomedical Search Intent Planner.
 Return JSON object only. Preserve the seed subject and seed object in every L1 acquisition query.
 Do not permit object-only, context-only, broad-recall, or validation-only queries for L1 acquisition.
@@ -251,6 +258,7 @@ Domain: {domain_id}
 Runtime year filter: {json.dumps(paper_year_filter or {}, sort_keys=True)}
 Existing canonical seed triple: {json.dumps(seed_triple, ensure_ascii=False, sort_keys=True)}
 {pilot}
+{discovery}
 User query: {user_query}"""
 
 
@@ -296,8 +304,9 @@ def write_search_intent_diagnostic(run_dir: str | Path | None, *, exc: Exception
 
 def plan_semantic_search_intent(user_query: str, *, domain_id: str, seed_triple: dict[str, Any],
                                 llm_client: Any, paper_year_filter: dict[str, Any] | None = None,
-                                pilot_profile: str | None = None, run_dir: str | Path | None = None) -> SemanticSearchIntent:
-    prompt = build_search_intent_prompt(user_query, domain_id, seed_triple, paper_year_filter, pilot_profile)
+                                pilot_profile: str | None = None, run_dir: str | Path | None = None,
+                                discovery_mode: bool = False) -> SemanticSearchIntent:
+    prompt = build_search_intent_prompt(user_query, domain_id, seed_triple, paper_year_filter, pilot_profile, discovery_mode)
     try:
         payload = llm_client.extract_json(prompt)
         raw_response = payload.get("__json_raw_response", payload) if isinstance(payload, dict) else payload

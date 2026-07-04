@@ -1,0 +1,48 @@
+{
+  "total_queries_before_guard": 13,
+  "allowed_l1_acquisition_queries": 4,
+  "removed_queries": [
+    {
+      "query": "TGF-beta dual role in cancer",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "early cancer TGF-beta EMT invasion metastasis",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "advanced cancer TGF-beta invasion",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta tumor",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta suppresses tumor in early cancer",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "TGF-beta promotes metastasis in advanced cancer",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 0,
+  "context_only_queries_removed": 3,
+  "broad_recall_queries_removed": 2,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 6,
+  "cross_context_mechanism_query_count": 0,
+  "neutral_discovery_replanned": true
+}

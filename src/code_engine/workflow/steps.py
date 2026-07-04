@@ -302,7 +302,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                     save_search_plan: str | Path | None = None, freeze_search_plan_requested: bool = False,
                     replay_search_plan: bool = False, fail_if_search_plan_drift: bool = False,
                     diversify_acquisition: bool = False, per_query_max_results: int | None = None,
-                    pubmed_date_syntax: str = "pdat_range", **_: Any) -> StepResult:
+                    pubmed_date_syntax: str = "pdat_range", discovery_mode: bool = False, **_: Any) -> StepResult:
     intake_data = _read(run_dir, "intake.json")
     profile_data = _read(run_dir, "domain_profile.json")
     if not intake_data or not profile_data:
@@ -350,7 +350,7 @@ def run_search_step(*, run_dir: Path, execute: bool, api: bool, network: bool = 
                 query or intake.research_intent.raw_user_input, domain_id=profile.domain_id,
                 seed_triple=intake.unified_seed_triple, llm_client=semantic_llm_client,
                 paper_year_filter=paper_year_filter, pilot_profile=pilot_profile,
-                run_dir=run_dir,
+                run_dir=run_dir, discovery_mode=discovery_mode,
             )
         except Exception as exc:
             planner_error = str(exc)[:1000]

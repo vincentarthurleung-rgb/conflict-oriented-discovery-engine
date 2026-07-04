@@ -1,0 +1,189 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "0dff955ef6c56f25569c01d5a3a14c4d63c2abb9d5b799868fc76c2d0fbecbc1",
+    "subject": {
+      "name": "TGF-beta",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "has_context_dependent_role_in",
+      "family": "has_context_dependent_role_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "EMT",
+        "invasion",
+        "metastasis",
+        "early cancer",
+        "advanced cancer",
+        "tumor-suppressive",
+        "dual role",
+        "TGF-beta has tumor-suppressive roles in early cancer",
+        "promotes EMT, invasion, and metastasis in advanced cancer",
+        "context-dependent role"
+      ]
+    },
+    "query_text": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+    "query_hash": "891e0afac6cd9cf060b0cfb071ab1cd0812a6bb0684d38fcd661d7dc213eaa77",
+    "display_title": "TGF-beta — has_context_dependent_role_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(TGF-beta cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(TGF-beta molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(TGF-beta EMT invasion cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(TGF-beta context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "07fa2915ad7750d345369d596fb1a7320d154778157ec7a75d43b04e318b9814",
+  "planner_prompt_chars": 3368,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "0dff955ef6c56f25569c01d5a3a14c4d63c2abb9d5b799868fc76c2d0fbecbc1",
+    "subject": {
+      "name": "TGF-beta",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "has_context_dependent_role_in",
+      "family": "has_context_dependent_role_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "EMT",
+        "invasion",
+        "metastasis",
+        "early cancer",
+        "advanced cancer",
+        "tumor-suppressive",
+        "dual role",
+        "TGF-beta has tumor-suppressive roles in early cancer",
+        "promotes EMT, invasion, and metastasis in advanced cancer",
+        "context-dependent role"
+      ]
+    },
+    "query_text": "TGF-beta has tumor-suppressive roles in early cancer but promotes EMT, invasion, and metastasis in advanced cancer.",
+    "query_hash": "891e0afac6cd9cf060b0cfb071ab1cd0812a6bb0684d38fcd661d7dc213eaa77",
+    "display_title": "TGF-beta — has_context_dependent_role_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [
+    "promotes",
+    "suppressive"
+  ],
+  "context_terms": [
+    "cancer",
+    "EMT",
+    "invasion",
+    "metastasis",
+    "early cancer",
+    "advanced cancer",
+    "tumor-suppressive",
+    "dual role",
+    "TGF-beta has tumor-suppressive roles in early cancer",
+    "promotes EMT, invasion, and metastasis in advanced cancer",
+    "context-dependent role"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "EMT",
+    "invasion",
+    "metastasis",
+    "early cancer",
+    "advanced cancer",
+    "tumor-suppressive",
+    "dual role",
+    "TGF-beta has tumor-suppressive roles in early cancer",
+    "promotes EMT, invasion, and metastasis in advanced cancer",
+    "context-dependent role"
+  ],
+  "directional_terms_observed_in_user_query": [
+    "promotes",
+    "suppressive"
+  ],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}

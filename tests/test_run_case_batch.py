@@ -18,7 +18,8 @@ class RunCaseBatchTests(unittest.TestCase):
         values=dict(generated_case_root=root/"generated",case_ids=ids,case_inventory=None,external_data_root=root/"external",
             api=False,network=False,enable_fulltext_confirmation=False,max_workers=2,l1_concurrency=2,pubmed_concurrency=2,
             validator_concurrency=2,case_start_stagger_seconds=0,max_retries=0,retry_backoff_seconds=0,resume=False,
-            overwrite_bundles=False,allow_degraded_intake=False,fail_fast=False,dry_run=True,output_root=root/"batch")
+            overwrite_bundles=False,allow_degraded_intake=False,allow_narrow_discovery_plan=False,
+            fail_fast=False,dry_run=True,output_root=root/"batch")
         values.update(changes); return SimpleNamespace(**values)
     def _packages(self,root,ids=("a","b"),valid=True):
         for case_id in ids:
@@ -54,3 +55,17 @@ class RunCaseBatchTests(unittest.TestCase):
             root=Path(tmp); self._packages(root)
             calls=iter((1,0)); result=run_case_batch(self._args(root,max_workers=1),subprocess_runner=lambda *a,**k:Result(next(calls)))
             self.assertEqual(result["failed_count"],1); self.assertEqual(result["completed_count"],1)
+
+    def test_narrow_discovery_package_requires_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); self._packages(root,("a",),valid=True); path=root/"generated/a/case_factory_manifest.json"
+            path.write_text(json.dumps({"semantic_intake_valid":True,"seed_triple_quality":"high","case_type":"conflict_enriched",
+                "discovery_query_balance_valid":False,"one_sided_retrieval_risk":"high"}))
+            blocked=run_case_batch(self._args(root,"a",max_workers=1),subprocess_runner=lambda *a,**k:Result())
+            self.assertEqual(blocked["blocked_count"],1)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); self._packages(root,("a",),valid=True); path=root/"generated/a/case_factory_manifest.json"
+            path.write_text(json.dumps({"semantic_intake_valid":True,"seed_triple_quality":"high","case_type":"conflict_enriched",
+                "discovery_query_balance_valid":False,"one_sided_retrieval_risk":"high"}))
+            allowed=run_case_batch(self._args(root,"a",max_workers=1,allow_narrow_discovery_plan=True),subprocess_runner=lambda *a,**k:Result())
+            self.assertEqual(allowed["completed_count"],1)

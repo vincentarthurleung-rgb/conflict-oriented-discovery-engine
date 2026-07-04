@@ -31,6 +31,7 @@ def build_parser():
     p.add_argument("--l1-concurrency",type=int,default=1); p.add_argument("--pubmed-concurrency",type=int,default=1); p.add_argument("--validator-concurrency",type=int,default=1)
     p.add_argument("--case-start-stagger-seconds",type=float,default=0); p.add_argument("--max-retries",type=int,default=0); p.add_argument("--retry-backoff-seconds",type=float,default=30)
     p.add_argument("--resume",action="store_true"); p.add_argument("--overwrite-bundles",action="store_true"); p.add_argument("--allow-degraded-intake",action="store_true")
+    p.add_argument("--allow-narrow-discovery-plan",action="store_true")
     p.add_argument("--fail-fast",action="store_true"); p.add_argument("--dry-run",action="store_true"); p.add_argument("--output-root",type=Path,required=True)
     return p
 
@@ -92,8 +93,12 @@ def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)-
         package=args.generated_case_root/item["case_id"]; factory=_read(package/"case_factory_manifest.json",{})
         missing=[name for name in ("case_profile.json","search_plan.frozen.json") if not (package/name).is_file()]
         degraded=not factory.get("semantic_intake_valid",True) or factory.get("seed_triple_quality")=="invalid"
-        if missing or (degraded and not args.allow_degraded_intake):
-            reason="missing package files: "+", ".join(missing) if missing else "case_factory_semantic_quality_blocked"
+        narrow=(factory.get("case_type")=="conflict_enriched" and
+                (factory.get("discovery_query_balance_valid") is False or factory.get("one_sided_retrieval_risk")=="high"))
+        if missing or (degraded and not args.allow_degraded_intake) or (narrow and not args.allow_narrow_discovery_plan):
+            reason=("missing package files: "+", ".join(missing) if missing else
+                    "case_factory_semantic_quality_blocked" if degraded and not args.allow_degraded_intake else
+                    "case_factory_discovery_planning_quality_blocked")
             item.update(status="blocked",finished_at=_now(),return_code=2,warnings=[reason]); persist(item); return item
         bundle=root/"bundles"/item["case_id"]
         if bundle.exists() and not args.overwrite_bundles:
