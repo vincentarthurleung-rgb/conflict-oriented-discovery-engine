@@ -74,6 +74,7 @@ class CaseBundleLoader:
             "discovery_layers": {
                 "seed_neighborhood": self._read_jsonl(self.path / "l2_seed_neighborhood_observations.jsonl"),
                 "reviewable_graph": self._read_jsonl(self.path / "l2_reviewable_graph_observations.jsonl"),
+                "low_priority_context": self._read_jsonl(self.path / "l2_low_priority_context_observations.jsonl"),
                 "weak_conflicts": self._read_jsonl(self.path / "weak_conflict_candidates.jsonl"),
                 "fulltext_escalation": self._read_jsonl(self.path / "l35_fulltext_candidate_papers.jsonl"),
                 "excluded_audit": self._read_jsonl(self.path / "discovery_filter_audit.jsonl"),

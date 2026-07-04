@@ -1,0 +1,171 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "63c36a47180d4ae30c415c7c717bb5201bf45115a206bb6711528096470e4aaf",
+    "subject": {
+      "name": "IL-6/STAT3 signaling",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "IL-6/STAT3 signaling pathway",
+        "cancer therapy response",
+        "tumor progression",
+        "immune context",
+        "cellular context",
+        "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts"
+      ]
+    },
+    "query_text": "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts.",
+    "query_hash": "a42cef35c03c1767283f56ce6cb027291292ac5cd4485fb29b5d88eb7b41bd7f",
+    "display_title": "IL-6/STAT3 signaling — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(IL-6/STAT3 signaling cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(IL-6/STAT3 signaling molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(IL-6/STAT3 signaling IL-6/STAT3 signaling pathway cancer therapy response) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(IL-6/STAT3 signaling context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [
+    "search_intent_context_terms_normalized"
+  ],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "a76d953024f6774ddba91ef98a8225e03f62f3b36b17656f20415124eab747af",
+  "planner_prompt_chars": 3418,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": true,
+  "normalization_repair_count": 1,
+  "normalization_warnings": [
+    "search_intent_context_terms_normalized"
+  ],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "63c36a47180d4ae30c415c7c717bb5201bf45115a206bb6711528096470e4aaf",
+    "subject": {
+      "name": "IL-6/STAT3 signaling",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "IL-6/STAT3 signaling pathway",
+        "cancer therapy response",
+        "tumor progression",
+        "immune context",
+        "cellular context",
+        "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts"
+      ]
+    },
+    "query_text": "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts.",
+    "query_hash": "a42cef35c03c1767283f56ce6cb027291292ac5cd4485fb29b5d88eb7b41bd7f",
+    "display_title": "IL-6/STAT3 signaling — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [],
+  "context_terms": [
+    "cancer",
+    "IL-6/STAT3 signaling pathway",
+    "cancer therapy response",
+    "tumor progression",
+    "immune context",
+    "cellular context",
+    "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "IL-6/STAT3 signaling pathway",
+    "cancer therapy response",
+    "tumor progression",
+    "immune context",
+    "cellular context",
+    "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts"
+  ],
+  "directional_terms_observed_in_user_query": [],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}

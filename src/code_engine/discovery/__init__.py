@@ -1,2 +1,2 @@
-from .lanes import active_seed,build_discovery_lanes,synchronize_seed_metadata,validate_seed_metadata
-__all__=["active_seed","build_discovery_lanes","synchronize_seed_metadata","validate_seed_metadata"]
+from .lanes import DiscoveryRecallPolicy,active_seed,build_discovery_lanes,build_weak_candidates,load_policy,score_discovery_records,synchronize_seed_metadata,validate_fulltext_handoff,validate_seed_metadata
+__all__=["DiscoveryRecallPolicy","active_seed","build_discovery_lanes","build_weak_candidates","load_policy","score_discovery_records","synchronize_seed_metadata","validate_fulltext_handoff","validate_seed_metadata"]

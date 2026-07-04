@@ -1,0 +1,171 @@
+{
+  "research_intent": {
+    "raw_user_input": "IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts.",
+    "language": "en",
+    "task_type": "mechanism_description",
+    "research_goal": "Understanding the role of IL-6/STAT3 signaling in cancer therapy response and tumor progression across cellular and immune contexts",
+    "primary_entities": [
+      "IL-6/STAT3 signaling"
+    ],
+    "secondary_entities": [
+      "cancer",
+      "therapy response",
+      "tumor progression",
+      "cellular context",
+      "immune context"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "IL-6/STAT3 signaling pathway"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "cancer therapy response",
+      "tumor progression"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "cancer",
+      "immune context",
+      "cellular context"
+    ],
+    "domain_routing": {
+      "domain_id": "pathway_biology",
+      "subdomain_id": null,
+      "domain_profile_id": "pathway_biology",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "clinical_outcome",
+          "subdomain_id": "treatment_outcome",
+          "reason": "therapy response and tumor progression are clinical outcomes"
+        },
+        {
+          "domain_id": "protein_interaction",
+          "subdomain_id": null,
+          "reason": "IL-6 receptor and STAT3 interaction are protein-level events"
+        }
+      ],
+      "reasoning_summary": "The statement describes a signaling pathway (IL-6/STAT3) and its mechanistic involvement in cancer therapy response and progression, which maps directly to pathway_biology.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.9,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "domain_profile_id": "pathway_biology",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "clinical_outcome",
+        "subdomain_id": "treatment_outcome",
+        "reason": "therapy response and tumor progression are clinical outcomes"
+      },
+      {
+        "domain_id": "protein_interaction",
+        "subdomain_id": null,
+        "reason": "IL-6 receptor and STAT3 interaction are protein-level events"
+      }
+    ],
+    "reasoning_summary": "The statement describes a signaling pathway (IL-6/STAT3) and its mechanistic involvement in cancer therapy response and progression, which maps directly to pathway_biology.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "triple1",
+      "subject": "IL-6/STAT3 signaling",
+      "relation": "involved_in",
+      "object": "cancer therapy response",
+      "subject_type": "signaling_pathway",
+      "object_type": "treatment_outcome",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple2",
+      "subject": "IL-6/STAT3 signaling",
+      "relation": "involved_in",
+      "object": "tumor progression",
+      "subject_type": "signaling_pathway",
+      "object_type": "disease_progression",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "c1",
+      "text": "IL-6/STAT3 signaling",
+      "concept_type": "pathway",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c2",
+      "text": "cancer therapy response",
+      "concept_type": "phenotype",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c3",
+      "text": "tumor progression",
+      "concept_type": "phenotype",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c4",
+      "text": "cellular context",
+      "concept_type": "context",
+      "importance": 0.6,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c5",
+      "text": "immune context",
+      "concept_type": "context",
+      "importance": 0.6,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "IL-6 STAT3 signaling cancer therapy response",
+    "IL-6/STAT3 pathway tumor progression immune context",
+    "Role of IL-6/STAT3 in cancer treatment resistance"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"IL-6/STAT3 signaling is involved in cancer therapy response and tumor progression across different cellular and immune contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"mechanism_description\",\n    \"research_goal\": \"Understanding the role of IL-6/STAT3 signaling in cancer therapy response and tumor progression across cellular and immune contexts\",\n    \"primary_entities\": [\n      \"IL-6/STAT3 signaling\"\n    ],\n    \"secondary_entities\": [\n      \"cancer\",\n      \"therapy response\",\n      \"tumor progression\",\n      \"cellular context\",\n      \"immune context\"\n    ],\n    \"disease_or_condition\": [\n      \"cancer\"\n    ],\n    \"mechanism_entities\": [\n      \"IL-6/STAT3 signaling pathway\"\n    ],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\n      \"cancer therapy response\",\n      \"tumor progression\"\n    ],\n    \"intervention_entities\": [],\n    \"context_terms\": [\n      \"cancer\",\n      \"immune context\",\n      \"cellular context\"\n    ],\n    \"domain_routing\": {\n      \"domain_id\": \"pathway_biology\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"pathway_biology\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"subdomain_id\": \"treatment_outcome\",\n          \"reason\": \"therapy response and tumor progression are clinical outcomes\"\n        },\n        {\n          \"domain_id\": \"protein_interaction\",\n          \"subdomain_id\": null,\n          \"reason\": \"IL-6 receptor and STAT3 interaction are protein-level events\"\n        }\n      ],\n      \"reasoning_summary\": \"The statement describes a signaling pathway (IL-6/STAT3) and its mechanistic involvement in cancer therapy response and progression, which maps directly to pathway_biology.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"pathway_biology\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"pathway_biology\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"subdomain_id\": \"treatment_outcome\",\n        \"reason\": \"therapy response and tumor progression are clinical outcomes\"\n      },\n      {\n        \"domain_id\": \"protein_interaction\",\n        \"subdomain_id\": null,\n        \"reason\": \"IL-6 receptor and STAT3 interaction are protein-level events\"\n      }\n    ],\n    \"reasoning_summary\": \"The statement describes a signaling pathway (IL-6/STAT3) and its mechanistic involvement in cancer therapy response and progression, which maps directly to pathway_biology.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"triple1\",\n      \"subject\": \"IL-6/STAT3 signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cancer therapy response\",\n      \"subject_type\": \"signaling_pathway\",\n      \"object_type\": \"treatment_outcome\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple2\",\n      \"subject\": \"IL-6/STAT3 signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"tumor progression\",\n      \"subject_type\": \"signaling_pathway\",\n      \"object_type\": \"disease_progression\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"c1\",\n      \"text\": \"IL-6/STAT3 signaling\",\n      \"concept_type\": \"pathway\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c2\",\n      \"text\": \"cancer therapy response\",\n      \"concept_type\": \"phenotype\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c3\",\n      \"text\": \"tumor progression\",\n      \"concept_type\": \"phenotype\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c4\",\n      \"text\": \"cellular context\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.6,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c5\",\n      \"text\": \"immune context\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.6,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"IL-6 STAT3 signaling cancer therapy response\",\n    \"IL-6/STAT3 pathway tumor progression immune context\",\n    \"Role of IL-6/STAT3 in cancer treatment resistance\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

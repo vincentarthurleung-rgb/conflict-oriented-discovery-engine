@@ -11,6 +11,13 @@ def _read_jsonl(path: Path) -> list[dict]:
     except (OSError, json.JSONDecodeError): return []
 def select_conflict_related_papers(artifacts_dir: str|Path, *, include_near_conflicts: bool=False, max_papers: int=20) -> dict:
     root=Path(artifacts_dir); selected: dict[str,dict]={}; sources=[]
+    discovery=_read_jsonl(root/"fulltext_discovery_escalation_candidates.jsonl") or _read_jsonl(root/"fulltext_escalation_candidates.jsonl")
+    if discovery:sources.append("fulltext_discovery_escalation_candidates.jsonl")
+    for paper in discovery:
+        key=str(paper.get("paper_id") or paper.get("pmid") or paper.get("canonical_paper_id") or "")
+        if not key:continue
+        selected[key]={**paper,"paper_id":paper.get("paper_id") or key,"selection_reason":paper.get("selection_source") or "discovery_escalation",
+            "conflict_candidate_ids":list(paper.get("linked_weak_candidate_ids") or []),"abstract_observation_ids":list(paper.get("linked_observation_ids") or [])}
     candidates=[]
     for name in ("graph_conflict_candidates.jsonl","conflict_graph_candidates.jsonl"):
         rows=_read_jsonl(root/name)

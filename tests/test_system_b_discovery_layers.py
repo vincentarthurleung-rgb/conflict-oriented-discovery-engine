@@ -14,3 +14,4 @@ class SystemBDiscoveryLayerTests(unittest.TestCase):
    self.assertEqual(len(card["discovery_layers"]["reviewable_graph_observations"]),1)
    self.assertEqual(len(card["discovery_layers"]["weak_conflict_candidates"]),1)
    self.assertEqual(card["discovery_layers"]["labels"]["weak"],"weak_requires_manual_review")
+   self.assertEqual(card["discovery_layers"]["labels"]["low_priority_context"],"hidden_by_default")

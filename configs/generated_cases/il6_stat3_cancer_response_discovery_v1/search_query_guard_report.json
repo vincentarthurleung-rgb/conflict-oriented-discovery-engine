@@ -1,0 +1,53 @@
+{
+  "total_queries_before_guard": 12,
+  "allowed_l1_acquisition_queries": 4,
+  "removed_queries": [
+    {
+      "query": "IL-6/STAT3 axis role in chemoresistance and tumor progression: immune and cellular context",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "IL-6/STAT3 pathway and chemosensitivity in cancer",
+      "query_group": "mechanism",
+      "reason": "seed_object_or_mechanism_alias_missing"
+    },
+    {
+      "query": "cancer immune context cellular context tumor progression signaling pathways",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "tumor microenvironment and therapy response signatures",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "IL-6/STAT3 and cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "STAT3 signaling tumor progression",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "IL-6/STAT3 clinical trial cancer therapy response",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "direct evidence IL-6/STAT3 as predictor of cancer treatment outcome",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 2,
+  "context_only_queries_removed": 2,
+  "broad_recall_queries_removed": 2,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 4,
+  "cross_context_mechanism_query_count": 0,
+  "neutral_discovery_replanned": true
+}

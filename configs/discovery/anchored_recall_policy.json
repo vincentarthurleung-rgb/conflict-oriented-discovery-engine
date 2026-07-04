@@ -1,0 +1,14 @@
+{
+  "seed_neighborhood_min_score": 0.45,
+  "reviewable_graph_min_score": 0.55,
+  "weak_conflict_min_observation_score": 0.60,
+  "fulltext_escalation_min_observation_score": 0.65,
+  "context_only_max_score": 0.35,
+  "context_only_allowed_in_review": true,
+  "context_only_allowed_in_weak_conflict": false,
+  "context_only_allowed_in_fulltext_escalation": false,
+  "require_anchor_for_reviewable_graph": true,
+  "require_anchor_for_weak_conflict": true,
+  "require_anchor_for_fulltext_escalation": true,
+  "broad_context_terms": ["cancer", "disease", "response", "progression", "context", "cellular context", "immune context", "tumor"]
+}
