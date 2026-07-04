@@ -29,8 +29,18 @@ class CaseCardBuilder:
                 "fulltext_mode_complete": bool(p.get("pipeline_complete_for_fulltext_mode")),
             },
             "evidence_summary": {key: m.get(key, 0) for key in (
-                "core_observation_count", "true_graph_conflict_count", "formal_hypothesis_count", "manual_review_followup_count"
+                "core_observation_count", "true_graph_conflict_count", "formal_hypothesis_count", "manual_review_followup_count",
+                "seed_neighborhood_observation_count", "reviewable_graph_observation_count", "weak_conflict_candidate_count",
+                "fulltext_escalation_candidate_count"
             )},
+            "discovery_layers": {
+                "strict_findings": {"core_observation_count": m.get("core_observation_count", 0), "true_graph_conflict_count": m.get("true_graph_conflict_count", 0)},
+                "reviewable_graph_observations": bundle.get("discovery_layers", {}).get("reviewable_graph", []),
+                "weak_conflict_candidates": bundle.get("discovery_layers", {}).get("weak_conflicts", []),
+                "fulltext_escalation_candidates": bundle.get("discovery_layers", {}).get("fulltext_escalation", []),
+                "excluded_observations": bundle.get("discovery_layers", {}).get("excluded_audit", []),
+                "labels": {"strict": "strict", "reviewable": "requires_manual_review", "weak": "weak_requires_manual_review"},
+            },
             "validation_summary": {
                 "executed_validators": m.get("executed_validators", []),
                 "skipped_validators": m.get("skipped_validators", ext.get("skipped_validators", [])),

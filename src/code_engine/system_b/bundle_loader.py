@@ -42,6 +42,11 @@ class CaseBundleLoader:
             raise ValueError(f"expected JSON object: {path}")
         return value
 
+    @staticmethod
+    def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+        if not path.is_file(): return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
     def load(self) -> dict[str, Any]:
         missing_required = [name for name in self.REQUIRED_FILES.values() if not (self.path / name).is_file()]
         missing_optional = [name for name in self.OPTIONAL_FILES if not (self.path / name).is_file()]
@@ -66,6 +71,13 @@ class CaseBundleLoader:
             "bundle_path": str(self.path),
             **data,
             "fulltext": fulltext,
+            "discovery_layers": {
+                "seed_neighborhood": self._read_jsonl(self.path / "l2_seed_neighborhood_observations.jsonl"),
+                "reviewable_graph": self._read_jsonl(self.path / "l2_reviewable_graph_observations.jsonl"),
+                "weak_conflicts": self._read_jsonl(self.path / "weak_conflict_candidates.jsonl"),
+                "fulltext_escalation": self._read_jsonl(self.path / "l35_fulltext_candidate_papers.jsonl"),
+                "excluded_audit": self._read_jsonl(self.path / "discovery_filter_audit.jsonl"),
+            },
             "missing_required_files": missing_required,
             "missing_optional_files": missing_optional,
         }

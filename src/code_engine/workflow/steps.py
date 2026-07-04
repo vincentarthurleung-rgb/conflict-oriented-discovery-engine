@@ -918,6 +918,13 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "run_entity_registry_entity_count": len(hints),
         "source_scope": "abstract",
     }
+    intent_for_discovery = _read(run_dir, "semantic_search_intent.json", {})
+    if intent_for_discovery.get("discovery_planning_mode") == "neutral_discovery":
+        from code_engine.discovery.lanes import build_discovery_lanes
+        discovery = build_discovery_lanes(run_dir)["summary"]
+        summary.update({key: discovery[key] for key in ("seed_neighborhood_observation_count",
+            "reviewable_graph_observation_count", "weak_conflict_candidate_count",
+            "fulltext_escalation_candidate_count")})
     summary_path = _write(run_dir, "l2_abstract_summary.json", summary)
     active_pilot_terms = {item.casefold() for item in (pilot_terms or [])}
     pilot_mentions = sum(str(item.get("subject_raw") or "").casefold() in active_pilot_terms or str(item.get("object_raw") or "").casefold() in active_pilot_terms for item in claims)

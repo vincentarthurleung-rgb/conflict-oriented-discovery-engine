@@ -7,6 +7,7 @@ from code_engine.validation.case_routing import load_case_domain_profile
 
 ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","l2_graph_observations.jsonl","l2_canonicalization_audit_summary.json","l2_canonicalization_audit_report.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l7_pubmed_post_cutoff_summary.json","l7_pubmed_post_cutoff_results.jsonl","l7_reactome_summary.json","l7_reactome_results.jsonl","l7_enrichr_summary.json","l7_enrichr_results.jsonl","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
 ARTIFACTS += ["replay_manifest.json", "replay_report.md"]
+ARTIFACTS += ["l2_seed_neighborhood_observations.jsonl","l2_seed_neighborhood_summary.json","l2_reviewable_graph_observations.jsonl","l2_reviewable_graph_summary.json","weak_conflict_candidates.jsonl","weak_conflict_summary.json","discovery_filter_audit.jsonl","discovery_filter_summary.json","discovery_filter_summary.md","fulltext_escalation_candidates.jsonl","fulltext_escalation_plan.json"]
 REQUIRED = {"case_domain_profile.json","validator_selection_report.json","pipeline_stage_summary.json","l7_external_validation_summary.json","whitebox_case_report.md"}
 def _json(path:Path)->dict:
     try: return json.loads(path.read_text(encoding="utf-8"))
@@ -22,6 +23,8 @@ def _canonical(data:dict, field:str, warnings:list[str], artifact_name:str, *fal
     return default
 def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:str|Path="case_bundles", *, bundle_id_suffix:str|None=None, overwrite_bundle:bool=False, manifest_overrides:dict|None=None)->tuple[Path,dict]:
     run=Path(final_run).resolve(); artifacts=run/"artifacts"; profile=load_case_domain_profile(case_profile)
+    from code_engine.discovery.lanes import synchronize_seed_metadata
+    seed_provenance=synchronize_seed_metadata(run)
     bundle_id=profile.case_id+(f"__{bundle_id_suffix}" if bundle_id_suffix else "");out=Path(output_root)/bundle_id
     if bundle_id_suffix and out.exists() and not overwrite_bundle: raise FileExistsError(f"replay bundle already exists: {out}")
     out.mkdir(parents=True,exist_ok=True)
@@ -49,6 +52,7 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
     graph_count=int(_line_count(artifacts/"l2_graph_observations.jsonl") or 0)
     scientific_class="graph_observations_no_conflict" if graph_count and not conflict_count else "no_core_observations" if not core_count else "hypothesis_generated" if formal_count else "conflict_found" if conflict_count else "no_conflict"
     zero_reason="No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace." if not core_count else None
+    discovery=_json(artifacts/"discovery_filter_summary.json")
     manifest={"case_id":profile.case_id,"query":profile.query,"case_type":profile.case_type,"source_run_id":source_id,"final_run_id":run.name,
       "source_run_dir":str(run.parent/source_id) if source_id else None,"final_run_dir":str(run),"pipeline_complete":not required_missing,
       "pipeline_mode":"abstract_plus_domain_routed_external_validation","executed_validators":executed,
@@ -60,6 +64,9 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
       "fulltext_confirmation_status":fulltext.get("status","not_enabled"),"fulltext_candidate_paper_count":int(fulltext.get("candidate_paper_count",0) or 0),"fulltext_available_count":int(fulltext.get("oa_available_count",0) or 0),"fulltext_confirmed_conflict_count":int(fulltext.get("fulltext_confirmed_conflict_count",0) or 0),
       "fulltext_l1_claim_count":int(fulltext.get("fulltext_l1_claim_count",0) or 0),"fulltext_l1_api_calls":int(fulltext.get("fulltext_l1_api_calls",0) or 0),"fulltext_limit_hit":bool(fulltext.get("fulltext_limit_hit",False)),"copyright_safe":bool(fulltext.get("copyright_safe",True)),"fulltext_layer":{"enabled":fulltext.get("status","not_enabled")!="not_enabled","source":"pmc_oa","selection_policy":"conflict_related_only","status":fulltext.get("status","not_enabled"),"candidate_paper_count":int(fulltext.get("candidate_paper_count",0) or 0),"oa_available_count":int(fulltext.get("oa_available_count",0) or 0),"claim_count":int(fulltext.get("fulltext_l1_claim_count",0) or 0),"confirmed_conflict_count":int(fulltext.get("fulltext_confirmed_conflict_count",0) or 0)},
       "missing_artifacts":missing,"required_missing_artifacts":required_missing,"bundle_export_warnings":list(dict.fromkeys(export_warnings)),"bundle_complete":not missing,"ready_for_system_b":not required_missing and bool(executed),
+      "seed_neighborhood_observation_count":int(discovery.get("seed_neighborhood_observation_count",0)),"reviewable_graph_observation_count":int(discovery.get("reviewable_graph_observation_count",0)),
+      "weak_conflict_candidate_count":int(discovery.get("weak_conflict_candidate_count",0)),"fulltext_escalation_candidate_count":int(discovery.get("fulltext_escalation_candidate_count",0)),
+      "discovery_mode_recall_layer_available":bool(discovery),**seed_provenance,
       "created_at":datetime.now(timezone.utc).isoformat(),"schema_version":"case_bundle_manifest_v1"}
     manifest.update({"case_execution_outcome":"execution_passed" if manifest["pipeline_complete"] else "execution_incomplete","scientific_output_class":scientific_class,"zero_claim_reason":zero_reason,"is_zero_claim_case":not bool(core_count)})
     manifest.update(manifest_overrides or {})
