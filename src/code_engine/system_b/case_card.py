@@ -39,8 +39,11 @@ class CaseCardBuilder:
                 "weak_conflict_candidates": bundle.get("discovery_layers", {}).get("weak_conflicts", []),
                 "low_priority_context_observations": bundle.get("discovery_layers", {}).get("low_priority_context", []),
                 "fulltext_escalation_candidates": bundle.get("discovery_layers", {}).get("fulltext_escalation", []),
+                "relevant_oa_fulltext_candidates": bundle.get("discovery_layers", {}).get("relevant_oa_fulltext", []),
+                "relevant_non_oa_candidates": bundle.get("discovery_layers", {}).get("relevant_non_oa_fulltext", []),
+                "blocked_low_relevance_oa_candidates": bundle.get("discovery_layers", {}).get("blocked_low_relevance_oa", []),
                 "excluded_observations": bundle.get("discovery_layers", {}).get("excluded_audit", []),
-                "labels": {"strict": "strict", "reviewable": "requires_manual_review", "weak": "weak_requires_manual_review", "low_priority_context": "hidden_by_default"},
+                "labels": {"strict": "strict", "reviewable": "requires_manual_review", "weak": "weak_requires_manual_review", "low_priority_context": "hidden_by_default", "blocked_low_relevance_oa": "hidden_by_default"},
             },
             "validation_summary": {
                 "executed_validators": m.get("executed_validators", []),

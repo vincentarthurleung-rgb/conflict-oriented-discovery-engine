@@ -1,0 +1,8 @@
+{
+  "fulltext_min_relevance_score": 0.65,
+  "fulltext_min_anchor_strength": "medium",
+  "allow_context_only_fulltext": false,
+  "allow_low_relevance_oa_backfill": false,
+  "max_scientific_candidate_pool": 50,
+  "max_fulltext_papers": 20
+}

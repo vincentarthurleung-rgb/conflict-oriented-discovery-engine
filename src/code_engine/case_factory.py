@@ -56,7 +56,7 @@ def build_case_profile(*, case_id: str, query: str, case_type: str, semantic_int
         if domain_need: needs.append(domain_need)
     expected = list(CONFLICT_EXPECTED if conflict else [VALIDATOR_BY_NEED[x] for x in needs if x in VALIDATOR_BY_NEED])
     optional = list(CONFLICT_OPTIONAL if conflict else domain_profile.get("fallback_validators") or [])
-    fulltext = {"enabled": conflict, "source": "pmc_oa", "selection_policy": "conflict_related_only",
+    fulltext = {"enabled": conflict, "source": "pmc_oa", "selection_policy": "relevance_first_oa_aware",
                 "max_papers": 20, "include_near_conflicts": True, "require_oa": True, "skip_non_oa": True}
     alternatives = [str(item.get("domain_id") or "") if isinstance(item, dict) else str(item)
                     for item in routing.get("alternative_domains") or []]

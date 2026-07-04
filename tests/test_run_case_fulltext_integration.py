@@ -13,7 +13,7 @@ class IntegrationTests(unittest.TestCase):
    plan=Path(td)/"plan.json"; plan.write_text('{"frozen":true}')
    out=io.StringIO()
    with patch.dict(os.environ,{"L1_PROVIDER":"deepseek","MODEL_NAME":"m","DEEPSEEK_API_KEY":"x"},clear=True),redirect_stdout(out): self.assertEqual(main(["--case-profile",str(profile),"--search-plan-file",str(plan),"--network","--enable-fulltext-confirmation","--dry-run"]),0)
-   self.assertIn('"selection_policy": "conflict_related_only"',out.getvalue()); self.assertIn('"publisher_scraping": false',out.getvalue())
+   self.assertIn('"selection_policy": "relevance_first_oa_aware"',out.getvalue()); self.assertIn('"publisher_scraping": false',out.getvalue())
  def test_metformin_does_not_force_fulltext(self):
   out=io.StringIO()
   with patch.dict(os.environ,{"L1_PROVIDER":"deepseek","MODEL_NAME":"m","DEEPSEEK_API_KEY":"x"},clear=True),redirect_stdout(out): main(["--case-profile","configs/case_profiles/metformin_ampk_cancer.case_profile.json","--search-plan-file","configs/search_plans/metformin_ampk_cancer_2000_2020.llm_v1.frozen.json","--dry-run"])
