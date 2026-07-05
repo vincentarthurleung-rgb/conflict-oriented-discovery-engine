@@ -1,0 +1,69 @@
+{
+  "schema_version": "case_domain_profile_v1",
+  "case_id": "nfkb_inflammation_cancer_response_discovery_v1",
+  "case_version": "v1",
+  "query": "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.",
+  "case_type": "conflict_enriched",
+  "case_role": "conflict_discovery",
+  "domain_tags": [
+    "pathway_biology",
+    "clinical_outcome",
+    "drug_target_binding"
+  ],
+  "disease_areas": [
+    "cancer"
+  ],
+  "mechanism_areas": [
+    "NF-kappaB signaling pathway",
+    "therapy response",
+    "survival",
+    "immune adaptation"
+  ],
+  "genes": [],
+  "entity_types": [
+    "protein",
+    "process",
+    "phenotype",
+    "pathway"
+  ],
+  "intervention_types": [],
+  "validation_needs": [
+    "post_cutoff_literature",
+    "pathway_membership",
+    "gene_set_enrichment",
+    "full_text_conflict_confirmation"
+  ],
+  "expected_validators": [
+    "pubmed_post_cutoff",
+    "reactome",
+    "enrichr"
+  ],
+  "optional_validators": [
+    "chembl",
+    "opentargets",
+    "pmc_oa"
+  ],
+  "excluded_validators": [],
+  "validator_policy": {
+    "require_production_validators": false
+  },
+  "fulltext_policy": {
+    "enabled": true,
+    "source": "pmc_oa",
+    "selection_policy": "relevance_first_oa_aware",
+    "max_papers": 20,
+    "include_near_conflicts": true,
+    "require_oa": true,
+    "skip_non_oa": true
+  },
+  "scientific_notes": {
+    "intended_conflict": "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.",
+    "do_not_overclaim": [
+      "Search plan targets conflict-enriched literature but does not prove conflict.",
+      "Abstract-only conflict requires full-text confirmation.",
+      "PubMed hit count is not support or refutation.",
+      "Reactome and Enrichr are plausibility metadata, not causal proof."
+    ]
+  },
+  "profile_version": "1.0"
+}

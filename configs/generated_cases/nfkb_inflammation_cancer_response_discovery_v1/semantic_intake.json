@@ -1,0 +1,212 @@
+{
+  "research_intent": {
+    "raw_user_input": "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.",
+    "language": "en",
+    "task_type": "literature_search",
+    "research_goal": "Investigate the role of NF-kappaB inflammatory signaling in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.",
+    "primary_entities": [
+      "NF-kappaB",
+      "cancer therapy response",
+      "tumor survival",
+      "immune microenvironment"
+    ],
+    "secondary_entities": [
+      "inflammatory signaling",
+      "different cellular contexts"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "NF-kappaB signaling pathway"
+    ],
+    "comparison_entities": [
+      "different cellular contexts"
+    ],
+    "outcome_entities": [
+      "therapy response",
+      "survival",
+      "immune adaptation"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "cellular contexts",
+      "tumor microenvironment"
+    ],
+    "domain_routing": {
+      "domain_id": "pathway_biology",
+      "subdomain_id": null,
+      "domain_profile_id": "pathway_biology",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "clinical_outcome",
+          "subdomain_id": "treatment_outcome",
+          "confidence": 0.7
+        },
+        {
+          "domain_id": "drug_target_binding",
+          "subdomain_id": null,
+          "confidence": 0.5
+        }
+      ],
+      "reasoning_summary": "The query emphasizes a signaling pathway's involvement in cancer biology, making pathway_biology the best fit. Clinical outcomes (therapy response) and drug targeting are secondary domains.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.9,
+    "ambiguities": [
+      "The phrase 'different cellular contexts' is broad and may refer to various tumor types or cell lines."
+    ],
+    "warnings": [
+      "No explicit user intent beyond the statement; assuming a literature exploration goal."
+    ]
+  },
+  "domain_routing": {
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "domain_profile_id": "pathway_biology",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "clinical_outcome",
+        "subdomain_id": "treatment_outcome",
+        "confidence": 0.7
+      },
+      {
+        "domain_id": "drug_target_binding",
+        "subdomain_id": null,
+        "confidence": 0.5
+      }
+    ],
+    "reasoning_summary": "The query emphasizes a signaling pathway's involvement in cancer biology, making pathway_biology the best fit. Clinical outcomes (therapy response) and drug targeting are secondary domains.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "triple1",
+      "subject": "NF-kappaB",
+      "relation": "involved_in",
+      "object": "cancer therapy response",
+      "subject_type": "protein",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple2",
+      "subject": "NF-kappaB",
+      "relation": "contributes_to",
+      "object": "tumor survival",
+      "subject_type": "protein",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple3",
+      "subject": "NF-kappaB",
+      "relation": "regulates",
+      "object": "immune microenvironment adaptation",
+      "subject_type": "protein",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple4",
+      "subject": "inflammatory signaling",
+      "relation": "mediated_by",
+      "object": "NF-kappaB",
+      "subject_type": "pathway",
+      "object_type": "protein",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "nfkb",
+      "text": "NF-kappaB",
+      "concept_type": "protein",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "cancer_therapy_response",
+      "text": "cancer therapy response",
+      "concept_type": "process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "tumor_survival",
+      "text": "tumor survival",
+      "concept_type": "phenotype",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "immune_microenvironment_adaptation",
+      "text": "immune microenvironment adaptation",
+      "concept_type": "process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "inflammatory_signaling",
+      "text": "inflammatory signaling",
+      "concept_type": "pathway",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "NF-kappaB cancer therapy response",
+    "NF-kappaB tumor survival mechanism",
+    "NF-kappaB immune microenvironment cancer",
+    "NF-kappaB inflammatory signaling different cellular contexts"
+  ],
+  "negative_filters": [],
+  "ambiguities": [
+    "The phrase 'different cellular contexts' is broad and may refer to various tumor types or cell lines."
+  ],
+  "warnings": [
+    "No explicit user intent beyond the statement; assuming a literature exploration goal."
+  ],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"literature_search\",\n    \"research_goal\": \"Investigate the role of NF-kappaB inflammatory signaling in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.\",\n    \"primary_entities\": [\"NF-kappaB\", \"cancer therapy response\", \"tumor survival\", \"immune microenvironment\"],\n    \"secondary_entities\": [\"inflammatory signaling\", \"different cellular contexts\"],\n    \"disease_or_condition\": [\"cancer\"],\n    \"mechanism_entities\": [\"NF-kappaB signaling pathway\"],\n    \"comparison_entities\": [\"different cellular contexts\"],\n    \"outcome_entities\": [\"therapy response\", \"survival\", \"immune adaptation\"],\n    \"intervention_entities\": [],\n    \"context_terms\": [\"cellular contexts\", \"tumor microenvironment\"],\n    \"domain_routing\": {\n      \"domain_id\": \"pathway_biology\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"pathway_biology\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"subdomain_id\": \"treatment_outcome\",\n          \"confidence\": 0.7\n        },\n        {\n          \"domain_id\": \"drug_target_binding\",\n          \"subdomain_id\": null,\n          \"confidence\": 0.5\n        }\n      ],\n      \"reasoning_summary\": \"The query focuses on a signaling pathway (NF-kappaB) and its roles in cancer biology. Pathway_biology is the most direct domain, with clinical outcome and drug target binding as relevant alternatives.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [\"The phrase 'different cellular contexts' is broad and may refer to various tumor types or cell lines.\"],\n    \"warnings\": [\"No explicit user intent beyond the statement; assuming a literature exploration goal.\"]\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"pathway_biology\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"pathway_biology\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"subdomain_id\": \"treatment_outcome\",\n        \"confidence\": 0.7\n      },\n      {\n        \"domain_id\": \"drug_target_binding\",\n        \"subdomain_id\": null,\n        \"confidence\": 0.5\n      }\n    ],\n    \"reasoning_summary\": \"The query emphasizes a signaling pathway's involvement in cancer biology, making pathway_biology the best fit. Clinical outcomes (therapy response) and drug targeting are secondary domains.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"triple1\",\n      \"subject\": \"NF-kappaB\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cancer therapy response\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple2\",\n      \"subject\": \"NF-kappaB\",\n      \"relation\": \"contributes_to\",\n      \"object\": \"tumor survival\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple3\",\n      \"subject\": \"NF-kappaB\",\n      \"relation\": \"regulates\",\n      \"object\": \"immune microenvironment adaptation\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple4\",\n      \"subject\": \"inflammatory signaling\",\n      \"relation\": \"mediated_by\",\n      \"object\": \"NF-kappaB\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"protein\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"nfkb\",\n      \"text\": \"NF-kappaB\",\n      \"concept_type\": \"protein\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"cancer_therapy_response\",\n      \"text\": \"cancer therapy response\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"tumor_survival\",\n      \"text\": \"tumor survival\",\n      \"concept_type\": \"phenotype\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"immune_microenvironment_adaptation\",\n      \"text\": \"immune microenvironment adaptation\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"inflammatory_signaling\",\n      \"text\": \"inflammatory signaling\",\n      \"concept_type\": \"pathway\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"NF-kappaB cancer therapy response\",\n    \"NF-kappaB tumor survival mechanism\",\n    \"NF-kappaB immune microenvironment cancer\",\n    \"NF-kappaB inflammatory signaling different cellular contexts\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [\"The phrase 'different cellular contexts' is broad and may refer to various tumor types or cell lines.\"],\n  \"warnings\": [\"No explicit user intent beyond the statement; assuming a literature exploration goal.\"],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

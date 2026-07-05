@@ -1,0 +1,88 @@
+{
+  "schema_version": "runtime_config_summary_v1",
+  "last_checked": "2026-07-05",
+  "provider": {
+    "l1_provider": "deepseek",
+    "model_name": "deepseek-v4-pro",
+    "deepseek_api_key": "SET",
+    "openai_api_key": "MISSING"
+  },
+  "ncbi": {
+    "email": "SET",
+    "api_key": "SET"
+  },
+  "external_data": {
+    "lincs_l1000_root": "NOT_USED (hardcoded: data/external/lincs_l1000)",
+    "lincs_l1000_dataset": "NOT_USED (hardcoded: GSE70138)"
+  },
+  "env_variables": [
+    {"name": "L1_PROVIDER", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1", "run_case", "readiness"], "required_for": "all L1 extraction", "safe_to_leave_empty": false, "notes": "currently 'deepseek'"},
+    {"name": "MODEL_NAME", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1", "run_case", "readiness"], "required_for": "all L1 extraction", "safe_to_leave_empty": false, "notes": "currently 'deepseek-v4-pro'"},
+    {"name": "DEEPSEEK_API_KEY", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1"], "required_for": "--execute --api with deepseek provider", "safe_to_leave_empty": false, "notes": ""},
+    {"name": "OPENAI_API_KEY", "status": "MISSING", "used_by": ["abstract_l1", "fulltext_l1"], "required_for": "--execute --api with openai provider", "safe_to_leave_empty": true, "notes": "not needed when using deepseek"},
+    {"name": "NCBI_EMAIL", "status": "SET", "used_by": ["pubmed", "validator"], "required_for": "PubMed/E-utilities API", "safe_to_leave_empty": false, "notes": ""},
+    {"name": "NCBI_API_KEY", "status": "SET", "used_by": ["pubmed", "validator"], "required_for": "higher PubMed rate limit", "safe_to_leave_empty": true, "notes": "optional but strongly recommended"},
+    {"name": "ENRICHR_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "ENRICHR_BASE_URL", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read; URL is hardcoded in smoke tester"},
+    {"name": "SPEEDRICHR_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "LINCS_L1000_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "LINCS_L1000_ROOT", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read; path is hardcoded as data/external/lincs_l1000"},
+    {"name": "LINCS_L1000_DATASET", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read; dataset is hardcoded as GSE70138"},
+    {"name": "REACTOME_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "OPENTARGETS_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "CHEMBL_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "UNIPROT_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "STRING_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "PUBCHEM_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "CLINICALTRIALS_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "PMC_OA_ENABLED", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "PMC_OA_REQUIRE_OPEN_ACCESS", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"},
+    {"name": "PMC_OA_SKIP_NON_OA", "status": "NOT_USED", "used_by": [], "required_for": "", "safe_to_leave_empty": true, "notes": "defined in .env but never read by Python"}
+  ],
+  "recommended_concurrency": {
+    "case_level_max_workers": 3,
+    "l1_concurrency": 8,
+    "pubmed_concurrency": 3,
+    "validator_concurrency": 3,
+    "case_start_stagger_seconds": 10,
+    "max_retries": 2,
+    "retry_backoff_seconds": 30
+  },
+  "current_cli": {
+    "case_factory": {
+      "required": ["--case-id", "--query"],
+      "optional": ["--case-type", "--year-from", "--year-to", "--output-root", "--api", "--network", "--freeze-search-plan", "--run-readiness", "--copy-to-configs", "--overwrite-generated", "--overwrite-configs", "--allow-degraded-intake", "--seed-confidence-threshold", "--allow-narrow-discovery-plan", "--repository-root"]
+    },
+    "case_factory_batch": {
+      "required": ["--seed-inventory"],
+      "optional": ["--output-root", "--api", "--network", "--freeze-search-plan", "--run-readiness", "--copy-to-configs", "--overwrite-generated", "--overwrite-configs", "--allow-degraded-intake", "--allow-narrow-discovery-plan", "--repository-root"]
+    },
+    "run_case": {
+      "required": ["--case-profile", "--search-plan-file"],
+      "optional": ["--external-data-root", "--api", "--network", "--max-papers", "--temporal-role", "--l1-read-timeout-seconds", "--l1-max-retries", "--output-case-bundle-root", "--output-run-suffix", "--dry-run", "--stop-after-readiness", "--allow-warnings", "--fail-if-required-validator-unavailable", "--no-write-audit", "--enable-fulltext-confirmation", "--disable-fulltext-confirmation", "--enable-fulltext-discovery-escalation", "--disable-fulltext-discovery-escalation", "--fulltext-source", "--fulltext-max-papers", "--fulltext-include-near-conflicts", "--fulltext-max-sections-per-paper", "--fulltext-max-chunks-per-paper", "--fulltext-max-chars-per-chunk", "--fulltext-max-total-chunks", "--fulltext-l1-read-timeout-seconds", "--fulltext-l1-max-retries"]
+    },
+    "run_case_batch": {
+      "required": ["--output-root"],
+      "optional": ["--generated-case-root", "--case-ids", "--case-inventory", "--external-data-root", "--api", "--network", "--enable-fulltext-confirmation", "--max-workers", "--l1-concurrency", "--pubmed-concurrency", "--validator-concurrency", "--case-start-stagger-seconds", "--max-retries", "--retry-backoff-seconds", "--resume", "--overwrite-bundles", "--allow-degraded-intake", "--allow-narrow-discovery-plan", "--fail-fast", "--dry-run"]
+    },
+    "replay_case_stages": {
+      "required": ["--case-id", "--case-version", "--output-bundle"],
+      "optional": ["--source-run", "--source-bundle", "--from-stage", "--to-stage", "--no-llm", "--no-network", "--api", "--network", "--overwrite-bundle", "--fulltext-max-papers", "--fulltext-max-sections-per-paper", "--fulltext-max-total-chunks"]
+    },
+    "check_l1_provider": {
+      "required": [],
+      "optional": ["--scope", "--api", "--network", "--smoke-call"]
+    }
+  },
+  "obsolete_or_unsupported_args": [
+    "--input (for run_case_batch, use --generated-case-root + --case-ids instead)",
+    "--api-concurrency (use --l1-concurrency instead)",
+    "--retries (use --max-retries instead)",
+    "--case-dir (use --generated-case-root instead)",
+    "--concurrency (split into --max-workers, --l1-concurrency, --pubmed-concurrency, --validator-concurrency)",
+    "--skip-readiness (not supported in run_case)",
+    "--skip-fulltext (not supported in run_case)",
+    "--l1-timeout (use --l1-read-timeout-seconds instead)",
+    "--fulltext-l1-timeout (use --fulltext-l1-read-timeout-seconds instead)"
+  ]
+}

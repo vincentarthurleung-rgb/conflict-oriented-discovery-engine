@@ -1,0 +1,189 @@
+{
+  "research_intent": {
+    "raw_user_input": "Ferroptosis is involved in cancer therapy response, tumor suppression, survival adaptation, and immune microenvironment interactions across different cancer contexts.",
+    "language": "english",
+    "task_type": "literature_search",
+    "research_goal": "Understand the role of ferroptosis in cancer therapy response, tumor suppression, survival adaptation, and immune microenvironment interactions across different cancer contexts.",
+    "primary_entities": [
+      "ferroptosis",
+      "cancer"
+    ],
+    "secondary_entities": [
+      "therapy response",
+      "tumor suppression",
+      "survival adaptation",
+      "immune microenvironment"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "ferroptosis"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "therapy response",
+      "tumor suppression",
+      "survival adaptation",
+      "immune microenvironment interactions"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "different cancer contexts"
+    ],
+    "domain_routing": {
+      "domain_id": "general_biomedical",
+      "subdomain_id": null,
+      "domain_profile_id": "general_biomedical",
+      "confidence": 0.95,
+      "alternative_domains": [],
+      "reasoning_summary": "Ferroptosis is a cell death mechanism relevant to broad cancer biology, including therapy response, tumor suppression, survival adaptation, and immune interactions. It falls under general biomedical research without a specific narrow domain.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.9,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "general_biomedical",
+    "subdomain_id": null,
+    "domain_profile_id": "general_biomedical",
+    "confidence": 0.95,
+    "alternative_domains": [],
+    "reasoning_summary": "Ferroptosis is a cell death mechanism relevant to broad cancer biology, including therapy response, tumor suppression, survival adaptation, and immune interactions. It falls under general biomedical research without a specific narrow domain.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "triple1",
+      "subject": "ferroptosis",
+      "relation": "involved_in",
+      "object": "cancer therapy response",
+      "subject_type": "biological_process",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.7,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple2",
+      "subject": "ferroptosis",
+      "relation": "involved_in",
+      "object": "tumor suppression",
+      "subject_type": "biological_process",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.7,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple3",
+      "subject": "ferroptosis",
+      "relation": "involved_in",
+      "object": "survival adaptation",
+      "subject_type": "biological_process",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.7,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple4",
+      "subject": "ferroptosis",
+      "relation": "involved_in",
+      "object": "immune microenvironment interactions",
+      "subject_type": "biological_process",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.7,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "c1",
+      "text": "ferroptosis",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c2",
+      "text": "cancer",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c3",
+      "text": "therapy response",
+      "concept_type": "context",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c4",
+      "text": "tumor suppression",
+      "concept_type": "context",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c5",
+      "text": "survival adaptation",
+      "concept_type": "context",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c6",
+      "text": "immune microenvironment",
+      "concept_type": "context",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "ferroptosis cancer therapy response",
+    "ferroptosis tumor suppression",
+    "ferroptosis survival adaptation cancer",
+    "ferroptosis immune microenvironment cancer",
+    "role of ferroptosis in cancer"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"Ferroptosis is involved in cancer therapy response, tumor suppression, survival adaptation, and immune microenvironment interactions across different cancer contexts.\",\n    \"language\": \"english\",\n    \"task_type\": \"literature_search\",\n    \"research_goal\": \"Understand the role of ferroptosis in cancer therapy response, tumor suppression, survival adaptation, and immune microenvironment interactions across different cancer contexts.\",\n    \"primary_entities\": [\"ferroptosis\", \"cancer\"],\n    \"secondary_entities\": [\"therapy response\", \"tumor suppression\", \"survival adaptation\", \"immune microenvironment\"],\n    \"disease_or_condition\": [\"cancer\"],\n    \"mechanism_entities\": [\"ferroptosis\"],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\"therapy response\", \"tumor suppression\", \"survival adaptation\", \"immune microenvironment interactions\"],\n    \"intervention_entities\": [],\n    \"context_terms\": [\"different cancer contexts\"],\n    \"domain_routing\": {\n      \"domain_id\": \"general_biomedical\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"general_biomedical\",\n      \"confidence\": 0.95,\n      \"alternative_domains\": [],\n      \"reasoning_summary\": \"Ferroptosis is a cell death mechanism relevant to broad cancer biology, including therapy response, tumor suppression, survival adaptation, and immune interactions. It falls under general biomedical research without a specific narrow domain.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"general_biomedical\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"general_biomedical\",\n    \"confidence\": 0.95,\n    \"alternative_domains\": [],\n    \"reasoning_summary\": \"Ferroptosis is a cell death mechanism relevant to broad cancer biology, including therapy response, tumor suppression, survival adaptation, and immune interactions. It falls under general biomedical research without a specific narrow domain.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"triple1\",\n      \"subject\": \"ferroptosis\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cancer therapy response\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.7,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple2\",\n      \"subject\": \"ferroptosis\",\n      \"relation\": \"involved_in\",\n      \"object\": \"tumor suppression\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.7,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple3\",\n      \"subject\": \"ferroptosis\",\n      \"relation\": \"involved_in\",\n      \"object\": \"survival adaptation\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.7,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple4\",\n      \"subject\": \"ferroptosis\",\n      \"relation\": \"involved_in\",\n      \"object\": \"immune microenvironment interactions\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.7,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"c1\",\n      \"text\": \"ferroptosis\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c2\",\n      \"text\": \"cancer\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c3\",\n      \"text\": \"therapy response\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c4\",\n      \"text\": \"tumor suppression\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c5\",\n      \"text\": \"survival adaptation\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c6\",\n      \"text\": \"immune microenvironment\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"ferroptosis cancer therapy response\",\n    \"ferroptosis tumor suppression\",\n    \"ferroptosis survival adaptation cancer\",\n    \"ferroptosis immune microenvironment cancer\",\n    \"role of ferroptosis in cancer\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

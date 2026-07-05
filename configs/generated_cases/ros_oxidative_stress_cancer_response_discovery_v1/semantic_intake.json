@@ -1,0 +1,246 @@
+{
+  "research_intent": {
+    "raw_user_input": "Reactive oxygen species and oxidative stress are involved in cancer cell death, survival adaptation, and therapy response across metabolic and microenvironmental contexts.",
+    "language": "en",
+    "task_type": "literature_review",
+    "research_goal": "Explore the multifaceted roles of reactive oxygen species and oxidative stress in cancer, focusing on their involvement in cell death, survival adaptation, and therapy response, and how these roles are modulated by metabolic and microenvironmental contexts.",
+    "primary_entities": [
+      "reactive oxygen species",
+      "oxidative stress",
+      "cancer cell death",
+      "survival adaptation",
+      "therapy response"
+    ],
+    "secondary_entities": [
+      "metabolic context",
+      "microenvironmental context",
+      "tumor microenvironment"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "ROS generation",
+      "redox signaling",
+      "oxidative stress adaptation",
+      "metabolic reprogramming"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "cell death",
+      "survival adaptation",
+      "therapy resistance"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "tumor metabolism",
+      "tumor microenvironment",
+      "redox homeostasis"
+    ],
+    "domain_routing": {
+      "domain_id": "general_biomedical",
+      "subdomain_id": null,
+      "domain_profile_id": "general_biomedical",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "pathway_biology",
+          "confidence": 0.7
+        },
+        {
+          "domain_id": "clinical_outcome",
+          "subdomain_id": "treatment_outcome",
+          "confidence": 0.6
+        }
+      ],
+      "reasoning_summary": "Primary domain is general_biomedical because the query involves multiple entity types (ROS/oxidative stress, cancer phenotypes, therapy response) without a specific focus on drug binding or neural mechanisms. Pathway_biology and clinical_outcome are secondary fits.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.9,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "general_biomedical",
+    "subdomain_id": null,
+    "domain_profile_id": "general_biomedical",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "pathway_biology",
+        "confidence": 0.7
+      },
+      {
+        "domain_id": "clinical_outcome",
+        "subdomain_id": "treatment_outcome",
+        "confidence": 0.6
+      }
+    ],
+    "reasoning_summary": "Primary domain is general_biomedical because the query involves multiple entity types (ROS/oxidative stress, cancer phenotypes, therapy response) without a specific focus on drug binding or neural mechanisms. Pathway_biology and clinical_outcome are secondary fits.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "triple1",
+      "subject": "reactive oxygen species",
+      "relation": "involved_in",
+      "object": "cancer cell death",
+      "subject_type": "compound",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple2",
+      "subject": "oxidative stress",
+      "relation": "promotes",
+      "object": "cancer survival adaptation",
+      "subject_type": "phenotype",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple3",
+      "subject": "oxidative stress",
+      "relation": "modulates",
+      "object": "cancer therapy response",
+      "subject_type": "phenotype",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple4",
+      "subject": "metabolic context",
+      "relation": "influences",
+      "object": "ROS-mediated cancer cell death",
+      "subject_type": "pathway",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "triple5",
+      "subject": "tumor microenvironment",
+      "relation": "affects",
+      "object": "oxidative stress adaptation",
+      "subject_type": "phenotype",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "c1",
+      "text": "reactive oxygen species",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c2",
+      "text": "oxidative stress",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c3",
+      "text": "cancer cell death",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c4",
+      "text": "survival adaptation",
+      "concept_type": "entity",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c5",
+      "text": "therapy response",
+      "concept_type": "entity",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c6",
+      "text": "metabolic reprogramming",
+      "concept_type": "mechanism",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c7",
+      "text": "tumor microenvironment",
+      "concept_type": "entity",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c8",
+      "text": "redox signaling",
+      "concept_type": "mechanism",
+      "importance": 0.6,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "reactive oxygen species cancer cell death",
+    "oxidative stress survival adaptation cancer",
+    "ROS therapy response cancer metabolic context",
+    "tumor microenvironment oxidative stress",
+    "cancer cell death metabolic reprogramming ROS"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"Reactive oxygen species and oxidative stress are involved in cancer cell death, survival adaptation, and therapy response across metabolic and microenvironmental contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"literature_review\",\n    \"research_goal\": \"Explore the multifaceted roles of reactive oxygen species and oxidative stress in cancer, focusing on their involvement in cell death, survival adaptation, and therapy response, and how these roles are modulated by metabolic and microenvironmental contexts.\",\n    \"primary_entities\": [\n      \"reactive oxygen species\",\n      \"oxidative stress\",\n      \"cancer cell death\",\n      \"survival adaptation\",\n      \"therapy response\"\n    ],\n    \"secondary_entities\": [\n      \"metabolic context\",\n      \"microenvironmental context\",\n      \"tumor microenvironment\"\n    ],\n    \"disease_or_condition\": [\n      \"cancer\"\n    ],\n    \"mechanism_entities\": [\n      \"ROS generation\",\n      \"redox signaling\",\n      \"oxidative stress adaptation\",\n      \"metabolic reprogramming\"\n    ],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\n      \"cell death\",\n      \"survival adaptation\",\n      \"therapy resistance\"\n    ],\n    \"intervention_entities\": [],\n    \"context_terms\": [\n      \"tumor metabolism\",\n      \"tumor microenvironment\",\n      \"redox homeostasis\"\n    ],\n    \"domain_routing\": {\n      \"domain_id\": \"general_biomedical\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"general_biomedical\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"pathway_biology\",\n          \"subdomain_id\": null,\n          \"confidence\": 0.7\n        },\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"subdomain_id\": \"treatment_outcome\",\n          \"confidence\": 0.6\n        }\n      ],\n      \"reasoning_summary\": \"The query addresses ROS and oxidative stress in cancer, spanning cell death, adaptation, and therapy response. It fits general biomedicine due to broad entity types (compound, phenotype, disease). Pathway biology is relevant for ROS signaling pathways. Clinical outcome is relevant for therapy response aspects.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"general_biomedical\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"general_biomedical\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"pathway_biology\",\n        \"confidence\": 0.7\n      },\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"subdomain_id\": \"treatment_outcome\",\n        \"confidence\": 0.6\n      }\n    ],\n    \"reasoning_summary\": \"Primary domain is general_biomedical because the query involves multiple entity types (ROS/oxidative stress, cancer phenotypes, therapy response) without a specific focus on drug binding or neural mechanisms. Pathway_biology and clinical_outcome are secondary fits.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"triple1\",\n      \"subject\": \"reactive oxygen species\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cancer cell death\",\n      \"subject_type\": \"compound\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple2\",\n      \"subject\": \"oxidative stress\",\n      \"relation\": \"promotes\",\n      \"object\": \"cancer survival adaptation\",\n      \"subject_type\": \"phenotype\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple3\",\n      \"subject\": \"oxidative stress\",\n      \"relation\": \"modulates\",\n      \"object\": \"cancer therapy response\",\n      \"subject_type\": \"phenotype\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple4\",\n      \"subject\": \"metabolic context\",\n      \"relation\": \"influences\",\n      \"object\": \"ROS-mediated cancer cell death\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"triple5\",\n      \"subject\": \"tumor microenvironment\",\n      \"relation\": \"affects\",\n      \"object\": \"oxidative stress adaptation\",\n      \"subject_type\": \"phenotype\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"c1\",\n      \"text\": \"reactive oxygen species\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c2\",\n      \"text\": \"oxidative stress\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c3\",\n      \"text\": \"cancer cell death\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c4\",\n      \"text\": \"survival adaptation\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c5\",\n      \"text\": \"therapy response\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c6\",\n      \"text\": \"metabolic reprogramming\",\n      \"concept_type\": \"mechanism\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c7\",\n      \"text\": \"tumor microenvironment\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c8\",\n      \"text\": \"redox signaling\",\n      \"concept_type\": \"mechanism\",\n      \"importance\": 0.6,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"reactive oxygen species cancer cell death\",\n    \"oxidative stress survival adaptation cancer\",\n    \"ROS therapy response cancer metabolic context\",\n    \"tumor microenvironment oxidative stress\",\n    \"cancer cell death metabolic reprogramming ROS\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

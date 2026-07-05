@@ -1,0 +1,175 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "390133f18beff439f839f1c91657a543e781704018161978cd7d3dbdb323e4ac",
+    "subject": {
+      "name": "NF-kappaB",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "different cellular contexts",
+        "NF-kappaB signaling pathway",
+        "therapy response",
+        "survival",
+        "immune adaptation",
+        "cellular contexts",
+        "tumor microenvironment",
+        "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts"
+      ]
+    },
+    "query_text": "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.",
+    "query_hash": "3799f8b5a79d96d4962e2c939fde98797a35269fd47644204c55f1d9be996e79",
+    "display_title": "NF-kappaB — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(NF-kappaB cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(NF-kappaB molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(NF-kappaB different cellular contexts NF-kappaB signaling pathway cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(NF-kappaB context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "f40da86ed82f7737cf6eedaba30a8b3521c798dbeaf2ee5f53f4bdaedd072d70",
+  "planner_prompt_chars": 3465,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "390133f18beff439f839f1c91657a543e781704018161978cd7d3dbdb323e4ac",
+    "subject": {
+      "name": "NF-kappaB",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "different cellular contexts",
+        "NF-kappaB signaling pathway",
+        "therapy response",
+        "survival",
+        "immune adaptation",
+        "cellular contexts",
+        "tumor microenvironment",
+        "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts"
+      ]
+    },
+    "query_text": "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts.",
+    "query_hash": "3799f8b5a79d96d4962e2c939fde98797a35269fd47644204c55f1d9be996e79",
+    "display_title": "NF-kappaB — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [],
+  "context_terms": [
+    "cancer",
+    "different cellular contexts",
+    "NF-kappaB signaling pathway",
+    "therapy response",
+    "survival",
+    "immune adaptation",
+    "cellular contexts",
+    "tumor microenvironment",
+    "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "different cellular contexts",
+    "NF-kappaB signaling pathway",
+    "therapy response",
+    "survival",
+    "immune adaptation",
+    "cellular contexts",
+    "tumor microenvironment",
+    "NF-kappaB inflammatory signaling is involved in cancer therapy response, tumor survival, and immune microenvironment adaptation across different cellular contexts"
+  ],
+  "directional_terms_observed_in_user_query": [],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}

@@ -1,0 +1,63 @@
+{
+  "total_queries_before_guard": 12,
+  "allowed_l1_acquisition_queries": 4,
+  "removed_queries": [
+    {
+      "query": "(ferroptosis OR \"iron-dependent cell death\") AND (\"therapy response\" OR \"treatment resistance\") AND (malignancy OR neoplasm)",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "ferroptosis AND (\"tumor suppression\" OR \"survival adaptation\") AND (\"cancer therapy\" OR \"chemotherapy\")",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "ferroptosis AND \"immune microenvironment\" AND (\"cancer therapy\" OR \"tumor response\")",
+      "query_group": "direct_relation",
+      "reason": "seed_object_missing_from_direct_relation_query"
+    },
+    {
+      "query": "ferroptosis AND (GPX4 OR \"lipid peroxidation\" OR \"system Xc-\") AND (\"cancer therapy\" OR \"treatment response\")",
+      "query_group": "mechanism",
+      "reason": "seed_object_or_mechanism_alias_missing"
+    },
+    {
+      "query": "ferroptosis AND (p53 OR NRF2 OR \"ferroptosis suppressor protein 1\") AND (\"cancer treatment\" OR \"therapy response\")",
+      "query_group": "mechanism",
+      "reason": "seed_object_or_mechanism_alias_missing"
+    },
+    {
+      "query": "\"tumor microenvironment\" AND immune AND ferroptosis",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "\"survival adaptation\" AND \"cancer therapy\" AND cell death",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "ferroptosis AND cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "\"cancer therapy response\" AND \"cell death\"",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "\"ferroptosis is a key determinant of cancer therapy response\"",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 5,
+  "context_only_queries_removed": 2,
+  "broad_recall_queries_removed": 2,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 2,
+  "cross_context_mechanism_query_count": 0,
+  "neutral_discovery_replanned": true
+}
