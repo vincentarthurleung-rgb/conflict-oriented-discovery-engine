@@ -3,7 +3,7 @@ from __future__ import annotations
 import json,shutil
 from pathlib import Path
 from typing import Any
-from code_engine.discovery.lanes import build_weak_candidates,load_policy,score_discovery_records
+from code_engine.discovery.lanes import evaluate_weak_candidate_pairs,load_policy,score_discovery_records
 
 def _rows(path:Path)->list[dict]:
     try:return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
@@ -48,8 +48,11 @@ def finalize_discovery_escalation(run_dir:str|Path,*,prepared:dict[str,Any],expe
     _write_rows(artifacts/"l35_fulltext_discovery_l1_claims.jsonl",claims)
     raw_observations=[_claim_observation(x) for x in claims];scored=score_discovery_records(run_dir,raw_observations) if raw_observations else []
     neighborhood=[x for x in scored if x.get("seed_neighborhood_score",0)>=load_policy().seed_neighborhood_min_score and not x.get("context_only_match")]
-    reviewable=[x for x in neighborhood if x.get("graph_visibility_eligible")];weak=build_weak_candidates(reviewable)
+    reviewable=[x for x in neighborhood if x.get("graph_visibility_eligible")];weak,rejected=evaluate_weak_candidate_pairs(reviewable)
     _write_rows(artifacts/"l35_fulltext_discovery_observations.jsonl",scored)
+    _write_rows(artifacts/"weak_conflict_candidates.jsonl",weak);_write_rows(artifacts/"non_comparable_direction_pairs.jsonl",rejected)
+    _write_json(artifacts/"weak_conflict_summary.json",{"count":len(weak),"strict_conflict":False,"requires_review":True,"comparability_gate":"enabled"})
+    _write_json(artifacts/"non_comparable_direction_pair_summary.json",{"count":len(rejected),"mechanism_split_count":sum(x.get("candidate_type")=="mechanism_split" for x in rejected),"intervention_effect_pair_count":sum(x.get("candidate_type")=="intervention_effect_pair" for x in rejected)})
     l1=_json(artifacts/"l35_fulltext_l1_summary.json");chunks=_rows(artifacts/"l35_fulltext_l1_chunks.jsonl")
     records=_rows(artifacts/"l35_fulltext_discovery_execution_records.jsonl") if enabled else []
     errors=sum(x.get("extraction_status") in {"provider_error","parse_error","blocked"} for x in chunks)
@@ -116,18 +119,22 @@ def finalize_discovery_escalation(run_dir:str|Path,*,prepared:dict[str,Any],expe
         "no_relevant_oa":bool(shared_summary.get("no_relevant_oa",False)),
         "fulltext_claims_reentered_l2":len(scored),"fulltext_seed_neighborhood_observation_count":len(neighborhood),
         "fulltext_reviewable_graph_observation_count":len(reviewable),"fulltext_low_priority_context_observation_count":sum(bool(x.get("context_only_match")) for x in scored),"fulltext_weak_conflict_candidate_count":len(weak),
+        "non_comparable_direction_pair_count":len(rejected),"mechanism_split_count":sum(x.get("candidate_type")=="mechanism_split" for x in rejected),"intervention_effect_pair_count":sum(x.get("candidate_type")=="intervention_effect_pair" for x in rejected),
+        "weak_conflict_comparability_policy":{k:v for k,v in vars(load_policy()).items() if "comparability" in k or k.startswith("require_object_family") or k.startswith("require_relation_family") or k.startswith("allow_intervention")},
         "fulltext_strict_conflict_candidate_count":int(shared_summary.get("fulltext_confirmed_conflict_count",0)),
         "fulltext_hypothesis_candidate_count":0,"formal_hypothesis_count":0,"fulltext_handoff_consistent":not any("count_mismatch" in x for x in warnings),
         "fulltext_discovery_executed_when_expected":not expected or executed,"fulltext_discovery_skip_reason":"explicitly_disabled" if explicitly_disabled else None if enabled else "not_triggered"}
     _write_json(artifacts/"l35_fulltext_discovery_escalation_summary.json",summary)
-    _write_json(artifacts/"l35_fulltext_discovery_reentry_summary.json",{**{k:v for k,v in summary.items() if k.startswith("fulltext_")},"selected_chunk_count":selected_chunks,"formal_hypothesis_count":0})
+    _write_json(artifacts/"l35_fulltext_discovery_reentry_summary.json",{**{k:v for k,v in summary.items() if k.startswith("fulltext_")},"selected_chunk_count":selected_chunks,"weak_conflict_candidate_count":len(weak),"non_comparable_direction_pair_count":len(rejected),"mechanism_split_count":sum(x.get("candidate_type")=="mechanism_split" for x in rejected),"intervention_effect_pair_count":sum(x.get("candidate_type")=="intervention_effect_pair" for x in rejected),"formal_hypothesis_count":0})
     pipeline=_json(artifacts/"pipeline_stage_summary.json");pipeline.update({"status":pipeline.get("status","completed"),"l35_fulltext_discovery":summary})
     _write_json(artifacts/"pipeline_stage_summary.json",pipeline)
     md=artifacts/"pipeline_stage_summary.md";block="\n## L3.5 Fulltext Discovery Escalation\n\n"+"\n".join(f"- {k}: {v}" for k,v in summary.items())+"\n"
     md.write_text((md.read_text(encoding="utf-8") if md.is_file() else "# Pipeline Stage Summary\n")+block,encoding="utf-8")
     hypothesis=_json(artifacts/"hypothesis_summary.json");hypothesis.update({k:v for k,v in summary.items() if k.startswith("fulltext_")})
     hypothesis.update({"discovery_oa_available_count":oa,"discovery_relevant_oa_candidate_count":relevant_oa,
-        "discovery_selected_fulltext_count":selected,"discovery_downloaded_fulltext_count":downloaded,"selected_chunk_count":selected_chunks})
+        "discovery_selected_fulltext_count":selected,"discovery_downloaded_fulltext_count":downloaded,"selected_chunk_count":selected_chunks,
+        "weak_conflict_candidate_count":len(weak),"non_comparable_direction_pair_count":len(rejected),
+        "mechanism_split_count":sum(x.get("candidate_type")=="mechanism_split" for x in rejected),"intervention_effect_pair_count":sum(x.get("candidate_type")=="intervention_effect_pair" for x in rejected)})
     _write_json(artifacts/"hypothesis_summary.json",hypothesis)
     return summary
 

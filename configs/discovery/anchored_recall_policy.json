@@ -10,5 +10,11 @@
   "require_anchor_for_reviewable_graph": true,
   "require_anchor_for_weak_conflict": true,
   "require_anchor_for_fulltext_escalation": true,
+  "weak_conflict_min_comparability_score": 0.70,
+  "context_split_min_comparability_score": 0.65,
+  "mechanism_split_max_conflict_score": 0.60,
+  "require_object_family_match_for_direction_mismatch": true,
+  "require_relation_family_match_for_direction_mismatch": true,
+  "allow_intervention_effect_pair_as_weak_conflict": false,
   "broad_context_terms": ["cancer", "disease", "response", "progression", "context", "cellular context", "immune context", "tumor"]
 }

@@ -70,10 +70,27 @@ def replay_fulltext_l1(a,profile,suffix):
         manifest_overrides={"case_version":a.case_version,"is_replay_run":True,"replay_from_stage":"fulltext_l1","llm_used":bool(a.api),"network_used":bool(a.network)})
     return {"case_id":a.case_id,"case_version":a.case_version,"source_bundle":str(source_bundle),"source_run":str(source),"new_run":str(target),"bundle":str(bundle),**result["summary"],**summary}
 
+def replay_weak_conflict(a,profile,suffix):
+    source_bundle=a.source_bundle.resolve();manifest=json.loads((source_bundle/"case_bundle_manifest.json").read_text(encoding="utf-8"));source=Path(manifest.get("final_run_dir") or "").resolve()
+    target=Path("runs")/f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{a.case_id}_{a.case_version}";shutil.copytree(source,target);artifacts=target/"artifacts"
+    from code_engine.fulltext.fulltext_l1_extractor import SECTION_WEIGHTS
+    for name in ("l35_fulltext_l1_claims.jsonl","l35_fulltext_discovery_l1_claims.jsonl"):
+        rows=_rows(artifacts/name)
+        for row in rows:
+            tier=row.get("section_type") or "other";row["section_evidence_tier"]=tier;row["section_evidence_weight"]=SECTION_WEIGHTS.get(tier,.25)
+        _write_rows(artifacts/name,rows)
+    from code_engine.fulltext.discovery_escalation import finalize_discovery_escalation,prepare_discovery_escalation
+    prepared=prepare_discovery_escalation(target,enabled=True);shared=json.loads((artifacts/"l35_fulltext_conflict_confirmation_summary.json").read_text())
+    summary=finalize_discovery_escalation(target,prepared=prepared,expected=True,explicitly_disabled=False,shared_summary=shared,strict_conflict_count=0)
+    from code_engine.cli.export_case_bundle import export_case_bundle
+    bundle,_=export_case_bundle(target,profile,a.output_bundle.parent,bundle_id_suffix=suffix,overwrite_bundle=a.overwrite_bundle,
+        manifest_overrides={"case_version":a.case_version,"is_replay_run":True,"replay_from_stage":"weak_conflict","llm_used":False,"network_used":False})
+    return {"case_id":a.case_id,"case_version":a.case_version,"source_bundle":str(source_bundle),"source_run":str(source),"new_run":str(target),"bundle":str(bundle),**summary}
+
 def main(argv=None):
     p=argparse.ArgumentParser(description="Replay downstream stages, including optional online fulltext discovery.")
     p.add_argument("--case-id",required=True);p.add_argument("--source-run",type=Path);p.add_argument("--source-bundle",type=Path)
-    p.add_argument("--from-stage",choices=("l2","l3","l6","bundle","fulltext_discovery","fulltext_l1"),default="l2");p.add_argument("--to-stage",choices=("bundle",),default="bundle")
+    p.add_argument("--from-stage",choices=("l2","l3","l6","bundle","fulltext_discovery","fulltext_l1","weak_conflict"),default="l2");p.add_argument("--to-stage",choices=("bundle",),default="bundle")
     p.add_argument("--case-version",required=True);p.add_argument("--output-bundle",type=Path,required=True)
     p.add_argument("--no-llm",action="store_true");p.add_argument("--no-network",action="store_true");p.add_argument("--api",action="store_true");p.add_argument("--network",action="store_true");p.add_argument("--overwrite-bundle",action="store_true")
     p.add_argument("--fulltext-max-papers",type=int,default=20);p.add_argument("--fulltext-max-sections-per-paper",type=int,default=12);p.add_argument("--fulltext-max-total-chunks",type=int,default=200)
@@ -83,7 +100,10 @@ def main(argv=None):
     profile=Path("configs/generated_cases")/a.case_id/"case_profile.json";plan=Path("configs/generated_cases")/a.case_id/"search_plan.frozen.json"
     if not profile.is_file() or not plan.is_file():print(json.dumps({"status":"REPLAY_BLOCKED","error":"generated case profile or frozen plan missing"}));return 2
     expected=a.case_id+"__";suffix=a.output_bundle.name[len(expected):] if a.output_bundle.name.startswith(expected) else a.case_version
-    if a.from_stage=="fulltext_l1":
+    if a.from_stage=="weak_conflict":
+        if not a.source_bundle:p.error("--source-bundle is required for --from-stage weak_conflict")
+        result=replay_weak_conflict(a,profile,suffix)
+    elif a.from_stage=="fulltext_l1":
         if not a.source_bundle:p.error("--source-bundle is required for --from-stage fulltext_l1")
         result=replay_fulltext_l1(a,profile,suffix)
     elif a.from_stage=="fulltext_discovery":
