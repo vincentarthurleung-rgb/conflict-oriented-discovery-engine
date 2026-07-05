@@ -1,13 +1,10 @@
 import json
 import tempfile
-import threading
 import unittest
-import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from code_engine.system_b.explorer.explorer_api import BOUNDARY, ExplorerAPI
-from code_engine.system_b.explorer.explorer_server import make_handler
+from code_engine.system_b.explorer.explorer_server import create_app
 
 def write_jsonl(path, rows): path.write_text("".join(json.dumps(x) + "\n" for x in rows))
 
@@ -18,7 +15,7 @@ class KnowledgeExplorerTests(unittest.TestCase):
         chains=[{"chain_id":"c1","entity_path":["A","B"],"relation_path":["promotes"],"triple_ids":["t1"],"depth":1,"evidence_count_sum":2,"fulltext_evidence_count_sum":1,"results_section_evidence_count_sum":1,"case_ids":["case"],"conflict_statuses":[],"chain_quality_score":.8}]
         case_t=[{"case_id":"case","triple_id":"t1","subject_label":"A","relation_normalized":"promotes","object_label":"B","case_evidence_count":2,"case_fulltext_evidence_count":1,"case_results_section_evidence_count":1,"case_display_priority_score":.9,"case_display_rank":1}]
         case_c=[{"case_id":"case","chain_id":"c1","entity_path":["A","B"],"relation_path":["promotes"],"triple_ids":["t1"],"case_evidence_count_sum":2,"case_fulltext_evidence_count_sum":1,"case_chain_quality_score":.9,"case_display_rank":1}]
-        evidence=[{"triple_id":"t1","case_id":"case","source_scope":"fulltext","section_title":"Results","evidence_sentence":"A promotes B.","source_file":"x.jsonl","source_line":1}]
+        evidence=[{"triple_id":"t1","case_id":"case","item_type":"fulltext_l1_claim","source_scope":"fulltext","section_title":"Results","evidence_sentence":"A promotes B.","source_file":"claims.jsonl","source_line":1}]
         for name,rows in (("display_entities_v2.jsonl",entities),("display_triples_v2.jsonl",triples),("display_chains_v2.jsonl",chains),("case_focused_triples.jsonl",case_t),("case_focused_chains.jsonl",case_c),("triple_evidence_links.jsonl",evidence)):write_jsonl(root/name,rows)
         write_jsonl(root/"validator_annotations.jsonl",[{"case_id":"case","validator_name":"reactome","status":"available"}]);write_jsonl(root/"conflict_lens_records.jsonl",[])
 
@@ -38,12 +35,9 @@ class KnowledgeExplorerTests(unittest.TestCase):
 
     def test_templates_render_for_all_views_and_cli_handler_builds(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root=Path(tmp);self.fixture(root);handler=make_handler(root,None);server=ThreadingHTTPServer(("127.0.0.1",0),handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
-            try:
-                base=f"http://127.0.0.1:{server.server_port}";opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
-                for path in ("/","/cases","/entities","/chains","/conflicts","/case/case","/triple/t1"):
-                    text=opener.open(base+path).read().decode();self.assertIn(BOUNDARY,text)
-                summary=json.loads(opener.open(base+"/api/summary").read());self.assertEqual(summary["display_triples"],1)
-            finally:server.shutdown();thread.join();server.server_close()
+            root=Path(tmp);self.fixture(root);client=create_app(root,None,testing=True).test_client()
+            for path in ("/","/cases","/entities","/chains","/conflicts","/case/case","/triple/t1"):
+                response=client.get(path);text=response.get_data(as_text=True);response.close();self.assertIn(BOUNDARY,text);self.assertIn("C.O.D.E. Atlas",text);self.assertIn("Biomedical Evidence &amp; Mechanism Explorer",text)
+            summary=client.get("/api/summary").get_json();self.assertEqual(summary["display_triples"],1)
 
 if __name__=="__main__":unittest.main()

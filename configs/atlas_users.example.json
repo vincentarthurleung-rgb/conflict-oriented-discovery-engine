@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "username": "example_reviewer",
+      "password_hash": "pbkdf2:sha256:600000$replace_with_generated_salt$replace_with_generated_digest",
+      "display_name": "Example Reviewer",
+      "role": "reviewer",
+      "enabled": false
+    }
+  ]
+}

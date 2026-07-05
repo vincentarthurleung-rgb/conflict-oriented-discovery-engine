@@ -15,6 +15,7 @@ cuda-pathfinder==1.5.5
 cuda-toolkit==13.0.2
 distro==1.9.0
 filelock==3.29.0
+Flask==3.1.2
 frozenlist==1.8.0
 fsspec==2026.4.0
 gmpy2 @ file:///home/task_176474799776688/conda-bld/gmpy2_1764748047044/work

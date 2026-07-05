@@ -10,6 +10,7 @@ __pycache__/
 
 # Local environment
 .env
+configs/atlas_users.json
 .venv/
 venv/
 .DS_Store

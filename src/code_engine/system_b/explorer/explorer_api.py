@@ -5,8 +5,9 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 from urllib.parse import unquote
+from .annotation_store import AnnotationStore
 
-BOUNDARY = "System B supports evidence navigation and triage. Outputs require human review and are not biological validation."
+BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
 REQUIRED = ("display_entities_v2.jsonl", "display_triples_v2.jsonl", "display_chains_v2.jsonl", "case_focused_triples.jsonl", "case_focused_chains.jsonl", "triple_evidence_links.jsonl")
 
 def _json(path):
@@ -44,6 +45,7 @@ class ExplorerAPI:
         for x in self.conflicts:
             for tid in x.get("linked_triple_ids",[]):self.conflict_by_triple[tid].append(x)
         self.review=_jsonl(self.review_root/"manual_review_queue.jsonl") if self.review_root else []
+        self.review_by_id={x["review_item_id"]:x for x in self.review};self.annotations=AnnotationStore(self.review_root,self.review)
         self.paper_metrics=_json(self.review_root/"paper_metrics_starter.json") if self.review_root else {}
         self.annotation_status=self._annotation_status()
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])})
@@ -61,7 +63,7 @@ class ExplorerAPI:
         if not self.review_root or not self.review_root.exists(): warnings.append("Review root unavailable; review panels are optional and empty.")
         return {"cases":len(self.cases),"display_entities":len(self.entities),"display_triples":len(self.triples),"display_chains":len(self.chains),"fulltext_evidence_count":fulltext,"conflict_lens_records":len(self.conflicts),"review_queue_count":len(self.review),"warnings":warnings,"scientific_boundary":BOUNDARY}
 
-    def dispatch(self,path,params=None):
+    def dispatch(self,path,params=None,method="GET",body=None):
         params=params or {}
         if path=="/api/summary":return 200,self.summary()
         if path=="/api/cases":return 200,{"items":[self._case_summary(x) for x in self.cases],"total":len(self.cases)}
@@ -78,6 +80,24 @@ class ExplorerAPI:
             value=self.chain_by_id.get(unquote(path.removeprefix("/api/chain/"))); return (200,value) if value else (404,{"error":"chain_not_found"})
         if path=="/api/conflicts":return 200,_page(self._conflicts(params),params)
         if path=="/api/review-summary":return 200,{"queue_count":len(self.review),"items_by_type":dict(Counter(x.get("item_type","unknown") for x in self.review)),"items_by_case":dict(Counter(x.get("case_id","unknown") for x in self.review)),"annotation_status":self.annotation_status,"paper_metrics":self.paper_metrics,"manual_metrics_notice":"Manual precision metrics require completed non-empty annotations."}
+        if path=="/api/review-items":return 200,_page(self._review_items(params),params)
+        if path.startswith("/api/review-item/"):
+            item_id=unquote(path.removeprefix("/api/review-item/"));item=self.review_by_id.get(item_id)
+            return (200,{**item,"annotation":self.annotations.get(item_id)}) if item else (404,{"error":"review_item_not_found"})
+        if path=="/api/annotations":return 200,{"items":list(self.annotations.records.values()),"total":len(self.annotations.records)}
+        if path.startswith("/api/annotation/"):
+            item_id=unquote(path.removeprefix("/api/annotation/"))
+            if method=="POST":
+                try:return 200,self.annotations.save(item_id,body or {})
+                except KeyError:return 404,{"error":"review_item_not_found"}
+                except RuntimeError as error:return 503,{"error":str(error)}
+            value=self.annotations.get(item_id);return (200,value) if value else (404,{"error":"annotation_not_found"})
+        if path=="/api/review-metrics":return 200,self.annotations.metrics()
+        if path=="/api/review-metrics/recompute" and method=="POST":
+            if not self.annotations.available:return 503,{"error":"Review root is unavailable; metrics cannot be persisted."}
+            self.annotations.write_all();return 200,self.annotations.metrics()
+        if path=="/api/review-export.csv":return 200,{"_raw":self.annotations.csv_text(),"_content_type":"text/csv; charset=utf-8","_filename":"manual_review_annotations_live.csv"}
+        if path=="/api/review-export.jsonl":return 200,{"_raw":self.annotations.jsonl_text(),"_content_type":"application/x-ndjson; charset=utf-8","_filename":"manual_review_annotations_live.jsonl"}
         if path=="/api/search":return 200,self._search(_one(params,"q").casefold(),params)
         return 404,{"error":"not_found"}
 
@@ -117,6 +137,18 @@ class ExplorerAPI:
         if kind:rows=[x for x in rows if x.get("record_type")==kind]
         return rows
 
+    def _review_items(self,p):
+        rows=[];case=_one(p,"case_id");kind=_one(p,"item_type");status=_one(p,"review_status");label=_one(p,"final_label").upper();q=_one(p,"q").casefold()
+        for item in self.review:
+            annotation=self.annotations.get(item["review_item_id"]);row={**item,"annotation":annotation,"review_status":"reviewed" if annotation else "unreviewed"}
+            if case and item.get("case_id")!=case:continue
+            if kind and item.get("item_type")!=kind:continue
+            if status and status!="all" and row["review_status"]!=status:continue
+            if label and (annotation or {}).get("final_label")!=label:continue
+            if q and q not in " ".join(str(item.get(x,"")) for x in ("claim_text","evidence_sentence","subject","relation","object","pmid","paper_title")).casefold():continue
+            rows.append(row)
+        return rows
+
     def _case_summary(self,case):
         triples=[x for x in self.case_triples if x["case_id"]==case]; chains=[x for x in self.case_chains if x["case_id"]==case]
         return {"case_id":case,"display_triples_count":len(triples),"display_chains_count":len(chains),"fulltext_evidence_count":sum(x.get("case_fulltext_evidence_count",0) for x in triples),"non_comparable_records":sum(x.get("case_id")==case and x.get("record_type")=="non_comparable_direction_pair" for x in self.conflicts),"weak_candidates":sum(x.get("case_id")==case and x.get("record_type")=="weak_candidate" for x in self.conflicts),"review_queue_items":sum(x.get("case_id")==case for x in self.review)}
@@ -143,7 +175,11 @@ class ExplorerAPI:
         try: limit=max(1,min(200,int(_one(p,"evidence_limit","50"))))
         except ValueError:raise ValueError("evidence_limit must be an integer")
         cases=set(triple.get("case_ids",[]))
-        return {**triple,"evidence_links":evidence[:limit],"evidence_total":len(evidence),"contexts":self.context_by_triple[tid],"validator_annotations":[x for x in self.validators if x.get("case_id") in cases],"conflict_lens_records":self.conflict_by_triple[tid],"manual_review_status":{"status":"pending","note":"Review queue identity is evidence-level unless explicitly linked to this triple."}}
+        enriched=[]
+        for link in evidence[:limit]:
+            item_id=f"{link.get('case_id')}::{link.get('item_type')}::{link.get('source_file')}::{link.get('source_line')}";item=self.review_by_id.get(item_id)
+            enriched.append({**link,"review_item_id":item_id if item else None,"review_status":"reviewed" if item and self.annotations.get(item_id) else "unreviewed" if item else "not_in_review_queue","annotation":self.annotations.get(item_id) if item else None})
+        return {**triple,"evidence_links":enriched,"evidence_total":len(evidence),"contexts":self.context_by_triple[tid],"validator_annotations":[x for x in self.validators if x.get("case_id") in cases],"conflict_lens_records":self.conflict_by_triple[tid],"manual_review_status":{"status":"evidence_level","note":"Manual labels assess extraction and triage quality, not biological validation."}}
 
     def _search(self,q,p):
         if not q:return {"entities":[],"triples":[],"chains":[]}
