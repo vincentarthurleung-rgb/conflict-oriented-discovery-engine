@@ -59,9 +59,9 @@ def finalize_discovery_escalation(run_dir:str|Path,*,prepared:dict[str,Any],expe
     downloaded=sum(x.get("download_status")=="success" for x in records)
     download_attempted=sum(bool(x.get("download_attempted")) for x in records)
     parse_attempted=sum(bool(x.get("parse_attempted")) for x in records)
-    l1_attempted=sum(bool(x.get("fulltext_l1_attempted")) for x in records)
+    l1_attempted=int(l1.get("fulltext_l1_attempted_count",sum(bool(x.get("fulltext_l1_attempted")) for x in records)) or 0)
     parsed_sections=sum(int(x.get("parsed_section_count",0) or 0) for x in records)
-    selected_chunks=sum(int(x.get("selected_chunk_count",0) or 0) for x in records)
+    selected_chunks=int(l1.get("selected_chunk_count",sum(int(x.get("selected_chunk_count",0) or 0) for x in records)) or 0)
     record_claims=sum(int(x.get("fulltext_l1_claim_count",0) or 0) for x in records)
     relevant_oa=int(shared_summary.get("relevant_oa_candidate_count",oa))
     selected_without_attempt=sum(bool(x.get("oa_available")) and not x.get("download_attempted") for x in records)
@@ -97,6 +97,9 @@ def finalize_discovery_escalation(run_dir:str|Path,*,prepared:dict[str,Any],expe
         "l35_candidate_paper_count":len(shared_candidates),"oa_available_count":oa,"discovery_oa_available_count":oa,"downloaded_fulltext_count":downloaded,
         "parsed_section_count":parsed_sections,"selected_chunk_count":selected_chunks,
         "fulltext_l1_claim_count":record_claims,"fulltext_l1_error_count":errors,"skipped_no_pmcid_count":no_pmcid,
+        "fulltext_l1_status":l1.get("fulltext_l1_status"),"fulltext_l1_success_count":int(l1.get("fulltext_l1_success_count",0) or 0),
+        "fulltext_l1_failed_count":int(l1.get("fulltext_l1_failed_count",0) or 0),"fulltext_l1_skipped_count":int(l1.get("fulltext_l1_skipped_count",0) or 0),
+        "fulltext_l1_provider":l1.get("fulltext_l1_provider"),"fulltext_l1_model":l1.get("fulltext_l1_model"),"provider_available":l1.get("provider_available"),
         "skipped_not_oa_count":not_oa,"skipped_limit_count":int(l1.get("chunks_skipped",0)),"status":status,"warnings":warnings,
         "scientific_candidate_count":int(shared_summary.get("scientific_candidate_count",len(discovery_candidates))),
         "relevance_passed_candidate_count":int(shared_summary.get("relevance_passed_candidate_count",0)),
@@ -112,19 +115,19 @@ def finalize_discovery_escalation(run_dir:str|Path,*,prepared:dict[str,Any],expe
         "low_relevance_oa_backfill_blocked_count":int(shared_summary.get("low_relevance_oa_backfill_blocked_count",0)),
         "no_relevant_oa":bool(shared_summary.get("no_relevant_oa",False)),
         "fulltext_claims_reentered_l2":len(scored),"fulltext_seed_neighborhood_observation_count":len(neighborhood),
-        "fulltext_reviewable_graph_observation_count":len(reviewable),"fulltext_weak_conflict_candidate_count":len(weak),
+        "fulltext_reviewable_graph_observation_count":len(reviewable),"fulltext_low_priority_context_observation_count":sum(bool(x.get("context_only_match")) for x in scored),"fulltext_weak_conflict_candidate_count":len(weak),
         "fulltext_strict_conflict_candidate_count":int(shared_summary.get("fulltext_confirmed_conflict_count",0)),
-        "fulltext_hypothesis_candidate_count":0,"fulltext_handoff_consistent":not any("count_mismatch" in x for x in warnings),
+        "fulltext_hypothesis_candidate_count":0,"formal_hypothesis_count":0,"fulltext_handoff_consistent":not any("count_mismatch" in x for x in warnings),
         "fulltext_discovery_executed_when_expected":not expected or executed,"fulltext_discovery_skip_reason":"explicitly_disabled" if explicitly_disabled else None if enabled else "not_triggered"}
     _write_json(artifacts/"l35_fulltext_discovery_escalation_summary.json",summary)
-    _write_json(artifacts/"l35_fulltext_discovery_reentry_summary.json",{k:v for k,v in summary.items() if k.startswith("fulltext_")})
+    _write_json(artifacts/"l35_fulltext_discovery_reentry_summary.json",{**{k:v for k,v in summary.items() if k.startswith("fulltext_")},"selected_chunk_count":selected_chunks,"formal_hypothesis_count":0})
     pipeline=_json(artifacts/"pipeline_stage_summary.json");pipeline.update({"status":pipeline.get("status","completed"),"l35_fulltext_discovery":summary})
     _write_json(artifacts/"pipeline_stage_summary.json",pipeline)
     md=artifacts/"pipeline_stage_summary.md";block="\n## L3.5 Fulltext Discovery Escalation\n\n"+"\n".join(f"- {k}: {v}" for k,v in summary.items())+"\n"
     md.write_text((md.read_text(encoding="utf-8") if md.is_file() else "# Pipeline Stage Summary\n")+block,encoding="utf-8")
     hypothesis=_json(artifacts/"hypothesis_summary.json");hypothesis.update({k:v for k,v in summary.items() if k.startswith("fulltext_")})
     hypothesis.update({"discovery_oa_available_count":oa,"discovery_relevant_oa_candidate_count":relevant_oa,
-        "discovery_selected_fulltext_count":selected,"discovery_downloaded_fulltext_count":downloaded})
+        "discovery_selected_fulltext_count":selected,"discovery_downloaded_fulltext_count":downloaded,"selected_chunk_count":selected_chunks})
     _write_json(artifacts/"hypothesis_summary.json",hypothesis)
     return summary
 

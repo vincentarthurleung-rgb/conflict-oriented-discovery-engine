@@ -92,4 +92,17 @@ def build_l1_client_from_env_or_config(provider: str | None = None, model_name: 
     return None
 
 
-__all__ = ["OpenAIJSONClient", "build_l1_client_from_env_or_config", "resolve_l1_timeout_config"]
+def diagnose_l1_provider(provider: str | None = None, model_name: str | None = None, *, api_enabled: bool=True,
+                         network_enabled: bool=True, config_source: str="env") -> dict[str, Any]:
+    selected=(provider or os.getenv("L1_PROVIDER") or "").casefold()
+    if not selected:selected="deepseek" if os.getenv("DEEPSEEK_API_KEY") else "openai" if os.getenv("OPENAI_API_KEY") else ""
+    credential={"deepseek":"DEEPSEEK_API_KEY","openai":"OPENAI_API_KEY"}.get(selected)
+    present=bool(credential and os.getenv(credential))
+    available=bool(api_enabled and network_enabled and selected in {"deepseek","openai"} and present)
+    return {"scope":"fulltext","provider":selected or None,"model":model_name or os.getenv("MODEL_NAME"),
+        "provider_config_source":config_source,"provider_available":available,"credential_checked":bool(credential),
+        "credential_name_checked":credential,"credential_name":credential,"credential_present":present,
+        "provider_error":None if available else "api_disabled" if not api_enabled else "network_disabled" if not network_enabled else "provider_not_configured" if not selected else "credential_missing"}
+
+
+__all__ = ["OpenAIJSONClient", "build_l1_client_from_env_or_config", "diagnose_l1_provider", "resolve_l1_timeout_config"]
