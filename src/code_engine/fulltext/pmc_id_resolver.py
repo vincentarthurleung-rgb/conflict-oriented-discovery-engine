@@ -8,7 +8,9 @@ from urllib.request import urlopen
 IDCONV_URL="https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/"
 def resolve_pmcid(paper:dict, *, network_enabled:bool=False, cache_dir:str|Path|None=None, transport:Callable[[str],dict]|None=None)->dict:
     base={"paper_id":paper.get("paper_id"),"pmid":paper.get("pmid"),"doi":paper.get("doi"),"pmcid":paper.get("pmcid"),"idconv_error":None}
-    if paper.get("pmcid"): return {**base,"idconv_status":"resolved","idconv_source":"metadata"}
+    # A PMCID propagated from upstream metadata can belong to a different paper.
+    # When a PMID and network access are available, verify the pair with PMC idconv.
+    if paper.get("pmcid") and (not paper.get("pmid") or not network_enabled): return {**base,"idconv_status":"resolved","idconv_source":"metadata"}
     identifier=str(paper.get("pmid") or paper.get("doi") or ""); cache=Path(cache_dir) if cache_dir else None; cached=cache/f"{identifier.replace('/','_')}.json" if cache and identifier else None
     if cached and cached.is_file():
         data=json.loads(cached.read_text(encoding="utf-8")); return {**base,**data,"idconv_source":"cache"}

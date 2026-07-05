@@ -1,0 +1,23 @@
+{
+  "schema_version": "system_b_batch_summary_v1",
+  "case_count": 3,
+  "ready_count": 2,
+  "not_ready_count": 1,
+  "positive_control_count": 1,
+  "conflict_enriched_count": 2,
+  "cases_with_true_graph_conflicts": 0,
+  "cases_with_fulltext_confirmation": 0,
+  "executed_validator_counts": {
+    "pubmed_post_cutoff": 1,
+    "enrichr": 1,
+    "lincs_l1000": 1
+  },
+  "recommended_unavailable_validator_counts": {
+    "chembl": 3,
+    "opentargets": 3,
+    "pubmed_post_cutoff": 2,
+    "reactome": 2,
+    "enrichr": 2
+  },
+  "primary_next_step": "Expand coverage into under-represented domains."
+}

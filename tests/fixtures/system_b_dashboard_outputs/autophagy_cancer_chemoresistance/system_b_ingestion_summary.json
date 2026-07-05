@@ -1,0 +1,10 @@
+{
+  "case_id": "autophagy_cancer_chemoresistance",
+  "output_case_label": "autophagy_cancer_chemoresistance",
+  "system_b_status": "ingested",
+  "quality_class": "CASE_READY_FOR_COMPARISON",
+  "comparison_readiness": "READY_FOR_COMPARISON",
+  "schema_valid": true,
+  "bundle_consistent": true,
+  "ready_for_system_b": true
+}

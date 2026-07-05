@@ -20,6 +20,8 @@ class RelevanceFirstOATests(unittest.TestCase):
         self.assertIn("low_relevance_oa_backfill_blocked", blocked["blocked_reasons"])
         context = assess_scientific_relevance({"selection_score": .9, "anchor_strength": "strong", "context_only_match": True}, policy)
         self.assertFalse(context["relevance_passed"])
+        linked = assess_scientific_relevance({"selection_score": .56, "anchor_strength": "medium", "selection_source": "anchored_reviewable", "linked_observation_ids": ["obs"]}, policy)
+        self.assertTrue(linked["relevance_passed"])
 
     def test_scientific_pool_expands_beyond_execution_quota(self):
         with tempfile.TemporaryDirectory() as td:
@@ -59,6 +61,24 @@ class RelevanceFirstOATests(unittest.TestCase):
             self.assertEqual(summary["relevant_oa_candidate_count"], 1)
             candidates = [json.loads(x) for x in (artifacts / "l35_fulltext_candidate_papers.jsonl").read_text().splitlines()]
             self.assertTrue(candidates[-1]["selected_for_fulltext_l1"])
+            records = [json.loads(x) for x in (artifacts / "l35_fulltext_discovery_execution_records.jsonl").read_text().splitlines()]
+            self.assertEqual(len(records), 1)
+            self.assertTrue(records[0]["download_attempted"])
+            self.assertEqual(summary["download_attempted_count"], 1)
+            self.assertEqual(summary["selected_fulltext_count"], len(records))
+
+    def test_selected_oa_download_failure_has_concrete_execution_diagnostic(self):
+        with tempfile.TemporaryDirectory() as td:
+            run=Path(td); artifacts=run/"artifacts"; artifacts.mkdir()
+            row={"paper_id":"paper-a","pmid":"paper-a","pmcid":"PMC-A","selection_score":.9,"anchor_strength":"strong"}
+            (artifacts/"fulltext_discovery_escalation_candidates.jsonl").write_text(json.dumps(row)+"\n")
+            oa=lambda _: b'<OA><records><record license="CC"><link format="xml" href="https://www.ncbi.nlm.nih.gov/a.xml"/></record></records></OA>'
+            summary=run_l35_pmc_oa_stage(run,enabled=True,network_enabled=True,oa_transport=oa,download_transport=lambda _: b"not xml")
+            record=json.loads((artifacts/"l35_fulltext_discovery_execution_records.jsonl").read_text().strip())
+            self.assertEqual(record["download_status"],"success")
+            self.assertEqual(record["parse_status"],"failed")
+            self.assertEqual(record["blocking_reason"],"jats_parse_failed")
+            self.assertEqual(summary["selected_oa_without_download_attempt_count"],0)
 
 
 if __name__ == "__main__":

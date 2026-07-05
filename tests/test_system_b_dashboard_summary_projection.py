@@ -4,7 +4,7 @@ from code_engine.system_b.dashboard import DashboardAPI
 
 
 class DashboardSummaryProjectionTests(unittest.TestCase):
-    def setUp(self): self.api = DashboardAPI("system_b_outputs", "system_b_outputs/kg")
+    def setUp(self): self.api = DashboardAPI("tests/fixtures/system_b_dashboard_outputs", "tests/fixtures/system_b_dashboard_outputs/kg")
 
     def test_default_overview_collapses_provenance_and_unavailable_validators(self):
         _, graph = self.api.dispatch("/api/graph/overview")

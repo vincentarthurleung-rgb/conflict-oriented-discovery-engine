@@ -59,6 +59,55 @@ def _counts(candidates: list[dict]) -> dict:
     }
 
 
+def _execution_records(candidates: list[dict], results: list[dict], claims: list[dict], artifacts: Path,
+                       l1_summary: dict) -> list[dict]:
+    """Build one auditable execution record for every selected OA paper."""
+    by_id = {str(x.get("paper_id") or x.get("pmid")): x for x in results}
+    chunks = []
+    try:
+        chunks = [json.loads(x) for x in (artifacts / "l35_fulltext_l1_chunks.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
+    except (OSError, json.JSONDecodeError):
+        pass
+    records=[]
+    for paper in candidates:
+        if not paper.get("selected_for_fulltext_l1"): continue
+        key=str(paper.get("paper_id") or paper.get("pmid")); result=by_id.get(key)
+        downloaded=bool(result and (result.get("download_status")=="success" or result.get("full_text_status")=="available"))
+        reason=(result or {}).get("reason"); error=(result or {}).get("error")
+        article=artifacts / "fulltext/pmc_oa" / str(paper.get("pmcid")) / "article_text.json"
+        sections=0
+        if article.is_file():
+            try: sections=len(json.loads(article.read_text(encoding="utf-8")).get("sections",[]))
+            except (OSError,json.JSONDecodeError): pass
+        prefix=f"{paper.get('pmcid')}_"; paper_chunks=[x for x in chunks if str(x.get("chunk_id") or "").startswith(prefix)]
+        paper_claims=[x for x in claims if str(x.get("paper_id") or x.get("pmid"))==key]
+        parse_attempted=downloaded; parse_success=downloaded and article.is_file()
+        claim_chunks={str(x.get("chunk_hash")) for x in paper_claims if x.get("chunk_hash")}
+        selected_chunk_count=len(paper_chunks) or len(claim_chunks)
+        l1_attempted=bool(paper_claims) or (bool(paper_chunks) and any(x.get("extraction_status") not in {"planned"} for x in paper_chunks))
+        l1_failed=any(x.get("extraction_status") in {"provider_error","parse_error","blocked"} for x in paper_chunks)
+        blocking=None
+        if not downloaded: blocking=reason or "jats_download_failed"
+        elif not parse_success: blocking="jats_parse_failed"
+        elif sections==0: blocking="no_sections_after_parse"
+        elif not selected_chunk_count: blocking="section_selection_empty"
+        elif l1_failed: blocking="fulltext_l1_provider_unavailable" if any(x.get("extraction_status")=="blocked" for x in paper_chunks) else "fulltext_l1_schema_error"
+        elif not paper_claims: blocking="fulltext_l1_no_claims"
+        final="failed" if blocking and blocking not in {"fulltext_l1_no_claims"} else "no_claims" if not paper_claims else "l1_completed"
+        records.append({"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),
+            "selection_source":paper.get("selection_source"),"selection_score":float(paper.get("selection_score",0) or 0),
+            "selection_tier":paper.get("candidate_tier"),"selected_for_fulltext_l1":True,"oa_available":bool(paper.get("oa_available")),
+            "download_attempted":result is not None,"download_status":"success" if downloaded else "failed" if result is not None else "skipped",
+            "download_error":None if downloaded else error or reason,"parse_attempted":parse_attempted,
+            "parse_status":"success" if parse_success else "failed" if parse_attempted else "skipped","parse_error":None if parse_success else blocking if parse_attempted else None,
+            "parsed_section_count":sections,"selected_chunk_count":selected_chunk_count,"fulltext_l1_attempted":l1_attempted,
+            "fulltext_l1_status":"failed" if l1_failed else "success" if l1_attempted else "skipped",
+            "fulltext_l1_error":blocking if l1_failed else None,"fulltext_l1_claim_count":len(paper_claims),
+            "final_status":final,"blocking_reason":blocking,
+            **{name:(result or {}).get(name) for name in ("resource_type","resource_url","resource_selected","resource_selection_reason","archive_downloaded","archive_extracted","archive_file_count","selected_xml_file","selected_xml_kind")}})
+    return records
+
+
 def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled: bool = False, api_enabled: bool = False,
                          max_papers: int = 20, include_near_conflicts: bool = False, extractor: Callable | None = None,
                          l1_client=None, l1_provider: str | None = None, l1_model: str | None = None,
@@ -82,7 +131,7 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
             "fulltext_confirmed_conflict_count": 0, "copyright_safe": True, "non_oa_skipped_count": 0,
             "no_relevant_oa": False, "message": selection.get("message"), **handoff}
         _write_jsonl(artifacts / "l35_fulltext_candidate_papers.jsonl", candidates)
-        for name in ("l35_fulltext_retrieval_results.jsonl", "l35_fulltext_l1_claims.jsonl", "l35_fulltext_conflict_confirmations.jsonl", "l35_fulltext_oa_candidate_papers.jsonl"):
+        for name in ("l35_fulltext_retrieval_results.jsonl", "l35_fulltext_l1_claims.jsonl", "l35_fulltext_conflict_confirmations.jsonl", "l35_fulltext_oa_candidate_papers.jsonl", "l35_fulltext_discovery_execution_records.jsonl", "l35_fulltext_oa_resource_diagnostics.jsonl"):
             _write_jsonl(artifacts / name, [])
         for name in ("l35_fulltext_retrieval_summary.json", "l35_fulltext_l1_summary.json", "l35_fulltext_conflict_confirmation_summary.json"):
             _write_json(artifacts / name, summary)
@@ -112,6 +161,14 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
         if result.get("full_text_status") == "available" and extractor is not None:
             article = json.loads((fulltext_root / paper["pmcid"] / "article_text.json").read_text(encoding="utf-8"))
             claims += extract_fulltext_claims(paper, article, extractor=extractor, provider=os.getenv("L1_PROVIDER"), model=os.getenv("MODEL_NAME"))
+    diagnostics=[]
+    result_by_id={str(x.get("paper_id") or x.get("pmid")):x for x in results}
+    for paper in executable:
+        key=str(paper.get("paper_id") or paper.get("pmid"));oa=availability_by_id.get(key,{}) ;result=result_by_id.get(key,{})
+        diagnostics.append({"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),
+            "oa_metadata_available":oa.get("oa_status")=="available","resource_candidates":oa.get("download_resources",[]),
+            "selected_resource":oa.get("selected_resource"),"blocking_reason":result.get("reason") if result.get("full_text_status")!="available" else None})
+    _write_jsonl(artifacts / "l35_fulltext_oa_resource_diagnostics.jsonl",diagnostics)
     l1_summary = {"fulltext_l1_status": "skipped", "api_calls_made": 0, "limit_hit": False}
     if extractor is None and executable:
         from code_engine.fulltext.fulltext_l1_extractor import run_fulltext_l1_extraction
@@ -128,7 +185,14 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
                 item = conflict_map.setdefault(str(cid), {"candidate_id": str(cid), "paper_ids": [], "relation_family": paper.get("conflict_relation") or paper.get("relation_family")})
                 item["paper_ids"].append(str(paper.get("paper_id")))
     confirmation = confirm_fulltext_conflicts(list(conflict_map.values()), claims, results, l1_status=l1_summary.get("fulltext_l1_status"))
-    counts = _counts(classified); downloaded = sum(x.get("full_text_status") == "available" for x in results)
+    counts = _counts(classified); downloaded = sum(x.get("download_status") == "success" or x.get("full_text_status") == "available" for x in results)
+    execution_records=_execution_records(classified,results,claims,artifacts,l1_summary)
+    _write_jsonl(artifacts / "l35_fulltext_discovery_execution_records.jsonl",execution_records)
+    execution_warnings=[]
+    if counts["selected_fulltext_count"]!=len(execution_records):execution_warnings.append("selected_fulltext_count_mismatch")
+    if downloaded!=sum(x.get("download_status")=="success" for x in execution_records):execution_warnings.append("downloaded_fulltext_count_mismatch")
+    selected_without_attempt=sum(x.get("oa_available") and not x.get("download_attempted") for x in execution_records)
+    if selected_without_attempt:execution_warnings.append("selected_oa_without_download_attempt")
     if not counts["relevant_oa_candidate_count"]:
         stage_status = "completed_no_relevant_oa"
     elif l1_summary.get("fulltext_l1_status") == "blocked":
@@ -142,7 +206,19 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
         "fulltext_l1_api_calls": l1_summary.get("api_calls_made", 0), "fulltext_limit_hit": l1_summary.get("limit_hit", False),
         "copyright_safe": True, "non_oa_skipped_count": counts["high_relevance_non_oa_count"],
         "no_relevant_oa": not bool(counts["relevant_oa_candidate_count"]),
-        "warnings": [] if stage_status != "partially_completed_fulltext_l1_not_run" else ["fulltext_l1_not_run_api_network_or_client_unavailable"], **handoff}
+        "download_attempted_count":sum(x["download_attempted"] for x in execution_records),
+        "parse_attempted_count":sum(x["parse_attempted"] for x in execution_records),
+        "fulltext_l1_attempted_count":sum(x["fulltext_l1_attempted"] for x in execution_records),
+        "selected_oa_without_download_attempt_count":selected_without_attempt,
+        "resource_diagnostics_count":len(diagnostics),
+        "archive_downloaded_count":sum(bool(x.get("archive_downloaded")) for x in execution_records),
+        "archive_extracted_count":sum(bool(x.get("archive_extracted")) for x in execution_records),
+        "xml_file_selected_count":sum(bool(x.get("selected_xml_file")) for x in execution_records),
+        "unsupported_pdf_only_count":sum(x.get("blocking_reason")=="only_pdf_resources_available" for x in execution_records),
+        "archive_contains_no_xml_count":sum(x.get("blocking_reason")=="archive_contains_no_xml" for x in execution_records),
+        "xml_parse_failed_count":sum(x.get("blocking_reason") in {"xml_parse_failed","jats_parse_failed"} for x in execution_records),
+        "fulltext_execution_consistent":not execution_warnings,"fulltext_execution_consistency_warnings":execution_warnings,
+        "warnings": execution_warnings + ([] if stage_status != "partially_completed_fulltext_l1_not_run" else ["fulltext_l1_not_run_api_network_or_client_unavailable"]), **handoff}
     _write_jsonl(artifacts / "l35_fulltext_retrieval_results.jsonl", results); _write_jsonl(artifacts / "l35_fulltext_l1_claims.jsonl", claims)
     _write_jsonl(artifacts / "l35_fulltext_conflict_confirmations.jsonl", confirmation["confirmations"])
     _write_json(artifacts / "l35_fulltext_retrieval_summary.json", summary); _write_json(artifacts / "l35_fulltext_l1_summary.json", {**l1_summary, "copyright_safe": True})

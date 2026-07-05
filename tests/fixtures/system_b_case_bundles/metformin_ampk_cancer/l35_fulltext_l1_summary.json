@@ -1,0 +1,12 @@
+{
+  "status": "not_enabled",
+  "candidate_paper_count": 0,
+  "pmcid_resolved_count": 0,
+  "oa_available_count": 0,
+  "fulltext_downloaded_count": 0,
+  "fulltext_l1_claim_count": 0,
+  "fulltext_confirmed_conflict_count": 0,
+  "copyright_safe": true,
+  "non_oa_skipped_count": 0,
+  "message": "Full-text confirmation is disabled by case policy."
+}

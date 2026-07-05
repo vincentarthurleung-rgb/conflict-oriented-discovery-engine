@@ -8,7 +8,7 @@ from code_engine.system_b.kg import KGBuilder, KGQueryEngine
 class KGQueryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.root = Path(self.temp.name) / "kg"
-        KGBuilder("case_bundles", self.root).build(); self.query = KGQueryEngine(self.root)
+        KGBuilder("tests/fixtures/system_b_case_bundles", self.root).build(); self.query = KGQueryEngine(self.root)
 
     def tearDown(self): self.temp.cleanup()
 

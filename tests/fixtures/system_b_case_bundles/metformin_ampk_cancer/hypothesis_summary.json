@@ -1,0 +1,163 @@
+{
+  "abstract_only_followup_count": 2,
+  "conflict_graph_available": true,
+  "display_followup_count": 2,
+  "display_hypothesis_count": 0,
+  "domain_id": "general_biomedical",
+  "formal_hypothesis_count": 0,
+  "formation_mode": "run_artifact_based",
+  "fulltext_conflict_summary_available": true,
+  "graph_conflict_candidates_used": 0,
+  "graph_conflict_hypothesis_count": 0,
+  "high_confidence_hypothesis_count": 0,
+  "hypotheses_from_graph_conflicts": 0,
+  "hypotheses_from_true_graph_conflicts": 0,
+  "hypotheses_from_weak_graph_bundles": 0,
+  "hypothesis_abstract_only_count": 2,
+  "hypothesis_artifact_count": 5,
+  "hypothesis_candidate_count": 2,
+  "hypothesis_count": 2,
+  "hypothesis_display_policy": {
+    "main_hypotheses_include_high_confidence_only": true,
+    "abstract_only_followups_hidden_from_main_findings": true,
+    "manual_review_followups_reported_separately": true
+  },
+  "hypothesis_fulltext_grounded_count": 0,
+  "hypothesis_high_confidence_count": 0,
+  "hypothesis_mechanism_grounded_count": 0,
+  "hypothesis_requires_manual_review_count": 2,
+  "hypothesis_source_mode_counts": {
+    "abstract_conflict_screening": 2
+  },
+  "hypothesis_type_counts": {
+    "abstract_conflict_followup_hypothesis": 2
+  },
+  "main_hypothesis_count": 0,
+  "manual_review_followup_count": 2,
+  "max_hypotheses": 60,
+  "mechanism_graph_used": false,
+  "missing_observation_provenance_hypothesis_blocked_count": 0,
+  "non_core_graph_hypothesis_blocked_count": 0,
+  "query_context_only_hypothesis_blocked_count": 0,
+  "reason": null,
+  "run_dir": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20260703_134819_metformin_ampk_cancer",
+  "status": "completed",
+  "top_hypotheses": [
+    {
+      "hypothesis_id": "H_ac1eb55210a3d2bd",
+      "hypothesis_text": "The abstract-only directional conflict requires full-text confirmation before mechanism interpretation.",
+      "hypothesis_type": "abstract_conflict_followup_hypothesis",
+      "linked_dois": [
+        "10.1371/journal.pone.0096801",
+        "10.1016/j.clgc.2018.12.009"
+      ],
+      "linked_journals": [
+        "Cancers",
+        "International journal of molecular sciences"
+      ],
+      "linked_titles": [
+        "Metformin Suppresses Cancer Stem Cells through AMPK Activation and Inhibition of Protein Prenylation of the Mevalonate Pathway in Colorectal Cancer.",
+        "Current Status and Application of Metformin for Prostate Cancer: A Comprehensive Review."
+      ],
+      "overall_score": 0.249,
+      "publication_year_range": {
+        "max": 2020,
+        "min": 2020
+      }
+    },
+    {
+      "hypothesis_id": "H_7f40623733993aee",
+      "hypothesis_text": "The abstract-only directional conflict requires full-text confirmation before mechanism interpretation.",
+      "hypothesis_type": "abstract_conflict_followup_hypothesis",
+      "linked_dois": [
+        "10.4161/spmg.1.2.16606"
+      ],
+      "linked_journals": [
+        "Pharmaceuticals (Basel, Switzerland)"
+      ],
+      "linked_titles": [
+        "Metformin Restores the Drug Sensitivity of MCF-7 Cells Resistant Derivates via the Cooperative Modulation of Growth and Apoptotic-Related Pathways."
+      ],
+      "overall_score": 0.029,
+      "publication_year_range": {
+        "max": 2020,
+        "min": 2020
+      }
+    }
+  ],
+  "true_graph_conflict_hypothesis_count": 0,
+  "warnings": [],
+  "weak_followup_count": 0,
+  "weak_graph_bundle_candidates_used": 0,
+  "batch_id": null,
+  "triple_id": "8e93ae86bd90280677e3c8def94c5ca3ab0b0a99c5293ed21e0917a3051a3f43",
+  "query_id": "3a60f13df2dbc63e",
+  "query_hash": "3a60f13df2dbc63ee6b5b915b64649dea12962617fe8a4ebab70428969416393",
+  "seed_triple": {
+    "triple_id": "8e93ae86bd90280677e3c8def94c5ca3ab0b0a99c5293ed21e0917a3051a3f43",
+    "subject": {
+      "name": "metformin",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "activates",
+      "family": "activates"
+    },
+    "object": {
+      "name": "AMPK",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "general_biomedical",
+      "context_terms": []
+    },
+    "query_text": "metformin AMPK cancer",
+    "query_hash": "3a60f13df2dbc63ee6b5b915b64649dea12962617fe8a4ebab70428969416393",
+    "display_title": "metformin — activates — AMPK in general_biomedical",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.6,
+    "human_review_required": true,
+    "intake_mode": "llm_semantic"
+  },
+  "seed_triple_title": "metformin — activates — AMPK in general_biomedical",
+  "manual_review_followups": [
+    {
+      "hypothesis_id": "H_ac1eb55210a3d2bd",
+      "hypothesis_type": "abstract_conflict_followup_hypothesis",
+      "score": 0.249,
+      "reason": "abstract-only signal; full-text/manual review required",
+      "not_a_graph_conflict_hypothesis": true
+    },
+    {
+      "hypothesis_id": "H_7f40623733993aee",
+      "hypothesis_type": "abstract_conflict_followup_hypothesis",
+      "score": 0.029,
+      "reason": "abstract-only signal; full-text/manual review required",
+      "not_a_graph_conflict_hypothesis": true
+    }
+  ],
+  "run_id": "20260703_134819_metformin_ampk_cancer_rebuilt_metformin_ampk_cancer_clean_domain_routed_lincs_v1",
+  "source_run_id": "20260703_134819_metformin_ampk_cancer",
+  "rebuilt_run_id": "20260703_134819_metformin_ampk_cancer_rebuilt_metformin_ampk_cancer_clean_domain_routed_lincs_v1",
+  "artifact_rebuild": {
+    "enabled": true,
+    "source_run_id": "20260703_134819_metformin_ampk_cancer",
+    "rebuilt_run_id": "20260703_134819_metformin_ampk_cancer_rebuilt_metformin_ampk_cancer_clean_domain_routed_lincs_v1",
+    "rebuild_stages": [
+      "l4",
+      "l5",
+      "l6",
+      "l7",
+      "report"
+    ]
+  },
+  "artifact_run_id_semantics": "run_id_is_current_rebuilt_run",
+  "full_text_confirmation_status": "not_enabled",
+  "full_text_candidate_paper_count": 0,
+  "full_text_available_count": 0,
+  "full_text_l1_claim_count": 0,
+  "full_text_confirmed_conflict_count": 0
+}

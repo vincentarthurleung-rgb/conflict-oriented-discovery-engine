@@ -1,0 +1,137 @@
+{
+  "schema_version": "system_b_case_comparison_v1",
+  "case_count": 3,
+  "columns": [
+    "case_id",
+    "case_role",
+    "quality_class",
+    "comparison_readiness",
+    "ready_for_system_b",
+    "case_execution_outcome",
+    "scientific_output_class",
+    "is_zero_claim_case",
+    "zero_claim_reason",
+    "pipeline_complete",
+    "core_observation_count",
+    "true_graph_conflict_count",
+    "formal_hypothesis_count",
+    "manual_review_followup_count",
+    "executed_validators",
+    "unavailable_validators",
+    "external_validation_status",
+    "lincs_interpretation",
+    "overall_validation_score",
+    "fulltext_confirmation_status",
+    "fulltext_confirmed_conflict_count",
+    "system_b_use",
+    "recommended_next_step"
+  ],
+  "cases": [
+    {
+      "case_id": "autophagy_cancer_chemoresistance",
+      "case_role": "conflict_enriched",
+      "quality_class": "CASE_READY_FOR_COMPARISON",
+      "comparison_readiness": "READY_FOR_COMPARISON",
+      "ready_for_system_b": true,
+      "case_execution_outcome": "execution_passed",
+      "scientific_output_class": "no_core_observations",
+      "is_zero_claim_case": true,
+      "zero_claim_reason": "No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace.",
+      "pipeline_complete": true,
+      "core_observation_count": 0,
+      "true_graph_conflict_count": 0,
+      "formal_hypothesis_count": 0,
+      "manual_review_followup_count": 0,
+      "executed_validators": [
+        "pubmed_post_cutoff",
+        "enrichr"
+      ],
+      "unavailable_validators": [
+        "chembl",
+        "opentargets"
+      ],
+      "external_validation_status": "completed",
+      "lincs_interpretation": "unavailable",
+      "overall_validation_score": null,
+      "fulltext_confirmation_status": "completed_no_candidates",
+      "fulltext_confirmed_conflict_count": 0,
+      "system_b_use": [
+        "archive",
+        "comparison"
+      ],
+      "recommended_next_step": "Include in cross-case comparison."
+    },
+    {
+      "case_id": "autophagy_cancer_chemoresistance",
+      "case_role": "conflict_enriched",
+      "quality_class": "CASE_NOT_READY",
+      "comparison_readiness": "NOT_READY",
+      "ready_for_system_b": false,
+      "case_execution_outcome": "execution_passed",
+      "scientific_output_class": "graph_observations_no_conflict",
+      "is_zero_claim_case": true,
+      "zero_claim_reason": "No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace.",
+      "pipeline_complete": true,
+      "core_observation_count": 0,
+      "true_graph_conflict_count": 0,
+      "formal_hypothesis_count": 0,
+      "manual_review_followup_count": 0,
+      "executed_validators": [],
+      "unavailable_validators": [
+        "pubmed_post_cutoff",
+        "reactome",
+        "enrichr",
+        "chembl",
+        "opentargets"
+      ],
+      "external_validation_status": "skipped",
+      "lincs_interpretation": "unavailable",
+      "overall_validation_score": null,
+      "fulltext_confirmation_status": "skipped",
+      "fulltext_confirmed_conflict_count": 0,
+      "system_b_use": [
+        "archive",
+        "comparison"
+      ],
+      "recommended_next_step": "Expand validator infrastructure."
+    },
+    {
+      "case_id": "metformin_ampk_cancer",
+      "case_role": "positive_control_whitebox",
+      "quality_class": "CASE_READY_FOR_ARCHIVE",
+      "comparison_readiness": "READY_AS_POSITIVE_CONTROL",
+      "ready_for_system_b": true,
+      "case_execution_outcome": null,
+      "scientific_output_class": null,
+      "is_zero_claim_case": false,
+      "zero_claim_reason": null,
+      "pipeline_complete": true,
+      "core_observation_count": 3,
+      "true_graph_conflict_count": 0,
+      "formal_hypothesis_count": 0,
+      "manual_review_followup_count": 2,
+      "executed_validators": [
+        "lincs_l1000"
+      ],
+      "unavailable_validators": [
+        "chembl",
+        "reactome",
+        "enrichr",
+        "pubmed_post_cutoff",
+        "opentargets"
+      ],
+      "external_validation_status": "partially_completed",
+      "lincs_interpretation": "mixed",
+      "overall_validation_score": 0.507738,
+      "fulltext_confirmation_status": "not_enabled",
+      "fulltext_confirmed_conflict_count": 0,
+      "system_b_use": [
+        "archive",
+        "positive_control",
+        "pipeline_regression_fixture",
+        "bundle_schema_fixture"
+      ],
+      "recommended_next_step": "Proceed to first conflict-enriched case."
+    }
+  ]
+}

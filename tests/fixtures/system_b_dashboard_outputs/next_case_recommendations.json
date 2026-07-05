@@ -1,0 +1,16 @@
+{
+  "primary_recommendation": "Expand coverage into under-represented domains.",
+  "suggested_case_type": "under_covered_domain",
+  "suggested_case_examples": [],
+  "recommended_flags": [
+    "--enable-fulltext-confirmation",
+    "--fulltext-max-papers 20",
+    "--fulltext-max-sections-per-paper 12",
+    "--fulltext-max-total-chunks 200"
+  ],
+  "infrastructure_gaps_to_address": [
+    "pubmed_post_cutoff production validator",
+    "reactome production validator",
+    "enrichr production validator"
+  ]
+}

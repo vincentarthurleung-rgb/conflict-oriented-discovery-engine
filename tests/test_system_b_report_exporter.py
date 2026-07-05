@@ -10,7 +10,7 @@ from code_engine.cli.system_b_ingest import ingest
 class ReportExporterTests(unittest.TestCase):
     def test_ingestion_writes_json_and_markdown_without_network_calls(self):
         with tempfile.TemporaryDirectory() as td, patch("urllib.request.urlopen", side_effect=AssertionError("network call")):
-            card, quality = ingest("case_bundles/metformin_ampk_cancer", td)
+            card, quality = ingest("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer", td)
             output = Path(td) / "metformin_ampk_cancer"
             expected = {
                 "system_b_case_card.json", "system_b_case_card.md", "system_b_quality_report.json",

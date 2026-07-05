@@ -1,0 +1,79 @@
+{
+  "validator_selection": {
+    "selection_mode": "domain_aware_router",
+    "selected_validators": [
+      "lincs_l1000"
+    ],
+    "recommended_but_unavailable": [
+      "chembl",
+      "reactome",
+      "enrichr",
+      "pubmed_post_cutoff",
+      "opentargets"
+    ],
+    "manual_cli_overrides": [],
+    "deduplicated": false,
+    "decisions": [
+      {
+        "validator_id": "lincs_l1000",
+        "decision": "selected_for_execution",
+        "matched_rules": [
+          "drug_perturbation_transcriptomic",
+          "case_profile_expected_validator"
+        ],
+        "availability": "runnable",
+        "reason": "case tags and validation needs matched; required local resources are available"
+      },
+      {
+        "validator_id": "chembl",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "drug_perturbation_transcriptomic"
+        ],
+        "availability": "skeleton_only",
+        "reason": "ChEMBL requires a configured schema-bound production index or provider"
+      },
+      {
+        "validator_id": "reactome",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "pathway_mechanism",
+          "case_profile_optional_validator"
+        ],
+        "availability": "skeleton_only",
+        "reason": "Reactome adapter exists but no configured production local index or real HTTP transport"
+      },
+      {
+        "validator_id": "enrichr",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "pathway_mechanism"
+        ],
+        "availability": "skeleton_only",
+        "reason": "Enrichr has only an API adapter/cache skeleton"
+      },
+      {
+        "validator_id": "pubmed_post_cutoff",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "temporal_literature",
+          "case_profile_optional_validator"
+        ],
+        "availability": "skeleton_only",
+        "reason": "The post-cutoff literature validator has no query/execution implementation"
+      },
+      {
+        "validator_id": "opentargets",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "case_profile_optional_validator"
+        ],
+        "availability": "skeleton_only",
+        "reason": "Open Targets has no configured production index or real HTTP transport"
+      }
+    ],
+    "executed_validators": [
+      "lincs_l1000"
+    ]
+  }
+}

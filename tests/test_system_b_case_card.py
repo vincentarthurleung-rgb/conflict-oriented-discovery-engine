@@ -5,7 +5,7 @@ from code_engine.system_b import CaseBundleLoader, CaseCardBuilder, LimitationRe
 
 class CaseCardTests(unittest.TestCase):
     def setUp(self):
-        self.bundle = CaseBundleLoader("case_bundles/metformin_ampk_cancer").load()
+        self.bundle = CaseBundleLoader("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer").load()
         self.card = CaseCardBuilder().build(self.bundle)
 
     def test_preserves_mixed_lincs_interpretation(self):

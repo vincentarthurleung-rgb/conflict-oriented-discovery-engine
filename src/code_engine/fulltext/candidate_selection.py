@@ -59,7 +59,7 @@ def assess_scientific_relevance(paper: dict, policy: FulltextSelectionPolicy) ->
         blocked.append("context_only_without_seed_or_pathway_anchor")
     if not anchor_ok:
         blocked.append("anchor_strength_below_minimum")
-    if score < policy.fulltext_min_relevance_score:
+    if score < policy.fulltext_min_relevance_score and not (qualifying_link or seed_anchor):
         blocked.append("relevance_score_below_threshold")
     if not qualifying_reason:
         blocked.append("no_scientific_relevance_qualifier")

@@ -1,0 +1,46 @@
+{
+  "case_id": "autophagy_cancer_chemoresistance",
+  "case_role": "conflict_enriched",
+  "case_execution_outcome": "execution_passed",
+  "scientific_output_class": "no_core_observations",
+  "is_zero_claim_case": true,
+  "zero_claim_reason": "No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace.",
+  "system_b_status": "ingested",
+  "pipeline_status": {
+    "pipeline_complete": true,
+    "abstract_mode_complete": true,
+    "external_validation_complete": false,
+    "fulltext_mode_complete": false
+  },
+  "evidence_summary": {
+    "core_observation_count": 0,
+    "true_graph_conflict_count": 0,
+    "formal_hypothesis_count": 0,
+    "manual_review_followup_count": 0
+  },
+  "validation_summary": {
+    "executed_validators": [
+      "pubmed_post_cutoff",
+      "enrichr"
+    ],
+    "skipped_validators": [],
+    "unavailable_validators": [
+      "chembl",
+      "opentargets"
+    ],
+    "external_validation_status": "completed",
+    "lincs_interpretation": "unavailable",
+    "matched_signature_count": 0,
+    "validation_target_count": 0,
+    "overall_validation_score": null
+  },
+  "fulltext_summary": {
+    "status": "completed_no_candidates",
+    "reason": "No conflict-related papers selected for full-text retrieval."
+  },
+  "scientific_interpretation": {
+    "what_this_case_supports": [],
+    "what_this_case_does_not_support": []
+  },
+  "zero_claim_explanation": "Execution passed, but no core observations survived."
+}

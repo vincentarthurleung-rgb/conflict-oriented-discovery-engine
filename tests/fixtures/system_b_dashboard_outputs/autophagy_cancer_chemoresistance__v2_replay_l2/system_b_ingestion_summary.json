@@ -1,0 +1,10 @@
+{
+  "case_id": "autophagy_cancer_chemoresistance",
+  "output_case_label": "autophagy_cancer_chemoresistance__v2_replay_l2",
+  "system_b_status": "ingested",
+  "quality_class": "CASE_NOT_READY",
+  "comparison_readiness": "NOT_READY",
+  "schema_valid": false,
+  "bundle_consistent": false,
+  "ready_for_system_b": false
+}

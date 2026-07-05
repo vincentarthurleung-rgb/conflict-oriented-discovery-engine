@@ -7,7 +7,7 @@ from code_engine.system_b.dashboard import DashboardData
 
 class DashboardDataTests(unittest.TestCase):
     def test_summary_and_case_data(self):
-        data = DashboardData("system_b_outputs", "system_b_outputs/kg")
+        data = DashboardData("tests/fixtures/system_b_dashboard_outputs", "tests/fixtures/system_b_dashboard_outputs/kg")
         summary = data.summary(); cases = data.cases()
         self.assertGreaterEqual(summary["case_count"], 2)
         self.assertGreater(summary["kg"]["node_count"], 0)

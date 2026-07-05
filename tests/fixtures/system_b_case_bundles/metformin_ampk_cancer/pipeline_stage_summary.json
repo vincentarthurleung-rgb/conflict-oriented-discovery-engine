@@ -1,0 +1,61 @@
+{
+  "stages": {
+    "L1": {
+      "status": "completed",
+      "mode": "abstract_screening",
+      "successful": 46
+    },
+    "L2": {
+      "status": "completed",
+      "mode": "abstract_context_gate",
+      "retained_observation_count": 328
+    },
+    "L3": {
+      "status": "completed",
+      "mode": "strict_source_gate",
+      "true_graph_conflict_count": 0
+    },
+    "L4": {
+      "status": "completed",
+      "mode": "abstract_context_mining"
+    },
+    "L5": {
+      "status": "completed",
+      "mode": "abstract_context_attribution"
+    },
+    "L6": {
+      "status": "completed",
+      "mode": "abstract_level_mechanism_graph"
+    },
+    "L7": {
+      "status": "partially_completed",
+      "mode": "lincs_l1000_transcriptomic_consistency",
+      "validation_executed": true,
+      "matched_signature_count": 42,
+      "interpretation": "mixed"
+    }
+  },
+  "pipeline_complete_for_abstract_mode": true,
+  "pipeline_complete_for_fulltext_mode": false,
+  "pipeline_complete_for_external_validation": true,
+  "blocking_errors": [],
+  "expected_non_blocking_limitations": [
+    "fulltext_not_enabled"
+  ],
+  "external_validation_status": "partially_completed",
+  "external_validation_executed_validators": [
+    "lincs_l1000"
+  ],
+  "l35_fulltext_confirmation": {
+    "status": "not_enabled",
+    "candidate_paper_count": 0,
+    "pmcid_resolved_count": 0,
+    "oa_available_count": 0,
+    "fulltext_downloaded_count": 0,
+    "fulltext_l1_claim_count": 0,
+    "fulltext_confirmed_conflict_count": 0,
+    "copyright_safe": true,
+    "non_oa_skipped_count": 0,
+    "message": "Full-text confirmation is disabled by case policy."
+  }
+}

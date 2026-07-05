@@ -1,0 +1,24 @@
+{
+  "schema_version": "system_b_domain_coverage_v1",
+  "inference_source": "case_role_and_validator_execution",
+  "domain_counts": {
+    "drug_perturbation_transcriptomic": 1,
+    "pathway_mechanism": 0,
+    "temporal_literature": 0,
+    "conflict_enriched": 2,
+    "positive_control_whitebox": 1
+  },
+  "validator_coverage_by_domain": {
+    "drug_perturbation_transcriptomic": {
+      "lincs_l1000": "covered",
+      "chembl": "recommended_unavailable",
+      "reactome": "recommended_unavailable",
+      "enrichr": "recommended_unavailable",
+      "pubmed_post_cutoff": "recommended_unavailable",
+      "opentargets": "recommended_unavailable"
+    }
+  },
+  "coverage_gaps": [
+    "Reactome/Enrichr/OpenTargets/PubMed post-cutoff unavailable in current infrastructure."
+  ]
+}

@@ -5,7 +5,7 @@ from code_engine.system_b import BundleSchemaValidator, CaseBundleLoader, Qualit
 
 class QualityClassifierTests(unittest.TestCase):
     def test_metformin_positive_control_is_archive_ready(self):
-        bundle = CaseBundleLoader("case_bundles/metformin_ampk_cancer").load()
+        bundle = CaseBundleLoader("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer").load()
         validation = BundleSchemaValidator().validate(bundle)
         result = QualityClassifier().classify(bundle, validation)
         self.assertEqual(result["quality_class"], "CASE_READY_FOR_ARCHIVE")

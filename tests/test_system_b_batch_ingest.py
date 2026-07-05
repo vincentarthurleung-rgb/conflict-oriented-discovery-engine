@@ -11,7 +11,7 @@ class SystemBBatchIngestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td, patch("urllib.request.urlopen", side_effect=AssertionError("network call")):
             root = Path(td)
             result = SystemBBatchIngestor().run(
-                ["case_bundles"], root, root / "case_registry.json",
+                ["tests/fixtures/system_b_case_bundles"], root, root / "case_registry.json",
                 case_glob="metformin_ampk_cancer",
                 write_markdown=True, write_csv=True,
             )

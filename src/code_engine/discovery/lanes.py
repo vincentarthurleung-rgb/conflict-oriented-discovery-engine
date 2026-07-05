@@ -44,7 +44,10 @@ def _json(path:Path,default=None):
     try:return json.loads(path.read_text(encoding="utf-8"))
     except (OSError,json.JSONDecodeError):return default if default is not None else {}
 def _norm(value:Any)->str:
-    text=str(value or "").casefold().replace("β","beta"); return " ".join(re.findall(r"[a-z0-9]+",text))
+    text=str(value or "").casefold()
+    for symbol,name in (("α","alpha"),("β","beta"),("γ","gamma"),("δ","delta"),("κ","kappa")):
+        text=text.replace(symbol,name)
+    return " ".join(re.findall(r"[a-z0-9]+",text))
 def _name(value:Any)->str:return str(value.get("name") or "") if isinstance(value,dict) else str(value or "")
 def _direction(item:dict)->str:
     current=_norm(item.get("direction"))
@@ -82,8 +85,10 @@ def _score(item:dict,seed:dict,seed_papers:set[str],anchor_terms:dict[str,list[s
     evidence_subject=any(_contains(evidence,x) for x in anchor_terms["subject"])
     seed_subject=structural_subject or evidence_subject
     direct_subject=_contains(structural,subject)
+    broad={_norm(x) for x in policy.broad_context_terms}
+    direct_seed_pathway=bool(obj and _norm(obj) not in broad and _contains(structural,obj))
     matched=[term for term in terms if _norm(term) and _norm(term) in otext]
-    broad={_norm(x) for x in policy.broad_context_terms};non_broad=[x for x in matched if _norm(x) not in broad]
+    non_broad=[x for x in matched if _norm(x) not in broad]
     context_match=bool(matched);mechanism_anchor=any(_contains(alltext,x) for x in anchor_terms["mechanism"]);structural_mechanism_anchor=any(_contains(structural,x) for x in anchor_terms["mechanism"])
     query=(item.get("query_record") or {}).get("query_group") or item.get("query_group") or item.get("purpose")
     discovery_query=query in {"entity_pair_core","mechanism_context","context_coverage","optional_conflict_hint"}
@@ -93,14 +98,20 @@ def _score(item:dict,seed:dict,seed_papers:set[str],anchor_terms:dict[str,list[s
     contrast=any(x in evidence for x in CONTEXTUAL)
     if direct_subject:anchor_type,anchor_strength="seed_subject_direct","strong"
     elif structural_subject:anchor_type,anchor_strength="seed_subject_alias","strong"
-    elif evidence_subject:anchor_type,anchor_strength="seed_pathway_direct","strong"
-    elif mechanism_anchor:anchor_type,anchor_strength="seed_pathway_direct","strong"
+    elif evidence_subject:anchor_type,anchor_strength="seed_subject_evidence","strong"
+    elif direct_seed_pathway:anchor_type,anchor_strength="seed_pathway_direct","strong"
+    elif mechanism_anchor:anchor_type,anchor_strength="seed_pathway_family","medium"
     elif same_paper:anchor_type,anchor_strength="same_paper_seed_anchor","medium"
     elif mechanism and direction!="unknown":anchor_type,anchor_strength="seed_pathway_family","medium"
     elif discovery_query and mechanism:anchor_type,anchor_strength="query_provenance_anchor","medium"
     elif context_match:anchor_type,anchor_strength="context_only","weak"
     else:anchor_type,anchor_strength="none","none"
     context_only=anchor_type=="context_only"
+    specific_context=bool(mechanism_anchor or non_broad) and not seed_subject and not direct_seed_pathway
+    broad_context_only=bool(context_match and not non_broad and not seed_subject and not direct_seed_pathway and not mechanism_anchor)
+    before="strong" if mechanism_anchor and not seed_subject and not direct_seed_pathway else anchor_strength
+    downgrade_reasons=[]
+    if before=="strong" and anchor_strength=="medium":downgrade_reasons.append("specific_context_without_direct_seed_subject_or_pathway")
     score={"strong":.8,"medium":.62,"weak":policy.context_only_max_score,"none":0.0}[anchor_strength]
     score=min(1.0,score+.08*(direction!="unknown")+.05*contrast+.04*bool(item.get("pmid") or item.get("paper_id")))
     if context_only:score=min(score,policy.context_only_max_score)
@@ -122,6 +133,9 @@ def _score(item:dict,seed:dict,seed_papers:set[str],anchor_terms:dict[str,list[s
         "seed_subject_match":seed_subject,"seed_object_or_context_match":context_match,"mechanism_context_match":mechanism,
         "direction":direction,"direction_available":direction!="unknown","local_canonical_id_used":local,
         "anchor_type":anchor_type,"anchor_strength":anchor_strength,"anchor_reasons":reasons,"context_only_match":context_only,
+        "anchor_calibration_version":"v2","anchor_strength_before_calibration":before,"anchor_strength_after_calibration":anchor_strength,
+        "anchor_downgrade_reasons":downgrade_reasons,"specific_context_anchor":specific_context,
+        "direct_seed_subject_mention":seed_subject,"direct_seed_pathway_mention":direct_seed_pathway,"broad_context_only":broad_context_only,
         "pathway_or_mechanism_anchor":mechanism_anchor,"seed_subject_anchor":seed_subject,"structural_seed_or_pathway_anchor":structural_anchor,"same_paper_seed_anchor":same_paper,
         "review_priority_score":round(review_priority,4),"review_priority_reasons":priority_reasons,
         "requires_review":True,"graph_visibility_eligible":reviewable,"strict_core_eligible":bool(item.get("conflict_reasoning_eligible")),

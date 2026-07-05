@@ -1,0 +1,183 @@
+{
+  "mode": "llm",
+  "confidence": 0.85,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "3d00bfc326040964cde296dbea336e47fa2da5346d77776e79d08074e9ba6783",
+    "subject": {
+      "name": "HIF-1alpha",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "HIF-1alpha",
+        "hypoxia signaling",
+        "metabolic adaptation",
+        "angiogenesis",
+        "immune microenvironment modulation",
+        "therapy response",
+        "tumor adaptation",
+        "tumor microenvironment",
+        "hypoxia",
+        "HIF-1alpha hypoxia signaling is involved in cancer therapy response and tumor adaptation across metabolic, angiogenic, and immune microenvironment contexts"
+      ]
+    },
+    "query_text": "HIF-1alpha hypoxia signaling is involved in cancer therapy response and tumor adaptation across metabolic, angiogenic, and immune microenvironment contexts.",
+    "query_hash": "709fcb4d005d13d1d9102f0e0542fbb966c5e2d2bbcde6b11ea5eb39ad0c3516",
+    "display_title": "HIF-1alpha — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.85,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(HIF-1alpha cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(HIF-1alpha molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(HIF-1alpha hypoxia signaling metabolic adaptation cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(HIF-1alpha context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "e35772f98e89545651142854d7e6fd896d05d837687ab8507b0027df65eef69c",
+  "planner_prompt_chars": 3431,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "3d00bfc326040964cde296dbea336e47fa2da5346d77776e79d08074e9ba6783",
+    "subject": {
+      "name": "HIF-1alpha",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "HIF-1alpha",
+        "hypoxia signaling",
+        "metabolic adaptation",
+        "angiogenesis",
+        "immune microenvironment modulation",
+        "therapy response",
+        "tumor adaptation",
+        "tumor microenvironment",
+        "hypoxia",
+        "HIF-1alpha hypoxia signaling is involved in cancer therapy response and tumor adaptation across metabolic, angiogenic, and immune microenvironment contexts"
+      ]
+    },
+    "query_text": "HIF-1alpha hypoxia signaling is involved in cancer therapy response and tumor adaptation across metabolic, angiogenic, and immune microenvironment contexts.",
+    "query_hash": "709fcb4d005d13d1d9102f0e0542fbb966c5e2d2bbcde6b11ea5eb39ad0c3516",
+    "display_title": "HIF-1alpha — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.85,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [],
+  "context_terms": [
+    "cancer",
+    "HIF-1alpha",
+    "hypoxia signaling",
+    "metabolic adaptation",
+    "angiogenesis",
+    "immune microenvironment modulation",
+    "therapy response",
+    "tumor adaptation",
+    "tumor microenvironment",
+    "hypoxia",
+    "HIF-1alpha hypoxia signaling is involved in cancer therapy response and tumor adaptation across metabolic, angiogenic, and immune microenvironment contexts"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "HIF-1alpha",
+    "hypoxia signaling",
+    "metabolic adaptation",
+    "angiogenesis",
+    "immune microenvironment modulation",
+    "therapy response",
+    "tumor adaptation",
+    "tumor microenvironment",
+    "hypoxia",
+    "HIF-1alpha hypoxia signaling is involved in cancer therapy response and tumor adaptation across metabolic, angiogenic, and immune microenvironment contexts"
+  ],
+  "directional_terms_observed_in_user_query": [],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}

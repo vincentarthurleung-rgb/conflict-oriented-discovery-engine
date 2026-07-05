@@ -1,0 +1,46 @@
+{
+  "status": "partially_completed",
+  "external_index_configured": true,
+  "lincs_local_validation_executed": true,
+  "validation_executed": true,
+  "validation_plan_generated": true,
+  "validation_type": "transcriptomic_consistency_validation",
+  "dataset_id": "GSE70138",
+  "matched_signature_count": 42,
+  "perturbagen": "metformin",
+  "matched_cell_lines": [
+    "A375",
+    "HA1E",
+    "HELA",
+    "HT29",
+    "MCF7",
+    "PC3",
+    "YAPC"
+  ],
+  "validation_target_count": 6,
+  "interpretation_distribution": {
+    "supportive": 0,
+    "mixed": 6,
+    "insufficient": 0
+  },
+  "overall_validation_score": 0.507738,
+  "score_distribution": {
+    "min": 0.4875,
+    "max": 0.558929,
+    "mean": 0.507738,
+    "median": 0.4875
+  },
+  "biological_interpretation": "mixed transcriptomic consistency",
+  "anti_overfitting_guard": {
+    "case_specific_threshold_tuning": false,
+    "case_specific_gene_set_expansion": false,
+    "metformin_specific_scoring_hacks": false,
+    "interpretation_forced_to_supportive": false,
+    "biological_interpretation_preserved": true
+  },
+  "limitations": [
+    "L1000 validates transcriptomic consistency, not direct AMPK phosphorylation."
+  ],
+  "api_calls": 0,
+  "network_calls": 0
+}

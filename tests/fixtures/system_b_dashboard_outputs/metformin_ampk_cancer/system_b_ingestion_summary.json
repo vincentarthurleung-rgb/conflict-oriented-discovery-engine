@@ -1,0 +1,10 @@
+{
+  "case_id": "metformin_ampk_cancer",
+  "output_case_label": "metformin_ampk_cancer",
+  "system_b_status": "ingested",
+  "quality_class": "CASE_READY_FOR_ARCHIVE",
+  "comparison_readiness": "READY_AS_POSITIVE_CONTROL",
+  "schema_valid": true,
+  "bundle_consistent": true,
+  "ready_for_system_b": true
+}

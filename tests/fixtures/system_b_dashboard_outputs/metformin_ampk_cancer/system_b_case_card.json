@@ -1,0 +1,58 @@
+{
+  "case_id": "metformin_ampk_cancer",
+  "case_role": "positive_control_whitebox",
+  "case_execution_outcome": null,
+  "scientific_output_class": null,
+  "is_zero_claim_case": false,
+  "zero_claim_reason": null,
+  "system_b_status": "ingested",
+  "pipeline_status": {
+    "pipeline_complete": true,
+    "abstract_mode_complete": true,
+    "external_validation_complete": true,
+    "fulltext_mode_complete": false
+  },
+  "evidence_summary": {
+    "core_observation_count": 3,
+    "true_graph_conflict_count": 0,
+    "formal_hypothesis_count": 0,
+    "manual_review_followup_count": 2
+  },
+  "validation_summary": {
+    "executed_validators": [
+      "lincs_l1000"
+    ],
+    "skipped_validators": [],
+    "unavailable_validators": [
+      "chembl",
+      "reactome",
+      "enrichr",
+      "pubmed_post_cutoff",
+      "opentargets"
+    ],
+    "external_validation_status": "partially_completed",
+    "lincs_interpretation": "mixed",
+    "matched_signature_count": 42,
+    "validation_target_count": 6,
+    "overall_validation_score": 0.507738
+  },
+  "fulltext_summary": {
+    "status": "not_enabled",
+    "reason": "positive-control whitebox case has no true graph conflict"
+  },
+  "scientific_interpretation": {
+    "what_this_case_supports": [
+      "pipeline execution works",
+      "domain-routed LINCS validation works",
+      "System B bundle export works",
+      "positive-control evidence can be represented without false conflict inflation"
+    ],
+    "what_this_case_does_not_support": [
+      "true conflict discovery",
+      "direct biochemical mechanism validation",
+      "strong external validation support",
+      "production readiness of non-LINCS validators"
+    ]
+  },
+  "zero_claim_explanation": null
+}

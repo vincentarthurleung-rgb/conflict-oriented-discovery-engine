@@ -11,7 +11,7 @@ from code_engine.system_b.kg import KGBuilder, KGStore
 class KGBuilderTests(unittest.TestCase):
     def test_builds_case_validator_and_entities_without_network(self):
         with tempfile.TemporaryDirectory() as td, patch("urllib.request.urlopen", side_effect=AssertionError("network call")):
-            bundle_root=Path(td)/"bundles";shutil.copytree("case_bundles/metformin_ampk_cancer",bundle_root/"metformin_ampk_cancer")
+            bundle_root=Path(td)/"bundles";shutil.copytree("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer",bundle_root/"metformin_ampk_cancer")
             output = Path(td) / "kg"
             summary = KGBuilder(bundle_root, output).build()
             nodes, edges, evidence = KGStore(output).load()
@@ -26,7 +26,7 @@ class KGBuilderTests(unittest.TestCase):
     def test_malformed_observation_is_skipped_with_warning(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td); bundle = root / "bundles" / "case"
-            shutil.copytree("case_bundles/metformin_ampk_cancer", bundle)
+            shutil.copytree("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer", bundle)
             with (bundle / "core_observations.jsonl").open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"subject_name": "incomplete"}) + "\n")
             output = root / "kg"; summary = KGBuilder(root / "bundles", output).build()

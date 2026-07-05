@@ -1,6 +1,6 @@
 import json,tempfile,unittest
 from pathlib import Path
-from code_engine.discovery.lanes import build_discovery_lanes,synchronize_seed_metadata,validate_fulltext_handoff,validate_seed_metadata
+from code_engine.discovery.lanes import build_discovery_lanes,score_discovery_records,synchronize_seed_metadata,validate_fulltext_handoff,validate_seed_metadata
 
 def write_json(path,value):path.write_text(json.dumps(value),encoding="utf-8")
 def write_rows(path,rows):path.write_text("".join(json.dumps(x)+"\n" for x in rows),encoding="utf-8")
@@ -26,6 +26,8 @@ class DiscoveryL2LaneTests(unittest.TestCase):
   same=next(x for x in review if x["observation_id"]=="s");self.assertEqual(same["anchor_type"],"same_paper_seed_anchor");self.assertEqual(same["anchor_strength"],"medium")
   self.assertGreater(result["summary"]["seed_neighborhood_observation_count"],1)
   context=result["low_priority_context"];self.assertEqual(len(context),1);self.assertFalse(context[0]["eligible_for_weak_conflict"]);self.assertFalse(context[0]["eligible_for_fulltext_escalation"])
+  self.assertEqual(local["anchor_calibration_version"],"v2");self.assertTrue(local["direct_seed_subject_mention"])
+  self.assertGreater(review[0]["review_priority_score"],context[0]["review_priority_score"])
  def test_weak_conflict_triggers_discovery_fulltext_without_hypothesis(self):
   tmp,root,result=self._run();self.addCleanup(tmp.cleanup)
   self.assertEqual(len(result["weak_conflicts"]),1);self.assertGreater(len(result["fulltext_candidates"]),0)
@@ -45,3 +47,10 @@ class DiscoveryL2LaneTests(unittest.TestCase):
   (a/"l35_fulltext_candidate_papers.jsonl").write_text("")
   self.assertFalse(validate_fulltext_handoff(a)["fulltext_handoff_consistent"])
   calibration=json.loads((a/"discovery_precision_recall_calibration.json").read_text());self.assertIn("context_only_fraction_in_reviewable",calibration)
+ def test_greek_symbol_alias_is_a_direct_seed_subject_anchor(self):
+  with tempfile.TemporaryDirectory() as td:
+   root=Path(td);a=root/"artifacts";a.mkdir();seed={"subject":{"name":"Factor-1alpha"},"object":{"name":"specific pathway"},"context":{}}
+   write_json(a/"semantic_search_intent.json",{"seed_triple":seed});write_json(a/"search_plan_replay.json",{"enabled":True});write_json(a/"intake.json",{})
+   row={"paper_id":"p","subject_raw":"Factor-1α","object_raw":"target","relation_raw":"activates","direction":"positive","evidence_sentence":"Factor-1α activates target"}
+   scored=score_discovery_records(root,[row])[0]
+   self.assertEqual(scored["anchor_strength"],"strong");self.assertTrue(scored["direct_seed_subject_mention"])

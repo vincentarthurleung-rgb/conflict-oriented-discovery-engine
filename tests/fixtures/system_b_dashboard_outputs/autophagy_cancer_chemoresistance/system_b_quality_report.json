@@ -1,0 +1,20 @@
+{
+  "quality_class": "CASE_READY_FOR_COMPARISON",
+  "comparison_readiness": "READY_FOR_COMPARISON",
+  "validator_expansion_needed": true,
+  "conflict_discovery_status": "NO_TRUE_CONFLICT_FOUND",
+  "system_b_use": [
+    "archive",
+    "comparison"
+  ],
+  "schema_validation": {
+    "schema_valid": true,
+    "bundle_consistent": true,
+    "ready_for_system_b": true,
+    "errors": [],
+    "warnings": []
+  },
+  "limitations": [
+    "ChEMBL, and OpenTargets were recommended but unavailable."
+  ]
+}

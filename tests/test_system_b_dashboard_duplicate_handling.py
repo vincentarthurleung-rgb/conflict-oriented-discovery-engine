@@ -10,9 +10,9 @@ from code_engine.system_b.dashboard import DashboardData
 class DashboardDuplicateHandlingTests(unittest.TestCase):
     def test_active_bundle_wins_and_duplicate_is_not_primary_warning(self):
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td); active = root / "case_bundles"; preserved = root / "preserved_case_bundles"
-            shutil.copytree("case_bundles/metformin_ampk_cancer", active / "metformin_ampk_cancer")
-            shutil.copytree("case_bundles/metformin_ampk_cancer", preserved / "case_001_metformin_ampk_cancer")
+            root = Path(td); active = root / "tests/fixtures/system_b_case_bundles"; preserved = root / "preserved_case_bundles"
+            shutil.copytree("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer", active / "metformin_ampk_cancer")
+            shutil.copytree("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer", preserved / "case_001_metformin_ampk_cancer")
             output = root / "outputs"; registry = output / "case_registry.json"
             result = SystemBBatchIngestor().run([active, preserved], output, registry)
             case = result["registry"]["cases"][0]

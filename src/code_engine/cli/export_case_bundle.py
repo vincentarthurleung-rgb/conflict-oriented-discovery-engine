@@ -8,7 +8,7 @@ from code_engine.validation.case_routing import load_case_domain_profile
 ARTIFACTS = ["case_domain_profile.json","validator_selection_report.json","validator_selection_report.md","pipeline_stage_summary.json","quality_score.json","core_observations.jsonl","core_observations_table.md","l2_graph_observations.jsonl","l2_canonicalization_audit_summary.json","l2_canonicalization_audit_report.md","graph_conflict_summary.json","hypothesis_summary.json","l7_external_validation_summary.json","l7_lincs_validation_summary.json","l7_pubmed_post_cutoff_summary.json","l7_pubmed_post_cutoff_results.jsonl","l7_reactome_summary.json","l7_reactome_results.jsonl","l7_enrichr_summary.json","l7_enrichr_results.jsonl","l35_fulltext_retrieval_summary.json","l35_fulltext_retrieval_results.jsonl","l35_fulltext_candidate_papers.jsonl","l35_fulltext_l1_summary.json","l35_fulltext_l1_claims.jsonl","l35_fulltext_conflict_confirmation_summary.json","l35_fulltext_conflict_confirmations.jsonl","whitebox_case_report.md","audit_report.md"]
 ARTIFACTS += ["replay_manifest.json", "replay_report.md"]
 ARTIFACTS += ["l2_seed_neighborhood_observations.jsonl","l2_seed_neighborhood_summary.json","l2_reviewable_graph_observations.jsonl","l2_reviewable_graph_summary.json","l2_low_priority_context_observations.jsonl","l2_low_priority_context_summary.json","weak_conflict_candidates.jsonl","weak_conflict_summary.json","discovery_filter_audit.jsonl","discovery_filter_summary.json","discovery_filter_summary.md","discovery_precision_recall_calibration.json","discovery_precision_recall_calibration.md","fulltext_escalation_candidates.jsonl","fulltext_discovery_escalation_candidates.jsonl","fulltext_escalation_plan.json"]
-ARTIFACTS += ["l35_fulltext_discovery_escalation_summary.json","l35_fulltext_discovery_candidate_papers.jsonl","l35_fulltext_discovery_retrieval_results.jsonl","l35_fulltext_discovery_l1_claims.jsonl","l35_fulltext_discovery_observations.jsonl","l35_fulltext_discovery_reentry_summary.json","l35_fulltext_oa_candidate_papers.jsonl"]
+ARTIFACTS += ["l35_fulltext_discovery_escalation_summary.json","l35_fulltext_discovery_candidate_papers.jsonl","l35_fulltext_discovery_execution_records.jsonl","l35_fulltext_oa_resource_diagnostics.jsonl","l35_fulltext_discovery_retrieval_results.jsonl","l35_fulltext_discovery_l1_claims.jsonl","l35_fulltext_discovery_observations.jsonl","l35_fulltext_discovery_reentry_summary.json","l35_fulltext_oa_candidate_papers.jsonl"]
 REQUIRED = {"case_domain_profile.json","validator_selection_report.json","pipeline_stage_summary.json","l7_external_validation_summary.json","whitebox_case_report.md"}
 def _json(path:Path)->dict:
     try: return json.loads(path.read_text(encoding="utf-8"))
@@ -75,6 +75,13 @@ def export_case_bundle(final_run:str|Path, case_profile:str|Path, output_root:st
       "fulltext_discovery_escalation_enabled":bool(fulltext_discovery.get("fulltext_discovery_escalation_enabled")),
       "fulltext_discovery_candidate_count":int(fulltext_discovery.get("fulltext_discovery_candidate_count",0)),
       "fulltext_discovery_oa_available_count":int(fulltext_discovery.get("oa_available_count",0)),
+      "discovery_oa_available_count":int(fulltext_discovery.get("discovery_oa_available_count",fulltext_discovery.get("oa_available_count",0))),
+      "discovery_relevant_oa_candidate_count":int(fulltext_discovery.get("relevant_oa_candidate_count",0)),
+      "discovery_selected_fulltext_count":int(fulltext_discovery.get("selected_fulltext_count",0)),
+      "discovery_download_attempted_count":int(fulltext_discovery.get("download_attempted_count",0)),
+      "discovery_downloaded_fulltext_count":int(fulltext_discovery.get("downloaded_fulltext_count",0)),
+      "fulltext_execution_consistent":bool(fulltext_discovery.get("fulltext_execution_consistent",True)),
+      "fulltext_execution_consistency_warnings":fulltext_discovery.get("fulltext_execution_consistency_warnings",[]),
       "fulltext_discovery_l1_claim_count":int(fulltext_discovery.get("fulltext_l1_claim_count",0)),
       "fulltext_discovery_reentry_count":int(fulltext_discovery.get("fulltext_claims_reentered_l2",0)),
       "fulltext_discovery_status":fulltext_discovery.get("status","not_run"),"fulltext_mode":fulltext_discovery.get("fulltext_mode","confirmation" if fulltext.get("status","not_enabled")!="not_enabled" else "skipped"),

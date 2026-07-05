@@ -1,0 +1,61 @@
+{
+  "schema_version": "system_b_validator_coverage_v1",
+  "case_count": 3,
+  "validators": [
+    "lincs_l1000",
+    "chembl",
+    "reactome",
+    "enrichr",
+    "pubmed_post_cutoff",
+    "opentargets",
+    "uniprot",
+    "string",
+    "geo",
+    "clinicaltrials",
+    "pubchem"
+  ],
+  "cases": [
+    {
+      "case_id": "autophagy_cancer_chemoresistance",
+      "lincs_l1000": "unknown",
+      "chembl": "recommended_unavailable",
+      "reactome": "selected_not_executed",
+      "enrichr": "executed",
+      "pubmed_post_cutoff": "executed",
+      "opentargets": "recommended_unavailable",
+      "uniprot": "unknown",
+      "string": "unknown",
+      "geo": "unknown",
+      "clinicaltrials": "unknown",
+      "pubchem": "unknown"
+    },
+    {
+      "case_id": "autophagy_cancer_chemoresistance",
+      "lincs_l1000": "unknown",
+      "chembl": "recommended_unavailable",
+      "reactome": "recommended_unavailable",
+      "enrichr": "recommended_unavailable",
+      "pubmed_post_cutoff": "recommended_unavailable",
+      "opentargets": "recommended_unavailable",
+      "uniprot": "unknown",
+      "string": "unknown",
+      "geo": "unknown",
+      "clinicaltrials": "unknown",
+      "pubchem": "unknown"
+    },
+    {
+      "case_id": "metformin_ampk_cancer",
+      "lincs_l1000": "executed",
+      "chembl": "recommended_unavailable",
+      "reactome": "recommended_unavailable",
+      "enrichr": "recommended_unavailable",
+      "pubmed_post_cutoff": "recommended_unavailable",
+      "opentargets": "recommended_unavailable",
+      "uniprot": "unknown",
+      "string": "unknown",
+      "geo": "unknown",
+      "clinicaltrials": "unknown",
+      "pubchem": "unknown"
+    }
+  ]
+}

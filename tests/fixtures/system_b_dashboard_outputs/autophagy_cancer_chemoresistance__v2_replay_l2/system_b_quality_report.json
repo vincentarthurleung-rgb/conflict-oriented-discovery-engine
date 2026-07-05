@@ -1,0 +1,23 @@
+{
+  "quality_class": "CASE_NOT_READY",
+  "comparison_readiness": "NOT_READY",
+  "validator_expansion_needed": true,
+  "conflict_discovery_status": "NO_TRUE_CONFLICT_FOUND",
+  "system_b_use": [
+    "archive",
+    "comparison"
+  ],
+  "schema_validation": {
+    "schema_valid": false,
+    "bundle_consistent": false,
+    "ready_for_system_b": false,
+    "errors": [
+      "ready_for_system_b_not_true",
+      "l7_status_missing"
+    ],
+    "warnings": []
+  },
+  "limitations": [
+    "PubMed post-cutoff, Reactome, Enrichr, ChEMBL, and OpenTargets were recommended but unavailable."
+  ]
+}

@@ -1,0 +1,226 @@
+{
+  "schema_version": "run_case_audit_v1",
+  "case_id": "metformin_ampk_cancer",
+  "decision": "CASE_RUN_PASS_WITH_WARNINGS",
+  "created_at": "2026-07-03T07:51:46.358561+00:00",
+  "source_run": "runs/20260703_134819_metformin_ampk_cancer",
+  "final_run": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20260703_134819_metformin_ampk_cancer_rebuilt_metformin_ampk_cancer_clean_domain_routed_lincs_v1",
+  "readiness": {
+    "schema_version": "case_readiness_report_v1",
+    "created_at": "2026-07-03T05:48:18.715795+00:00",
+    "case_id": "metformin_ampk_cancer",
+    "ready": true,
+    "blocking_reasons": [],
+    "llm": {
+      "ready": true,
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "api_key_present": true,
+      "missing_env": [],
+      "blocking_reasons": []
+    },
+    "search_plan": {
+      "ready": true,
+      "path": "configs/search_plans/metformin_ampk_cancer_2000_2020.llm_v1.frozen.json",
+      "frozen_metadata_present": true,
+      "reason": null
+    },
+    "case_profile": {
+      "ready": true,
+      "path": "configs/case_profiles/metformin_ampk_cancer.case_profile.json",
+      "case_id": "metformin_ampk_cancer",
+      "reason": null
+    },
+    "routing": {
+      "selected_validators": [
+        "lincs_l1000"
+      ],
+      "executed_if_run": [
+        "lincs_l1000"
+      ],
+      "recommended_but_unavailable": [
+        "chembl",
+        "reactome",
+        "enrichr",
+        "pubmed_post_cutoff",
+        "opentargets"
+      ],
+      "blocked_required_validators": [],
+      "selection_mode": "domain_aware_router",
+      "manual_cli_overrides": [],
+      "deduplicated": false,
+      "decisions": [
+        {
+          "validator_id": "lincs_l1000",
+          "decision": "selected_for_execution",
+          "matched_rules": [
+            "drug_perturbation_transcriptomic",
+            "case_profile_expected_validator"
+          ],
+          "availability": "runnable",
+          "reason": "case tags and validation needs matched; required local resources are available"
+        },
+        {
+          "validator_id": "chembl",
+          "decision": "recommended_but_unavailable",
+          "matched_rules": [
+            "drug_perturbation_transcriptomic"
+          ],
+          "availability": "skeleton_only",
+          "reason": "ChEMBL requires a configured schema-bound production index or provider"
+        },
+        {
+          "validator_id": "reactome",
+          "decision": "recommended_but_unavailable",
+          "matched_rules": [
+            "pathway_mechanism",
+            "case_profile_optional_validator"
+          ],
+          "availability": "skeleton_only",
+          "reason": "Reactome adapter exists but no configured production local index or real HTTP transport"
+        },
+        {
+          "validator_id": "enrichr",
+          "decision": "recommended_but_unavailable",
+          "matched_rules": [
+            "pathway_mechanism"
+          ],
+          "availability": "skeleton_only",
+          "reason": "Enrichr has only an API adapter/cache skeleton"
+        },
+        {
+          "validator_id": "pubmed_post_cutoff",
+          "decision": "recommended_but_unavailable",
+          "matched_rules": [
+            "temporal_literature",
+            "case_profile_optional_validator"
+          ],
+          "availability": "skeleton_only",
+          "reason": "The post-cutoff literature validator has no query/execution implementation"
+        },
+        {
+          "validator_id": "opentargets",
+          "decision": "recommended_but_unavailable",
+          "matched_rules": [
+            "case_profile_optional_validator"
+          ],
+          "availability": "skeleton_only",
+          "reason": "Open Targets has no configured production index or real HTTP transport"
+        }
+      ]
+    },
+    "resources": [
+      {
+        "validator_id": "lincs_l1000",
+        "status": "runnable",
+        "resource_ready": true,
+        "execution_mode": "local_index",
+        "network_required": false,
+        "blocking": false,
+        "decision": "selected_for_execution",
+        "reason": "local compact index exists",
+        "index_summary": {
+          "selected_signature_count": 42,
+          "selected_gene_count": 978,
+          "compact_matrix_orientation": "signatures_x_genes"
+        }
+      },
+      {
+        "validator_id": "chembl",
+        "status": "local_fixture_only",
+        "resource_ready": false,
+        "execution_mode": "local_index",
+        "network_required": false,
+        "blocking": false,
+        "decision": "recommended_but_unavailable",
+        "reason": "local_index_missing",
+        "index_summary": null
+      },
+      {
+        "validator_id": "reactome",
+        "status": "skeleton_only",
+        "resource_ready": false,
+        "execution_mode": "remote_api",
+        "network_required": true,
+        "blocking": false,
+        "decision": "recommended_but_unavailable",
+        "reason": "real_http_transport_not_configured",
+        "index_summary": null
+      },
+      {
+        "validator_id": "enrichr",
+        "status": "skeleton_only",
+        "resource_ready": false,
+        "execution_mode": "remote_api",
+        "network_required": true,
+        "blocking": false,
+        "decision": "recommended_but_unavailable",
+        "reason": "real_http_transport_not_configured",
+        "index_summary": null
+      },
+      {
+        "validator_id": "pubmed_post_cutoff",
+        "status": "skeleton_only",
+        "resource_ready": false,
+        "execution_mode": "remote_api",
+        "network_required": true,
+        "blocking": false,
+        "decision": "recommended_but_unavailable",
+        "reason": "real_http_transport_not_configured",
+        "index_summary": null
+      },
+      {
+        "validator_id": "opentargets",
+        "status": "skeleton_only",
+        "resource_ready": false,
+        "execution_mode": "remote_api",
+        "network_required": true,
+        "blocking": false,
+        "decision": "recommended_but_unavailable",
+        "reason": "validator_skeleton_only",
+        "index_summary": null
+      }
+    ],
+    "fulltext": {
+      "enabled": false,
+      "source": "pmc_oa",
+      "selection_policy": "conflict_related_only",
+      "copyright_policy": "oa_only_skip_non_oa",
+      "pmc_client_configured": true,
+      "pmc_network_required": false,
+      "l1_required_if_oa_available": false,
+      "l1_ready": null,
+      "network_allowed": true,
+      "max_papers": 20,
+      "publisher_scraping_enabled": false,
+      "ready": true,
+      "blocking_reasons": [],
+      "reason": "positive-control whitebox case has no true graph conflict"
+    }
+  },
+  "case_bundle": "case_bundles/metformin_ampk_cancer",
+  "ready_for_system_b": true,
+  "metrics": {
+    "api_calls": 46,
+    "network_calls": 6,
+    "core_observations": 3,
+    "true_graph_conflicts": 0,
+    "formal_hypotheses": 0,
+    "external_validation_status": "partially_completed",
+    "fulltext_confirmation_status": "not_enabled",
+    "fulltext_candidate_paper_count": 0,
+    "fulltext_oa_available_count": 0,
+    "fulltext_l1_claim_count": 0,
+    "fulltext_confirmed_conflict_count": 0,
+    "fulltext_l1_api_calls": 0,
+    "fulltext_limit_hit": false,
+    "copyright_safe": true
+  },
+  "warnings": [
+    "validator unavailable: chembl",
+    "validator unavailable: reactome",
+    "validator unavailable: enrichr",
+    "validator unavailable: pubmed_post_cutoff",
+    "validator unavailable: opentargets"
+  ]
+}

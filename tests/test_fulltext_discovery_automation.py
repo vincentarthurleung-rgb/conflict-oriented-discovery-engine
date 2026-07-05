@@ -23,7 +23,7 @@ class FulltextDiscoveryAutomationTests(unittest.TestCase):
  def test_no_oa_still_writes_summary_and_nonempty_pipeline(self):
   tmp,root=self._root();self.addCleanup(tmp.cleanup);prepared=prepare_discovery_escalation(root,enabled=True)
   summary=finalize_discovery_escalation(root,prepared=prepared,expected=True,explicitly_disabled=False,shared_summary={},strict_conflict_count=0)
-  self.assertEqual(summary["status"],"completed_no_oa");self.assertEqual(summary["skipped_not_oa_count"],1)
+  self.assertEqual(summary["status"],"completed_no_relevant_oa");self.assertEqual(summary["skipped_not_oa_count"],1)
   self.assertTrue(summary["fulltext_discovery_executed_when_expected"]);self.assertIn("l35_fulltext_discovery",json.loads((root/"artifacts/pipeline_stage_summary.json").read_text()))
  def test_fulltext_claim_reenters_reviewable_lane_without_formal_hypothesis(self):
   claim={"claim_id":"F1","paper_id":"123","pmid":"123","subject":"Mediator-X","predicate":"promotes","object":"migration","polarity":"positive","evidence_sentence":"Mediator-X promotes migration."}
@@ -32,3 +32,11 @@ class FulltextDiscoveryAutomationTests(unittest.TestCase):
   self.assertEqual(summary["fulltext_claims_reentered_l2"],1);self.assertEqual(summary["fulltext_reviewable_graph_observation_count"],1)
   self.assertEqual(summary["fulltext_hypothesis_candidate_count"],0);self.assertEqual(json.loads((root/"artifacts/hypothesis_summary.json").read_text())["formal_hypothesis_count"],0)
   self.assertTrue((root/"artifacts/l35_fulltext_discovery_observations.jsonl").read_text().strip())
+ def test_selected_oa_without_download_attempt_is_inconsistent_and_not_no_oa(self):
+  tmp,root=self._root();self.addCleanup(tmp.cleanup);a=root/"artifacts";prepared=prepare_discovery_escalation(root,enabled=True)
+  record={"pmid":"123","selected_for_fulltext_l1":True,"oa_available":True,"download_attempted":False,"download_status":"skipped","parse_attempted":False,"parsed_section_count":0,"selected_chunk_count":0,"fulltext_l1_attempted":False,"fulltext_l1_claim_count":0,"final_status":"skipped"}
+  wr(a/"l35_fulltext_discovery_execution_records.jsonl",[record])
+  summary=finalize_discovery_escalation(root,prepared=prepared,expected=True,explicitly_disabled=False,shared_summary={"relevant_oa_candidate_count":1,"selected_fulltext_count":1},strict_conflict_count=0)
+  self.assertEqual(summary["status"],"completed_oa_selected_no_download")
+  self.assertFalse(summary["fulltext_execution_consistent"])
+  self.assertEqual(summary["selected_oa_without_download_attempt_count"],1)

@@ -6,7 +6,7 @@ from code_engine.system_b import BundleSchemaValidator, CaseBundleLoader
 
 class BundleSchemaValidatorTests(unittest.TestCase):
     def setUp(self):
-        self.bundle = CaseBundleLoader("case_bundles/metformin_ampk_cancer").load()
+        self.bundle = CaseBundleLoader("tests/fixtures/system_b_case_bundles/metformin_ampk_cancer").load()
 
     def test_case_001_is_valid_and_consistent(self):
         result = BundleSchemaValidator().validate(self.bundle)

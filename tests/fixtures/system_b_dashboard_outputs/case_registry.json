@@ -1,0 +1,164 @@
+{
+  "schema_version": "system_b_case_registry_v1",
+  "created_at": "2026-07-03T14:44:07.115700+00:00",
+  "case_count": 3,
+  "cases": [
+    {
+      "case_id": "autophagy_cancer_chemoresistance",
+      "case_version": "v1",
+      "case_key": "autophagy_cancer_chemoresistance",
+      "is_replay": false,
+      "source_case_version": null,
+      "replay_from_stage": null,
+      "replay_source_run": null,
+      "bundle_created_at": "2026-07-03T14:05:17.194672+00:00",
+      "source_run_id": "20260703_194418_autophagy_cancer_chemotherapy_resistance_apoptosis",
+      "final_run_id": "20260703_194418_autophagy_cancer_chemotherapy_resistance_apoptosis_rebuilt_autophagy_cancer_chemoresistance_clean_domain_routed_lincs_v1",
+      "case_label": "case_004",
+      "bundle_path": "case_bundles/autophagy_cancer_chemoresistance",
+      "system_b_output_path": null,
+      "quality_class": "CASE_READY_FOR_COMPARISON",
+      "comparison_readiness": "READY_FOR_COMPARISON",
+      "ready_for_system_b": true,
+      "pipeline_complete": true,
+      "case_role": "conflict_enriched",
+      "executed_validators": [
+        "pubmed_post_cutoff",
+        "enrichr"
+      ],
+      "unavailable_validators": [
+        "chembl",
+        "opentargets"
+      ],
+      "case_execution_outcome": "execution_passed",
+      "scientific_output_class": "no_core_observations",
+      "is_zero_claim_case": true,
+      "zero_claim_reason": "No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace.",
+      "skipped_validators": [],
+      "selected_validators": [
+        "pubmed_post_cutoff",
+        "reactome",
+        "enrichr"
+      ],
+      "core_observation_count": 0,
+      "true_graph_conflict_count": 0,
+      "formal_hypothesis_count": 0,
+      "manual_review_followup_count": 0,
+      "external_validation_status": "completed",
+      "fulltext_confirmation_status": "completed_no_candidates",
+      "fulltext_confirmed_conflict_count": 0,
+      "lincs_interpretation": "unavailable",
+      "overall_validation_score": null,
+      "system_b_use": [
+        "archive",
+        "comparison"
+      ],
+      "warnings": []
+    },
+    {
+      "case_id": "autophagy_cancer_chemoresistance",
+      "case_version": "v2_replay_l2",
+      "case_key": "autophagy_cancer_chemoresistance__v2_replay_l2",
+      "is_replay": true,
+      "source_case_version": "v1_zero_claim",
+      "replay_from_stage": "l2",
+      "replay_source_run": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20260703_194418_autophagy_cancer_chemotherapy_resistance_apoptosis_rebuilt_autophagy_cancer_chemoresistance_clean_domain_routed_lincs_v1",
+      "bundle_created_at": "2026-07-03T14:38:36.876176+00:00",
+      "source_run_id": "20260703_194418_autophagy_cancer_chemotherapy_resistance_apoptosis",
+      "final_run_id": "20260703_223811_autophagy_cancer_chemoresistance_replay_l2_canonicalization_v2",
+      "case_label": "case_005",
+      "bundle_path": "case_bundles/autophagy_cancer_chemoresistance__replay_l2_v2",
+      "system_b_output_path": null,
+      "quality_class": "CASE_NOT_READY",
+      "comparison_readiness": "NOT_READY",
+      "ready_for_system_b": false,
+      "pipeline_complete": true,
+      "case_role": "conflict_enriched",
+      "executed_validators": [],
+      "unavailable_validators": [
+        "pubmed_post_cutoff",
+        "reactome",
+        "enrichr",
+        "chembl",
+        "opentargets"
+      ],
+      "case_execution_outcome": "execution_passed",
+      "scientific_output_class": "graph_observations_no_conflict",
+      "is_zero_claim_case": true,
+      "zero_claim_reason": "No observations passed the core canonical graph gate; inspect the forensic L1/L2 trace.",
+      "skipped_validators": [
+        "all"
+      ],
+      "selected_validators": [],
+      "core_observation_count": 0,
+      "true_graph_conflict_count": 0,
+      "formal_hypothesis_count": 0,
+      "manual_review_followup_count": 0,
+      "external_validation_status": "skipped",
+      "fulltext_confirmation_status": "skipped",
+      "fulltext_confirmed_conflict_count": 0,
+      "lincs_interpretation": "unavailable",
+      "overall_validation_score": null,
+      "system_b_use": [
+        "archive",
+        "comparison"
+      ],
+      "warnings": []
+    },
+    {
+      "case_id": "metformin_ampk_cancer",
+      "case_version": "v1",
+      "case_key": "metformin_ampk_cancer",
+      "is_replay": false,
+      "source_case_version": null,
+      "replay_from_stage": null,
+      "replay_source_run": null,
+      "bundle_created_at": "2026-07-03T08:08:27.977823+00:00",
+      "source_run_id": "20260703_134819_metformin_ampk_cancer",
+      "final_run_id": "20260703_134819_metformin_ampk_cancer_rebuilt_metformin_ampk_cancer_clean_domain_routed_lincs_v1",
+      "case_label": "case_006",
+      "bundle_path": "case_bundles/metformin_ampk_cancer",
+      "system_b_output_path": null,
+      "quality_class": "CASE_READY_FOR_ARCHIVE",
+      "comparison_readiness": "READY_AS_POSITIVE_CONTROL",
+      "ready_for_system_b": true,
+      "pipeline_complete": true,
+      "case_role": "positive_control_whitebox",
+      "executed_validators": [
+        "lincs_l1000"
+      ],
+      "unavailable_validators": [
+        "chembl",
+        "reactome",
+        "enrichr",
+        "pubmed_post_cutoff",
+        "opentargets"
+      ],
+      "case_execution_outcome": null,
+      "scientific_output_class": null,
+      "is_zero_claim_case": false,
+      "zero_claim_reason": null,
+      "skipped_validators": [],
+      "selected_validators": [
+        "lincs_l1000"
+      ],
+      "core_observation_count": 3,
+      "true_graph_conflict_count": 0,
+      "formal_hypothesis_count": 0,
+      "manual_review_followup_count": 2,
+      "external_validation_status": "partially_completed",
+      "fulltext_confirmation_status": "not_enabled",
+      "fulltext_confirmed_conflict_count": 0,
+      "lincs_interpretation": "mixed",
+      "overall_validation_score": 0.507738,
+      "system_b_use": [
+        "archive",
+        "positive_control",
+        "pipeline_regression_fixture",
+        "bundle_schema_fixture"
+      ],
+      "warnings": []
+    }
+  ],
+  "warnings": []
+}

@@ -9,7 +9,7 @@ class SystemBComparisonTableTests(unittest.TestCase):
     def test_comparison_preserves_mixed_interpretation(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            result = SystemBBatchIngestor().run(["case_bundles"], root, root / "registry.json", case_glob="metformin_ampk_cancer")
+            result = SystemBBatchIngestor().run(["tests/fixtures/system_b_case_bundles"], root, root / "registry.json", case_glob="metformin_ampk_cancer")
             row = result["comparison"]["cases"][0]
             self.assertEqual(row["lincs_interpretation"], "mixed")
             self.assertEqual(row["recommended_next_step"], "Proceed to first conflict-enriched case.")

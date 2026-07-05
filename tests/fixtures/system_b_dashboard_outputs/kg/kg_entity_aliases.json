@@ -1,0 +1,62 @@
+{
+  "entity:a_survival_advantage": [
+    "a survival advantage"
+  ],
+  "entity:ampk": [
+    "AMPK"
+  ],
+  "entity:antigen_presentation": [
+    "antigen presentation"
+  ],
+  "entity:apoptosis": [
+    "apoptosis"
+  ],
+  "entity:autophagy": [
+    "autophagy"
+  ],
+  "entity:cancer": [
+    "cancer"
+  ],
+  "entity:cell_death": [
+    "cell death"
+  ],
+  "entity:cell_proliferation": [
+    "cell proliferation"
+  ],
+  "entity:cell_survival": [
+    "cell survival"
+  ],
+  "entity:chemotherapy_and_radiation": [
+    "Chemotherapy and radiation"
+  ],
+  "entity:cq_cddp_combination": [
+    "CQ-CDDP combination"
+  ],
+  "entity:drug_resistance": [
+    "drug resistance"
+  ],
+  "entity:ferroptosis": [
+    "ferroptosis"
+  ],
+  "entity:ferroptotic_cell_death": [
+    "ferroptotic cell death"
+  ],
+  "entity:insufficient_autophagic_activation": [
+    "insufficient autophagic activation"
+  ],
+  "entity:metastasis": [
+    "metastasis"
+  ],
+  "entity:metformin": [
+    "metformin"
+  ],
+  "entity:oc_carcinogenesis": [
+    "OC carcinogenesis"
+  ],
+  "entity:tspan1_depletion": [
+    "TSPAN1 depletion"
+  ],
+  "entity:tumor_initiation": [
+    "tumor initiation"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "system_b_kg_v1",
+  "case_count": 3,
+  "node_count": 92,
+  "edge_count": 150,
+  "evidence_count": 26,
+  "entity_count": 20,
+  "paper_count": 18,
+  "case_count_indexed": 3,
+  "claim_relation_count": 26,
+  "fulltext_claim_count": 0,
+  "skipped_record_count": 0
+}
