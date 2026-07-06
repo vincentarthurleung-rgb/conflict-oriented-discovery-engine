@@ -129,15 +129,17 @@ class ReviewUITests(unittest.TestCase):
 
     def test_css_includes_review_two_column_layout(self):
         css = _read_static("style.css")
-        self.assertIn("review-layout", css, "review-layout CSS missing")
-        self.assertIn("review-queue-panel", css, "review-queue-panel CSS missing")
+        self.assertIn("review-workspace", css, "review-workspace CSS missing")
+        self.assertIn("case-review-sidebar", css, "case-review-sidebar CSS missing")
+        self.assertIn("review-layer-list", css, "review-layer-list CSS missing")
         self.assertIn("review-detail-panel", css, "review-detail-panel CSS missing")
 
     def test_html_review_page_has_two_column_structure(self):
         """The review page is rendered client-side, but JS must contain the layout divs."""
         js = _read_static("app.js")
-        self.assertIn("review-layout", js, "review-layout div missing from JS")
-        self.assertIn("review-queue-panel", js, "review-queue-panel div missing from JS")
+        self.assertIn("review-workspace", js, "review-workspace div missing from JS")
+        self.assertIn("case-review-sidebar", js, "case-review-sidebar div missing from JS")
+        self.assertIn("review-layer-list", js, "review-layer-list div missing from JS")
         self.assertIn("review-detail-panel", js, "review-detail-panel div missing from JS")
 
 
@@ -484,6 +486,127 @@ class TripleCentricLayoutTests(unittest.TestCase):
         js = _read_static("app.js")
         self.assertIn("No display KG found", js, "Empty state message missing")
         self.assertIn("system_b_build_clean_kg", js, "Build hint missing")
+
+
+class CaseFirstReviewTests(unittest.TestCase):
+    """Test case-first review workflow."""
+
+    def queue(self):
+        return [
+            {"review_item_id": "c1::fulltext_l1_claim::f1.jsonl::1", "case_id": "c1", "item_type": "fulltext_l1_claim", "source_file": "f1.jsonl", "source_line": 1, "claim_text": "A promotes B", "subject": "A", "relation": "promotes", "object": "B"},
+            {"review_item_id": "c1::fulltext_reviewable_observation::f1.jsonl::2", "case_id": "c1", "item_type": "fulltext_reviewable_observation", "source_file": "f1.jsonl", "source_line": 2, "claim_text": "C inhibits D"},
+            {"review_item_id": "c2::fulltext_l1_claim::f2.jsonl::1", "case_id": "c2", "item_type": "fulltext_l1_claim", "source_file": "f2.jsonl", "source_line": 1, "claim_text": "E activates F"},
+        ]
+
+    def test_review_workspace_returns_cases_and_layers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            explorer_support.KnowledgeExplorerTests().fixture(root)
+            explorer_support.write_jsonl(root / "manual_review_queue.jsonl", self.queue())
+            api = ExplorerAPI(root, root)
+            _, ws = api.dispatch("/api/review-workspace")
+            self.assertIn("cases", ws)
+            self.assertGreaterEqual(len(ws["cases"]), 2)
+            for case in ws["cases"]:
+                self.assertIn("case_id", case)
+                self.assertIn("layers", case)
+                self.assertGreater(len(case["layers"]), 0)
+                for layer in case["layers"]:
+                    self.assertIn("layer_id", layer)
+                    self.assertIn("label", layer)
+                    self.assertIn("total", layer)
+
+    def test_review_items_filter_by_case_and_layer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            explorer_support.KnowledgeExplorerTests().fixture(root)
+            explorer_support.write_jsonl(root / "manual_review_queue.jsonl", self.queue())
+            api = ExplorerAPI(root, root)
+            _, items = api.dispatch("/api/review-items", {"case_id": ["c1"], "item_type": ["fulltext_l1_claim"]})
+            self.assertEqual(items["total"], 1)
+            self.assertEqual(items["items"][0]["case_id"], "c1")
+
+    def test_js_includes_case_first_review_functions(self):
+        js = _read_static("app.js")
+        self.assertIn("loadReviewWorkspace", js, "loadReviewWorkspace missing")
+        self.assertIn("selectReviewCase", js, "selectReviewCase missing")
+        self.assertIn("selectReviewLayer", js, "selectReviewLayer missing")
+        self.assertIn("case-review-sidebar", js, "case-review-sidebar missing")
+
+    def test_css_includes_case_first_review_styles(self):
+        css = _read_static("style.css")
+        self.assertIn("review-workspace", css, "review-workspace CSS missing")
+        self.assertIn("case-review-sidebar", css, "case-review-sidebar CSS missing")
+        self.assertIn("review-layer-card", css, "review-layer-card CSS missing")
+
+
+class ConflictLensFixTests(unittest.TestCase):
+    """Test conflict lens data mapping fixes."""
+
+    def test_conflict_observation_extraction_with_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            explorer_support.KnowledgeExplorerTests().fixture(root)
+            conflicts = [
+                {
+                    "record_type": "non_comparable_direction_pair",
+                    "case_id": "case",
+                    "observation_a_subject": "A", "observation_a_relation": "promotes", "observation_a_object": "B",
+                    "observation_a_preview": "A promotes B in cancer cells.",
+                    "observation_b_subject": "C", "observation_b_relation": "inhibits", "observation_b_object": "D",
+                    "observation_b_preview": "C inhibits D in normal tissue.",
+                    "linked_triple_ids": ["t1"],
+                }
+            ]
+            explorer_support.write_jsonl(root / "conflict_lens_records.jsonl", conflicts)
+            api = ExplorerAPI(root, None)
+            _, result = api.dispatch("/api/conflicts")
+            self.assertEqual(len(result["items"]), 1)
+            item = result["items"][0]
+            self.assertTrue(item.get("observation_a_has_content"))
+            self.assertTrue(item.get("observation_b_has_content"))
+            self.assertIsNone(item.get("observation_a_warning"))
+            oa = item.get("observation_a_extracted", {})
+            self.assertEqual(oa.get("subject"), "A")
+
+    def test_conflict_observation_extraction_missing_shows_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            explorer_support.KnowledgeExplorerTests().fixture(root)
+            conflicts = [
+                {
+                    "record_type": "weak_candidate",
+                    "case_id": "case",
+                    "rejection_reason": "insufficient evidence",
+                    "linked_triple_ids": [],
+                }
+            ]
+            explorer_support.write_jsonl(root / "conflict_lens_records.jsonl", conflicts)
+            api = ExplorerAPI(root, None)
+            _, result = api.dispatch("/api/conflicts")
+            item = result["items"][0]
+            self.assertFalse(item.get("observation_a_has_content"))
+            self.assertIsNotNone(item.get("observation_a_warning"))
+            self.assertIn("lacks observation", item["observation_a_warning"])
+
+    def test_js_conflict_uses_observation_cards(self):
+        js = _read_static("app.js")
+        self.assertIn("renderObservationCard", js, "renderObservationCard missing")
+        self.assertIn("observation-side-card", js, "observation-side-card CSS class missing")
+        self.assertIn("observation_a_extracted", js, "observation_a_extracted field access missing")
+        self.assertIn("observation_b_warning", js, "observation_b_warning check missing")
+
+    def test_css_includes_conflict_pair_styles(self):
+        css = _read_static("style.css")
+        self.assertIn("conflict-pair-card", css, "conflict-pair-card CSS missing")
+        self.assertIn("conflict-pair-grid", css, "conflict-pair-grid CSS missing")
+        self.assertIn("observation-side-card", css, "observation-side-card CSS missing")
+
+    def test_js_conflict_shows_warning_text(self):
+        js = _read_static("app.js")
+        self.assertIn("observation_a_warning", js, "observation_a_warning field access missing")
+        self.assertIn("observation_b_warning", js, "observation_b_warning field access missing")
+        self.assertIn("observation-side-card", js, "observation-side-card rendering missing")
 
 
 if __name__ == "__main__":

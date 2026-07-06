@@ -8,6 +8,20 @@ from urllib.parse import unquote
 from .annotation_store import AnnotationStore
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
+LAYER_MAP = {
+    "fulltext_l1_claim": "Fulltext Claims",
+    "fulltext_reviewable_observation": "Fulltext Reviewable Observations",
+    "abstract_reviewable_observation": "Abstract Reviewable Observations",
+    "low_priority_context_observation": "Low-priority Context",
+    "non_comparable_direction_pair": "Non-comparable / Mechanism Split",
+    "weak_candidate": "Weak Candidates",
+    "formal_hypothesis": "Formal Hypotheses",
+}
+OBSERVATION_FIELDS = (
+    "subject", "relation", "object", "direction",
+    "evidence_sentence", "claim_text", "preview",
+    "pmid", "pmcid", "paper_title",
+)
 REQUIRED = ("display_entities_v2.jsonl", "display_triples_v2.jsonl", "display_chains_v2.jsonl", "case_focused_triples.jsonl", "case_focused_chains.jsonl", "triple_evidence_links.jsonl")
 
 def _json(path):
@@ -80,6 +94,14 @@ class ExplorerAPI:
             value=self.chain_by_id.get(unquote(path.removeprefix("/api/chain/"))); return (200,value) if value else (404,{"error":"chain_not_found"})
         if path=="/api/conflicts":return 200,_page(self._conflicts(params),params)
         if path=="/api/review-summary":return 200,{"queue_count":len(self.review),"items_by_type":dict(Counter(x.get("item_type","unknown") for x in self.review)),"items_by_case":dict(Counter(x.get("case_id","unknown") for x in self.review)),"annotation_status":self.annotation_status,"paper_metrics":self.paper_metrics,"manual_metrics_notice":"Manual precision metrics require completed non-empty annotations."}
+        if path=="/api/review-workspace":return 200,self._review_workspace()
+        if path=="/api/review-cases":
+            ws=self._review_workspace();return 200,{"cases":[{"case_id":c["case_id"],"total":c["total"],"reviewed":c["reviewed"],"unreviewed":c["unreviewed"]} for c in ws["cases"]],"total":ws["total_items"]}
+        if path=="/api/review-layers":
+            case=_one(params,"case_id");ws=self._review_workspace()
+            for c in ws["cases"]:
+                if c["case_id"]==case:return 200,c
+            return 200,{"case_id":case,"total":0,"reviewed":0,"unreviewed":0,"layers":[]}
         if path=="/api/review-items":return 200,_page(self._review_items(params),params)
         if path.startswith("/api/review-item/"):
             item_id=unquote(path.removeprefix("/api/review-item/"));item=self.review_by_id.get(item_id)
@@ -135,7 +157,97 @@ class ExplorerAPI:
         rows=self.conflicts; case=_one(p,"case_id"); kind=_one(p,"record_type")
         if case:rows=[x for x in rows if x.get("case_id")==case]
         if kind:rows=[x for x in rows if x.get("record_type")==kind]
-        return rows
+        return [self._enriched_conflict(x) for x in rows]
+
+    def _extract_observation(self, record, prefix):
+        """Extract observation fields from conflict record with multiple field name fallbacks."""
+        obs = {}
+        # Try prefixed fields: observation_a_subject, observation_a_preview, etc.
+        for field in OBSERVATION_FIELDS:
+            for key in (f"{prefix}_{field}", f"{prefix}{field}"):
+                if key in record and record[key]:
+                    obs[field] = record[key]
+                    break
+            else:
+                obs[field] = None
+        # Try alternative naming: left_observation, right_observation, claim_a, claim_b
+        if not any(obs.values()):
+            alt_prefixes = {
+                "observation_a": ("left_observation", "claim_a", "supporting_observation"),
+                "observation_b": ("right_observation", "claim_b", "opposing_observation"),
+            }
+            for alt in alt_prefixes.get(prefix, ()):
+                if isinstance(record.get(alt), dict):
+                    obs.update({k: record[alt].get(k) for k in OBSERVATION_FIELDS if record[alt].get(k)})
+                elif isinstance(record.get(alt), str):
+                    obs["preview"] = record[alt]
+        # Fallback: try supporting_observations_preview / opposing_observations_preview
+        if prefix == "observation_a" and not any(obs.values()):
+            for key in ("supporting_observations_preview", "supporting_observation_preview"):
+                if record.get(key):
+                    obs["preview"] = str(record[key])
+                    break
+        if prefix == "observation_b" and not any(obs.values()):
+            for key in ("opposing_observations_preview", "opposing_observation_preview"):
+                if record.get(key):
+                    obs["preview"] = str(record[key])
+                    break
+        return obs
+
+    def _enriched_conflict(self, record):
+        """Enrich a conflict record with extracted observation A/B fields."""
+        obs_a = self._extract_observation(record, "observation_a")
+        obs_b = self._extract_observation(record, "observation_b")
+        has_a = any(v for v in obs_a.values())
+        has_b = any(v for v in obs_b.values())
+        return {
+            **record,
+            "observation_a_extracted": obs_a,
+            "observation_b_extracted": obs_b,
+            "observation_a_has_content": has_a,
+            "observation_b_has_content": has_b,
+            "observation_a_warning": None if has_a else "Source record lacks observation A preview.",
+            "observation_b_warning": None if has_b else "Source record lacks observation B preview.",
+        }
+
+    def _review_workspace(self):
+        """Build case-first review workspace with layers."""
+        review_cases = sorted(set(x.get("case_id", "unknown") for x in self.review))
+        workspace = {"cases": [], "total_items": len(self.review)}
+        for case_id in review_cases:
+            case_items = [x for x in self.review if x.get("case_id") == case_id]
+            layers = {}
+            for item in case_items:
+                itype = item.get("item_type", "unknown")
+                layer_id = itype
+                if layer_id not in layers:
+                    layers[layer_id] = {
+                        "layer_id": layer_id,
+                        "label": LAYER_MAP.get(itype, itype.replace("_", " ").title()),
+                        "total": 0, "reviewed": 0, "unreviewed": 0,
+                        "valid": 0, "partial": 0, "invalid": 0, "unclear": 0,
+                    }
+                layers[layer_id]["total"] += 1
+                annot = self.annotations.get(item["review_item_id"])
+                if annot:
+                    layers[layer_id]["reviewed"] += 1
+                    lbl = (annot.get("final_label") or "").upper()
+                    if lbl == "VALID": layers[layer_id]["valid"] += 1
+                    elif lbl == "PARTIAL": layers[layer_id]["partial"] += 1
+                    elif lbl == "INVALID": layers[layer_id]["invalid"] += 1
+                    elif lbl == "UNCLEAR": layers[layer_id]["unclear"] += 1
+                else:
+                    layers[layer_id]["unreviewed"] += 1
+            total = len(case_items)
+            reviewed = sum(1 for x in case_items if self.annotations.get(x["review_item_id"]))
+            workspace["cases"].append({
+                "case_id": case_id,
+                "total": total,
+                "reviewed": reviewed,
+                "unreviewed": total - reviewed,
+                "layers": sorted(layers.values(), key=lambda l: l["label"]),
+            })
+        return workspace
 
     def _review_items(self,p):
         rows=[];case=_one(p,"case_id");kind=_one(p,"item_type");status=_one(p,"review_status");label=_one(p,"final_label").upper();q=_one(p,"q").casefold()
