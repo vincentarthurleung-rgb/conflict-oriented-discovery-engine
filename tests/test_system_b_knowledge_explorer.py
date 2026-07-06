@@ -36,7 +36,7 @@ class KnowledgeExplorerTests(unittest.TestCase):
     def test_templates_render_for_all_views_and_cli_handler_builds(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);self.fixture(root);client=create_app(root,None,testing=True).test_client()
-            for path in ("/","/cases","/entities","/chains","/conflicts","/case/case","/triple/t1"):
+            for path in ("/","/cases","/entities","/chains","/conflicts","/graph","/review","/case/case","/triple/t1"):
                 response=client.get(path);text=response.get_data(as_text=True);response.close();self.assertIn(BOUNDARY,text);self.assertIn("C.O.D.E. Atlas",text);self.assertIn("Biomedical Evidence &amp; Mechanism Explorer",text)
             summary=client.get("/api/summary").get_json();self.assertEqual(summary["display_triples"],1)
 

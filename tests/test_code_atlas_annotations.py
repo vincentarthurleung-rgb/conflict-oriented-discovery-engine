@@ -39,6 +39,6 @@ class AtlasAnnotationTests(unittest.TestCase):
             root=Path(tmp);explorer_support.KnowledgeExplorerTests().fixture(root);api=ExplorerAPI(root,root/"missing")
             status,error=api.dispatch("/api/annotation/anything",method="POST",body={"final_label":"VALID"});self.assertIn(status,{404,503});self.assertIn("error",error)
             app=(Path("src/code_engine/system_b/explorer/static/app.js")).read_text()
-            for text in ("Interactive Manual Review","Correctly Rejected","Valid Weak","saveAnnotation","Manual review labels assess extraction and triage quality") :self.assertIn(text,app)
+            for text in ("Interactive Manual Review","Correctly Rejected","Valid Weak","saveReviewAnnotation","Manual review labels assess extraction and triage quality") :self.assertIn(text,app)
 
 if __name__=="__main__":unittest.main()
