@@ -267,3 +267,14 @@ main{padding:18px}
 .review-choice{min-width:70px;font-size:12px;padding:8px 12px}
 .secondary-field-grid{grid-template-columns:1fr}
 }
+
+/* ── Evidence Detail Panel ── */
+.evidence-detail-header{padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.evidence-detail-header h2{margin:0 0 6px;font-size:17px}
+.evidence-detail-header .badge{margin:2px 3px 2px 0}
+.evidence-filter-bar{margin:8px 0 16px;gap:4px}
+.evidence-filter-btn{font-size:11px;padding:4px 9px;border-radius:14px;transition:all .12s}
+.evidence-filter-btn.active{background:var(--teal);color:white;border-color:var(--teal)}
+#evidence-list{display:flex;flex-direction:column;gap:4px}
+#evidence-list .evidence{margin:4px 0}
+aside .close{position:sticky;top:0;float:right;z-index:2;margin:8px 8px 0 0}
