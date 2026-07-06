@@ -1,0 +1,72 @@
+{
+  "schema_version": "case_domain_profile_v1",
+  "case_id": "senescence_sasp_cancer_therapy_response_discovery_v1",
+  "case_version": "v1",
+  "query": "Cellular senescence and SASP are involved in tumor suppression, therapy response, inflammation, immune modulation, and cancer progression across different cellular contexts.",
+  "case_type": "conflict_enriched",
+  "case_role": "conflict_discovery",
+  "domain_tags": [
+    "general_biomedical",
+    "clinical_outcome",
+    "pathway_biology",
+    "protein_interaction"
+  ],
+  "disease_areas": [
+    "cancer"
+  ],
+  "mechanism_areas": [
+    "tumor suppression",
+    "therapy response",
+    "immune modulation"
+  ],
+  "genes": [],
+  "entity_types": [
+    "compound",
+    "gene",
+    "protein",
+    "phenotype",
+    "biological_process",
+    "clinical_outcome",
+    "biological_phenomenon"
+  ],
+  "intervention_types": [],
+  "validation_needs": [
+    "post_cutoff_literature",
+    "pathway_membership",
+    "gene_set_enrichment",
+    "full_text_conflict_confirmation"
+  ],
+  "expected_validators": [
+    "pubmed_post_cutoff",
+    "reactome",
+    "enrichr"
+  ],
+  "optional_validators": [
+    "chembl",
+    "opentargets",
+    "pmc_oa"
+  ],
+  "excluded_validators": [],
+  "validator_policy": {
+    "require_production_validators": false
+  },
+  "fulltext_policy": {
+    "enabled": true,
+    "source": "pmc_oa",
+    "selection_policy": "relevance_first_oa_aware",
+    "max_papers": 20,
+    "include_near_conflicts": true,
+    "require_oa": true,
+    "skip_non_oa": true
+  },
+  "scientific_notes": {
+    "intended_conflict": "Cellular senescence and SASP are involved in tumor suppression, therapy response, inflammation, immune modulation, and cancer progression across different cellular contexts.",
+    "do_not_overclaim": [
+      "Search plan targets conflict-enriched literature but does not prove conflict.",
+      "Abstract-only conflict requires full-text confirmation.",
+      "PubMed hit count is not support or refutation.",
+      "Reactome and Enrichr are plausibility metadata, not causal proof."
+    ]
+  },
+  "profile_version": "1.0"
+}

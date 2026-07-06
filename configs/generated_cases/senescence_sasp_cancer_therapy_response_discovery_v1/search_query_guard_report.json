@@ -1,0 +1,58 @@
+{
+  "total_queries_before_guard": 17,
+  "allowed_l1_acquisition_queries": 4,
+  "removed_queries": [
+    {
+      "query": "cellular senescence therapy response",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "cellular senescence inflammation immune modulation",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "cancer progression senescence different contexts",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "cellular senescence cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "senescence tumorigenesis",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "tumor suppression pathways",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "Cellular senescence tumor suppression review 2019",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "experimental evidence cellular senescence tumor suppression",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "Cellular senescence as tumor suppressor mechanism",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 0,
+  "context_only_queries_removed": 3,
+  "broad_recall_queries_removed": 3,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 7,
+  "cross_context_mechanism_query_count": 1,
+  "neutral_discovery_replanned": true
+}

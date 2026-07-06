@@ -1,0 +1,191 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "a682e17bf8e2030cc8efdd38bce9233ba98d8ac3f92ede5b8a74c689a96bc7c3",
+    "subject": {
+      "name": "PI3K",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "PI3K",
+        "AKT",
+        "mTOR",
+        "PI3K/AKT/mTOR signaling pathway",
+        "tumor survival",
+        "metabolism",
+        "proliferation",
+        "therapy resistance",
+        "signaling",
+        "cellular context",
+        "treatment context",
+        "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts"
+      ]
+    },
+    "query_text": "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts.",
+    "query_hash": "a11ffb5d3f5c73371c5286954cb924db43527fad18804ce8d8781870a7207cf1",
+    "display_title": "PI3K — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(PI3K cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(PI3K molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(PI3K AKT mTOR cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(PI3K context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "88d6d604669e5ae1c00cad5903abb7ba05143bb5c3a4a2d632428b630f216101",
+  "planner_prompt_chars": 3412,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "a682e17bf8e2030cc8efdd38bce9233ba98d8ac3f92ede5b8a74c689a96bc7c3",
+    "subject": {
+      "name": "PI3K",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "PI3K",
+        "AKT",
+        "mTOR",
+        "PI3K/AKT/mTOR signaling pathway",
+        "tumor survival",
+        "metabolism",
+        "proliferation",
+        "therapy resistance",
+        "signaling",
+        "cellular context",
+        "treatment context",
+        "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts"
+      ]
+    },
+    "query_text": "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts.",
+    "query_hash": "a11ffb5d3f5c73371c5286954cb924db43527fad18804ce8d8781870a7207cf1",
+    "display_title": "PI3K — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.9,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [],
+  "context_terms": [
+    "cancer",
+    "PI3K",
+    "AKT",
+    "mTOR",
+    "PI3K/AKT/mTOR signaling pathway",
+    "tumor survival",
+    "metabolism",
+    "proliferation",
+    "therapy resistance",
+    "signaling",
+    "cellular context",
+    "treatment context",
+    "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "PI3K",
+    "AKT",
+    "mTOR",
+    "PI3K/AKT/mTOR signaling pathway",
+    "tumor survival",
+    "metabolism",
+    "proliferation",
+    "therapy resistance",
+    "signaling",
+    "cellular context",
+    "treatment context",
+    "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts"
+  ],
+  "directional_terms_observed_in_user_query": [],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}

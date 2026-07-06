@@ -1,0 +1,74 @@
+{
+  "schema_version": "case_domain_profile_v1",
+  "case_id": "pdl1_immune_checkpoint_cancer_response_discovery_v1",
+  "case_version": "v1",
+  "query": "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.",
+  "case_type": "conflict_enriched",
+  "case_role": "conflict_discovery",
+  "domain_tags": [
+    "clinical_outcome",
+    "pathway_biology",
+    "drug_target_binding",
+    "protein_interaction"
+  ],
+  "disease_areas": [
+    "cancer"
+  ],
+  "mechanism_areas": [
+    "PD-L1",
+    "immune checkpoint signaling",
+    "tumor immune evasion",
+    "inflammatory signaling",
+    "cancer immunotherapy response"
+  ],
+  "genes": [],
+  "entity_types": [
+    "protein",
+    "biological_process",
+    "clinical_outcome",
+    "context",
+    "gene_expression",
+    "interaction",
+    "phenotype"
+  ],
+  "intervention_types": [],
+  "validation_needs": [
+    "post_cutoff_literature",
+    "pathway_membership",
+    "gene_set_enrichment",
+    "full_text_conflict_confirmation"
+  ],
+  "expected_validators": [
+    "pubmed_post_cutoff",
+    "reactome",
+    "enrichr"
+  ],
+  "optional_validators": [
+    "chembl",
+    "opentargets",
+    "pmc_oa"
+  ],
+  "excluded_validators": [],
+  "validator_policy": {
+    "require_production_validators": false
+  },
+  "fulltext_policy": {
+    "enabled": true,
+    "source": "pmc_oa",
+    "selection_policy": "relevance_first_oa_aware",
+    "max_papers": 20,
+    "include_near_conflicts": true,
+    "require_oa": true,
+    "skip_non_oa": true
+  },
+  "scientific_notes": {
+    "intended_conflict": "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.",
+    "do_not_overclaim": [
+      "Search plan targets conflict-enriched literature but does not prove conflict.",
+      "Abstract-only conflict requires full-text confirmation.",
+      "PubMed hit count is not support or refutation.",
+      "Reactome and Enrichr are plausibility metadata, not causal proof."
+    ]
+  },
+  "profile_version": "1.0"
+}

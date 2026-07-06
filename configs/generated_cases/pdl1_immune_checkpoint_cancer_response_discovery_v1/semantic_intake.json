@@ -1,0 +1,279 @@
+{
+  "research_intent": {
+    "raw_user_input": "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.",
+    "language": "en",
+    "task_type": "information_retrieval",
+    "research_goal": "Investigate the involvement of PD-L1 and immune checkpoint signaling in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.",
+    "primary_entities": [
+      "PD-L1",
+      "immune checkpoint signaling",
+      "tumor immune evasion",
+      "inflammatory signaling",
+      "cancer immunotherapy response",
+      "tumor microenvironment"
+    ],
+    "secondary_entities": [],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "PD-L1",
+      "immune checkpoint signaling"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "tumor immune evasion",
+      "inflammatory signaling",
+      "cancer immunotherapy response"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "tumor microenvironment",
+      "immune evasion",
+      "inflammation",
+      "immunotherapy"
+    ],
+    "domain_routing": {
+      "domain_id": "clinical_outcome",
+      "subdomain_id": "treatment_outcome",
+      "domain_profile_id": "clinical_outcome",
+      "confidence": 0.85,
+      "alternative_domains": [
+        {
+          "domain_id": "pathway_biology",
+          "subdomain_id": null,
+          "domain_profile_id": "pathway_biology",
+          "confidence": 0.7
+        },
+        {
+          "domain_id": "drug_target_binding",
+          "subdomain_id": "receptor_modulation",
+          "domain_profile_id": "drug_target_binding",
+          "confidence": 0.6
+        },
+        {
+          "domain_id": "protein_interaction",
+          "subdomain_id": null,
+          "domain_profile_id": "protein_interaction",
+          "confidence": 0.5
+        }
+      ],
+      "reasoning_summary": "Same as research_intent domain_routing: clinical outcome is primary for treatment response; mechanistic pathways are secondary considerations.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": true
+    },
+    "confidence": 0.9,
+    "ambiguities": [
+      "No explicit task given; assumed information retrieval for literature evidence."
+    ],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "clinical_outcome",
+    "subdomain_id": "treatment_outcome",
+    "domain_profile_id": "clinical_outcome",
+    "confidence": 0.85,
+    "alternative_domains": [
+      {
+        "domain_id": "pathway_biology",
+        "subdomain_id": null,
+        "domain_profile_id": "pathway_biology",
+        "confidence": 0.7
+      },
+      {
+        "domain_id": "drug_target_binding",
+        "subdomain_id": "receptor_modulation",
+        "domain_profile_id": "drug_target_binding",
+        "confidence": 0.6
+      },
+      {
+        "domain_id": "protein_interaction",
+        "subdomain_id": null,
+        "domain_profile_id": "protein_interaction",
+        "confidence": 0.5
+      }
+    ],
+    "reasoning_summary": "Same as research_intent domain_routing: clinical outcome is primary for treatment response; mechanistic pathways are secondary considerations.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": true
+  },
+  "seed_triples": [
+    {
+      "triple_id": "T1",
+      "subject": "PD-L1",
+      "relation": "participates_in",
+      "object": "immune checkpoint signaling",
+      "subject_type": "protein",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.95,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T2",
+      "subject": "immune checkpoint signaling",
+      "relation": "involved_in",
+      "object": "tumor immune evasion",
+      "subject_type": "biological_process",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T3",
+      "subject": "immune checkpoint signaling",
+      "relation": "involved_in",
+      "object": "inflammatory signaling",
+      "subject_type": "biological_process",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.85,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T4",
+      "subject": "PD-L1",
+      "relation": "associated_with",
+      "object": "cancer immunotherapy response",
+      "subject_type": "protein",
+      "object_type": "clinical_outcome",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T5",
+      "subject": "tumor microenvironment",
+      "relation": "modulates",
+      "object": "PD-L1 expression",
+      "subject_type": "context",
+      "object_type": "gene_expression",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T6",
+      "subject": "PD-L1/PD-1 interaction",
+      "relation": "leads_to",
+      "object": "T-cell exhaustion",
+      "subject_type": "interaction",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.95,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "pd_l1",
+      "text": "PD-L1",
+      "concept_type": "protein",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "cd274",
+      "text": "CD274",
+      "concept_type": "gene",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "immune_checkpoint_signaling",
+      "text": "immune checkpoint signaling",
+      "concept_type": "biological_process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "tumor_microenvironment",
+      "text": "tumor microenvironment",
+      "concept_type": "context",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "tumor_immune_evasion",
+      "text": "tumor immune evasion",
+      "concept_type": "biological_process",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "inflammatory_signaling",
+      "text": "inflammatory signaling",
+      "concept_type": "biological_process",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "cancer_immunotherapy_response",
+      "text": "cancer immunotherapy response",
+      "concept_type": "outcome",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "pd1_pdl1_interaction",
+      "text": "PD-1/PD-L1 interaction",
+      "concept_type": "interaction",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "PD-L1 AND tumor immune evasion AND inflammatory signaling",
+    "immune checkpoint signaling AND cancer immunotherapy response AND tumor microenvironment",
+    "PD-L1 expression AND clinical outcomes immunotherapy",
+    "tumor microenvironment inflammation PD-L1",
+    "checkpoint blockade response PD-L1 signaling"
+  ],
+  "negative_filters": [],
+  "ambiguities": [
+    "User statement is declarative; assumed intent is to retrieve supporting literature rather than hypothesis generation."
+  ],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"information_retrieval\",\n    \"research_goal\": \"Investigate the involvement of PD-L1 and immune checkpoint signaling in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.\",\n    \"primary_entities\": [\n      \"PD-L1\",\n      \"immune checkpoint signaling\",\n      \"tumor immune evasion\",\n      \"inflammatory signaling\",\n      \"cancer immunotherapy response\",\n      \"tumor microenvironment\"\n    ],\n    \"secondary_entities\": [],\n    \"disease_or_condition\": [\n      \"cancer\"\n    ],\n    \"mechanism_entities\": [\n      \"PD-L1\",\n      \"immune checkpoint signaling\"\n    ],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\n      \"tumor immune evasion\",\n      \"inflammatory signaling\",\n      \"cancer immunotherapy response\"\n    ],\n    \"intervention_entities\": [],\n    \"context_terms\": [\n      \"tumor microenvironment\",\n      \"immune evasion\",\n      \"inflammation\",\n      \"immunotherapy\"\n    ],\n    \"domain_routing\": {\n      \"domain_id\": \"clinical_outcome\",\n      \"subdomain_id\": \"treatment_outcome\",\n      \"domain_profile_id\": \"clinical_outcome\",\n      \"confidence\": 0.85,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"pathway_biology\",\n          \"subdomain_id\": null,\n          \"domain_profile_id\": \"pathway_biology\",\n          \"confidence\": 0.7\n        },\n        {\n          \"domain_id\": \"drug_target_binding\",\n          \"subdomain_id\": \"receptor_modulation\",\n          \"domain_profile_id\": \"drug_target_binding\",\n          \"confidence\": 0.6\n        },\n        {\n          \"domain_id\": \"protein_interaction\",\n          \"subdomain_id\": null,\n          \"domain_profile_id\": \"protein_interaction\",\n          \"confidence\": 0.5\n        }\n      ],\n      \"reasoning_summary\": \"The user's statement focuses on cancer immunotherapy response and clinical outcomes, with mechanistic aspects of signaling. Primary fit is clinical outcome due to explicit mention of immunotherapy response; alternatives capture pathway biology, drug-target interactions, and protein-protein interactions.\",\n      \"ambiguities\": [\n        \"Statement presents multiple facets; domain selection balances clinical and mechanistic dimensions.\"\n      ],\n      \"warnings\": [],\n      \"requires_manual_review\": true\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [\n      \"No explicit task given; assumed information retrieval for literature evidence.\"\n    ],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"clinical_outcome\",\n    \"subdomain_id\": \"treatment_outcome\",\n    \"domain_profile_id\": \"clinical_outcome\",\n    \"confidence\": 0.85,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"pathway_biology\",\n        \"subdomain_id\": null,\n        \"domain_profile_id\": \"pathway_biology\",\n        \"confidence\": 0.7\n      },\n      {\n        \"domain_id\": \"drug_target_binding\",\n        \"subdomain_id\": \"receptor_modulation\",\n        \"domain_profile_id\": \"drug_target_binding\",\n        \"confidence\": 0.6\n      },\n      {\n        \"domain_id\": \"protein_interaction\",\n        \"subdomain_id\": null,\n        \"domain_profile_id\": \"protein_interaction\",\n        \"confidence\": 0.5\n      }\n    ],\n    \"reasoning_summary\": \"Same as research_intent domain_routing: clinical outcome is primary for treatment response; mechanistic pathways are secondary considerations.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": true\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"T1\",\n      \"subject\": \"PD-L1\",\n      \"relation\": \"participates_in\",\n      \"object\": \"immune checkpoint signaling\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.95,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T2\",\n      \"subject\": \"immune checkpoint signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"tumor immune evasion\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T3\",\n      \"subject\": \"immune checkpoint signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"inflammatory signaling\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.85,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T4\",\n      \"subject\": \"PD-L1\",\n      \"relation\": \"associated_with\",\n      \"object\": \"cancer immunotherapy response\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"clinical_outcome\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T5\",\n      \"subject\": \"tumor microenvironment\",\n      \"relation\": \"modulates\",\n      \"object\": \"PD-L1 expression\",\n      \"subject_type\": \"context\",\n      \"object_type\": \"gene_expression\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T6\",\n      \"subject\": \"PD-L1/PD-1 interaction\",\n      \"relation\": \"leads_to\",\n      \"object\": \"T-cell exhaustion\",\n      \"subject_type\": \"interaction\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.95,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"pd_l1\",\n      \"text\": \"PD-L1\",\n      \"concept_type\": \"protein\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"cd274\",\n      \"text\": \"CD274\",\n      \"concept_type\": \"gene\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"immune_checkpoint_signaling\",\n      \"text\": \"immune checkpoint signaling\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"tumor_microenvironment\",\n      \"text\": \"tumor microenvironment\",\n      \"concept_type\": \"context\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"tumor_immune_evasion\",\n      \"text\": \"tumor immune evasion\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"inflammatory_signaling\",\n      \"text\": \"inflammatory signaling\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"cancer_immunotherapy_response\",\n      \"text\": \"cancer immunotherapy response\",\n      \"concept_type\": \"outcome\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"pd1_pdl1_interaction\",\n      \"text\": \"PD-1/PD-L1 interaction\",\n      \"concept_type\": \"interaction\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"PD-L1 AND tumor immune evasion AND inflammatory signaling\",\n    \"immune checkpoint signaling AND cancer immunotherapy response AND tumor microenvironment\",\n    \"PD-L1 expression AND clinical outcomes immunotherapy\",\n    \"tumor microenvironment inflammation PD-L1\",\n    \"checkpoint blockade response PD-L1 signaling\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [\n    \"User statement is declarative; assumed intent is to retrieve supporting literature rather than hypothesis generation.\"\n  ],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

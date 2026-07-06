@@ -1,0 +1,267 @@
+{
+  "research_intent": {
+    "raw_user_input": "Cellular senescence and SASP are involved in tumor suppression, therapy response, inflammation, immune modulation, and cancer progression across different cellular contexts.",
+    "language": "en",
+    "task_type": "exploration",
+    "research_goal": "Explore the roles of cellular senescence and the senescence-associated secretory phenotype (SASP) in tumor suppression, therapy response, inflammation, immune modulation, and cancer progression across different cellular contexts.",
+    "primary_entities": [
+      "Cellular senescence",
+      "Senescence-associated secretory phenotype (SASP)"
+    ],
+    "secondary_entities": [
+      "tumor suppression",
+      "therapy response",
+      "inflammation",
+      "immune modulation",
+      "cancer progression"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "tumor suppression",
+      "therapy response",
+      "immune modulation"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "different cellular contexts"
+    ],
+    "domain_routing": {
+      "domain_id": "general_biomedical",
+      "subdomain_id": null,
+      "domain_profile_id": "general_biomedical",
+      "confidence": 0.7,
+      "alternative_domains": [
+        {
+          "domain_id": "clinical_outcome",
+          "subdomain_id": "treatment_outcome",
+          "reason": "therapy response is a clinical outcome"
+        },
+        {
+          "domain_id": "pathway_biology",
+          "reason": "SASP involves inflammatory pathways"
+        },
+        {
+          "domain_id": "protein_interaction",
+          "reason": "SASP components include cytokines, growth factors, proteases that interact with receptors"
+        }
+      ],
+      "reasoning_summary": "The query covers multiple biomedical phenomena including cell senescence, secretory phenotypes, and their roles in cancer, inflammation, and therapy. General biomedical is the broadest applicable domain. Clinical outcome, pathway biology, and protein interaction are potential subdomains for specific aspects.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.9,
+    "ambiguities": [
+      "The term 'therapy response' is vague and could refer to chemotherapy, immunotherapy, or other treatments.",
+      "The phrase 'across different cellular contexts' is broad and may refer to various cell types or microenvironments."
+    ],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "general_biomedical",
+    "subdomain_id": null,
+    "domain_profile_id": "general_biomedical",
+    "confidence": 0.7,
+    "alternative_domains": [
+      {
+        "domain_id": "clinical_outcome",
+        "subdomain_id": "treatment_outcome",
+        "reason": "therapy response is a clinical outcome"
+      },
+      {
+        "domain_id": "pathway_biology",
+        "reason": "SASP involves inflammatory pathways"
+      },
+      {
+        "domain_id": "protein_interaction",
+        "reason": "SASP components include cytokines, growth factors, proteases that interact with receptors"
+      }
+    ],
+    "reasoning_summary": "The query covers multiple biomedical phenomena including cell senescence, secretory phenotypes, and their roles in cancer, inflammation, and therapy. General biomedical is the broadest applicable domain. Clinical outcome, pathway biology, and protein interaction are potential subdomains for specific aspects.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "T1",
+      "subject": "Cellular senescence",
+      "relation": "involved_in",
+      "object": "tumor suppression",
+      "subject_type": "biological_process",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T2",
+      "subject": "Cellular senescence",
+      "relation": "involved_in",
+      "object": "therapy response",
+      "subject_type": "biological_process",
+      "object_type": "clinical_outcome",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T3",
+      "subject": "Cellular senescence",
+      "relation": "involved_in",
+      "object": "cancer progression",
+      "subject_type": "biological_process",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T4",
+      "subject": "Senescence-associated secretory phenotype (SASP)",
+      "relation": "involved_in",
+      "object": "inflammation",
+      "subject_type": "biological_phenomenon",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T5",
+      "subject": "Senescence-associated secretory phenotype (SASP)",
+      "relation": "involved_in",
+      "object": "immune modulation",
+      "subject_type": "biological_phenomenon",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T6",
+      "subject": "Senescence-associated secretory phenotype (SASP)",
+      "relation": "involved_in",
+      "object": "cancer progression",
+      "subject_type": "biological_phenomenon",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.8,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "C1",
+      "text": "cellular senescence",
+      "concept_type": "biological_process",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C2",
+      "text": "Senescence-associated secretory phenotype",
+      "concept_type": "biological_phenomenon",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C3",
+      "text": "tumor suppression",
+      "concept_type": "biological_process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C4",
+      "text": "inflammation",
+      "concept_type": "biological_process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C5",
+      "text": "immune modulation",
+      "concept_type": "biological_process",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C6",
+      "text": "cancer progression",
+      "concept_type": "biological_process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C7",
+      "text": "therapy response",
+      "concept_type": "clinical_outcome",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C8",
+      "text": "cancer",
+      "concept_type": "disease",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "cellular senescence tumor suppression SASP",
+    "senescence associated secretory phenotype inflammation",
+    "SASP immune modulation cancer",
+    "therapy response senescence",
+    "senescence and cancer progression across cell types"
+  ],
+  "negative_filters": [],
+  "ambiguities": [
+    "The term 'therapy response' is vague and could refer to chemotherapy, immunotherapy, or other treatments.",
+    "The phrase 'across different cellular contexts' is broad and may refer to various cell types or microenvironments."
+  ],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"Cellular senescence and SASP are involved in tumor suppression, therapy response, inflammation, immune modulation, and cancer progression across different cellular contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"exploration\",\n    \"research_goal\": \"Explore the roles of cellular senescence and the senescence-associated secretory phenotype (SASP) in tumor suppression, therapy response, inflammation, immune modulation, and cancer progression across different cellular contexts.\",\n    \"primary_entities\": [\n      \"Cellular senescence\",\n      \"Senescence-associated secretory phenotype (SASP)\"\n    ],\n    \"secondary_entities\": [\n      \"tumor suppression\",\n      \"therapy response\",\n      \"inflammation\",\n      \"immune modulation\",\n      \"cancer progression\"\n    ],\n    \"disease_or_condition\": [\n      \"cancer\"\n    ],\n    \"mechanism_entities\": [],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\n      \"tumor suppression\",\n      \"therapy response\",\n      \"immune modulation\"\n    ],\n    \"intervention_entities\": [],\n    \"context_terms\": [\n      \"different cellular contexts\"\n    ],\n    \"domain_routing\": {\n      \"domain_id\": \"general_biomedical\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"general_biomedical\",\n      \"confidence\": 0.7,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"subdomain_id\": \"treatment_outcome\",\n          \"reason\": \"therapy response is a clinical outcome\"\n        },\n        {\n          \"domain_id\": \"pathway_biology\",\n          \"reason\": \"SASP involves inflammatory pathways\"\n        },\n        {\n          \"domain_id\": \"protein_interaction\",\n          \"reason\": \"SASP components include cytokines, growth factors, proteases that interact with receptors\"\n        }\n      ],\n      \"reasoning_summary\": \"The query covers multiple biomedical phenomena including cell senescence, secretory phenotypes, and their roles in cancer, inflammation, and therapy. General biomedical is the broadest applicable domain. Clinical outcome, pathway biology, and protein interaction are potential subdomains for specific aspects.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [\n      \"The term 'therapy response' is vague and could refer to chemotherapy, immunotherapy, or other treatments.\",\n      \"The phrase 'across different cellular contexts' is broad and may refer to various cell types or microenvironments.\"\n    ],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"general_biomedical\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"general_biomedical\",\n    \"confidence\": 0.7,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"subdomain_id\": \"treatment_outcome\",\n        \"reason\": \"therapy response is a clinical outcome\"\n      },\n      {\n        \"domain_id\": \"pathway_biology\",\n        \"reason\": \"SASP involves inflammatory pathways\"\n      },\n      {\n        \"domain_id\": \"protein_interaction\",\n        \"reason\": \"SASP components include cytokines, growth factors, proteases that interact with receptors\"\n      }\n    ],\n    \"reasoning_summary\": \"The query covers multiple biomedical phenomena including cell senescence, secretory phenotypes, and their roles in cancer, inflammation, and therapy. General biomedical is the broadest applicable domain. Clinical outcome, pathway biology, and protein interaction are potential subdomains for specific aspects.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"T1\",\n      \"subject\": \"Cellular senescence\",\n      \"relation\": \"involved_in\",\n      \"object\": \"tumor suppression\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T2\",\n      \"subject\": \"Cellular senescence\",\n      \"relation\": \"involved_in\",\n      \"object\": \"therapy response\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"clinical_outcome\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T3\",\n      \"subject\": \"Cellular senescence\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cancer progression\",\n      \"subject_type\": \"biological_process\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T4\",\n      \"subject\": \"Senescence-associated secretory phenotype (SASP)\",\n      \"relation\": \"involved_in\",\n      \"object\": \"inflammation\",\n      \"subject_type\": \"biological_phenomenon\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T5\",\n      \"subject\": \"Senescence-associated secretory phenotype (SASP)\",\n      \"relation\": \"involved_in\",\n      \"object\": \"immune modulation\",\n      \"subject_type\": \"biological_phenomenon\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T6\",\n      \"subject\": \"Senescence-associated secretory phenotype (SASP)\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cancer progression\",\n      \"subject_type\": \"biological_phenomenon\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.8,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"C1\",\n      \"text\": \"cellular senescence\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C2\",\n      \"text\": \"Senescence-associated secretory phenotype\",\n      \"concept_type\": \"biological_phenomenon\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C3\",\n      \"text\": \"tumor suppression\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C4\",\n      \"text\": \"inflammation\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C5\",\n      \"text\": \"immune modulation\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C6\",\n      \"text\": \"cancer progression\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C7\",\n      \"text\": \"therapy response\",\n      \"concept_type\": \"clinical_outcome\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C8\",\n      \"text\": \"cancer\",\n      \"concept_type\": \"disease\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"cellular senescence tumor suppression SASP\",\n    \"senescence associated secretory phenotype inflammation\",\n    \"SASP immune modulation cancer\",\n    \"therapy response senescence\",\n    \"senescence and cancer progression across cell types\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [\n    \"The term 'therapy response' is vague and could refer to chemotherapy, immunotherapy, or other treatments.\",\n    \"The phrase 'across different cellular contexts' is broad and may refer to various cell types or microenvironments.\"\n  ],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

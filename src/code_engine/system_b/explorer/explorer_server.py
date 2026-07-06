@@ -11,7 +11,12 @@ from .auth import LoginLimiter,load_users
 from .explorer_api import ExplorerAPI
 
 LOG=logging.getLogger("code_engine.atlas.security")
-LOGIN_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Login</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>C.O.D.E. Atlas</h1><h2>Biomedical Evidence &amp; Mechanism Explorer</h2><p>Public preview access is restricted.</p>{error}<form method="post"><input type="hidden" name="csrf_token" value="{csrf}"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="button" type="submit">Sign in</button></form></main></body></html>"""
+WARNING_PUBLIC_PREVIEW_HTTP = (
+    "WARNING: --public-preview is enabled but the server is likely running on HTTP. "
+    "Secure session cookies require HTTPS. Login and session functionality will not work over HTTP. "
+    "Use --no-auth for local testing over HTTP, or configure HTTPS for public-preview."
+)
+LOGIN_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Login</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>C.O.D.E. Atlas</h1><h2>Biomedical Evidence &amp; Mechanism Explorer</h2><p>Public preview access is restricted.</p>{error}<form method="post"><input type="hidden" name="csrf_token" value="{csrf}"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="button" type="submit">Sign in</button></form>{warning}</main></body></html>"""
 
 def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=None,secret_key=None,public_preview=False,max_failed_attempts=5,lockout_seconds=300,testing=False):
     if public_preview:require_auth=True
@@ -32,7 +37,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
         return wrapped
     @app.after_request
     def security_headers(response):
-        response.headers["X-Content-Type-Options"]="nosniff";response.headers["X-Frame-Options"]="DENY";response.headers["Referrer-Policy"]="no-referrer";response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+        response.headers["X-Content-Type-Options"]="nosniff";response.headers["X-Frame-Options"]="DENY";response.headers["Referrer-Policy"]="no-referrer";response.headers["Content-Security-Policy"]="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
         if authenticated():response.headers["Cache-Control"]="no-store"
         return response
     @app.route("/healthz")
@@ -50,7 +55,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                 if valid:
                     limiter.success(remote,username);session.clear();session["atlas_user"]={"username":username,"display_name":user.get("display_name",username),"role":user.get("role","reviewer")};session["csrf_token"]=secrets.token_urlsafe(32);LOG.info("atlas_auth_success username=%s",username);destination=request.args.get("next") or "/";destination=destination if destination.startswith("/") and not destination.startswith("//") else "/";return redirect(destination)
                 limiter.fail(remote,username);LOG.warning("atlas_auth_failed username=%s remote_addr=%s",username or "<empty>",remote);error="Invalid credentials or temporarily locked."
-        return LOGIN_HTML.format(error=f'<p class="error">{error}</p>' if error else "",csrf=token)
+        return LOGIN_HTML.format(error=f'<p class="error">{error}</p>' if error else "",csrf=token,warning=f'<p class="badge warn">{WARNING_PUBLIC_PREVIEW_HTTP}</p>' if public_preview and request.scheme=="http" else "")
     @app.route("/logout")
     def logout():session.clear();return redirect("/login" if require_auth else "/")
     @app.route("/api/session")
@@ -77,4 +82,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     return app
 
 def serve(display_kg_root,review_root=None,host="127.0.0.1",port=8765,on_ready=None,**options):
+    if options.get("public_preview") and host in ("127.0.0.1","localhost","0.0.0.0"):
+        import sys
+        print(f"\n{WARNING_PUBLIC_PREVIEW_HTTP}\n",file=sys.stderr)
     app=create_app(display_kg_root,review_root,**options);on_ready and on_ready();app.run(host=host,port=port,debug=False,use_reloader=False)

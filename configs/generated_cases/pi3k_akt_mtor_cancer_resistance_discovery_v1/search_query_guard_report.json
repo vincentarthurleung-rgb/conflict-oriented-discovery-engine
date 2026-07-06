@@ -1,0 +1,43 @@
+{
+  "total_queries_before_guard": 14,
+  "allowed_l1_acquisition_queries": 4,
+  "removed_queries": [
+    {
+      "query": "tumor survival signaling pathways",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "cancer therapy resistance mechanisms",
+      "query_group": "context_only",
+      "reason": "context_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "PI3K signaling in cancer",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "AKT in tumor metabolism",
+      "query_group": "broad_recall",
+      "reason": "broad_recall_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "Evidence that PI3K activates AKT in therapy resistance",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    },
+    {
+      "query": "does PI3K inhibition block AKT phosphorylation in drug resistant cells",
+      "query_group": "validation_only",
+      "reason": "validation_only_query_not_allowed_for_l1_acquisition"
+    }
+  ],
+  "off_seed_queries_removed": 0,
+  "context_only_queries_removed": 2,
+  "broad_recall_queries_removed": 2,
+  "context_guard_enabled": true,
+  "context_strict_query_count": 7,
+  "cross_context_mechanism_query_count": 1,
+  "neutral_discovery_replanned": true
+}

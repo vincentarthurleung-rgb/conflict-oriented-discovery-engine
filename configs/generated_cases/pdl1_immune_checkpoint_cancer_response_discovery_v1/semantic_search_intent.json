@@ -1,0 +1,183 @@
+{
+  "mode": "llm",
+  "confidence": 0.85,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "f7395443d4232fce66a9f023bbe5b8f48357268aceccf23ba32fb456bb70ba79",
+    "subject": {
+      "name": "PD-L1",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "clinical_outcome",
+      "context_terms": [
+        "cancer",
+        "PD-L1",
+        "immune checkpoint signaling",
+        "tumor immune evasion",
+        "inflammatory signaling",
+        "cancer immunotherapy response",
+        "tumor microenvironment",
+        "immune evasion",
+        "inflammation",
+        "immunotherapy",
+        "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts"
+      ]
+    },
+    "query_text": "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.",
+    "query_hash": "cba164f383913d0543df54040d1f7a3a7cdd610f498f91877fd3a88e20b235ce",
+    "display_title": "PD-L1 — involved_in — cancer in clinical_outcome",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.95,
+    "human_review_required": true,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(PD-L1 cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(PD-L1 molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(PD-L1 immune checkpoint signaling tumor immune evasion cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(PD-L1 context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "7f023683104883dc0b4ee71f86e9c5c20ef1706663f2db1d3a4cae48fe2ee112",
+  "planner_prompt_chars": 3550,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": false,
+  "normalization_repair_count": 0,
+  "normalization_warnings": [],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "f7395443d4232fce66a9f023bbe5b8f48357268aceccf23ba32fb456bb70ba79",
+    "subject": {
+      "name": "PD-L1",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "clinical_outcome",
+      "context_terms": [
+        "cancer",
+        "PD-L1",
+        "immune checkpoint signaling",
+        "tumor immune evasion",
+        "inflammatory signaling",
+        "cancer immunotherapy response",
+        "tumor microenvironment",
+        "immune evasion",
+        "inflammation",
+        "immunotherapy",
+        "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts"
+      ]
+    },
+    "query_text": "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts.",
+    "query_hash": "cba164f383913d0543df54040d1f7a3a7cdd610f498f91877fd3a88e20b235ce",
+    "display_title": "PD-L1 — involved_in — cancer in clinical_outcome",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 0.95,
+    "human_review_required": true,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [],
+  "context_terms": [
+    "cancer",
+    "PD-L1",
+    "immune checkpoint signaling",
+    "tumor immune evasion",
+    "inflammatory signaling",
+    "cancer immunotherapy response",
+    "tumor microenvironment",
+    "immune evasion",
+    "inflammation",
+    "immunotherapy",
+    "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "PD-L1",
+    "immune checkpoint signaling",
+    "tumor immune evasion",
+    "inflammatory signaling",
+    "cancer immunotherapy response",
+    "tumor microenvironment",
+    "immune evasion",
+    "inflammation",
+    "immunotherapy",
+    "PD-L1 and immune checkpoint signaling are involved in tumor immune evasion, inflammatory signaling, and cancer immunotherapy response across different tumor microenvironment contexts"
+  ],
+  "directional_terms_observed_in_user_query": [],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}

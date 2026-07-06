@@ -1,0 +1,240 @@
+{
+  "research_intent": {
+    "raw_user_input": "p53 signaling is involved in apoptosis, cell cycle arrest, survival adaptation, and cancer therapy response across different tumor and treatment contexts.",
+    "language": "english",
+    "task_type": "mechanism_exploration",
+    "research_goal": "Summarize the role of p53 signaling in apoptosis, cell cycle arrest, survival adaptation, and cancer therapy response across diverse tumor and treatment contexts.",
+    "primary_entities": [
+      "p53"
+    ],
+    "secondary_entities": [
+      "apoptosis",
+      "cell cycle arrest",
+      "survival adaptation",
+      "cancer therapy response",
+      "tumor context",
+      "treatment context"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "p53 signaling",
+      "apoptosis",
+      "cell cycle arrest",
+      "survival adaptation"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "cancer therapy response"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "tumor context",
+      "treatment context"
+    ],
+    "domain_routing": {
+      "domain_id": "pathway_biology",
+      "subdomain_id": null,
+      "domain_profile_id": "pathway_biology",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "clinical_outcome",
+          "confidence": 0.6,
+          "reasoning": "Involves cancer therapy response, a clinical outcome."
+        },
+        {
+          "domain_id": "protein_interaction",
+          "confidence": 0.4,
+          "reasoning": "p53 interacts with many proteins, but not the primary focus."
+        }
+      ],
+      "reasoning_summary": "Primary focus is on signaling pathways and their mechanistic roles, fitting pathway_biology. Clinical outcome aspects are secondary.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.95,
+    "ambiguities": [
+      "'survival adaptation' is a broad term; it could refer to pro-survival signaling or cellular adaptation to stress."
+    ],
+    "warnings": [
+      "No specific tumor type or treatment modality specified; search results may be broad."
+    ]
+  },
+  "domain_routing": {
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "domain_profile_id": "pathway_biology",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "clinical_outcome",
+        "confidence": 0.6,
+        "reasoning": "Involves cancer therapy response, a clinical outcome."
+      },
+      {
+        "domain_id": "protein_interaction",
+        "confidence": 0.4,
+        "reasoning": "p53 interacts with many proteins, but not the primary focus."
+      }
+    ],
+    "reasoning_summary": "Primary focus is on signaling pathways and their mechanistic roles, fitting pathway_biology. Clinical outcome aspects are secondary.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "t1",
+      "subject": "p53 signaling",
+      "relation": "involved_in",
+      "object": "apoptosis",
+      "subject_type": "pathway",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t2",
+      "subject": "p53 signaling",
+      "relation": "involved_in",
+      "object": "cell cycle arrest",
+      "subject_type": "pathway",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t3",
+      "subject": "p53 signaling",
+      "relation": "involved_in",
+      "object": "survival adaptation",
+      "subject_type": "pathway",
+      "object_type": "cellular_response",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "Term 'survival adaptation' is broad; may need disambiguation.",
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t4",
+      "subject": "p53 signaling",
+      "relation": "influences",
+      "object": "cancer therapy response",
+      "subject_type": "pathway",
+      "object_type": "clinical_outcome",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "c1",
+      "text": "p53",
+      "concept_type": "gene",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c2",
+      "text": "p53 signaling",
+      "concept_type": "pathway",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c3",
+      "text": "apoptosis",
+      "concept_type": "biological_process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c4",
+      "text": "cell cycle arrest",
+      "concept_type": "biological_process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c5",
+      "text": "survival adaptation",
+      "concept_type": "cellular_response",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": [
+        "Vague term; consider specifying mechanisms like autophagy or senescence."
+      ]
+    },
+    {
+      "concept_id": "c6",
+      "text": "cancer therapy response",
+      "concept_type": "clinical_outcome",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c7",
+      "text": "tumor context",
+      "concept_type": "contextual_factor",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c8",
+      "text": "treatment context",
+      "concept_type": "contextual_factor",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "p53 signaling AND apoptosis AND cancer therapy response",
+    "p53 cell cycle arrest AND tumor context",
+    "p53 survival adaptation AND treatment",
+    "p53 AND apoptosis AND cell cycle arrest AND cancer"
+  ],
+  "negative_filters": [],
+  "ambiguities": [
+    "'survival adaptation' is ambiguous; may refer to pro-survival pathways activated under stress."
+  ],
+  "warnings": [
+    "Query is generic; specifying cancer type or treatment would sharpen results.",
+    "No experimental evidence provided; the input is a general statement."
+  ],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"p53 signaling is involved in apoptosis, cell cycle arrest, survival adaptation, and cancer therapy response across different tumor and treatment contexts.\",\n    \"language\": \"english\",\n    \"task_type\": \"mechanism_exploration\",\n    \"research_goal\": \"Summarize the role of p53 signaling in apoptosis, cell cycle arrest, survival adaptation, and cancer therapy response across diverse tumor and treatment contexts.\",\n    \"primary_entities\": [\"p53\"],\n    \"secondary_entities\": [\n      \"apoptosis\",\n      \"cell cycle arrest\",\n      \"survival adaptation\",\n      \"cancer therapy response\",\n      \"tumor context\",\n      \"treatment context\"\n    ],\n    \"disease_or_condition\": [\"cancer\"],\n    \"mechanism_entities\": [\n      \"p53 signaling\",\n      \"apoptosis\",\n      \"cell cycle arrest\",\n      \"survival adaptation\"\n    ],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\"cancer therapy response\"],\n    \"intervention_entities\": [],\n    \"context_terms\": [\"tumor context\", \"treatment context\"],\n    \"domain_routing\": {\n      \"domain_id\": \"pathway_biology\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"pathway_biology\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"confidence\": 0.6,\n          \"reasoning\": \"Involves cancer therapy response, a clinical outcome.\"\n        },\n        {\n          \"domain_id\": \"protein_interaction\",\n          \"confidence\": 0.4,\n          \"reasoning\": \"p53 interacts with many proteins, but not the primary focus.\"\n        }\n      ],\n      \"reasoning_summary\": \"Primary focus is on signaling pathways and their mechanistic roles, fitting pathway_biology. Clinical outcome aspects are secondary.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.95,\n    \"ambiguities\": [\n      \"'survival adaptation' is a broad term; it could refer to pro-survival signaling or cellular adaptation to stress.\"\n    ],\n    \"warnings\": [\n      \"No specific tumor type or treatment modality specified; search results may be broad.\"\n    ]\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"pathway_biology\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"pathway_biology\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"confidence\": 0.6,\n        \"reasoning\": \"Involves cancer therapy response, a clinical outcome.\"\n      },\n      {\n        \"domain_id\": \"protein_interaction\",\n        \"confidence\": 0.4,\n        \"reasoning\": \"p53 interacts with many proteins, but not the primary focus.\"\n      }\n    ],\n    \"reasoning_summary\": \"Primary focus is on signaling pathways and their mechanistic roles, fitting pathway_biology. Clinical outcome aspects are secondary.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"t1\",\n      \"subject\": \"p53 signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"apoptosis\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"t2\",\n      \"subject\": \"p53 signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"cell cycle arrest\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"t3\",\n      \"subject\": \"p53 signaling\",\n      \"relation\": \"involved_in\",\n      \"object\": \"survival adaptation\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"cellular_response\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": [\n        \"Term 'survival adaptation' is broad; may need disambiguation.\"\n      ]\n    },\n    {\n      \"triple_id\": \"t4\",\n      \"subject\": \"p53 signaling\",\n      \"relation\": \"influences\",\n      \"object\": \"cancer therapy response\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"clinical_outcome\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"c1\",\n      \"text\": \"p53\",\n      \"concept_type\": \"gene\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c2\",\n      \"text\": \"p53 signaling\",\n      \"concept_type\": \"pathway\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c3\",\n      \"text\": \"apoptosis\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c4\",\n      \"text\": \"cell cycle arrest\",\n      \"concept_type\": \"biological_process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c5\",\n      \"text\": \"survival adaptation\",\n      \"concept_type\": \"cellular_response\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": [\n        \"Vague term; consider specifying mechanisms like autophagy or senescence.\"\n      ]\n    },\n    {\n      \"concept_id\": \"c6\",\n      \"text\": \"cancer therapy response\",\n      \"concept_type\": \"clinical_outcome\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c7\",\n      \"text\": \"tumor context\",\n      \"concept_type\": \"contextual_factor\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c8\",\n      \"text\": \"treatment context\",\n      \"concept_type\": \"contextual_factor\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"p53 signaling AND apoptosis AND cancer therapy response\",\n    \"p53 cell cycle arrest AND tumor context\",\n    \"p53 survival adaptation AND treatment\",\n    \"p53 AND apoptosis AND cell cycle arrest AND cancer\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [\n    \"'survival adaptation' is ambiguous; may refer to pro-survival pathways activated under stress.\"\n  ],\n  \"warnings\": [\n    \"Query is generic; specifying cancer type or treatment would sharpen results.\",\n    \"No experimental evidence provided; the input is a general statement.\"\n  ],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

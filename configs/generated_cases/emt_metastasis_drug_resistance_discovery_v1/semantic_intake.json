@@ -1,0 +1,218 @@
+{
+  "research_intent": {
+    "raw_user_input": "Epithelial-mesenchymal transition is involved in metastasis, tumor invasion, cancer stemness, and drug resistance across different tumor microenvironment contexts.",
+    "language": "english",
+    "task_type": "literature_search",
+    "research_goal": "Understand the role of epithelial-mesenchymal transition in driving metastasis, tumor invasion, cancer stemness, and drug resistance, and how this is influenced by the tumor microenvironment.",
+    "primary_entities": [
+      "epithelial-mesenchymal transition"
+    ],
+    "secondary_entities": [
+      "metastasis",
+      "tumor invasion",
+      "cancer stemness",
+      "drug resistance",
+      "tumor microenvironment"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "epithelial-mesenchymal transition"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "metastasis",
+      "tumor invasion",
+      "cancer stemness",
+      "drug resistance"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "tumor microenvironment",
+      "cancer"
+    ],
+    "domain_routing": {
+      "domain_id": "general_biomedical",
+      "subdomain_id": null,
+      "domain_profile_id": "general_biomedical",
+      "confidence": 0.85,
+      "alternative_domains": [
+        {
+          "domain_id": "pathway_biology",
+          "subdomain_id": null,
+          "profile_id": "pathway_biology",
+          "confidence": 0.6
+        }
+      ],
+      "reasoning_summary": "Query focuses on a cellular process and cancer-related phenotypes, core to general biomedicine. Pathway biology is a relevant subdomain but not strictly required.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.85,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "general_biomedical",
+    "subdomain_id": null,
+    "domain_profile_id": "general_biomedical",
+    "confidence": 0.85,
+    "alternative_domains": [
+      {
+        "domain_id": "pathway_biology",
+        "subdomain_id": null,
+        "profile_id": "pathway_biology",
+        "confidence": 0.6
+      }
+    ],
+    "reasoning_summary": "Query focuses on a cellular process and cancer-related phenotypes, core to general biomedicine. Pathway biology is a relevant subdomain but not strictly required.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "T1",
+      "subject": "epithelial-mesenchymal transition",
+      "relation": "involved in",
+      "object": "metastasis",
+      "subject_type": "process",
+      "object_type": "phenomenon",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T2",
+      "subject": "epithelial-mesenchymal transition",
+      "relation": "involved in",
+      "object": "tumor invasion",
+      "subject_type": "process",
+      "object_type": "phenomenon",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T3",
+      "subject": "epithelial-mesenchymal transition",
+      "relation": "involved in",
+      "object": "cancer stemness",
+      "subject_type": "process",
+      "object_type": "phenomenon",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T4",
+      "subject": "epithelial-mesenchymal transition",
+      "relation": "involved in",
+      "object": "drug resistance",
+      "subject_type": "process",
+      "object_type": "phenomenon",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "T5",
+      "subject": "tumor microenvironment",
+      "relation": "modulates",
+      "object": "epithelial-mesenchymal transition",
+      "subject_type": "environment",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.85,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "C1",
+      "text": "epithelial-mesenchymal transition",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C2",
+      "text": "metastasis",
+      "concept_type": "entity",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C3",
+      "text": "tumor invasion",
+      "concept_type": "entity",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C4",
+      "text": "cancer stemness",
+      "concept_type": "entity",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C5",
+      "text": "drug resistance",
+      "concept_type": "entity",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "C6",
+      "text": "tumor microenvironment",
+      "concept_type": "entity",
+      "importance": 0.85,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "epithelial-mesenchymal transition AND metastasis AND tumor microenvironment",
+    "EMT cancer stemness drug resistance",
+    "epithelial-mesenchymal transition tumor invasion",
+    "tumor microenvironment modulate epithelial-mesenchymal transition"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"Epithelial-mesenchymal transition is involved in metastasis, tumor invasion, cancer stemness, and drug resistance across different tumor microenvironment contexts.\",\n    \"language\": \"english\",\n    \"task_type\": \"literature_search\",\n    \"research_goal\": \"Understand the role of epithelial-mesenchymal transition in driving metastasis, tumor invasion, cancer stemness, and drug resistance, and how this is influenced by the tumor microenvironment.\",\n    \"primary_entities\": [\"epithelial-mesenchymal transition\"],\n    \"secondary_entities\": [\"metastasis\", \"tumor invasion\", \"cancer stemness\", \"drug resistance\", \"tumor microenvironment\"],\n    \"disease_or_condition\": [\"cancer\"],\n    \"mechanism_entities\": [\"epithelial-mesenchymal transition\"],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\"metastasis\", \"tumor invasion\", \"cancer stemness\", \"drug resistance\"],\n    \"intervention_entities\": [],\n    \"context_terms\": [\"tumor microenvironment\", \"cancer\"],\n    \"domain_routing\": {\n      \"domain_id\": \"general_biomedical\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"general_biomedical\",\n      \"confidence\": 0.85,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"pathway_biology\",\n          \"subdomain_id\": null,\n          \"profile_id\": \"pathway_biology\",\n          \"confidence\": 0.6\n        },\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"subdomain_id\": \"treatment_outcome\",\n          \"profile_id\": \"clinical_outcome\",\n          \"confidence\": 0.4\n        }\n      ],\n      \"reasoning_summary\": \"The query broadly addresses a cellular phenotypic process (EMT) and its links to cancer hallmarks, fitting general biomedicine. EMT can also be studied as a signaling pathway, and drug resistance/meta stasis are clinical outcomes, hence alternative domains.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.85,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"general_biomedical\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"general_biomedical\",\n    \"confidence\": 0.85,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"pathway_biology\",\n        \"subdomain_id\": null,\n        \"profile_id\": \"pathway_biology\",\n        \"confidence\": 0.6\n      }\n    ],\n    \"reasoning_summary\": \"Query focuses on a cellular process and cancer-related phenotypes, core to general biomedicine. Pathway biology is a relevant subdomain but not strictly required.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"T1\",\n      \"subject\": \"epithelial-mesenchymal transition\",\n      \"relation\": \"involved in\",\n      \"object\": \"metastasis\",\n      \"subject_type\": \"process\",\n      \"object_type\": \"phenomenon\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T2\",\n      \"subject\": \"epithelial-mesenchymal transition\",\n      \"relation\": \"involved in\",\n      \"object\": \"tumor invasion\",\n      \"subject_type\": \"process\",\n      \"object_type\": \"phenomenon\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T3\",\n      \"subject\": \"epithelial-mesenchymal transition\",\n      \"relation\": \"involved in\",\n      \"object\": \"cancer stemness\",\n      \"subject_type\": \"process\",\n      \"object_type\": \"phenomenon\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T4\",\n      \"subject\": \"epithelial-mesenchymal transition\",\n      \"relation\": \"involved in\",\n      \"object\": \"drug resistance\",\n      \"subject_type\": \"process\",\n      \"object_type\": \"phenomenon\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"T5\",\n      \"subject\": \"tumor microenvironment\",\n      \"relation\": \"modulates\",\n      \"object\": \"epithelial-mesenchymal transition\",\n      \"subject_type\": \"environment\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.85,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"C1\",\n      \"text\": \"epithelial-mesenchymal transition\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C2\",\n      \"text\": \"metastasis\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C3\",\n      \"text\": \"tumor invasion\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C4\",\n      \"text\": \"cancer stemness\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C5\",\n      \"text\": \"drug resistance\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"C6\",\n      \"text\": \"tumor microenvironment\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.85,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"epithelial-mesenchymal transition AND metastasis AND tumor microenvironment\",\n    \"EMT cancer stemness drug resistance\",\n    \"epithelial-mesenchymal transition tumor invasion\",\n    \"tumor microenvironment modulate epithelial-mesenchymal transition\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

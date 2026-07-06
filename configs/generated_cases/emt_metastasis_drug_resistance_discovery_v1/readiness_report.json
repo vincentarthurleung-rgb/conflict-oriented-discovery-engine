@@ -1,0 +1,193 @@
+{
+  "schema_version": "case_readiness_report_v1",
+  "created_at": "2026-07-06T05:53:12.486680+00:00",
+  "case_id": "emt_metastasis_drug_resistance_discovery_v1",
+  "ready": true,
+  "blocking_reasons": [],
+  "llm": {
+    "ready": true,
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "api_key_present": true,
+    "missing_env": [],
+    "blocking_reasons": []
+  },
+  "search_plan": {
+    "ready": true,
+    "status": "ready",
+    "path": "configs/generated_cases/emt_metastasis_drug_resistance_discovery_v1/search_plan.frozen.json",
+    "frozen_metadata_present": true,
+    "reason": null
+  },
+  "case_profile": {
+    "ready": true,
+    "path": "configs/generated_cases/emt_metastasis_drug_resistance_discovery_v1/case_profile.json",
+    "case_id": "emt_metastasis_drug_resistance_discovery_v1",
+    "reason": null
+  },
+  "routing": {
+    "selected_validators": [
+      "pubmed_post_cutoff",
+      "reactome",
+      "enrichr"
+    ],
+    "executed_if_run": [
+      "pubmed_post_cutoff",
+      "reactome",
+      "enrichr"
+    ],
+    "recommended_but_unavailable": [
+      "chembl",
+      "opentargets"
+    ],
+    "blocked_required_validators": [],
+    "selection_mode": "domain_aware_router",
+    "manual_cli_overrides": [],
+    "deduplicated": false,
+    "decisions": [
+      {
+        "validator_id": "pubmed_post_cutoff",
+        "decision": "selected_for_execution",
+        "matched_rules": [
+          "temporal_literature",
+          "case_profile_expected_validator"
+        ],
+        "availability": "runnable",
+        "reason": "case tags and validation needs matched; required local resources are available"
+      },
+      {
+        "validator_id": "reactome",
+        "decision": "selected_for_execution",
+        "matched_rules": [
+          "pathway_mechanism",
+          "case_profile_expected_validator"
+        ],
+        "availability": "runnable",
+        "reason": "case tags and validation needs matched; required local resources are available"
+      },
+      {
+        "validator_id": "enrichr",
+        "decision": "selected_for_execution",
+        "matched_rules": [
+          "gene_set_enrichment",
+          "case_profile_expected_validator"
+        ],
+        "availability": "runnable",
+        "reason": "case tags and validation needs matched; required local resources are available"
+      },
+      {
+        "validator_id": "chembl",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "case_profile_optional_validator"
+        ],
+        "availability": "skeleton_only",
+        "reason": "ChEMBL requires a configured schema-bound production index or provider"
+      },
+      {
+        "validator_id": "opentargets",
+        "decision": "recommended_but_unavailable",
+        "matched_rules": [
+          "case_profile_optional_validator"
+        ],
+        "availability": "skeleton_only",
+        "reason": "Open Targets has no configured production index or real HTTP transport"
+      }
+    ],
+    "required_validator_policy": "warning_only"
+  },
+  "resources": [
+    {
+      "validator_id": "pubmed_post_cutoff",
+      "status": "runnable",
+      "resource_ready": true,
+      "execution_mode": "remote_api",
+      "network_required": true,
+      "blocking": false,
+      "decision": "selected_for_execution",
+      "reason": "case tags and validation needs matched; required local resources are available",
+      "api_smoke_status": "reachable",
+      "api_reachable": true,
+      "production_validator_ready": false,
+      "index_summary": null
+    },
+    {
+      "validator_id": "reactome",
+      "status": "runnable",
+      "resource_ready": true,
+      "execution_mode": "remote_api",
+      "network_required": true,
+      "blocking": false,
+      "decision": "selected_for_execution",
+      "reason": "case tags and validation needs matched; required local resources are available",
+      "api_smoke_status": "reachable",
+      "api_reachable": true,
+      "production_validator_ready": false,
+      "index_summary": null
+    },
+    {
+      "validator_id": "enrichr",
+      "status": "runnable",
+      "resource_ready": true,
+      "execution_mode": "remote_api",
+      "network_required": true,
+      "blocking": false,
+      "decision": "selected_for_execution",
+      "reason": "case tags and validation needs matched; required local resources are available",
+      "api_smoke_status": "reachable",
+      "api_reachable": true,
+      "production_validator_ready": false,
+      "index_summary": null
+    },
+    {
+      "validator_id": "chembl",
+      "status": "local_fixture_only",
+      "resource_ready": false,
+      "execution_mode": "local_index",
+      "network_required": false,
+      "blocking": false,
+      "decision": "recommended_but_unavailable",
+      "reason": "local_index_missing",
+      "api_smoke_status": "reachable",
+      "api_reachable": true,
+      "production_validator_ready": false,
+      "index_summary": null
+    },
+    {
+      "validator_id": "opentargets",
+      "status": "skeleton_only",
+      "resource_ready": false,
+      "execution_mode": "remote_api",
+      "network_required": true,
+      "blocking": false,
+      "decision": "recommended_but_unavailable",
+      "reason": "validator_skeleton_only",
+      "api_smoke_status": "reachable",
+      "api_reachable": true,
+      "production_validator_ready": false,
+      "index_summary": null
+    }
+  ],
+  "fulltext": {
+    "enabled": true,
+    "source": "pmc_oa",
+    "selection_policy": "relevance_first_oa_aware",
+    "copyright_policy": "oa_only_skip_non_oa",
+    "pmc_client_configured": true,
+    "pmc_network_required": true,
+    "l1_required_if_oa_available": true,
+    "l1_ready": true,
+    "network_allowed": true,
+    "max_papers": 20,
+    "publisher_scraping_enabled": false,
+    "ready": true,
+    "blocking_reasons": [],
+    "reason": null
+  },
+  "warnings": [
+    "validator production-unavailable: chembl",
+    "validator production-unavailable: opentargets"
+  ],
+  "api_reachability_is_production_readiness": false,
+  "smoke_report_path": "external_api_smoke_reports/external_api_smoke_summary.json"
+}

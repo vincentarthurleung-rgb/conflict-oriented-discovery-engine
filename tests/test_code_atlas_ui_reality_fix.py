@@ -560,7 +560,7 @@ class ConflictLensFixTests(unittest.TestCase):
             ]
             explorer_support.write_jsonl(root / "conflict_lens_records.jsonl", conflicts)
             api = ExplorerAPI(root, None)
-            _, result = api.dispatch("/api/conflicts")
+            _, result = api.dispatch("/api/conflicts", {"bucket": ["all"]})
             self.assertEqual(len(result["items"]), 1)
             item = result["items"][0]
             self.assertTrue(item.get("observation_a_has_content"))
@@ -583,7 +583,7 @@ class ConflictLensFixTests(unittest.TestCase):
             ]
             explorer_support.write_jsonl(root / "conflict_lens_records.jsonl", conflicts)
             api = ExplorerAPI(root, None)
-            _, result = api.dispatch("/api/conflicts")
+            _, result = api.dispatch("/api/conflicts", {"bucket": ["all"], "include_hidden": ["true"]})
             item = result["items"][0]
             self.assertFalse(item.get("observation_a_has_content"))
             self.assertIsNotNone(item.get("observation_a_warning"))
@@ -607,6 +607,109 @@ class ConflictLensFixTests(unittest.TestCase):
         self.assertIn("observation_a_warning", js, "observation_a_warning field access missing")
         self.assertIn("observation_b_warning", js, "observation_b_warning field access missing")
         self.assertIn("observation-side-card", js, "observation-side-card rendering missing")
+
+
+class FrontendLoadingRegressionTests(unittest.TestCase):
+    """Test that the frontend loads without fatal errors."""
+
+    def test_static_app_js_served_200(self):
+        app = create_app(
+            Path(__file__).parent.parent / "system_b_outputs/three_case_clean_kg_v3",
+            None, testing=True
+        )
+        client = app.test_client()
+        resp = client.get("/app.js")
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreater(len(resp.get_data()), 1000)
+        resp.close()
+
+    def test_static_style_css_served_200(self):
+        app = create_app(
+            Path(__file__).parent.parent / "system_b_outputs/three_case_clean_kg_v3",
+            None, testing=True
+        )
+        client = app.test_client()
+        resp = client.get("/style.css")
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreater(len(resp.get_data()), 500)
+        resp.close()
+
+    def test_app_js_has_balanced_braces(self):
+        js = _read_static("app.js")
+        self.assertEqual(js.count("{"), js.count("}"), "Unmatched braces in app.js")
+        self.assertEqual(js.count("("), js.count(")"), "Unmatched parentheses in app.js")
+
+    def test_no_auth_api_summary_returns_200(self):
+        app = create_app(
+            Path(__file__).parent.parent / "system_b_outputs/three_case_clean_kg_v3",
+            None, testing=True
+        )
+        client = app.test_client()
+        resp = client.get("/api/summary")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertIn("cases", data)
+        resp.close()
+
+    def test_no_auth_api_review_workspace_returns_200(self):
+        app = create_app(
+            Path(__file__).parent.parent / "system_b_outputs/three_case_clean_kg_v3",
+            Path(__file__).parent.parent / "system_b_outputs/three_case_review",
+            testing=True
+        )
+        client = app.test_client()
+        resp = client.get("/api/review-workspace")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertIn("cases", data)
+        resp.close()
+
+    def test_no_auth_api_conflicts_returns_200(self):
+        app = create_app(
+            Path(__file__).parent.parent / "system_b_outputs/three_case_clean_kg_v3",
+            None, testing=True
+        )
+        client = app.test_client()
+        resp = client.get("/api/conflicts?limit=3")
+        self.assertEqual(resp.status_code, 200)
+        resp.close()
+
+    def test_boot_function_has_error_resilience(self):
+        js = _read_static("app.js")
+        self.assertIn("catch", js, "boot() must have catch for error resilience")
+        self.assertIn("error-banner", js, "error-banner CSS class missing")
+        self.assertIn("Startup warnings", js, "Startup warnings text missing")
+
+    def test_route_has_error_handler(self):
+        js = _read_static("app.js")
+        self.assertIn("Unable to load view", js, "Route error handler missing")
+
+    def test_graph_page_loads_without_api_failure(self):
+        js = _read_static("app.js")
+        self.assertIn("No display KG found", js, "Graph empty state missing")
+        self.assertIn("system_b_build_clean_kg", js, "Graph build hint missing")
+
+    def test_review_page_has_fallback(self):
+        js = _read_static("app.js")
+        self.assertIn("Review queue not available", js, "Review fallback missing")
+
+    def test_csp_allows_inline_scripts(self):
+        from code_engine.system_b.explorer.explorer_server import create_app as make_app
+        app = make_app(
+            Path(__file__).parent.parent / "system_b_outputs/three_case_clean_kg_v3",
+            None, testing=True
+        )
+        client = app.test_client()
+        resp = client.get("/")
+        csp = resp.headers.get("Content-Security-Policy", "")
+        self.assertIn("unsafe-inline", csp, "CSP must allow unsafe-inline for script-src")
+        resp.close()
+
+    def test_public_preview_http_warning_documented(self):
+        server_py = Path(__file__).parent.parent / "src/code_engine/system_b/explorer/explorer_server.py"
+        text = server_py.read_text(encoding="utf-8")
+        self.assertIn("WARNING", text, "Public preview HTTP warning missing")
+        self.assertIn("Secure session cookies require HTTPS", text, "HTTP warning detail missing")
 
 
 if __name__ == "__main__":

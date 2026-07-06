@@ -1,0 +1,249 @@
+{
+  "research_intent": {
+    "raw_user_input": "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts.",
+    "language": "en",
+    "task_type": "literature_search",
+    "research_goal": "Investigate the role of Wnt beta-catenin signaling in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts.",
+    "primary_entities": [
+      "Wnt beta-catenin signaling",
+      "cancer"
+    ],
+    "secondary_entities": [
+      "cancer stemness",
+      "tumor progression",
+      "immune microenvironment",
+      "therapy response"
+    ],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "Wnt signaling",
+      "beta-catenin",
+      "stemness pathways",
+      "tumor progression pathways",
+      "immune modulation",
+      "therapy resistance/sensitivity"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "cancer stemness",
+      "tumor progression",
+      "therapy response"
+    ],
+    "intervention_entities": [
+      "therapeutic agents targeting Wnt"
+    ],
+    "context_terms": [
+      "cancer",
+      "signaling pathway"
+    ],
+    "domain_routing": {
+      "domain_id": "pathway_biology",
+      "subdomain_id": null,
+      "domain_profile_id": "pathway_biology",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "general_biomedical",
+          "confidence": 0.7
+        },
+        {
+          "domain_id": "clinical_outcome",
+          "subdomain_id": "treatment_outcome",
+          "confidence": 0.6
+        },
+        {
+          "domain_id": "drug_target_binding",
+          "subdomain_id": "receptor_modulation",
+          "confidence": 0.5
+        }
+      ],
+      "reasoning_summary": "The query is centered on the Wnt signaling pathway's involvement in cancer biology, making pathway_biology the most direct domain. Related aspects like clinical outcomes and potential drug targets are secondary.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.9,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "domain_profile_id": "pathway_biology",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "general_biomedical",
+        "confidence": 0.7
+      },
+      {
+        "domain_id": "clinical_outcome",
+        "subdomain_id": "treatment_outcome",
+        "confidence": 0.6
+      },
+      {
+        "domain_id": "drug_target_binding",
+        "subdomain_id": "receptor_modulation",
+        "confidence": 0.5
+      }
+    ],
+    "reasoning_summary": "The query is centered on the Wnt signaling pathway's involvement in cancer biology, making pathway_biology the most direct domain. Related aspects like clinical outcomes and potential drug targets are secondary.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "seed1",
+      "subject": "Wnt beta-catenin signaling",
+      "relation": "associated_with",
+      "object": "cancer stemness",
+      "subject_type": "pathway",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed2",
+      "subject": "Wnt beta-catenin signaling",
+      "relation": "promotes",
+      "object": "tumor progression",
+      "subject_type": "pathway",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed3",
+      "subject": "Wnt beta-catenin signaling",
+      "relation": "modulates",
+      "object": "tumor immune microenvironment",
+      "subject_type": "pathway",
+      "object_type": "biological_system",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed4",
+      "subject": "Wnt beta-catenin signaling",
+      "relation": "influences",
+      "object": "cancer therapy response",
+      "subject_type": "pathway",
+      "object_type": "process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "seed5",
+      "subject": "beta-catenin",
+      "relation": "participates_in",
+      "object": "Wnt signaling pathway",
+      "subject_type": "protein",
+      "object_type": "pathway",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 1.0,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "c1",
+      "text": "Wnt beta-catenin signaling",
+      "concept_type": "pathway",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c2",
+      "text": "cancer stemness",
+      "concept_type": "phenotype",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c3",
+      "text": "tumor progression",
+      "concept_type": "process",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c4",
+      "text": "immune microenvironment modulation",
+      "concept_type": "process",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c5",
+      "text": "therapy response",
+      "concept_type": "outcome",
+      "importance": 0.8,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c6",
+      "text": "cancer",
+      "concept_type": "disease",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c7",
+      "text": "beta-catenin",
+      "concept_type": "protein",
+      "importance": 0.7,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "Wnt beta-catenin signaling cancer stemness",
+    "Wnt signaling tumor progression",
+    "Wnt pathway immune microenvironment cancer",
+    "Wnt beta-catenin therapy response cancer",
+    "Wnt signaling cancer stemness tumor progression immune modulation"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"literature_search\",\n    \"research_goal\": \"Investigate the role of Wnt beta-catenin signaling in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts.\",\n    \"primary_entities\": [\n      \"Wnt beta-catenin signaling\",\n      \"cancer\"\n    ],\n    \"secondary_entities\": [\n      \"cancer stemness\",\n      \"tumor progression\",\n      \"immune microenvironment\",\n      \"therapy response\"\n    ],\n    \"disease_or_condition\": [\n      \"cancer\"\n    ],\n    \"mechanism_entities\": [\n      \"Wnt signaling\",\n      \"beta-catenin\",\n      \"stemness pathways\",\n      \"tumor progression pathways\",\n      \"immune modulation\",\n      \"therapy resistance/sensitivity\"\n    ],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\n      \"cancer stemness\",\n      \"tumor progression\",\n      \"therapy response\"\n    ],\n    \"intervention_entities\": [\n      \"therapeutic agents targeting Wnt\"\n    ],\n    \"context_terms\": [\n      \"cancer\",\n      \"signaling pathway\"\n    ],\n    \"domain_routing\": {\n      \"domain_id\": \"pathway_biology\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"pathway_biology\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"general_biomedical\",\n          \"confidence\": 0.7\n        },\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"subdomain_id\": \"treatment_outcome\",\n          \"confidence\": 0.6\n        },\n        {\n          \"domain_id\": \"drug_target_binding\",\n          \"subdomain_id\": \"receptor_modulation\",\n          \"confidence\": 0.5\n        }\n      ],\n      \"reasoning_summary\": \"The query is centered on the Wnt signaling pathway's involvement in cancer biology, making pathway_biology the most direct domain. Related aspects like clinical outcomes and potential drug targets are secondary.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.9,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"pathway_biology\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"pathway_biology\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"general_biomedical\",\n        \"confidence\": 0.7\n      },\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"subdomain_id\": \"treatment_outcome\",\n        \"confidence\": 0.6\n      },\n      {\n        \"domain_id\": \"drug_target_binding\",\n        \"subdomain_id\": \"receptor_modulation\",\n        \"confidence\": 0.5\n      }\n    ],\n    \"reasoning_summary\": \"The query is centered on the Wnt signaling pathway's involvement in cancer biology, making pathway_biology the most direct domain. Related aspects like clinical outcomes and potential drug targets are secondary.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"seed1\",\n      \"subject\": \"Wnt beta-catenin signaling\",\n      \"relation\": \"associated_with\",\n      \"object\": \"cancer stemness\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed2\",\n      \"subject\": \"Wnt beta-catenin signaling\",\n      \"relation\": \"promotes\",\n      \"object\": \"tumor progression\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed3\",\n      \"subject\": \"Wnt beta-catenin signaling\",\n      \"relation\": \"modulates\",\n      \"object\": \"tumor immune microenvironment\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"biological_system\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed4\",\n      \"subject\": \"Wnt beta-catenin signaling\",\n      \"relation\": \"influences\",\n      \"object\": \"cancer therapy response\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"seed5\",\n      \"subject\": \"beta-catenin\",\n      \"relation\": \"participates_in\",\n      \"object\": \"Wnt signaling pathway\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"pathway\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 1.0,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"c1\",\n      \"text\": \"Wnt beta-catenin signaling\",\n      \"concept_type\": \"pathway\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c2\",\n      \"text\": \"cancer stemness\",\n      \"concept_type\": \"phenotype\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c3\",\n      \"text\": \"tumor progression\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c4\",\n      \"text\": \"immune microenvironment modulation\",\n      \"concept_type\": \"process\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c5\",\n      \"text\": \"therapy response\",\n      \"concept_type\": \"outcome\",\n      \"importance\": 0.8,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c6\",\n      \"text\": \"cancer\",\n      \"concept_type\": \"disease\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c7\",\n      \"text\": \"beta-catenin\",\n      \"concept_type\": \"protein\",\n      \"importance\": 0.7,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"Wnt beta-catenin signaling cancer stemness\",\n    \"Wnt signaling tumor progression\",\n    \"Wnt pathway immune microenvironment cancer\",\n    \"Wnt beta-catenin therapy response cancer\",\n    \"Wnt signaling cancer stemness tumor progression immune modulation\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

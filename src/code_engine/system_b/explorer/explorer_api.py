@@ -91,8 +91,10 @@ class ExplorerAPI:
             value=self._triple(unquote(path.removeprefix("/api/triple/")),params); return (200,value) if value else (404,{"error":"triple_not_found"})
         if path=="/api/chains":return 200,_page(self._chains(params),params)
         if path.startswith("/api/chain/"):
-            value=self.chain_by_id.get(unquote(path.removeprefix("/api/chain/"))); return (200,value) if value else (404,{"error":"chain_not_found"})
-        if path=="/api/conflicts":return 200,_page(self._conflicts(params),params)
+            chain_id = unquote(path.removeprefix("/api/chain/"))
+            value = self._chain_detail(chain_id)
+            return (200, value) if value else (404, {"error": "chain_not_found"})
+        if path=="/api/conflicts":return 200,self._conflicts(params)
         if path=="/api/review-summary":return 200,{"queue_count":len(self.review),"items_by_type":dict(Counter(x.get("item_type","unknown") for x in self.review)),"items_by_case":dict(Counter(x.get("case_id","unknown") for x in self.review)),"annotation_status":self.annotation_status,"paper_metrics":self.paper_metrics,"manual_metrics_notice":"Manual precision metrics require completed non-empty annotations."}
         if path=="/api/review-workspace":return 200,self._review_workspace()
         if path=="/api/review-cases":
@@ -153,11 +155,178 @@ class ExplorerAPI:
         if _bool(p,"has_conflict"):rows=[x for x in rows if x.get("conflict_statuses")]
         return sorted(rows,key=lambda x:-x.get("chain_quality_score",0))
 
+    def _chain_detail(self, chain_id):
+        """Return enriched chain detail including triples, evidence, contexts, and review status."""
+        chain = self.chain_by_id.get(chain_id)
+        if not chain:
+            return None
+        triple_ids = chain.get("triple_ids", [])
+        case_ids = chain.get("case_ids", [])
+
+        # Collect triples in this chain
+        triples = []
+        evidence_by_triple = {}
+        contexts_by_triple = {}
+        for tid in triple_ids:
+            triple = self.triple_by_id.get(tid)
+            if triple:
+                triples.append(triple)
+            evidence_by_triple[tid] = self.evidence_by_triple.get(tid, [])
+            contexts_by_triple[tid] = self.context_by_triple.get(tid, [])
+
+        # Validator annotations linked to these cases
+        validator_annotations = [
+            x for x in self.validators
+            if any(c in case_ids for c in (x.get("case_id", ""), x.get("case_ids", [])))
+        ]
+
+        # Conflict lens records linked to these triples
+        conflict_records = []
+        seen = set()
+        for tid in triple_ids:
+            for cr in self.conflict_by_triple.get(tid, []):
+                rid = cr.get("record_id") or json.dumps(cr, sort_keys=True, default=str)
+                if rid not in seen:
+                    seen.add(rid)
+                    conflict_records.append(self._enriched_conflict(cr))
+
+        # Manual review summary
+        review_items = [x for x in self.review if x.get("case_id") in case_ids]
+        review_summary = {
+            "total": len(review_items),
+            "reviewed": sum(1 for x in review_items
+                           if self.annotations.get(x["review_item_id"])),
+            "by_type": dict(Counter(x.get("item_type", "unknown") for x in review_items)),
+        }
+
+        return {
+            "chain": chain,
+            "triples": triples,
+            "evidence_by_triple": evidence_by_triple,
+            "contexts_by_triple": contexts_by_triple,
+            "validator_annotations": validator_annotations,
+            "conflict_lens_records": conflict_records,
+            "manual_review_summary": review_summary,
+            "scientific_boundary": BOUNDARY,
+        }
+
     def _conflicts(self,p):
-        rows=self.conflicts; case=_one(p,"case_id"); kind=_one(p,"record_type")
-        if case:rows=[x for x in rows if x.get("case_id")==case]
-        if kind:rows=[x for x in rows if x.get("record_type")==kind]
-        return [self._enriched_conflict(x) for x in rows]
+        """Return enriched conflicts with bucketing and optional filtering.
+
+        Query params:
+          bucket: potential_conflict | mechanism_diagnostic | rejected_non_comparable
+                  | data_quality | all (default: potential_conflict)
+          case_id: filter by case
+          record_type: filter by exact record_type
+          include_hidden: true|false (default: false)
+        """
+        rows = self.conflicts
+        case = _one(p, "case_id")
+        kind = _one(p, "record_type")
+        bucket = _one(p, "bucket", "potential_conflict")
+        include_hidden = _bool(p, "include_hidden")
+
+        if case:
+            rows = [x for x in rows if x.get("case_id") == case]
+        if kind:
+            rows = [x for x in rows if x.get("record_type") == kind]
+
+        # Enrich and classify all records
+        enriched = [self._enriched_conflict(x) for x in rows]
+        classified = [self._classify_conflict(x) for x in enriched]
+
+        # Build summary across ALL records (before bucket filtering)
+        summary = self._conflict_summary(classified)
+
+        # Filter by bucket unless "all"
+        if bucket != "all":
+            classified = [x for x in classified if x.get("display_bucket") == bucket]
+
+        # Filter out hidden records unless include_hidden
+        if not include_hidden:
+            classified = [x for x in classified if x.get("display_recommended", True)]
+
+        items = [self._strip_classification_fields(x) for x in classified]
+        result = _page(items, p)
+        result["summary"] = summary
+        return result
+
+    @staticmethod
+    def _classify_conflict(record):
+        """Classify a conflict record into a display bucket."""
+        rt = record.get("record_type", "")
+        ct = record.get("candidate_type", "")
+        has_a = record.get("observation_a_has_content", False)
+        has_b = record.get("observation_b_has_content", False)
+        has_pair_preview = has_a or has_b
+
+        # Determine bucket
+        is_mechanism = (rt == "mechanism_split" or ct == "mechanism_split" or
+                        "mechanism_split" in str(rt).lower())
+        is_non_comparable = (rt == "non_comparable_direction_pair" or
+                             "non_comparable" in str(record.get("comparability_label", "")).lower())
+        is_potential = rt in ("weak_candidate", "context_split", "formal_hypothesis")
+
+        if not has_pair_preview:
+            bucket = "data_quality"
+            recommended = False
+            hide_reason = "missing_observation_preview"
+        elif is_mechanism:
+            bucket = "mechanism_diagnostic"
+            recommended = True
+            hide_reason = None
+        elif is_non_comparable:
+            bucket = "rejected_non_comparable"
+            recommended = True
+            hide_reason = None
+        elif is_potential and has_pair_preview:
+            bucket = "potential_conflict"
+            recommended = True
+            hide_reason = None
+        else:
+            # Fallback: treat as data quality if unclear
+            bucket = "data_quality"
+            recommended = False
+            hide_reason = "unclassified_record_type"
+
+        return {
+            **record,
+            "display_bucket": bucket,
+            "display_recommended": recommended,
+            "has_observation_a": has_a,
+            "has_observation_b": has_b,
+            "has_pair_preview": has_pair_preview,
+            "hide_from_default_reason": hide_reason,
+        }
+
+    @staticmethod
+    def _conflict_summary(classified):
+        """Build summary statistics from classified conflict records."""
+        counts = {
+            "potential_conflict_count": 0,
+            "mechanism_diagnostic_count": 0,
+            "rejected_non_comparable_count": 0,
+            "data_quality_count": 0,
+            "hidden_missing_preview_count": 0,
+            "total_records": len(classified),
+        }
+        for x in classified:
+            bucket = x.get("display_bucket", "data_quality")
+            key = f"{bucket}_count"
+            if key in counts:
+                counts[key] += 1
+            if x.get("hide_from_default_reason") == "missing_observation_preview":
+                counts["hidden_missing_preview_count"] += 1
+        return counts
+
+    @staticmethod
+    def _strip_classification_fields(record):
+        """Remove internal classification fields from the record before returning to client."""
+        strip_keys = {
+            "display_bucket", "display_recommended", "has_observation_a",
+            "has_observation_b", "has_pair_preview", "hide_from_default_reason",
+        }
+        return {k: v for k, v in record.items() if k not in strip_keys}
 
     def _extract_observation(self, record, prefix):
         """Extract observation fields from conflict record with multiple field name fallbacks."""

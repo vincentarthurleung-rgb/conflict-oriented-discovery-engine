@@ -1,0 +1,246 @@
+{
+  "research_intent": {
+    "raw_user_input": "PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts.",
+    "language": "en",
+    "task_type": "literature_search",
+    "research_goal": "Investigate the role of PI3K AKT mTOR signaling in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts.",
+    "primary_entities": [
+      "PI3K",
+      "AKT",
+      "mTOR",
+      "tumor",
+      "metabolism",
+      "proliferation",
+      "therapy resistance"
+    ],
+    "secondary_entities": [],
+    "disease_or_condition": [
+      "cancer"
+    ],
+    "mechanism_entities": [
+      "PI3K",
+      "AKT",
+      "mTOR",
+      "PI3K/AKT/mTOR signaling pathway"
+    ],
+    "comparison_entities": [],
+    "outcome_entities": [
+      "tumor survival",
+      "metabolism",
+      "proliferation",
+      "therapy resistance"
+    ],
+    "intervention_entities": [],
+    "context_terms": [
+      "signaling",
+      "cellular context",
+      "treatment context"
+    ],
+    "domain_routing": {
+      "domain_id": "pathway_biology",
+      "subdomain_id": null,
+      "domain_profile_id": "pathway_biology",
+      "confidence": 0.9,
+      "alternative_domains": [
+        {
+          "domain_id": "drug_target_binding",
+          "confidence": 0.6,
+          "reason": "therapy resistance may involve drug-target interactions"
+        },
+        {
+          "domain_id": "clinical_outcome",
+          "confidence": 0.5,
+          "reason": "therapy resistance and tumor survival are clinical outcomes"
+        }
+      ],
+      "reasoning_summary": "The query focuses on a signaling pathway and its mechanistic roles in tumor biology, making pathway_biology the most appropriate domain. Alternative domains capture potential drug target or clinical outcome aspects.",
+      "ambiguities": [],
+      "warnings": [],
+      "requires_manual_review": false
+    },
+    "confidence": 0.95,
+    "ambiguities": [],
+    "warnings": []
+  },
+  "domain_routing": {
+    "domain_id": "pathway_biology",
+    "subdomain_id": null,
+    "domain_profile_id": "pathway_biology",
+    "confidence": 0.9,
+    "alternative_domains": [
+      {
+        "domain_id": "drug_target_binding",
+        "confidence": 0.6,
+        "reason": "therapy resistance may involve drug-target interactions"
+      },
+      {
+        "domain_id": "clinical_outcome",
+        "confidence": 0.5,
+        "reason": "therapy resistance and tumor survival are clinical outcomes"
+      }
+    ],
+    "reasoning_summary": "The query focuses on a signaling pathway and its mechanistic roles in tumor biology, making pathway_biology the most appropriate domain. Alternative domains capture potential drug target or clinical outcome aspects.",
+    "ambiguities": [],
+    "warnings": [],
+    "requires_manual_review": false
+  },
+  "seed_triples": [
+    {
+      "triple_id": "t1",
+      "subject": "PI3K",
+      "relation": "activates",
+      "object": "AKT",
+      "subject_type": "protein",
+      "object_type": "protein",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t2",
+      "subject": "AKT",
+      "relation": "activates",
+      "object": "mTOR",
+      "subject_type": "protein",
+      "object_type": "protein",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.9,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t3",
+      "subject": "PI3K/AKT/mTOR signaling pathway",
+      "relation": "associated_with",
+      "object": "tumor survival",
+      "subject_type": "pathway",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.85,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t4",
+      "subject": "PI3K/AKT/mTOR signaling pathway",
+      "relation": "associated_with",
+      "object": "therapy resistance",
+      "subject_type": "pathway",
+      "object_type": "phenotype",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.85,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    },
+    {
+      "triple_id": "t5",
+      "subject": "mTOR",
+      "relation": "involved_in",
+      "object": "metabolism",
+      "subject_type": "protein",
+      "object_type": "biological_process",
+      "purpose": "literature_search_planning",
+      "source": "llm_semantic_intake",
+      "is_evidence": false,
+      "confidence": 0.85,
+      "warnings": [
+        "seed_triple_not_evidence"
+      ]
+    }
+  ],
+  "search_concepts": [
+    {
+      "concept_id": "c1",
+      "text": "PI3K",
+      "concept_type": "entity",
+      "importance": 0.95,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c2",
+      "text": "AKT",
+      "concept_type": "entity",
+      "importance": 0.95,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c3",
+      "text": "mTOR",
+      "concept_type": "entity",
+      "importance": 0.95,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c4",
+      "text": "tumor",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c5",
+      "text": "metabolism",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c6",
+      "text": "proliferation",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c7",
+      "text": "therapy resistance",
+      "concept_type": "entity",
+      "importance": 0.9,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    },
+    {
+      "concept_id": "c8",
+      "text": "PI3K/AKT/mTOR signaling pathway",
+      "concept_type": "pathway",
+      "importance": 1.0,
+      "source": "llm_semantic_intake",
+      "warnings": []
+    }
+  ],
+  "recommended_search_queries": [
+    "PI3K AKT mTOR signaling tumor survival metabolism proliferation therapy resistance",
+    "PI3K/AKT/mTOR pathway cancer therapy resistance",
+    "mTOR metabolism tumor survival",
+    "PI3K AKT tumor proliferation"
+  ],
+  "negative_filters": [],
+  "ambiguities": [],
+  "warnings": [],
+  "raw_llm_response_ref": null,
+  "verified": true,
+  "verification_warnings": [],
+  "semantic_mode": "llm_semantic",
+  "api_calls_made": 0,
+  "__json_warnings": [],
+  "__json_raw_response": "{\n  \"research_intent\": {\n    \"raw_user_input\": \"PI3K AKT mTOR signaling is involved in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts.\",\n    \"language\": \"en\",\n    \"task_type\": \"literature_search\",\n    \"research_goal\": \"Investigate the role of PI3K AKT mTOR signaling in tumor survival, metabolism, proliferation, and cancer therapy resistance across different cellular and treatment contexts.\",\n    \"primary_entities\": [\"PI3K\", \"AKT\", \"mTOR\", \"tumor\", \"metabolism\", \"proliferation\", \"therapy resistance\"],\n    \"secondary_entities\": [],\n    \"disease_or_condition\": [\"cancer\"],\n    \"mechanism_entities\": [\"PI3K\", \"AKT\", \"mTOR\", \"PI3K/AKT/mTOR signaling pathway\"],\n    \"comparison_entities\": [],\n    \"outcome_entities\": [\"tumor survival\", \"metabolism\", \"proliferation\", \"therapy resistance\"],\n    \"intervention_entities\": [],\n    \"context_terms\": [\"signaling\", \"cellular context\", \"treatment context\"],\n    \"domain_routing\": {\n      \"domain_id\": \"pathway_biology\",\n      \"subdomain_id\": null,\n      \"domain_profile_id\": \"pathway_biology\",\n      \"confidence\": 0.9,\n      \"alternative_domains\": [\n        {\n          \"domain_id\": \"drug_target_binding\",\n          \"confidence\": 0.6,\n          \"reason\": \"therapy resistance may involve drug-target interactions\"\n        },\n        {\n          \"domain_id\": \"clinical_outcome\",\n          \"confidence\": 0.5,\n          \"reason\": \"therapy resistance and tumor survival are clinical outcomes\"\n        }\n      ],\n      \"reasoning_summary\": \"The query focuses on a signaling pathway and its mechanistic roles in tumor biology, making pathway_biology the most appropriate domain. Alternative domains capture potential drug target or clinical outcome aspects.\",\n      \"ambiguities\": [],\n      \"warnings\": [],\n      \"requires_manual_review\": false\n    },\n    \"confidence\": 0.95,\n    \"ambiguities\": [],\n    \"warnings\": []\n  },\n  \"domain_routing\": {\n    \"domain_id\": \"pathway_biology\",\n    \"subdomain_id\": null,\n    \"domain_profile_id\": \"pathway_biology\",\n    \"confidence\": 0.9,\n    \"alternative_domains\": [\n      {\n        \"domain_id\": \"drug_target_binding\",\n        \"confidence\": 0.6,\n        \"reason\": \"therapy resistance may involve drug-target interactions\"\n      },\n      {\n        \"domain_id\": \"clinical_outcome\",\n        \"confidence\": 0.5,\n        \"reason\": \"therapy resistance and tumor survival are clinical outcomes\"\n      }\n    ],\n    \"reasoning_summary\": \"The query focuses on a signaling pathway and its mechanistic roles in tumor biology, making pathway_biology the most appropriate domain. Alternative domains capture potential drug target or clinical outcome aspects.\",\n    \"ambiguities\": [],\n    \"warnings\": [],\n    \"requires_manual_review\": false\n  },\n  \"seed_triples\": [\n    {\n      \"triple_id\": \"t1\",\n      \"subject\": \"PI3K\",\n      \"relation\": \"activates\",\n      \"object\": \"AKT\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"protein\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"t2\",\n      \"subject\": \"AKT\",\n      \"relation\": \"activates\",\n      \"object\": \"mTOR\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"protein\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.9,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"t3\",\n      \"subject\": \"PI3K/AKT/mTOR signaling pathway\",\n      \"relation\": \"associated_with\",\n      \"object\": \"tumor survival\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.85,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"t4\",\n      \"subject\": \"PI3K/AKT/mTOR signaling pathway\",\n      \"relation\": \"associated_with\",\n      \"object\": \"therapy resistance\",\n      \"subject_type\": \"pathway\",\n      \"object_type\": \"phenotype\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.85,\n      \"warnings\": []\n    },\n    {\n      \"triple_id\": \"t5\",\n      \"subject\": \"mTOR\",\n      \"relation\": \"involved_in\",\n      \"object\": \"metabolism\",\n      \"subject_type\": \"protein\",\n      \"object_type\": \"biological_process\",\n      \"purpose\": \"literature_search_planning\",\n      \"source\": \"llm_semantic_intake\",\n      \"is_evidence\": false,\n      \"confidence\": 0.85,\n      \"warnings\": []\n    }\n  ],\n  \"search_concepts\": [\n    {\n      \"concept_id\": \"c1\",\n      \"text\": \"PI3K\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.95,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c2\",\n      \"text\": \"AKT\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.95,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c3\",\n      \"text\": \"mTOR\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.95,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c4\",\n      \"text\": \"tumor\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c5\",\n      \"text\": \"metabolism\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c6\",\n      \"text\": \"proliferation\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c7\",\n      \"text\": \"therapy resistance\",\n      \"concept_type\": \"entity\",\n      \"importance\": 0.9,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    },\n    {\n      \"concept_id\": \"c8\",\n      \"text\": \"PI3K/AKT/mTOR signaling pathway\",\n      \"concept_type\": \"pathway\",\n      \"importance\": 1.0,\n      \"source\": \"llm_semantic_intake\",\n      \"warnings\": []\n    }\n  ],\n  \"recommended_search_queries\": [\n    \"PI3K AKT mTOR signaling tumor survival metabolism proliferation therapy resistance\",\n    \"PI3K/AKT/mTOR pathway cancer therapy resistance\",\n    \"mTOR metabolism tumor survival\",\n    \"PI3K AKT tumor proliferation\"\n  ],\n  \"negative_filters\": [],\n  \"ambiguities\": [],\n  \"warnings\": [],\n  \"raw_llm_response_ref\": null,\n  \"verified\": false,\n  \"verification_warnings\": [],\n  \"semantic_mode\": \"deterministic_degraded\",\n  \"api_calls_made\": 0\n}"
+}

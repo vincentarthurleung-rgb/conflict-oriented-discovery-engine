@@ -1,0 +1,191 @@
+{
+  "mode": "llm",
+  "confidence": 0.9,
+  "confidence_source": "semantic_intake_confidence",
+  "manual_review_required": false,
+  "seed_triple": {
+    "triple_id": "d72deac57bf041f3f4c8b13df08f05b15d87eea878fcd0c85fb54142be239807",
+    "subject": {
+      "name": "Wnt beta-catenin signaling",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "Wnt signaling",
+        "beta-catenin",
+        "stemness pathways",
+        "tumor progression pathways",
+        "immune modulation",
+        "therapy resistance/sensitivity",
+        "cancer stemness",
+        "tumor progression",
+        "therapy response",
+        "signaling pathway",
+        "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts"
+      ]
+    },
+    "query_text": "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts.",
+    "query_hash": "31da21a717152d8229f09cc31d292f5c4e69ea8c648a847e676f504812a48460",
+    "display_title": "Wnt beta-catenin signaling — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 1.0,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "query_groups": {
+    "entity_pair_core": [
+      {
+        "query": "(Wnt beta-catenin signaling cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "mechanism_context": [
+      {
+        "query": "(Wnt beta-catenin signaling molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "context_coverage": [
+      {
+        "query": "(Wnt beta-catenin signaling Wnt signaling beta-catenin cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ],
+    "optional_conflict_hint": [
+      {
+        "query": "(Wnt beta-catenin signaling context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "purpose": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "must_include_subject": true,
+        "must_include_object": false
+      }
+    ]
+  },
+  "warnings": [
+    "search_intent_context_terms_normalized"
+  ],
+  "planner_prompt_profile_id": "semantic_search_intent_v1",
+  "planner_prompt_version": "1.0",
+  "planner_prompt_hash": "cfeff70857a7bf8440e32fd8440c0cccca5d5675956e1b5ddd55d74b15dcf1e5",
+  "planner_prompt_chars": 3489,
+  "search_intent_schema_valid": true,
+  "llm_search_intent_used": true,
+  "deterministic_search_fallback_used": false,
+  "allow_deterministic_search_fallback": true,
+  "real_api_run_with_uncertain_search_intent": false,
+  "api_calls_made": 1,
+  "normalization_applied": true,
+  "normalization_repair_count": 1,
+  "normalization_warnings": [
+    "search_intent_context_terms_normalized"
+  ],
+  "search_intent_schema_valid_after_normalization": true,
+  "neutral_seed_triple": {
+    "triple_id": "d72deac57bf041f3f4c8b13df08f05b15d87eea878fcd0c85fb54142be239807",
+    "subject": {
+      "name": "Wnt beta-catenin signaling",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "relation": {
+      "name": "involved_in",
+      "family": "involved_in",
+      "directional": false
+    },
+    "object": {
+      "name": "cancer",
+      "canonical_id": "",
+      "type": "unknown"
+    },
+    "context": {
+      "domain": "pathway_biology",
+      "context_terms": [
+        "cancer",
+        "Wnt signaling",
+        "beta-catenin",
+        "stemness pathways",
+        "tumor progression pathways",
+        "immune modulation",
+        "therapy resistance/sensitivity",
+        "cancer stemness",
+        "tumor progression",
+        "therapy response",
+        "signaling pathway",
+        "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts"
+      ]
+    },
+    "query_text": "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts.",
+    "query_hash": "31da21a717152d8229f09cc31d292f5c4e69ea8c648a847e676f504812a48460",
+    "display_title": "Wnt beta-catenin signaling — involved_in — cancer in pathway_biology",
+    "identity_kind": "seed_triple",
+    "source": "semantic_intake",
+    "confidence": 1.0,
+    "human_review_required": false,
+    "intake_mode": "llm_semantic"
+  },
+  "directional_terms_observed": [],
+  "context_terms": [
+    "cancer",
+    "Wnt signaling",
+    "beta-catenin",
+    "stemness pathways",
+    "tumor progression pathways",
+    "immune modulation",
+    "therapy resistance/sensitivity",
+    "cancer stemness",
+    "tumor progression",
+    "therapy response",
+    "signaling pathway",
+    "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts"
+  ],
+  "discovery_planning_mode": "neutral_discovery",
+  "discovery_query_balance_valid": true,
+  "discovery_query_count": 4,
+  "discovery_query_groups": [
+    "entity_pair_core",
+    "mechanism_context",
+    "context_coverage",
+    "optional_conflict_hint"
+  ],
+  "directional_query_fraction": 0.0,
+  "one_sided_retrieval_risk": "low",
+  "intended_context_terms": [
+    "cancer",
+    "Wnt signaling",
+    "beta-catenin",
+    "stemness pathways",
+    "tumor progression pathways",
+    "immune modulation",
+    "therapy resistance/sensitivity",
+    "cancer stemness",
+    "tumor progression",
+    "therapy response",
+    "signaling pathway",
+    "Wnt beta-catenin signaling is involved in cancer stemness, tumor progression, immune microenvironment modulation, and therapy response across different cancer contexts"
+  ],
+  "directional_terms_observed_in_user_query": [],
+  "directional_terms_not_used_as_fixed_search_sides": true
+}
