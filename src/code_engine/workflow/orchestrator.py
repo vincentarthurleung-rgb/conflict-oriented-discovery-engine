@@ -107,6 +107,7 @@ def run_workflow(
     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
     allow_deterministic_search_fallback: bool = False, disable_llm_search_intent: bool = False,
     semantic_llm_client=None,
+    entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
     entity_resolution_policy=None, entity_registry_path: str | Path | None = None,
     pilot_profile: str | None = None,
     l1_mode: str = "legacy", enable_fulltext_escalation: bool = False,

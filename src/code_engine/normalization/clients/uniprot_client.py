@@ -25,8 +25,8 @@ class UniProtClient:
         global _LAST_CALL
         now = time.monotonic()
         since_last = now - _LAST_CALL
-        if since_last < 0.25:  # ~4 req/s
-            time.sleep(0.25 - since_last)
+        if since_last < 1.0:  # ~1 req/s max (conservative for batch)
+            time.sleep(1.0 - since_last)
         _LAST_CALL = time.monotonic()
 
         try:

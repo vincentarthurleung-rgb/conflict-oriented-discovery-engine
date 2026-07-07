@@ -26,8 +26,8 @@ class MyGeneClient:
         global _LAST_CALL
         now = time.monotonic()
         since_last = now - _LAST_CALL
-        if since_last < 0.05:  # ~20 req/s max
-            time.sleep(0.05 - since_last)
+        if since_last < 0.3:  # ~3 req/s max (conservative for batch)
+            time.sleep(0.3 - since_last)
         _LAST_CALL = time.monotonic()
 
         try:

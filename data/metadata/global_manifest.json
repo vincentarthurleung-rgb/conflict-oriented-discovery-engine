@@ -1,7 +1,7 @@
 {
   "metadata": {
     "query": null,
-    "total_registered_assets": 498,
+    "total_registered_assets": 504,
     "timestamp": null
   },
   "papers": {
@@ -40379,6 +40379,484 @@
       "metadata_source": "pubmed_xml",
       "raw_path": "data/raw/abstracts/29505958.json",
       "timestamp": "2026-07-06T09:22:36.945008+00:00"
+    },
+    "33519470": {
+      "pmcid": "PMC3791171",
+      "pmid": "33519470",
+      "source": "pubmed",
+      "retrieval_query_id": "da303c4b98e854b2",
+      "first_seen_query_id": "da303c4b98e854b2",
+      "matched_query_ids": [
+        "da303c4b98e854b2"
+      ],
+      "matched_query_groups": [
+        "entity_pair_core"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "da303c4b98e854b2",
+        "query_string": "(PI3K cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "entity_pair_core",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(PI3K cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1159/000491527",
+      "title": "MOF Regulates TNK2 Transcription Expression to Promote Cell Proliferation in Thyroid Cancer.",
+      "journal": "Frontiers in pharmacology",
+      "publication_year": "2020",
+      "abstract": "MOF is a well-known histone acetyltransferase to catalyze acetylation of histone H4 lysine 16 (K16), and it is relevant to diverse biological processes, such as gene transcription, cell cycle, early embryonic development and tumorigenesis. Here, we identify MOF as an oncogene in most thyroid cancer. It is found that expression level of MOF was significantly upregulated in most thyroid cancer tissue samples and cell lines. MOF-deficient in both BHP-10-3 and TT2609 cell lines inhibited cell proliferation by blocking the cell cycle in G1 phase and enhanced cell apoptosis. Mechanistically, MOF bound the TNK2 promoter to activate TNK2 transcription. Furthermore, the expression level of TNK2 was decreased with the histone acetyltransferase inhibitor. Besides, MOF promoted proliferation of thyroid cancer cells through increased phosphorylation of AKT, thus activating the PI3K/AKT pathway. Ultimately, our findings indicated that MOF played an oncogene role in development and progression of thyroid cancer and may be a potential novel target for the treatment of thyroid cancer.",
+      "abstract_text": "MOF is a well-known histone acetyltransferase to catalyze acetylation of histone H4 lysine 16 (K16), and it is relevant to diverse biological processes, such as gene transcription, cell cycle, early embryonic development and tumorigenesis. Here, we identify MOF as an oncogene in most thyroid cancer. It is found that expression level of MOF was significantly upregulated in most thyroid cancer tissue samples and cell lines. MOF-deficient in both BHP-10-3 and TT2609 cell lines inhibited cell proliferation by blocking the cell cycle in G1 phase and enhanced cell apoptosis. Mechanistically, MOF bound the TNK2 promoter to activate TNK2 transcription. Furthermore, the expression level of TNK2 was decreased with the histone acetyltransferase inhibitor. Besides, MOF promoted proliferation of thyroid cancer cells through increased phosphorylation of AKT, thus activating the PI3K/AKT pathway. Ultimately, our findings indicated that MOF played an oncogene role in development and progression of thyroid cancer and may be a potential novel target for the treatment of thyroid cancer.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "MOF is a well-known histone acetyltransferase to catalyze acetylation of histone H4 lysine 16 (K16), and it is relevant to diverse biological processes, such as gene transcription, cell cycle, early embryonic development and tumorigenesis. Here, we identify MOF as an oncogene in most thyroid cancer. It is found that expression level of MOF was significantly upregulated in most thyroid cancer tissue samples and cell lines. MOF-deficient in both BHP-10-3 and TT2609 cell lines inhibited cell proliferation by blocking the cell cycle in G1 phase and enhanced cell apoptosis. Mechanistically, MOF bound the TNK2 promoter to activate TNK2 transcription. Furthermore, the expression level of TNK2 was decreased with the histone acetyltransferase inhibitor. Besides, MOF promoted proliferation of thyroid cancer cells through increased phosphorylation of AKT, thus activating the PI3K/AKT pathway. Ultimately, our findings indicated that MOF played an oncogene role in development and progression of thyroid cancer and may be a potential novel target for the treatment of thyroid cancer."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33519470.json",
+      "timestamp": "2026-07-07T14:38:48.527900+00:00"
+    },
+    "34026289": {
+      "pmcid": "PMC5855670",
+      "pmid": "34026289",
+      "source": "pubmed",
+      "retrieval_query_id": "acb032e44963a761",
+      "first_seen_query_id": "acb032e44963a761",
+      "matched_query_ids": [
+        "acb032e44963a761"
+      ],
+      "matched_query_groups": [
+        "mechanism_context"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "acb032e44963a761",
+        "query_string": "(PI3K molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "mechanism_context",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(PI3K molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1016/j.jare.2020.11.003",
+      "title": "33-kDa ANXA3 isoform contributes to hepatocarcinogenesis via modulating ERK, PI3K/Akt-HIF and intrinsic apoptosis pathways.",
+      "journal": "Journal of advanced research",
+      "publication_year": "2021",
+      "abstract": "INTRODUCTION: As a member of annexin family proteins, annexin A3 (ANXA3) has 36-kDa and 33-kDa isoforms. ANXA3 plays crucial roles in the tumorigenesis, aggressiveness and drug-resistance of cancers. However, previous studies mainly focused on the role of total ANXA3 in cancers without distinguishing the distinction between the two isoforms, the role of 33-kDa ANXA3 in cancer remains unclear.\nOBJECTIVES: Current work aimed to investigate the function and regulation mechanism of 33-kDa ANXA3 in hepatocarcinoma.\nMETHODS: The expressions of ANXA3, CRKL, Rac1, c-Myc and pAkt were analyzed in hepatocarcinoma specimens by Western blotting. The biological function of 33-kDa ANXA3 in the growth, metastasis, apoptosis, angiogenesis, chemoresistance of hepatocarcinoma cells with the underlying molecular mechanism were investigated using gain-of-function strategy in vitro or in vivo.\nRESULTS: 33-kDa ANXA3 was remarkably upregulated in tumor tissues compared with corresponding normal liver tissues of hepatocarcinoma patients. Its stable knockdown decreased the in vivo tumor growing velocity and malignancy of hepatocarcinoma HepG2 cells transplanted in nude mice. The in vitro experimental results indicated 33-kDa ANXA3 knockdown suppressed the proliferation, colony forming, migration and invasion abilities of HepG2 cells through downregulating CRKL, Rap1b, Rac1, pMEK, pERK2 and c-Myc in ERK pathway; inhibited angiogenesisability of HepG2 cells through inactivating PI3K/Akt-HIF pathway; induced apoptosis and enhanced chemoresistance of HepG2 cells through increasing Bax/decreasing Bcl-2 expressions and inactivating caspase 9/caspase 3 in intrinsic apoptosis pathway. Accordingly, CRKL, Rac1, c-Myc and pAkt were also upregulated in hepatocarcinoma patients ' tumor tissues compared with corresponding normal liver tissues.\nCONCLUSIONS: The overexpression of 33-kDa ANXA3 is involved in the clinical progression of hepatocarcinoma and in the malignancy, angiogenesis and apoptosis of hepatocarcinoma cells. It is of potential use in hepatocarcinoma diagnosis and treatment.",
+      "abstract_text": "INTRODUCTION: As a member of annexin family proteins, annexin A3 (ANXA3) has 36-kDa and 33-kDa isoforms. ANXA3 plays crucial roles in the tumorigenesis, aggressiveness and drug-resistance of cancers. However, previous studies mainly focused on the role of total ANXA3 in cancers without distinguishing the distinction between the two isoforms, the role of 33-kDa ANXA3 in cancer remains unclear.\nOBJECTIVES: Current work aimed to investigate the function and regulation mechanism of 33-kDa ANXA3 in hepatocarcinoma.\nMETHODS: The expressions of ANXA3, CRKL, Rac1, c-Myc and pAkt were analyzed in hepatocarcinoma specimens by Western blotting. The biological function of 33-kDa ANXA3 in the growth, metastasis, apoptosis, angiogenesis, chemoresistance of hepatocarcinoma cells with the underlying molecular mechanism were investigated using gain-of-function strategy in vitro or in vivo.\nRESULTS: 33-kDa ANXA3 was remarkably upregulated in tumor tissues compared with corresponding normal liver tissues of hepatocarcinoma patients. Its stable knockdown decreased the in vivo tumor growing velocity and malignancy of hepatocarcinoma HepG2 cells transplanted in nude mice. The in vitro experimental results indicated 33-kDa ANXA3 knockdown suppressed the proliferation, colony forming, migration and invasion abilities of HepG2 cells through downregulating CRKL, Rap1b, Rac1, pMEK, pERK2 and c-Myc in ERK pathway; inhibited angiogenesisability of HepG2 cells through inactivating PI3K/Akt-HIF pathway; induced apoptosis and enhanced chemoresistance of HepG2 cells through increasing Bax/decreasing Bcl-2 expressions and inactivating caspase 9/caspase 3 in intrinsic apoptosis pathway. Accordingly, CRKL, Rac1, c-Myc and pAkt were also upregulated in hepatocarcinoma patients ' tumor tissues compared with corresponding normal liver tissues.\nCONCLUSIONS: The overexpression of 33-kDa ANXA3 is involved in the clinical progression of hepatocarcinoma and in the malignancy, angiogenesis and apoptosis of hepatocarcinoma cells. It is of potential use in hepatocarcinoma diagnosis and treatment.",
+      "abstract_sections": [
+        {
+          "label": "INTRODUCTION",
+          "text": "As a member of annexin family proteins, annexin A3 (ANXA3) has 36-kDa and 33-kDa isoforms. ANXA3 plays crucial roles in the tumorigenesis, aggressiveness and drug-resistance of cancers. However, previous studies mainly focused on the role of total ANXA3 in cancers without distinguishing the distinction between the two isoforms, the role of 33-kDa ANXA3 in cancer remains unclear."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "Current work aimed to investigate the function and regulation mechanism of 33-kDa ANXA3 in hepatocarcinoma."
+        },
+        {
+          "label": "METHODS",
+          "text": "The expressions of ANXA3, CRKL, Rac1, c-Myc and pAkt were analyzed in hepatocarcinoma specimens by Western blotting. The biological function of 33-kDa ANXA3 in the growth, metastasis, apoptosis, angiogenesis, chemoresistance of hepatocarcinoma cells with the underlying molecular mechanism were investigated using gain-of-function strategy in vitro or in vivo."
+        },
+        {
+          "label": "RESULTS",
+          "text": "33-kDa ANXA3 was remarkably upregulated in tumor tissues compared with corresponding normal liver tissues of hepatocarcinoma patients. Its stable knockdown decreased the in vivo tumor growing velocity and malignancy of hepatocarcinoma HepG2 cells transplanted in nude mice. The in vitro experimental results indicated 33-kDa ANXA3 knockdown suppressed the proliferation, colony forming, migration and invasion abilities of HepG2 cells through downregulating CRKL, Rap1b, Rac1, pMEK, pERK2 and c-Myc in ERK pathway; inhibited angiogenesisability of HepG2 cells through inactivating PI3K/Akt-HIF pathway; induced apoptosis and enhanced chemoresistance of HepG2 cells through increasing Bax/decreasing Bcl-2 expressions and inactivating caspase 9/caspase 3 in intrinsic apoptosis pathway. Accordingly, CRKL, Rac1, c-Myc and pAkt were also upregulated in hepatocarcinoma patients ' tumor tissues compared with corresponding normal liver tissues."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "The overexpression of 33-kDa ANXA3 is involved in the clinical progression of hepatocarcinoma and in the malignancy, angiogenesis and apoptosis of hepatocarcinoma cells. It is of potential use in hepatocarcinoma diagnosis and treatment."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/34026289.json",
+      "timestamp": "2026-07-07T14:38:50.316347+00:00"
+    },
+    "33614493": {
+      "pmcid": "PMC6844621",
+      "pmid": "33614493",
+      "source": "pubmed",
+      "retrieval_query_id": "acb032e44963a761",
+      "first_seen_query_id": "acb032e44963a761",
+      "matched_query_ids": [
+        "acb032e44963a761"
+      ],
+      "matched_query_groups": [
+        "mechanism_context"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "acb032e44963a761",
+        "query_string": "(PI3K molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "mechanism_context",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(PI3K molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1002/cbf.3450",
+      "title": "Toxicarioside O Inhibits Cell Proliferation and Epithelial-Mesenchymal Transition by Downregulation of Trop2 in Lung Cancer Cells.",
+      "journal": "Frontiers in oncology",
+      "publication_year": "2020",
+      "abstract": "Toxicarioside O (TCO), a natural product derived from Antiaris toxicaria, has been identified to be a promising anticancer agent. In this study, we aimed to investigate the effect of TCO on the proliferation and epithelial-mesenchymal transition (EMT) of lung cancer cells and its molecular mechanisms. Here, we indicated that TCO inhibits the proliferation of lung cancer cells both in vitro and in vivo. Our results demonstrated that TCO induces apoptosis in lung cancer cells. Moreover, we found that TCO suppresses EMT program and inhibits cell migration in vitro. Mechanistically, TCO decreases the expression of trophoblast cell surface antigen 2 (Trop2), resulting in inhibition of the PI3K/Akt pathway and EMT program. Overexpression of Trop2 rescues TCO-induced inhibition of cell proliferation and EMT. Our findings demonstrate that TCO markedly inhibits cell proliferation and EMT in lung cancer cells and provides guidance for its drug development.",
+      "abstract_text": "Toxicarioside O (TCO), a natural product derived from Antiaris toxicaria, has been identified to be a promising anticancer agent. In this study, we aimed to investigate the effect of TCO on the proliferation and epithelial-mesenchymal transition (EMT) of lung cancer cells and its molecular mechanisms. Here, we indicated that TCO inhibits the proliferation of lung cancer cells both in vitro and in vivo. Our results demonstrated that TCO induces apoptosis in lung cancer cells. Moreover, we found that TCO suppresses EMT program and inhibits cell migration in vitro. Mechanistically, TCO decreases the expression of trophoblast cell surface antigen 2 (Trop2), resulting in inhibition of the PI3K/Akt pathway and EMT program. Overexpression of Trop2 rescues TCO-induced inhibition of cell proliferation and EMT. Our findings demonstrate that TCO markedly inhibits cell proliferation and EMT in lung cancer cells and provides guidance for its drug development.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Toxicarioside O (TCO), a natural product derived from Antiaris toxicaria, has been identified to be a promising anticancer agent. In this study, we aimed to investigate the effect of TCO on the proliferation and epithelial-mesenchymal transition (EMT) of lung cancer cells and its molecular mechanisms. Here, we indicated that TCO inhibits the proliferation of lung cancer cells both in vitro and in vivo. Our results demonstrated that TCO induces apoptosis in lung cancer cells. Moreover, we found that TCO suppresses EMT program and inhibits cell migration in vitro. Mechanistically, TCO decreases the expression of trophoblast cell surface antigen 2 (Trop2), resulting in inhibition of the PI3K/Akt pathway and EMT program. Overexpression of Trop2 rescues TCO-induced inhibition of cell proliferation and EMT. Our findings demonstrate that TCO markedly inhibits cell proliferation and EMT in lung cancer cells and provides guidance for its drug development."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33614493.json",
+      "timestamp": "2026-07-07T14:38:51.675016+00:00"
+    },
+    "33817228": {
+      "pmcid": "PMC6153604",
+      "pmid": "33817228",
+      "source": "pubmed",
+      "retrieval_query_id": "b44e420cd63bcb5b",
+      "first_seen_query_id": "b44e420cd63bcb5b",
+      "matched_query_ids": [
+        "b44e420cd63bcb5b"
+      ],
+      "matched_query_groups": [
+        "context_coverage"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "b44e420cd63bcb5b",
+        "query_string": "(PI3K AKT mTOR cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "context_coverage",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(PI3K AKT mTOR cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1515/biol-2020-0043",
+      "title": "Knockdown of DDX46 inhibits trophoblast cell proliferation and migration through the PI3K/Akt/mTOR signaling pathway in preeclampsia.",
+      "journal": "Open life sciences",
+      "publication_year": "2020",
+      "abstract": "Preeclampsia (PE) is a serious disease during pregnancy associated with the dysfunction of trophoblast cell invasion. DDX46 is a kind of RNA helicase that has been found to regulate cancer cell metastasis. However, the role of DDX46 in PE remains unclear. Our results showed that the mRNA levels of DDX46 in placental tissues of pregnant women with PE were markedly lower than those in normal pregnancies. Loss-of-function assays showed that knockdown of DDX46 significantly suppressed cell proliferation of trophoblast cells. Besides, DDX46 knockdown decreased trophoblast cell migration and invasion capacity. In contrast, the overexpression of DDX46 promoted the migration and invasion of trophoblast cells. Furthermore, knockdown of DDX46 caused significant decrease in the levels of p-PI3K, p-Akt, and p-mTOR in HTR-8/SVneo cells. In addition, treatment with IGF-1 reversed the inhibitory effects of DDX46 knockdown on proliferation, migration, and invasion of HTR-8/SVneo cells. In conclusion, these data suggest that DDX46 might be involved in the progression of PE, which might be attributed to the regulation of PI3K/Akt/mTOR signaling pathway. Thus, DDX46 might serve as a therapeutic target for the treatment of PE.",
+      "abstract_text": "Preeclampsia (PE) is a serious disease during pregnancy associated with the dysfunction of trophoblast cell invasion. DDX46 is a kind of RNA helicase that has been found to regulate cancer cell metastasis. However, the role of DDX46 in PE remains unclear. Our results showed that the mRNA levels of DDX46 in placental tissues of pregnant women with PE were markedly lower than those in normal pregnancies. Loss-of-function assays showed that knockdown of DDX46 significantly suppressed cell proliferation of trophoblast cells. Besides, DDX46 knockdown decreased trophoblast cell migration and invasion capacity. In contrast, the overexpression of DDX46 promoted the migration and invasion of trophoblast cells. Furthermore, knockdown of DDX46 caused significant decrease in the levels of p-PI3K, p-Akt, and p-mTOR in HTR-8/SVneo cells. In addition, treatment with IGF-1 reversed the inhibitory effects of DDX46 knockdown on proliferation, migration, and invasion of HTR-8/SVneo cells. In conclusion, these data suggest that DDX46 might be involved in the progression of PE, which might be attributed to the regulation of PI3K/Akt/mTOR signaling pathway. Thus, DDX46 might serve as a therapeutic target for the treatment of PE.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Preeclampsia (PE) is a serious disease during pregnancy associated with the dysfunction of trophoblast cell invasion. DDX46 is a kind of RNA helicase that has been found to regulate cancer cell metastasis. However, the role of DDX46 in PE remains unclear. Our results showed that the mRNA levels of DDX46 in placental tissues of pregnant women with PE were markedly lower than those in normal pregnancies. Loss-of-function assays showed that knockdown of DDX46 significantly suppressed cell proliferation of trophoblast cells. Besides, DDX46 knockdown decreased trophoblast cell migration and invasion capacity. In contrast, the overexpression of DDX46 promoted the migration and invasion of trophoblast cells. Furthermore, knockdown of DDX46 caused significant decrease in the levels of p-PI3K, p-Akt, and p-mTOR in HTR-8/SVneo cells. In addition, treatment with IGF-1 reversed the inhibitory effects of DDX46 knockdown on proliferation, migration, and invasion of HTR-8/SVneo cells. In conclusion, these data suggest that DDX46 might be involved in the progression of PE, which might be attributed to the regulation of PI3K/Akt/mTOR signaling pathway. Thus, DDX46 might serve as a therapeutic target for the treatment of PE."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33817228.json",
+      "timestamp": "2026-07-07T14:38:53.210188+00:00"
+    },
+    "33634164": {
+      "pmcid": "PMC3259074",
+      "pmid": "33634164",
+      "source": "pubmed",
+      "retrieval_query_id": "b44e420cd63bcb5b",
+      "first_seen_query_id": "b44e420cd63bcb5b",
+      "matched_query_ids": [
+        "b44e420cd63bcb5b"
+      ],
+      "matched_query_groups": [
+        "context_coverage"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "b44e420cd63bcb5b",
+        "query_string": "(PI3K AKT mTOR cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "context_coverage",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(PI3K AKT mTOR cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1186/1756-8722-4-54",
+      "title": "Cell Populations Expressing Stemness-Associated Markers in Vascular Anomalies.",
+      "journal": "Frontiers in surgery",
+      "publication_year": "2020",
+      "abstract": "Treatment of vascular anomalies (VAs) is mostly empirical and, in many instances unsatisfactory, as the pathogeneses of these heterogeneous conditions remain largely unknown. There is emerging evidence of the presence of cell populations expressing stemness-associated markers within many types of vascular tumors and vascular malformations. The presence of these populations in VAs is supported, in part, by the observed clinical effect of the mTOR inhibitor, sirolimus, that regulates differentiation of embryonic stem cells (ESCs). The discovery of the central role of the renin-angiotensin system (RAS) in regulating stem cells in infantile hemangioma (IH) provides a plausible explanation for its spontaneous and accelerated involution induced by β-blockers and ACE inhibitors. Recent work on targeting IH stem cells by inhibiting the transcription factor SOX18 using the stereoisomer R(+) propranolol, independent of β-adrenergic blockade, opens up exciting opportunities for novel treatment of IH without the β-adrenergic blockade-related side effects. Gene mutations have been identified in several VAs, involving mainly the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways. Existing cancer therapies that target these pathways engenders the exciting possibility of repurposing these agents for challenging VAs, with early results demonstrating clinical efficacy. However, there are several shortcomings with this approach, including the treatment cost, side effects, emergence of treatment resistance and unknown long-term effects in young patients. The presence of populations expressing stemness-associated markers, including transcription factors involved in the generation of induced pluripotent stem cells (iPSCs), in different types of VAs, suggests the possible role of stem cell pathways in their pathogenesis. Components of the RAS are expressed by cell populations expressing stemness-associated markers in different types of VAs. The gene mutations affecting the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways interact with different components of the RAS, which may influence cell populations expressing stemness-associated markers within VAs. The potential of targeting these populations by manipulating the RAS using repurposed, low-cost and commonly available oral medications, warrants further investigation. This review presents the accumulating evidence demonstrating the presence of stemness-associated markers in VAs, their expression of the RAS, and their interaction with gene mutations affecting the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways, in the pathogenesis of VAs.",
+      "abstract_text": "Treatment of vascular anomalies (VAs) is mostly empirical and, in many instances unsatisfactory, as the pathogeneses of these heterogeneous conditions remain largely unknown. There is emerging evidence of the presence of cell populations expressing stemness-associated markers within many types of vascular tumors and vascular malformations. The presence of these populations in VAs is supported, in part, by the observed clinical effect of the mTOR inhibitor, sirolimus, that regulates differentiation of embryonic stem cells (ESCs). The discovery of the central role of the renin-angiotensin system (RAS) in regulating stem cells in infantile hemangioma (IH) provides a plausible explanation for its spontaneous and accelerated involution induced by β-blockers and ACE inhibitors. Recent work on targeting IH stem cells by inhibiting the transcription factor SOX18 using the stereoisomer R(+) propranolol, independent of β-adrenergic blockade, opens up exciting opportunities for novel treatment of IH without the β-adrenergic blockade-related side effects. Gene mutations have been identified in several VAs, involving mainly the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways. Existing cancer therapies that target these pathways engenders the exciting possibility of repurposing these agents for challenging VAs, with early results demonstrating clinical efficacy. However, there are several shortcomings with this approach, including the treatment cost, side effects, emergence of treatment resistance and unknown long-term effects in young patients. The presence of populations expressing stemness-associated markers, including transcription factors involved in the generation of induced pluripotent stem cells (iPSCs), in different types of VAs, suggests the possible role of stem cell pathways in their pathogenesis. Components of the RAS are expressed by cell populations expressing stemness-associated markers in different types of VAs. The gene mutations affecting the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways interact with different components of the RAS, which may influence cell populations expressing stemness-associated markers within VAs. The potential of targeting these populations by manipulating the RAS using repurposed, low-cost and commonly available oral medications, warrants further investigation. This review presents the accumulating evidence demonstrating the presence of stemness-associated markers in VAs, their expression of the RAS, and their interaction with gene mutations affecting the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways, in the pathogenesis of VAs.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Treatment of vascular anomalies (VAs) is mostly empirical and, in many instances unsatisfactory, as the pathogeneses of these heterogeneous conditions remain largely unknown. There is emerging evidence of the presence of cell populations expressing stemness-associated markers within many types of vascular tumors and vascular malformations. The presence of these populations in VAs is supported, in part, by the observed clinical effect of the mTOR inhibitor, sirolimus, that regulates differentiation of embryonic stem cells (ESCs). The discovery of the central role of the renin-angiotensin system (RAS) in regulating stem cells in infantile hemangioma (IH) provides a plausible explanation for its spontaneous and accelerated involution induced by β-blockers and ACE inhibitors. Recent work on targeting IH stem cells by inhibiting the transcription factor SOX18 using the stereoisomer R(+) propranolol, independent of β-adrenergic blockade, opens up exciting opportunities for novel treatment of IH without the β-adrenergic blockade-related side effects. Gene mutations have been identified in several VAs, involving mainly the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways. Existing cancer therapies that target these pathways engenders the exciting possibility of repurposing these agents for challenging VAs, with early results demonstrating clinical efficacy. However, there are several shortcomings with this approach, including the treatment cost, side effects, emergence of treatment resistance and unknown long-term effects in young patients. The presence of populations expressing stemness-associated markers, including transcription factors involved in the generation of induced pluripotent stem cells (iPSCs), in different types of VAs, suggests the possible role of stem cell pathways in their pathogenesis. Components of the RAS are expressed by cell populations expressing stemness-associated markers in different types of VAs. The gene mutations affecting the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways interact with different components of the RAS, which may influence cell populations expressing stemness-associated markers within VAs. The potential of targeting these populations by manipulating the RAS using repurposed, low-cost and commonly available oral medications, warrants further investigation. This review presents the accumulating evidence demonstrating the presence of stemness-associated markers in VAs, their expression of the RAS, and their interaction with gene mutations affecting the PI3K/AKT/mTOR and/or the Ras/RAF/MEK/ERK pathways, in the pathogenesis of VAs."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33634164.json",
+      "timestamp": "2026-07-07T14:38:55.671251+00:00"
+    },
+    "32802093": {
+      "pmcid": "PMC317273",
+      "pmid": "32802093",
+      "source": "pubmed",
+      "retrieval_query_id": "84e6b9da0ef077f6",
+      "first_seen_query_id": "84e6b9da0ef077f6",
+      "matched_query_ids": [
+        "84e6b9da0ef077f6"
+      ],
+      "matched_query_groups": [
+        "optional_conflict_hint"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "84e6b9da0ef077f6",
+        "query_string": "(PI3K context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "optional_conflict_hint",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "pathway_biology",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "pathway_biology_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(PI3K context dependent role cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "optional_conflict_hint",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.22037/ijpr.2019.112560.13827",
+      "title": "CDK Blockade Using AT7519 Suppresses Acute Myeloid Leukemia Cell Survival through the Inhibition of Autophagy and Intensifies the Anti-leukemic Effect of Arsenic Trioxide.",
+      "journal": "Iranian journal of pharmaceutical research : IJPR",
+      "publication_year": "2019",
+      "abstract": "The strong storyline behind the critical role of cyclin-dependent kinase (CDK) inhibitor proteins in natural defense against malignant transformation not only represents a heroic perspective for these proteins, but also provides a bright future for the application of small molecule inhibitors of CDKs in the novel cancer treatment strategies. The results of the present study revealed that the inhibition of CDKs using pan-CDK inhibitor AT7519, as revealed by the induction of G1 cell cycle arrest as well as the reduction of cyclins expression, resulted in decreased survival in acute myeloid leukemia (AML)-derived KG-1 cells, either in the context of single agent or in combination with arsenic trioxide (ATO). Apart from alterations in the expression of proliferation and apoptotic genes, the anti-survival property of AT7519 was coupled with the inhibition of autophagy-related genes. Notably, we found that the blockage of autophagy system in KG-1 cells resulted in a superior cytotoxic effect, introducing autophagy as a probable suppressor of cell death. As far as we are aware, to date, no study has reported the contributory mechanisms correlated with the less sensitivity of acute leukemia cells to AT7519 and our study suggested for the first time that the activation of both PI3K and c-Myc signaling pathways could overshadow, at least partly, the efficacy of this agent in KG-1 cells. Overall, due to the pharmacologic safety of AT7519, our study proposed this inhibitor as a promising agent for the treatment of AML either as a single agent or in a combined-modal strategy.",
+      "abstract_text": "The strong storyline behind the critical role of cyclin-dependent kinase (CDK) inhibitor proteins in natural defense against malignant transformation not only represents a heroic perspective for these proteins, but also provides a bright future for the application of small molecule inhibitors of CDKs in the novel cancer treatment strategies. The results of the present study revealed that the inhibition of CDKs using pan-CDK inhibitor AT7519, as revealed by the induction of G1 cell cycle arrest as well as the reduction of cyclins expression, resulted in decreased survival in acute myeloid leukemia (AML)-derived KG-1 cells, either in the context of single agent or in combination with arsenic trioxide (ATO). Apart from alterations in the expression of proliferation and apoptotic genes, the anti-survival property of AT7519 was coupled with the inhibition of autophagy-related genes. Notably, we found that the blockage of autophagy system in KG-1 cells resulted in a superior cytotoxic effect, introducing autophagy as a probable suppressor of cell death. As far as we are aware, to date, no study has reported the contributory mechanisms correlated with the less sensitivity of acute leukemia cells to AT7519 and our study suggested for the first time that the activation of both PI3K and c-Myc signaling pathways could overshadow, at least partly, the efficacy of this agent in KG-1 cells. Overall, due to the pharmacologic safety of AT7519, our study proposed this inhibitor as a promising agent for the treatment of AML either as a single agent or in a combined-modal strategy.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "The strong storyline behind the critical role of cyclin-dependent kinase (CDK) inhibitor proteins in natural defense against malignant transformation not only represents a heroic perspective for these proteins, but also provides a bright future for the application of small molecule inhibitors of CDKs in the novel cancer treatment strategies. The results of the present study revealed that the inhibition of CDKs using pan-CDK inhibitor AT7519, as revealed by the induction of G1 cell cycle arrest as well as the reduction of cyclins expression, resulted in decreased survival in acute myeloid leukemia (AML)-derived KG-1 cells, either in the context of single agent or in combination with arsenic trioxide (ATO). Apart from alterations in the expression of proliferation and apoptotic genes, the anti-survival property of AT7519 was coupled with the inhibition of autophagy-related genes. Notably, we found that the blockage of autophagy system in KG-1 cells resulted in a superior cytotoxic effect, introducing autophagy as a probable suppressor of cell death. As far as we are aware, to date, no study has reported the contributory mechanisms correlated with the less sensitivity of acute leukemia cells to AT7519 and our study suggested for the first time that the activation of both PI3K and c-Myc signaling pathways could overshadow, at least partly, the efficacy of this agent in KG-1 cells. Overall, due to the pharmacologic safety of AT7519, our study proposed this inhibitor as a promising agent for the treatment of AML either as a single agent or in a combined-modal strategy."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/32802093.json",
+      "timestamp": "2026-07-07T14:38:56.627835+00:00"
     }
   }
 }
