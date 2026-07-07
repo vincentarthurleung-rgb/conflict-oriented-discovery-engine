@@ -44,6 +44,9 @@ class ResolverCascade:
             self.hub = hub
             self.registry = registry
             return
+        if external_clients is None:
+            from code_engine.normalization.clients import create_default_clients
+            external_clients = create_default_clients()
         clients = external_clients or {}
         providers = []
         if registry is not None:
@@ -71,7 +74,7 @@ class ResolverCascade:
         if lexical.invalid:
             return NormalizationDecision(raw_text=lexical.raw_text, normalized_surface=lexical.normalized_surface, normalization_status="empty_or_invalid", confidence=0.0, decision_reason="empty_invalid_or_placeholder_input", warnings=lexical.warnings, entity_resolution_status="unresolved", requires_manual_review=True, **self._domain_metadata())
         context = context or {}
-        request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), network_enabled=bool(self.execute and self.network_enabled and self.entity_network_lookup), api_enabled=bool(self.execute and self.api_enabled and self.entity_llm_proposer), execute=self.execute)
+        request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), network_enabled=bool(self.execute and self.network_enabled), api_enabled=bool(self.execute and self.api_enabled), execute=self.execute)
         result = self.hub.resolve(request)
         selected = result.selected_candidate
         legacy_candidates = [item for item in (_legacy_candidate(candidate) for candidate in result.candidates) if item]

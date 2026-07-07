@@ -111,7 +111,7 @@ def main(argv=None):
         result=replay_fulltext_discovery(a,profile,plan,suffix)
     else:
         if not a.source_run:p.error("--source-run is required for this replay stage")
-        result=replay(profile,plan,a.source_run,a.from_stage,"runs",a.case_version,suffix,no_l1=True,network=False,
+        result=replay(profile,plan,a.source_run,a.from_stage,"runs",a.case_version,suffix,no_l1=True,network=a.network,api=a.api,
             skip_fulltext=True,skip_l7=True,overwrite_bundle=a.overwrite_bundle,bundle_root=a.output_bundle.parent,case_version=a.case_version)
     print(json.dumps(result,ensure_ascii=False,indent=2));return 0
 

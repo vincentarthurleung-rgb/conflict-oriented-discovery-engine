@@ -107,7 +107,6 @@ def run_workflow(
     allow_uncertain_intake: bool = False, semantic_confidence_threshold: float = 0.6,
     allow_deterministic_search_fallback: bool = False, disable_llm_search_intent: bool = False,
     semantic_llm_client=None,
-    entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
     entity_resolution_policy=None, entity_registry_path: str | Path | None = None,
     pilot_profile: str | None = None,
     l1_mode: str = "legacy", enable_fulltext_escalation: bool = False,
@@ -247,8 +246,8 @@ def run_workflow(
     write_triple_run_manifest(directory, state, seed, batch_id, input_hash=triple_input_hash)
     state.summary["using_legacy_data"] = bool(allow_legacy)
     state.summary["external_calls_enabled"] = {"api": bool(execute and api), "network": bool(execute and network)}
-    state.entity_network_lookup_enabled = bool(execute and network and entity_network_lookup)
-    state.entity_llm_proposer_enabled = bool(execute and api and entity_llm_proposer)
+    state.entity_network_lookup_enabled = bool(execute and network)
+    state.entity_llm_proposer_enabled = bool(execute and api)
     state.entity_resolution_policy = str(entity_resolution_policy) if entity_resolution_policy else None
     state.l1_mode = l1_mode
     state.fulltext_escalation_enabled = bool(enable_fulltext_escalation)

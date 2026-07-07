@@ -9,7 +9,7 @@ from code_engine.validation.case_routing import load_case_domain_profile
 
 REUSED=("abstract_l1_claims.jsonl","abstract_l1_summary.json","run_paper_manifest.jsonl","acquired_paper_provenance.jsonl","search_plan.json","case_domain_profile.json","domain_profile.json","intake.json","semantic_search_intent.json","acquisition_report.json")
 
-def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suffix,bundle_id_suffix,*,no_l1=True,network=False,skip_fulltext=True,skip_l7=True,overwrite_bundle=False,bundle_root="case_bundles",case_version=None):
+def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suffix,bundle_id_suffix,*,no_l1=True,network=False,api=False,skip_fulltext=True,skip_l7=True,overwrite_bundle=False,bundle_root="case_bundles",case_version=None):
     if not no_l1: raise ValueError("L1 replay is not implemented; use the normal case runner")
     source=Path(source_run).resolve();profile=load_case_domain_profile(case_profile);stamp=datetime.now().strftime("%Y%m%d_%H%M%S")
     target=Path(output_root)/f"{stamp}_{profile.case_id}_{output_suffix}"
@@ -22,7 +22,7 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     rerun=[]
     if from_stage=="l2":
         from code_engine.workflow.steps import run_l2_abstract_step,run_abstract_conflict_screening_step
-        run_l2_abstract_step(run_dir=target,l1_mode="abstract_screening",execute=True,network=False,api=False)
+        run_l2_abstract_step(run_dir=target,l1_mode="abstract_screening",execute=True,network=network,api=api)
         rerun.append("l2")
         run_abstract_conflict_screening_step(run_dir=target,l1_mode="abstract_screening");rerun.append("l3")
     if from_stage in {"l2","l3"}:
