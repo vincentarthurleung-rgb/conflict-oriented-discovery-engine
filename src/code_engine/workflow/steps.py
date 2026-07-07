@@ -183,10 +183,10 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                             paper_metadata=paper)
         usable = bool(decision["canonical_graph_eligible"])
         observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
-        subject_name = subject.canonical_name if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("canonical_name") or item.get("subject_raw")
-        object_name = obj.canonical_name if obj.allow_high_confidence_graph_use else (object_hint or {}).get("canonical_name") or item.get("object_raw")
-        subject_id = subject.canonical_id if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("canonical_id")
-        object_id = obj.canonical_id if obj.allow_high_confidence_graph_use else (object_hint or {}).get("canonical_id")
+        subject_id = subject.canonical_id or (subject_hint or {}).get("canonical_id") or ""
+        object_id = obj.canonical_id or (object_hint or {}).get("canonical_id") or ""
+        subject_name = subject.canonical_name or (subject_hint or {}).get("canonical_name") or item.get("subject_raw") or ""
+        object_name = obj.canonical_name or (object_hint or {}).get("canonical_name") or item.get("object_raw") or ""
         observation = {
             **item,
             "observation_id": observation_id,
@@ -198,10 +198,10 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             "normalized_subject": subject_name, "normalized_object": object_name,
             "subject_canonical_id": subject_id, "object_canonical_id": object_id,
             "subject_canonical_name": subject_name, "object_canonical_name": object_name,
-            "subject_entity_type": subject.entity_type if subject.allow_high_confidence_graph_use else (subject_hint or {}).get("entity_type", "unknown"),
-            "object_entity_type": obj.entity_type if obj.allow_high_confidence_graph_use else (object_hint or {}).get("entity_type", "unknown"),
-            "subject_normalization_status": subject.normalization_status if subject.allow_high_confidence_graph_use else ("resolved_runtime_hint" if subject_hint else subject.normalization_status),
-            "object_normalization_status": obj.normalization_status if obj.allow_high_confidence_graph_use else ("resolved_runtime_hint" if object_hint else obj.normalization_status),
+            "subject_entity_type": (subject_hint or {}).get("entity_type") or subject.entity_type or "unknown",
+            "object_entity_type": (object_hint or {}).get("entity_type") or obj.entity_type or "unknown",
+            "subject_normalization_status": subject.normalization_status or ("resolved_runtime_hint" if subject_hint else "unresolved"),
+            "object_normalization_status": obj.normalization_status or ("resolved_runtime_hint" if object_hint else "unresolved"),
             "normalization_status": "resolved" if usable else "low_confidence",
             "normalization_quality": "resolved_or_acceptable" if usable else "low_confidence",
             "allow_high_confidence_graph_use": usable,
@@ -215,8 +215,8 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         from code_engine.normalization.graph_eligibility import apply_graph_eligibility
         observation=apply_graph_eligibility(observation,existing_conflict_eligible=usable)
         observation["canonical_graph_eligible"]=observation["conflict_reasoning_eligible"]
-        observation["allow_high_confidence_graph_use"]=observation["conflict_reasoning_eligible"]
-        observation["exclude_from_high_confidence_conflict"]=not observation["conflict_reasoning_eligible"]
+        observation["allow_high_confidence_graph_use"]=bool(observation.get("allow_high_confidence_graph_use") and observation["conflict_reasoning_eligible"])
+        observation["exclude_from_high_confidence_conflict"]=not observation["allow_high_confidence_graph_use"]
         observations.append(observation)
     return observations
 
