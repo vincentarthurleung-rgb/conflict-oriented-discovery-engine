@@ -20,6 +20,7 @@ class PubChemClient:
 
     name = "pubchem"
     resource = "PubChem"
+    network_call_cost = 2  # name→CID + CID→details (two HTTP calls per search)
 
     def search(self, surface: str, request: Any = None) -> list[dict[str, Any]]:
         global _LAST_CALL

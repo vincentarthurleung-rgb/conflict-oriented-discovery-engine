@@ -20,6 +20,7 @@ class UniProtClient:
 
     name = "uniprot"
     resource = "UniProt"
+    network_call_cost = 1  # one HTTP query per search
 
     def search(self, surface: str, request: Any = None) -> list[dict[str, Any]]:
         global _LAST_CALL

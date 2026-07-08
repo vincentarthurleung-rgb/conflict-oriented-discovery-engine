@@ -136,6 +136,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                    entity_registry_path: str | Path | None = None,
                                    execute: bool = False, network: bool = False, api: bool = False,
                                    entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
+                                   entity_llm_cleaner: bool = False,
                                    entity_resolution_policy: dict | None = None) -> list[dict[str, Any]]:
     """Normalize progressive claims while preserving evidence scope."""
 
@@ -158,6 +159,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         run_dir=run_dir,
         registry=registry, execute=execute, network_enabled=network, api_enabled=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
+        entity_llm_cleaner=entity_llm_cleaner,
         adjudicator_policy=entity_resolution_policy,
     )
     hints = load_runtime_entity_hints(run_dir)
@@ -218,6 +220,12 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         observation["allow_high_confidence_graph_use"]=bool(observation.get("allow_high_confidence_graph_use") and observation["conflict_reasoning_eligible"])
         observation["exclude_from_high_confidence_conflict"]=not observation["allow_high_confidence_graph_use"]
         observations.append(observation)
+    # Flush LLM cleaner audit files if available
+    if resolver._llm_cleaner is not None and resolver._run_dir is not None:
+        try:
+            resolver._llm_cleaner.write_audit_files(resolver._run_dir / "artifacts")
+        except Exception:
+            pass
     return observations
 
 
@@ -808,7 +816,8 @@ def run_abstract_l1_step(
 def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                          entity_registry_path: str | Path | None = None, execute: bool = False,
                          network: bool = False, api: bool = False, entity_network_lookup: bool = False,
-                         entity_llm_proposer: bool = False, entity_resolution_policy=None,
+                         entity_llm_proposer: bool = False, entity_llm_cleaner: bool = False,
+                         entity_resolution_policy=None,
                          pilot_terms: list[str] | None = None, **_: Any) -> StepResult:
     if l1_mode == "legacy":
         summary = {"normalized_observation_count": 0, "reason": "legacy_l1_mode"}
@@ -819,6 +828,7 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         claims, _read(run_dir, "domain_profile.json", {}), run_dir,
         entity_registry_path=entity_registry_path, execute=execute, network=network, api=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
+        entity_llm_cleaner=entity_llm_cleaner,
         entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
     )
     from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl

@@ -20,6 +20,7 @@ class MyGeneClient:
 
     name = "mygene"
     resource = "EntrezGene"
+    network_call_cost = 1  # one HTTP query per search
 
     def search(self, surface: str, request: Any = None) -> list[dict[str, Any]]:
         """Search for a gene term, return normalized candidate records."""

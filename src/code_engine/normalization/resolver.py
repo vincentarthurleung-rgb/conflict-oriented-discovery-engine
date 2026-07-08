@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from code_engine.normalization.adjudicator import adjudicate_entity_candidates
 from code_engine.normalization.audit import EntityResolutionAuditWriter
 from code_engine.normalization.cache import EntityCache
 from code_engine.normalization.candidates import EntityCandidate, EntityResolutionRequest
@@ -32,7 +33,7 @@ def _legacy_candidate(candidate: EntityCandidate) -> NormalizationCandidate | No
 
 
 class ResolverCascade:
-    def __init__(self, registry: LocalBiomedicalRegistry | None = None, *, registry_path: str | Path | None = None, allow_fallback: bool = False, domain_id: str = "general_biomedical", entity_registry_profile: str = "general_entity_resolution_hub", resolver_policy_id: str = "conservative_resolver_v2", hub: EntityResolutionHub | None = None, run_dir: str | Path | None = None, execute: bool = False, network_enabled: bool = False, api_enabled: bool = False, entity_network_lookup: bool = False, entity_llm_proposer: bool = False, external_clients: dict[str, Any] | None = None, llm_client: Any | None = None, adjudicator_policy: dict | None = None):
+    def __init__(self, registry: LocalBiomedicalRegistry | None = None, *, registry_path: str | Path | None = None, allow_fallback: bool = False, domain_id: str = "general_biomedical", entity_registry_profile: str = "general_entity_resolution_hub", resolver_policy_id: str = "conservative_resolver_v2", hub: EntityResolutionHub | None = None, run_dir: str | Path | None = None, execute: bool = False, network_enabled: bool = False, api_enabled: bool = False, entity_network_lookup: bool = False, entity_llm_proposer: bool = False, entity_llm_cleaner: bool = False, external_clients: dict[str, Any] | None = None, llm_client: Any | None = None, adjudicator_policy: dict | None = None):
         self.domain_id = domain_id
         self.entity_registry_profile = entity_registry_profile
         self.resolver_policy_id = resolver_policy_id
@@ -40,6 +41,11 @@ class ResolverCascade:
         self.domain_resolution_warnings: list[str] = []
         self.execute, self.network_enabled, self.api_enabled = execute, network_enabled, api_enabled
         self.entity_network_lookup, self.entity_llm_proposer = entity_network_lookup, entity_llm_proposer
+        self.entity_llm_cleaner_enabled = entity_llm_cleaner
+        self._llm_client = llm_client
+        self._run_dir = Path(run_dir) if run_dir else None
+        # LLM cleaner (lazy init)
+        self._llm_cleaner: Any = None
         if hub is not None:
             self.hub = hub
             self.registry = registry
@@ -57,7 +63,13 @@ class ResolverCascade:
         # pilot and must not become ambiguous with stale cache namespaces.
         if registry is None and registry_path is None:
             providers.append(LocalCacheProvider(EntityCache()))
-        providers.extend([PubChemCandidateProvider(clients.get("pubchem")), ChEMBLCandidateProvider(clients.get("chembl")), MyGeneCandidateProvider(clients.get("mygene")), UniProtCandidateProvider(clients.get("uniprot"))])
+        # External entity database providers (PubChem, ChEMBL, MyGene, UniProt)
+        # are only installed when entity_network_lookup is explicitly enabled.
+        # This ensures audit visibility: when entity_network_lookup=False,
+        # the provider trace will not show these providers at all, and the
+        # caller's manifest/report can record the skip reason.
+        if entity_network_lookup:
+            providers.extend([PubChemCandidateProvider(clients.get("pubchem")), ChEMBLCandidateProvider(clients.get("chembl")), MyGeneCandidateProvider(clients.get("mygene")), UniProtCandidateProvider(clients.get("uniprot"))])
         if entity_llm_proposer:
             providers.append(LLMCandidateProposerProvider(llm_client))
         providers.append(NullProvider())
@@ -69,6 +81,18 @@ class ResolverCascade:
     def _domain_metadata(self) -> dict[str, Any]:
         return {"domain_id": self.domain_id, "entity_registry_profile": self.entity_registry_profile, "resolver_policy_id": self.resolver_policy_id, "domain_specific_resolution_used": self.domain_specific_resolution_used, "domain_resolution_warnings": list(self.domain_resolution_warnings)}
 
+    def _get_llm_cleaner(self):
+        """Lazy-init the LLM entity cleaner."""
+        if self._llm_cleaner is None and self.entity_llm_cleaner_enabled:
+            from code_engine.normalization.llm_entity_cleaner import LLMEntityCleaner
+            audit_dir = self._run_dir / "artifacts" if self._run_dir else None
+            self._llm_cleaner = LLMEntityCleaner(
+                llm_client=self._llm_client,
+                enabled=self.entity_llm_cleaner_enabled,
+                audit_dir=audit_dir,
+            )
+        return self._llm_cleaner
+
     def resolve_entity(self, raw_text: str, context: dict[str, Any] | None = None, allow_fallback: bool = False) -> NormalizationDecision:
         lexical = normalize_lexical_surface(raw_text)
         if lexical.invalid:
@@ -78,22 +102,163 @@ class ResolverCascade:
         result = self.hub.resolve(request)
         selected = result.selected_candidate
         legacy_candidates = [item for item in (_legacy_candidate(candidate) for candidate in result.candidates) if item]
-        if result.normalization_status in {"resolved_curated", "resolved_external_grounded", "resolved_cache"} and selected:
+
+        # --- LLM-assisted entity cleaning (only when unresolved/ambiguous) ---
+        llm_cleaner_result = None
+        if self.entity_llm_cleaner_enabled and result.normalization_status not in {
+            "resolved_curated", "resolved_external_grounded", "resolved_cache",
+        }:
+            cleaner = self._get_llm_cleaner()
+            if cleaner is not None:
+                llm_cleaner_result = cleaner.clean(
+                    mention=lexical.raw_text,
+                    claim_context=context.get("context_text", ""),
+                    mention_role=context.get("mention_role", "subject"),
+                    l1_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"),
+                    claim_id=context.get("claim_id"),
+                    observation_id=context.get("observation_id"),
+                )
+                # If cleaner produced better surfaces, attempt external lookup for each
+                if llm_cleaner_result.cleaned_head_entities and llm_cleaner_result.llm_cleaner_status in {"cleaned", "cleaned_with_warnings"}:
+                    verified_candidates: list[EntityCandidate] = []
+                    for head in llm_cleaner_result.cleaned_head_entities:
+                        for route in head.ontology_routes:
+                            # Only attempt external lookups if network is enabled
+                            if not (self.execute and self.network_enabled and self.entity_network_lookup):
+                                break
+                            # Find the matching provider
+                            provider = self._find_provider_by_name(route)
+                            if provider is None:
+                                continue
+                            # Build a cleaned request for this head
+                            cleaned_request = EntityResolutionRequest(
+                                surface=head.surface,
+                                context_text=context.get("context_text"),
+                                domain_id=self.domain_id,
+                                entity_registry_profile=self.entity_registry_profile,
+                                resolver_policy_id=self.resolver_policy_id,
+                                l1_entity_type_hint=head.entity_type,
+                                paper_id=context.get("paper_id"),
+                                claim_id=context.get("claim_id"),
+                                observation_id=context.get("observation_id"),
+                                network_enabled=bool(self.execute and self.network_enabled),
+                                api_enabled=bool(self.execute and self.api_enabled),
+                                execute=self.execute,
+                            )
+                            try:
+                                proposed = provider.propose(cleaned_request)
+                                for c in proposed:
+                                    # Mark as post-cleaner verified candidate
+                                    c.supporting_context["llm_cleaned_surface"] = head.surface
+                                    c.supporting_context["llm_cleaner_confidence"] = head.confidence
+                                    c.supporting_context["original_mention"] = lexical.raw_text
+                                    c.overall_score = min(1.0, c.overall_score + 0.05)  # small boost for cleaner routing
+                                verified_candidates.extend(proposed)
+                                if cleaner:
+                                    cleaner.external_lookup_after_cleaning_calls += 1
+                            except Exception:
+                                continue
+
+                    if verified_candidates:
+                        # Merge with existing candidates and re-adjudicate
+                        all_candidates = list(result.candidates) + verified_candidates
+                        re_result = adjudicate_entity_candidates(request, all_candidates, self.hub.adjudicator_policy)
+                        # If re-adjudication produced a verified result, use it
+                        if re_result.normalization_status in {"resolved_external_grounded", "resolved_curated", "resolved_cache"}:
+                            result = re_result
+                            if cleaner:
+                                cleaner.update_verification_status(
+                                    original_mention=lexical.raw_text,
+                                    verification_result="verified",
+                                    final_decision="accepted_after_llm_cleaning_and_external_verification",
+                                    high_confidence_allowed=True,
+                                )
+                        elif re_result.normalization_status == "ambiguous":
+                            # Keep original result, but note that cleaner helped find candidates
+                            result = re_result
+                            if cleaner:
+                                cleaner.update_verification_status(
+                                    original_mention=lexical.raw_text,
+                                    verification_result="ambiguous",
+                                    final_decision="ambiguous_after_llm_cleaning",
+                                    high_confidence_allowed=False,
+                                    rejection_reason="ambiguous_external_result_after_cleaning",
+                                )
+                        else:
+                            # External lookup after cleaning still failed
+                            if cleaner:
+                                cleaner.update_verification_status(
+                                    original_mention=lexical.raw_text,
+                                    verification_result="provider_no_result",
+                                    final_decision="llm_cleaned_but_no_provider_match",
+                                    high_confidence_allowed=False,
+                                    rejection_reason="no_external_verification_after_llm_cleaning",
+                                )
+                    else:
+                        # Cleaner extracted heads but no external provider had results
+                        if cleaner:
+                            cleaner.update_verification_status(
+                                original_mention=lexical.raw_text,
+                                verification_result="unverified",
+                                final_decision="llm_suggested_unverified",
+                                high_confidence_allowed=False,
+                                rejection_reason="llm_cleaned_entity_not_verified_by_any_provider",
+                            )
+
+        # --- Build legacy decision ---
+        if result.normalization_status in {"resolved_curated", "resolved_external_grounded", "resolved_cache"} and result.selected_candidate:
             legacy_status = "resolved"
         elif result.normalization_status == "ambiguous" or (result.normalization_status == "manual_review_required" and result.candidates):
             legacy_status = "ambiguous"
+        elif result.normalization_status == "llm_suggestion_ungrounded":
+            legacy_status = "unresolved_fallback"
         else:
             legacy_status = "unresolved_fallback"
+        selected = result.selected_candidate
         canonical_name = str(selected.canonical_name or "") if selected else (lexical.normalized_surface.upper() if legacy_status == "unresolved_fallback" else "")
         selected_legacy = _legacy_candidate(selected) if selected else None
-        # Fall back to best candidate when adjudicator cannot decide (ambiguous margin)
+        # Fall back to best candidate when adjudicator cannot decide (ambiguous margin).
+        # Ambiguous external matches are retained for audit traceability but
+        # must never be treated as high-confidence grounded results.
         if selected is None and result.candidates:
             best = max(result.candidates, key=lambda c: c.overall_score)
             selected = best
-            if result.normalization_status == "ambiguous":
-                result.allow_high_confidence_graph_use = True
+        # Build llm_cleaner context if available
+        llm_cleaner_context: dict[str, Any] = {}
+        if llm_cleaner_result is not None:
+            llm_cleaner_context = {
+                "llm_cleaner_status": llm_cleaner_result.llm_cleaner_status,
+                "llm_cleaned_entities": [
+                    {"surface": h.surface, "entity_type": h.entity_type, "ontology_routes": h.ontology_routes}
+                    for h in llm_cleaner_result.cleaned_head_entities
+                ],
+                "llm_cleaner_warnings": llm_cleaner_result.warnings,
+            }
         return NormalizationDecision(raw_text=lexical.raw_text, normalized_surface=lexical.normalized_surface, canonical_id=str(selected.canonical_id or "") if selected else "", canonical_name=canonical_name, entity_type=str(selected.entity_type or "unknown") if selected else "unknown", semantic_level=str(selected.semantic_level or "unknown") if selected else "unresolved", external_ids=dict(selected.external_ids) if selected else {}, relations=selected_legacy.relations if selected_legacy else [], normalization_status=legacy_status, confidence=result.confidence, resolver="entity_resolution_hub_v1", match_type=selected.match_type if selected else "unresolved", candidates=legacy_candidates, decision_reason=result.decision_reason, allow_high_confidence_graph_use=result.allow_high_confidence_graph_use, warnings=list(dict.fromkeys(lexical.warnings + result.warnings + (["uppercase_fallback_low_confidence"] if legacy_status == "unresolved_fallback" else []))), candidate_count=len(result.candidates), candidate_provider_names=list(dict.fromkeys(item.provider_name for item in result.candidates)), selected_candidate_id=selected.candidate_id if selected else None, entity_resolution_status=result.normalization_status, requires_manual_review=result.requires_manual_review, audit_ref=result.audit_ref, **self._domain_metadata())
+
+    def _find_provider_by_name(self, route: str):
+        """Find a provider by its short name (pubchem, chembl, mygene, uniprot)."""
+        route_map = {
+            "pubchem": "PubChemCandidateProvider",
+            "chembl": "ChEMBLCandidateProvider",
+            "mygene": "MyGeneCandidateProvider",
+            "uniprot": "UniProtCandidateProvider",
+        }
+        target_name = route_map.get(route.casefold())
+        if not target_name:
+            return None
+        for provider in self.hub.providers:
+            if provider.name == target_name:
+                return provider
+        return None
 
 
 def resolve_entity(raw_text: str, context: dict[str, Any] | None = None, allow_fallback: bool = False, **resolver_kwargs: Any) -> NormalizationDecision:
     return ResolverCascade(allow_fallback=allow_fallback, **resolver_kwargs).resolve_entity(raw_text, context=context, allow_fallback=allow_fallback)
+
+
+def write_llm_cleaner_audit(run_dir: str | Path, cleaner: Any) -> dict[str, str]:
+    """Write LLM cleaner audit files at the end of a run."""
+    from pathlib import Path as _Path
+    artifacts = _Path(run_dir) / "artifacts"
+    return cleaner.write_audit_files(artifacts) if cleaner else {}
