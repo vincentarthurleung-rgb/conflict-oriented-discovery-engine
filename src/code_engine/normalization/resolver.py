@@ -234,7 +234,88 @@ class ResolverCascade:
                 ],
                 "llm_cleaner_warnings": llm_cleaner_result.warnings,
             }
-        return NormalizationDecision(raw_text=lexical.raw_text, normalized_surface=lexical.normalized_surface, canonical_id=str(selected.canonical_id or "") if selected else "", canonical_name=canonical_name, entity_type=str(selected.entity_type or "unknown") if selected else "unknown", semantic_level=str(selected.semantic_level or "unknown") if selected else "unresolved", external_ids=dict(selected.external_ids) if selected else {}, relations=selected_legacy.relations if selected_legacy else [], normalization_status=legacy_status, confidence=result.confidence, resolver="entity_resolution_hub_v1", match_type=selected.match_type if selected else "unresolved", candidates=legacy_candidates, decision_reason=result.decision_reason, allow_high_confidence_graph_use=result.allow_high_confidence_graph_use, warnings=list(dict.fromkeys(lexical.warnings + result.warnings + (["uppercase_fallback_low_confidence"] if legacy_status == "unresolved_fallback" else []))), candidate_count=len(result.candidates), candidate_provider_names=list(dict.fromkeys(item.provider_name for item in result.candidates)), selected_candidate_id=selected.candidate_id if selected else None, entity_resolution_status=result.normalization_status, requires_manual_review=result.requires_manual_review, audit_ref=result.audit_ref, **self._domain_metadata())
+
+        # --- Determine cleaner-integration fields ---
+        selected_source = ""
+        selected_cleaned_surface = ""
+        external_verification_provider = ""
+        rejection_reason = ""
+        cleaner_trace = None
+
+        if llm_cleaner_result is not None and llm_cleaner_result.cleaned_head_entities:
+            cleaner_trace = {
+                "original_mention": lexical.raw_text,
+                "cleaned_head_entities": [
+                    {"surface": h.surface, "entity_type": h.entity_type, "ontology_routes": h.ontology_routes,
+                     "confidence": h.confidence}
+                    for h in llm_cleaner_result.cleaned_head_entities
+                ],
+                "external_verification_result": llm_cleaner_result.external_verification_result,
+                "final_decision": llm_cleaner_result.final_decision,
+                "high_confidence_graph_allowed": llm_cleaner_result.high_confidence_graph_allowed,
+                "rejection_reason": llm_cleaner_result.rejection_reason,
+            }
+
+            # Determine selected_source based on how we got here
+            if llm_cleaner_result.external_verification_result == "verified":
+                if llm_cleaner_result.high_confidence_graph_allowed:
+                    selected_source = "external_after_cleaning"
+                else:
+                    selected_source = "external_after_cleaning_rejected"
+                # Find which provider verified
+                if selected and selected.provider_name:
+                    external_verification_provider = selected.provider_name
+                # Find cleaned surface
+                if llm_cleaner_result.cleaned_head_entities:
+                    selected_cleaned_surface = llm_cleaner_result.cleaned_head_entities[0].surface
+            elif llm_cleaner_result.external_verification_result == "ambiguous":
+                selected_source = "external_after_cleaning_ambiguous"
+            elif llm_cleaner_result.external_verification_result == "provider_no_result":
+                selected_source = "cleaned_but_no_provider_match"
+            elif llm_cleaner_result.external_verification_result == "unverified":
+                selected_source = "llm_cleaned_unverified"
+            rejection_reason = llm_cleaner_result.rejection_reason or ""
+        elif result.normalization_status == "resolved_curated":
+            selected_source = "curated"
+        elif result.normalization_status == "resolved_external_grounded":
+            selected_source = "external_direct"
+        elif result.normalization_status == "resolved_cache":
+            selected_source = "cache"
+
+        return NormalizationDecision(
+            raw_text=lexical.raw_text,
+            normalized_surface=lexical.normalized_surface,
+            canonical_id=str(selected.canonical_id or "") if selected else "",
+            canonical_name=canonical_name,
+            entity_type=str(selected.entity_type or "unknown") if selected else "unknown",
+            semantic_level=str(selected.semantic_level or "unknown") if selected else "unresolved",
+            external_ids=dict(selected.external_ids) if selected else {},
+            relations=selected_legacy.relations if selected_legacy else [],
+            normalization_status=legacy_status,
+            confidence=result.confidence,
+            resolver="entity_resolution_hub_v1",
+            match_type=selected.match_type if selected else "unresolved",
+            candidates=legacy_candidates,
+            decision_reason=result.decision_reason,
+            allow_high_confidence_graph_use=result.allow_high_confidence_graph_use,
+            warnings=list(dict.fromkeys(lexical.warnings + result.warnings + (
+                ["uppercase_fallback_low_confidence"] if legacy_status == "unresolved_fallback" else []
+            ))),
+            candidate_count=len(result.candidates),
+            candidate_provider_names=list(dict.fromkeys(item.provider_name for item in result.candidates)),
+            selected_candidate_id=selected.candidate_id if selected else None,
+            entity_resolution_status=result.normalization_status,
+            requires_manual_review=result.requires_manual_review,
+            audit_ref=result.audit_ref,
+            # --- Cleaner integration fields ---
+            selected_source=selected_source,
+            selected_cleaned_surface=selected_cleaned_surface,
+            original_surface=lexical.raw_text,
+            external_verification_provider=external_verification_provider,
+            rejection_reason=rejection_reason,
+            cleaner_trace=cleaner_trace,
+            **self._domain_metadata(),
+        )
 
     def _find_provider_by_name(self, route: str):
         """Find a provider by its short name (pubchem, chembl, mygene, uniprot)."""

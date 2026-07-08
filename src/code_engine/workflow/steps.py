@@ -876,15 +876,47 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
     entity_audit_records = []
     for item in observations:
         for role in ("subject", "object"):
+            norm = (item.get("normalization") or {}).get(role, {})
             match = (item.get("runtime_hint_matches") or {}).get(role)
-            candidate_records.append({"mention": item.get(f"{role}_raw"), "normalized_mention": str(item.get(f"{role}_raw") or "").casefold(),
-                                      "candidate_entities": [match] if match else [], "selected_entity": (match or {}).get("canonical_name"),
-                                      "selected_score": (match or {}).get("score"), "selected_source": (match or {}).get("source"),
-                                      "used_for_core_graph": bool(item.get("canonical_graph_eligible")),
-                                      "reason": (match or {}).get("mention_role") or "no_runtime_hint_match"})
-            entity_audit_records.append({"observation_id": item.get("observation_id"), "mention_role": role,
-                                         "runtime_hint_match": match, "canonical_graph_eligible": item.get("canonical_graph_eligible"),
-                                         "graph_layer": item.get("graph_layer")})
+            candidate_records.append({
+                "mention": item.get(f"{role}_raw"),
+                "normalized_mention": str(item.get(f"{role}_raw") or "").casefold(),
+                "original_mention": norm.get("original_surface") or item.get(f"{role}_raw"),
+                "cleaned_surface": norm.get("selected_cleaned_surface", ""),
+                "aliases": (match or {}).get("aliases", []) if match else [],
+                "candidate_entities": [match] if match else [],
+                "selected_entity": (match or {}).get("canonical_name") or norm.get("canonical_name"),
+                "selected_score": (match or {}).get("score"),
+                "selected_source": norm.get("selected_source") or (match or {}).get("source", ""),
+                "external_verification_provider": norm.get("external_verification_provider", ""),
+                "provider_routes": (norm.get("cleaner_trace") or {}).get("cleaned_head_entities", []),
+                "external_verification_result": (norm.get("cleaner_trace") or {}).get("external_verification_result", ""),
+                "final_selected_entity": norm.get("canonical_name"),
+                "final_selected_source": norm.get("selected_source", ""),
+                "high_confidence_graph_allowed": norm.get("allow_high_confidence_graph_use", False),
+                "accepted_into_resolver_decision": norm.get("normalization_status") == "resolved",
+                "rejection_reason": norm.get("rejection_reason", ""),
+                "used_for_core_graph": bool(item.get("canonical_graph_eligible")),
+                "reason": (match or {}).get("mention_role") or "no_runtime_hint_match",
+            })
+            entity_audit_records.append({
+                "observation_id": item.get("observation_id"),
+                "mention_role": role,
+                "original_mention": norm.get("original_surface") or item.get(f"{role}_raw"),
+                "cleaned_surface": norm.get("selected_cleaned_surface", ""),
+                "selected_entity": norm.get("canical_name"),
+                "selected_source": norm.get("selected_source", ""),
+                "entity_resolution_status": norm.get("entity_resolution_status", "unresolved"),
+                "normalization_status": norm.get("normalization_status"),
+                "external_verification_provider": norm.get("external_verification_provider", ""),
+                "external_verification_result": (norm.get("cleaner_trace") or {}).get("external_verification_result", ""),
+                "high_confidence_graph_allowed": norm.get("allow_high_confidence_graph_use", False),
+                "accepted_into_resolver_decision": norm.get("normalization_status") == "resolved",
+                "rejection_reason": norm.get("rejection_reason", ""),
+                "runtime_hint_match": match,
+                "canonical_graph_eligible": item.get("canonical_graph_eligible"),
+                "graph_layer": item.get("graph_layer"),
+            })
     candidates_path = run_dir / "artifacts/entity_resolution_candidates.jsonl"; atomic_write_jsonl(candidates_path, iter(candidate_records))
     entity_audit_path = run_dir / "artifacts/entity_resolution_audit.jsonl"; atomic_write_jsonl(entity_audit_path, iter(entity_audit_records))
     registry_path = run_dir / "artifacts/run_entity_registry.json"

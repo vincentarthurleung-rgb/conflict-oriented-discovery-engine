@@ -452,26 +452,343 @@ class DeterministicCleaningTests(unittest.TestCase):
 
     def test_strips_overexpression_modifier(self):
         from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
-        cleaned, removed, aliases = _deterministic_clean("overexpression of Trop2")
+        cleaned, removed, aliases, extra = _deterministic_clean("overexpression of Trop2")
         self.assertIn("Trop2", cleaned)
         self.assertTrue(len(removed) > 0)
 
     def test_strips_inhibition_modifier(self):
         from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
-        cleaned, removed, aliases = _deterministic_clean("inhibition of mTOR")
+        cleaned, removed, aliases, extra = _deterministic_clean("inhibition of mTOR")
         self.assertIn("mTOR", cleaned)
         self.assertTrue(any("inhibition" in r for r in removed))
 
     def test_expands_known_aliases_5fu(self):
         from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
-        cleaned, removed, aliases = _deterministic_clean("5-FU")
+        cleaned, removed, aliases, extra = _deterministic_clean("5-FU")
         self.assertTrue(len(aliases) > 0)
         self.assertTrue(any("5-fluorouracil" in a.casefold() for a in aliases))
 
     def test_expands_known_aliases_emt(self):
         from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
-        cleaned, removed, aliases = _deterministic_clean("EMT")
+        cleaned, removed, aliases, extra = _deterministic_clean("EMT")
         self.assertTrue(any("epithelial" in a.casefold() for a in aliases))
+
+
+# ---------------------------------------------------------------------------
+# New deterministic cleaning tests (drug/therapy, dose/exposure, aliases, pathway)
+# ---------------------------------------------------------------------------
+
+class NewDeterministicCleaningTests(unittest.TestCase):
+    """Test the new deterministic cleaning rules added for cleaner integration."""
+
+    def test_amitriptyline_therapy_cleans_to_drug(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("amitriptyline therapy")
+        self.assertIn("amitriptyline", cleaned)
+        self.assertNotIn("therapy", cleaned.casefold())
+
+    def test_high_doses_exogenous_h2s_cleans_to_h2s(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("high doses of exogenous H2S")
+        self.assertIn("H2S", cleaned)
+        self.assertNotIn("high doses", cleaned.casefold())
+
+    def test_inhibition_endogenous_h2s_production_cleans_to_h2s(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("inhibition of endogenous H2S production")
+        self.assertIn("H2S", cleaned)
+
+    def test_parenthetical_alias_extraction_dmba(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("7,12-dimethylbenz[a]anthracene (DMBA, D)")
+        self.assertIn("7,12-dimethylbenz[a]anthracene", cleaned)
+        self.assertIn("DMBA", aliases)
+        self.assertNotIn("D", aliases)
+
+    def test_parenthetical_alias_extraction_5fu(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("5-fluorouracil (5-FU)")
+        self.assertIn("5-fluorouracil", cleaned)
+        self.assertIn("5-FU", aliases)
+
+    def test_pathway_decomposition_pi3k_akt(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("PI3K-Akt signalling pathway")
+        extra_surfaces = [h.surface.upper() for h in extra]
+        self.assertTrue(any("PI3K" in s for s in extra_surfaces))
+        self.assertTrue(any("AKT" in s for s in extra_surfaces))
+
+    def test_pathway_decomposition_grb2_erk(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("GRB2-RAS-RAF-MEK-ERK pathway")
+        extra_surfaces = [h.surface.upper() for h in extra]
+        for expected in ["GRB2", "RAS", "RAF", "MEK", "ERK"]:
+            self.assertTrue(any(expected in s for s in extra_surfaces),
+                            f"Expected {expected} in extra heads, got {extra_surfaces}")
+
+    def test_treatment_with_metformin(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("treatment with metformin")
+        self.assertIn("metformin", cleaned.casefold())
+        self.assertTrue(any("treatment_with" in r for r in removed))
+
+    def test_therapeutic_effect_of_rapamycin(self):
+        from code_engine.normalization.llm_entity_cleaner import _deterministic_clean
+        cleaned, removed, aliases, extra = _deterministic_clean("therapeutic effect of rapamycin")
+        self.assertNotIn("therapeutic effect", cleaned.casefold())
+        self.assertIn("rapamycin", cleaned.casefold())
+
+
+# ---------------------------------------------------------------------------
+# Cleaner verified-but-rejected tracking tests
+# ---------------------------------------------------------------------------
+
+class CleanerVerifiedRejectedTests(unittest.TestCase):
+    """Test cleaner verified-but-rejected tracking."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_verified_but_rejected_counted(self):
+        from code_engine.normalization.llm_entity_cleaner import LLMEntityCleaner
+        cleaner = LLMEntityCleaner(
+            llm_client=FakeLLMClient(),
+            enabled=True,
+            audit_dir=self.tmp_path,
+        )
+        cleaner.clean("5-fluorouracil", mention_role="subject")
+        cleaner.update_verification_status(
+            original_mention="5-fluorouracil",
+            verification_result="verified",
+            final_decision="rejected_by_adjudicator",
+            high_confidence_allowed=False,
+            rejection_reason="ambiguous_external_result_after_cleaning",
+        )
+        self.assertEqual(cleaner.external_verified_after_cleaning_count, 1)
+        self.assertEqual(cleaner.cleaner_verified_but_rejected_count, 1)
+        fields = cleaner.manifest_fields()
+        self.assertEqual(fields["cleaner_verified_but_rejected_count"], 1)
+        self.assertTrue(len(fields["top_cleaner_verified_but_rejected_mentions"]) >= 1)
+
+    def test_verified_and_accepted_not_counted_as_rejected(self):
+        from code_engine.normalization.llm_entity_cleaner import LLMEntityCleaner
+        cleaner = LLMEntityCleaner(
+            llm_client=FakeLLMClient(),
+            enabled=True,
+            audit_dir=self.tmp_path,
+        )
+        cleaner.clean("5-fluorouracil", mention_role="subject")
+        cleaner.update_verification_status(
+            original_mention="5-fluorouracil",
+            verification_result="verified",
+            final_decision="accepted",
+            high_confidence_allowed=True,
+        )
+        self.assertEqual(cleaner.cleaner_verified_but_rejected_count, 0)
+        self.assertEqual(cleaner.external_verified_after_cleaning_count, 1)
+
+
+# ---------------------------------------------------------------------------
+# Provider eligibility tests
+# ---------------------------------------------------------------------------
+
+class ProviderEligibilityTests(unittest.TestCase):
+    """Test the redefined provider eligibility rules."""
+
+    def test_pathway_without_provider_is_ineligible(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("pathway")
+        self.assertEqual(routes, [], "pathway should have no provider routes")
+
+    def test_biological_process_without_provider_is_ineligible(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("biological_process")
+        self.assertEqual(routes, [], "biological_process should have no provider routes")
+
+    def test_disease_without_provider_is_ineligible(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("disease")
+        self.assertEqual(routes, [], "disease should have no provider routes")
+
+    def test_drug_has_concrete_provider_routes(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("drug")
+        self.assertTrue(any(r in routes for r in ["pubchem", "chembl"]))
+
+    def test_gene_has_concrete_provider_routes(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("gene")
+        self.assertTrue(any(r in routes for r in ["mygene", "uniprot"]))
+
+    def test_protein_has_concrete_provider_routes(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("protein")
+        self.assertTrue(any(r in routes for r in ["uniprot", "mygene"]))
+
+    def test_compound_has_concrete_provider_routes(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("compound")
+        self.assertTrue(any(r in routes for r in ["pubchem", "chembl"]))
+
+    def test_clinical_outcome_has_no_provider_route(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("clinical_outcome")
+        self.assertEqual(routes, [], "clinical_outcome should have no provider routes")
+
+    def test_phenotype_has_no_provider_route(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("phenotype")
+        self.assertEqual(routes, [], "phenotype should have no provider routes")
+
+    def test_context_has_no_provider_route(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("context")
+        self.assertEqual(routes, [], "context should have no provider routes")
+
+    def test_experimental_condition_has_no_provider_route(self):
+        from code_engine.normalization.llm_entity_cleaner import _route_entity_type
+        routes = _route_entity_type("experimental_condition")
+        self.assertEqual(routes, [], "experimental_condition should have no provider routes")
+
+
+# ---------------------------------------------------------------------------
+# Resolver cleaner integration tests (with mock providers)
+# ---------------------------------------------------------------------------
+
+class ResolverCleanerDecisionIntegrationTests(unittest.TestCase):
+    """Test that cleaner verified results correctly flow into resolver decisions."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self.tmp.name)
+        self.artifacts = self.tmp_path / "artifacts"
+        self.artifacts.mkdir(parents=True)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _make_mock_provider(self, name, candidates=None):
+        mock = MagicMock()
+        mock.name = name
+        mock.last_status = "success"
+        mock.last_warnings = []
+        mock.last_network_calls = 1
+        mock.last_api_calls = 1
+        mock.can_handle = MagicMock(return_value=True)
+        mock.propose = MagicMock(return_value=candidates or [])
+        return mock
+
+    def test_verified_cleaned_becomes_final_decision(self):
+        from code_engine.normalization.candidates import EntityCandidate
+        from code_engine.normalization.resolver import ResolverCascade
+
+        pubchem_candidate = EntityCandidate(
+            surface="amitriptyline",
+            normalized_surface="amitriptyline",
+            canonical_id="CID:2160",
+            canonical_name="Amitriptyline",
+            entity_type="drug",
+            semantic_level="chemical",
+            source="pubchem",
+            provider_name="PubChemCandidateProvider",
+            external_ids={"pubchem": "CID:2160"},
+            match_type="exact",
+            match_score=0.95,
+            type_score=0.9,
+            source_reliability=0.9,
+            context_score=0.8,
+            overall_score=0.88,
+            is_grounded=True,
+        )
+
+        resolver = ResolverCascade(
+            run_dir=self.tmp_path,
+            execute=True,
+            network_enabled=True,
+            api_enabled=True,
+            entity_network_lookup=True,
+            entity_llm_cleaner=True,
+            llm_client=FakeLLMClient(),
+        )
+
+        mock_pubchem = self._make_mock_provider("PubChemCandidateProvider", [pubchem_candidate])
+        mock_null = self._make_mock_provider("NullProvider", [])
+        mock_null.can_handle = MagicMock(return_value=False)
+        resolver.hub.providers = [mock_pubchem, mock_null]
+
+        result = resolver.resolve_entity(
+            "the therapeutic effect of amitriptyline therapy",
+            context={"expected_entity_type": "drug", "claim_id": "C_test1"},
+        )
+
+        self.assertIsNotNone(result)
+        self.assertIn(result.selected_source, {
+            "external_after_cleaning", "external_after_cleaning_rejected",
+            "external_after_cleaning_ambiguous", "cleaned_but_no_provider_match",
+            "llm_cleaned_unverified", "external_direct", "curated", "cache",
+        })
+
+    def test_llm_only_unverified_never_high_confidence(self):
+        from code_engine.normalization.resolver import ResolverCascade
+
+        resolver = ResolverCascade(
+            run_dir=self.tmp_path,
+            execute=True,
+            network_enabled=False,
+            api_enabled=False,
+            entity_network_lookup=False,
+            entity_llm_cleaner=True,
+            llm_client=FakeLLMClient(),
+        )
+
+        mock_null = self._make_mock_provider("NullProvider", [])
+        mock_null.can_handle = MagicMock(return_value=False)
+        resolver.hub.providers = [mock_null]
+
+        result = resolver.resolve_entity(
+            "the therapeutic effect of 5-fluorouracil (5-FU)",
+            context={"expected_entity_type": "drug"},
+        )
+
+        # LLM cleaned but no external verification -> not high confidence
+        self.assertFalse(
+            result.allow_high_confidence_graph_use,
+            "LLM-only unverified result must never be high-confidence graph eligible",
+        )
+        # selected_source should indicate that LLM cleaned but unverified
+        self.assertIn(
+            result.selected_source,
+            {"llm_cleaned_unverified", "cleaned_but_no_provider_match", "external_after_cleaning_rejected", ""},
+            f"Expected cleaner-related source, got {result.selected_source}",
+        )
+
+    def test_status_counts_unchanged_when_cleaner_disabled(self):
+        from code_engine.normalization.resolver import ResolverCascade
+
+        resolver_off = ResolverCascade(
+            run_dir=self.tmp_path,
+            execute=True,
+            network_enabled=False,
+            api_enabled=False,
+            entity_network_lookup=False,
+            entity_llm_cleaner=False,
+            llm_client=None,
+        )
+        mock_null = self._make_mock_provider("NullProvider", [])
+        mock_null.can_handle = MagicMock(return_value=False)
+        resolver_off.hub.providers = [mock_null]
+
+        result_off = resolver_off.resolve_entity(
+            "PI3K",
+            context={"expected_entity_type": "gene"},
+        )
+        self.assertIsNotNone(result_off)
+        self.assertEqual(result_off.selected_source, "")
+        self.assertIsNone(result_off.cleaner_trace)
 
 
 if __name__ == "__main__":

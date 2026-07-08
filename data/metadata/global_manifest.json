@@ -1,7 +1,7 @@
 {
   "metadata": {
     "query": null,
-    "total_registered_assets": 524,
+    "total_registered_assets": 531,
     "timestamp": null
   },
   "papers": {
@@ -42453,6 +42453,557 @@
       "metadata_source": "pubmed_xml",
       "raw_path": "data/raw/abstracts/26676749.json",
       "timestamp": "2026-07-07T15:49:08.865267+00:00"
+    },
+    "34557678": {
+      "pmcid": "PMC3063605",
+      "pmid": "34557678",
+      "source": "pubmed",
+      "retrieval_query_id": "d55e5c9fa9fa3394",
+      "first_seen_query_id": "d55e5c9fa9fa3394",
+      "matched_query_ids": [
+        "d55e5c9fa9fa3394"
+      ],
+      "matched_query_groups": [
+        "entity_pair_core"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "d55e5c9fa9fa3394",
+        "query_string": "(reactive oxygen species cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "entity_pair_core",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1002/fft2.45",
+      "title": "Black raspberries attenuate colonic adenoma development in Apc Min mice: Relationship to hypomethylation of promoters and gene bodies.",
+      "journal": "Food frontiers",
+      "publication_year": "2020",
+      "abstract": "Recent studies have suggested that in addition to promoter region, DNA methylation in intragenic and intergenic regions also changes during physiological processes and disease. The current study showed that feeding of black raspberries (BRBs) to Apc Min mice suppressed colon and intestinal tumors. MBDCap-seq suggested that dietary BRBs hypomethylated promoter, intragenic, and intergenic regions. Annotation of those regions highlighted genes in pathways involved in immune regulation, inflammatory signaling, production of nitric oxide and reactive oxygen species, and progression of colorectal cancer. BRB phytochemicals (e.g., ellagic acid, anthocyanins, oligosaccharides) and their gut bacterial metabolites (e.g., urolithin, protocatechuic acid, short-chain fatty acids) inhibited DNMT1 and DNMT3B activities in a cell-free assay. Our results suggest that BRBs' hypomethylating activities result from the combined effects of multiple BRB phytochemicals and their gut bacterial metabolites. Because similar substances are found in many plant products, our results with BRBs might also apply to commonly consumed fruits and vegetables.",
+      "abstract_text": "Recent studies have suggested that in addition to promoter region, DNA methylation in intragenic and intergenic regions also changes during physiological processes and disease. The current study showed that feeding of black raspberries (BRBs) to Apc Min mice suppressed colon and intestinal tumors. MBDCap-seq suggested that dietary BRBs hypomethylated promoter, intragenic, and intergenic regions. Annotation of those regions highlighted genes in pathways involved in immune regulation, inflammatory signaling, production of nitric oxide and reactive oxygen species, and progression of colorectal cancer. BRB phytochemicals (e.g., ellagic acid, anthocyanins, oligosaccharides) and their gut bacterial metabolites (e.g., urolithin, protocatechuic acid, short-chain fatty acids) inhibited DNMT1 and DNMT3B activities in a cell-free assay. Our results suggest that BRBs' hypomethylating activities result from the combined effects of multiple BRB phytochemicals and their gut bacterial metabolites. Because similar substances are found in many plant products, our results with BRBs might also apply to commonly consumed fruits and vegetables.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Recent studies have suggested that in addition to promoter region, DNA methylation in intragenic and intergenic regions also changes during physiological processes and disease. The current study showed that feeding of black raspberries (BRBs) to Apc Min mice suppressed colon and intestinal tumors. MBDCap-seq suggested that dietary BRBs hypomethylated promoter, intragenic, and intergenic regions. Annotation of those regions highlighted genes in pathways involved in immune regulation, inflammatory signaling, production of nitric oxide and reactive oxygen species, and progression of colorectal cancer. BRB phytochemicals (e.g., ellagic acid, anthocyanins, oligosaccharides) and their gut bacterial metabolites (e.g., urolithin, protocatechuic acid, short-chain fatty acids) inhibited DNMT1 and DNMT3B activities in a cell-free assay. Our results suggest that BRBs' hypomethylating activities result from the combined effects of multiple BRB phytochemicals and their gut bacterial metabolites. Because similar substances are found in many plant products, our results with BRBs might also apply to commonly consumed fruits and vegetables."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/34557678.json",
+      "timestamp": "2026-07-08T08:58:40.656122+00:00"
+    },
+    "33585467": {
+      "pmcid": "PMC6742548",
+      "pmid": "33585467",
+      "source": "pubmed",
+      "retrieval_query_id": "d55e5c9fa9fa3394",
+      "first_seen_query_id": "d55e5c9fa9fa3394",
+      "matched_query_ids": [
+        "d55e5c9fa9fa3394"
+      ],
+      "matched_query_groups": [
+        "entity_pair_core"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "d55e5c9fa9fa3394",
+        "query_string": "(reactive oxygen species cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "entity_pair_core",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species cancer biology) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "entity_pair_core",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1161/CIRCRESAHA.119.315529",
+      "title": "Effect of Metformin on Cardiac Metabolism and Longevity in Aged Female Mice.",
+      "journal": "Frontiers in cell and developmental biology",
+      "publication_year": "2020",
+      "abstract": "The antidiabetic drug metformin exerts pleiotropic effects on multiple organs, including the cardiovascular system. Evidence has shown that metformin improves healthspan and lifespan in male mice, yet its lifespan lengthening effect in females remains elusive. We herein demonstrated that metformin fails to extend the lifespan in female mice. Compared to 2-month-old young controls, 20-month-old female mice showed a spectrum of degenerative cardiac phenotypes alongside significant alterations in the extracellular matrix composition. Despite lowered reactive oxygen species production, long-term metformin treatment did not improve cardiac function in the aged female mice. In contrast, RNA sequencing analyses demonstrated that metformin treatment elevated the extracellular matrix-related gene while lowering oxidative phosphorylation-related gene expression in the heart. In addition, metformin treatment induced metabolic reprogramming that suppressed mitochondrial respiration but activated glycolysis (i.e., Warburg effect) in cultured primary cardiomyocytes and macrophages, thereby sustaining an inflammatory status and lowering ATP production. These findings suggest the unexpected detrimental effects of metformin on the regulation of cardiac homeostasis and longevity in female mice, reinforcing the significance of comprehensive testing prior to the translation of metformin-based novel therapies.",
+      "abstract_text": "The antidiabetic drug metformin exerts pleiotropic effects on multiple organs, including the cardiovascular system. Evidence has shown that metformin improves healthspan and lifespan in male mice, yet its lifespan lengthening effect in females remains elusive. We herein demonstrated that metformin fails to extend the lifespan in female mice. Compared to 2-month-old young controls, 20-month-old female mice showed a spectrum of degenerative cardiac phenotypes alongside significant alterations in the extracellular matrix composition. Despite lowered reactive oxygen species production, long-term metformin treatment did not improve cardiac function in the aged female mice. In contrast, RNA sequencing analyses demonstrated that metformin treatment elevated the extracellular matrix-related gene while lowering oxidative phosphorylation-related gene expression in the heart. In addition, metformin treatment induced metabolic reprogramming that suppressed mitochondrial respiration but activated glycolysis (i.e., Warburg effect) in cultured primary cardiomyocytes and macrophages, thereby sustaining an inflammatory status and lowering ATP production. These findings suggest the unexpected detrimental effects of metformin on the regulation of cardiac homeostasis and longevity in female mice, reinforcing the significance of comprehensive testing prior to the translation of metformin-based novel therapies.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "The antidiabetic drug metformin exerts pleiotropic effects on multiple organs, including the cardiovascular system. Evidence has shown that metformin improves healthspan and lifespan in male mice, yet its lifespan lengthening effect in females remains elusive. We herein demonstrated that metformin fails to extend the lifespan in female mice. Compared to 2-month-old young controls, 20-month-old female mice showed a spectrum of degenerative cardiac phenotypes alongside significant alterations in the extracellular matrix composition. Despite lowered reactive oxygen species production, long-term metformin treatment did not improve cardiac function in the aged female mice. In contrast, RNA sequencing analyses demonstrated that metformin treatment elevated the extracellular matrix-related gene while lowering oxidative phosphorylation-related gene expression in the heart. In addition, metformin treatment induced metabolic reprogramming that suppressed mitochondrial respiration but activated glycolysis (i.e., Warburg effect) in cultured primary cardiomyocytes and macrophages, thereby sustaining an inflammatory status and lowering ATP production. These findings suggest the unexpected detrimental effects of metformin on the regulation of cardiac homeostasis and longevity in female mice, reinforcing the significance of comprehensive testing prior to the translation of metformin-based novel therapies."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33585467.json",
+      "timestamp": "2026-07-08T08:58:41.601579+00:00"
+    },
+    "35014340": {
+      "pmcid": null,
+      "pmid": "35014340",
+      "source": "pubmed",
+      "retrieval_query_id": "5f66af5bef6334be",
+      "first_seen_query_id": "5f66af5bef6334be",
+      "matched_query_ids": [
+        "5f66af5bef6334be"
+      ],
+      "matched_query_groups": [
+        "mechanism_context"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "5f66af5bef6334be",
+        "query_string": "(reactive oxygen species molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "mechanism_context",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1021/acsabm.0c01322",
+      "title": "Phenylthiourea-Conjugated BODIPY as an Efficient Photosensitizer for Tyrosinase-Positive Melanoma-Targeted Photodynamic Therapy.",
+      "journal": "ACS applied bio materials",
+      "publication_year": "2021",
+      "abstract": "Melanoma is the most threatening form of metastatic skin cancer that develops from melanocytes and causes a large majority of deaths due to poor therapeutic prognosis. It has significant limitations in treatment because it shows great resistance to chemotherapy, radiotherapy, and other therapeutic methods. A noninvasive and clinically accepted therapeutic modality, photodynamic therapy (PDT), is a promising treatment option, but it is limitedly applied for melanoma skin cancer treatment. This is because most of the photosensitizers are unlikely to be expected to have a remarkable effect on melanoma due to drug efflux by melanin pigmentation and intrinsic antioxidant defense mechanisms. Moreover, melanin is a dominant absorber in the spectral region of 500-600 nm that can cause the decreased photoreaction efficiency of photosensitizers. Herein, to overcome these drawbacks, we have developed a phenylthiourea-conjugated BODIPY photosensitizer (PTUBDP) for tyrosinase-positive melanoma-targeted PDT. In light of our results, it exhibited an enhanced cytotoxic efficacy compared to BDP, a parallel PDT agent that absence of phenylthiourea unit. PTUBDP shows outstanding effects of increased oxidative stress by an enhanced cellular uptake of the tyrosinase positive melanoma cell line (B16F10). This work presents increased therapeutic efficacy through the combined therapeutic approach, enabling enhanced reactive oxygen species (ROS) generation as well as overcoming the critical limitations of melanoma.",
+      "abstract_text": "Melanoma is the most threatening form of metastatic skin cancer that develops from melanocytes and causes a large majority of deaths due to poor therapeutic prognosis. It has significant limitations in treatment because it shows great resistance to chemotherapy, radiotherapy, and other therapeutic methods. A noninvasive and clinically accepted therapeutic modality, photodynamic therapy (PDT), is a promising treatment option, but it is limitedly applied for melanoma skin cancer treatment. This is because most of the photosensitizers are unlikely to be expected to have a remarkable effect on melanoma due to drug efflux by melanin pigmentation and intrinsic antioxidant defense mechanisms. Moreover, melanin is a dominant absorber in the spectral region of 500-600 nm that can cause the decreased photoreaction efficiency of photosensitizers. Herein, to overcome these drawbacks, we have developed a phenylthiourea-conjugated BODIPY photosensitizer (PTUBDP) for tyrosinase-positive melanoma-targeted PDT. In light of our results, it exhibited an enhanced cytotoxic efficacy compared to BDP, a parallel PDT agent that absence of phenylthiourea unit. PTUBDP shows outstanding effects of increased oxidative stress by an enhanced cellular uptake of the tyrosinase positive melanoma cell line (B16F10). This work presents increased therapeutic efficacy through the combined therapeutic approach, enabling enhanced reactive oxygen species (ROS) generation as well as overcoming the critical limitations of melanoma.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Melanoma is the most threatening form of metastatic skin cancer that develops from melanocytes and causes a large majority of deaths due to poor therapeutic prognosis. It has significant limitations in treatment because it shows great resistance to chemotherapy, radiotherapy, and other therapeutic methods. A noninvasive and clinically accepted therapeutic modality, photodynamic therapy (PDT), is a promising treatment option, but it is limitedly applied for melanoma skin cancer treatment. This is because most of the photosensitizers are unlikely to be expected to have a remarkable effect on melanoma due to drug efflux by melanin pigmentation and intrinsic antioxidant defense mechanisms. Moreover, melanin is a dominant absorber in the spectral region of 500-600 nm that can cause the decreased photoreaction efficiency of photosensitizers. Herein, to overcome these drawbacks, we have developed a phenylthiourea-conjugated BODIPY photosensitizer (PTUBDP) for tyrosinase-positive melanoma-targeted PDT. In light of our results, it exhibited an enhanced cytotoxic efficacy compared to BDP, a parallel PDT agent that absence of phenylthiourea unit. PTUBDP shows outstanding effects of increased oxidative stress by an enhanced cellular uptake of the tyrosinase positive melanoma cell line (B16F10). This work presents increased therapeutic efficacy through the combined therapeutic approach, enabling enhanced reactive oxygen species (ROS) generation as well as overcoming the critical limitations of melanoma."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/35014340.json",
+      "timestamp": "2026-07-08T08:58:42.566949+00:00"
+    },
+    "33489797": {
+      "pmcid": "PMC4769825",
+      "pmid": "33489797",
+      "source": "pubmed",
+      "retrieval_query_id": "5f66af5bef6334be",
+      "first_seen_query_id": "5f66af5bef6334be",
+      "matched_query_ids": [
+        "5f66af5bef6334be"
+      ],
+      "matched_query_groups": [
+        "mechanism_context"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "5f66af5bef6334be",
+        "query_string": "(reactive oxygen species molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "mechanism_context",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species molecular mechanism cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "mechanism_context",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1080/14728222.2019.1559824",
+      "title": "Metformin reverses chemoresistance in non-small cell lung cancer via accelerating ubiquitination-mediated degradation of Nrf2.",
+      "journal": "Translational lung cancer research",
+      "publication_year": "2020",
+      "abstract": "BACKGROUND: The therapeutic efficacy of cisplatin-based chemotherapy for non-small cell lung cancer (NSCLC) is limited by drug resistance. In NSCLC, hyperactivation of nuclear factor erythroid 2-related factor 2 (Nrf2) counteracts oxidative stress to promote chemoresistance. Metformin-mediated downregulation of Nrf2 plays a pivotal role in overcoming drug resistance in NSCLC cells. Therefore, a deeper understanding of the molecular mechanisms of combination therapy and the role of Nrf2 in chemotherapeutic response is critical to clinical translation.\nMETHODS: The effects of combination therapy with metformin and cisplatin on cell proliferation and apoptosis, intracellular reactive oxygen species (ROS) levels, and xenograft tumor formation were analyzed in NSCLC cells. Co-immunoprecipitation (co-IP) and Phos-tag assays were used to explore the mechanism of metformin-mediated Nrf2 suppression. Immunohistochemical (IHC) staining was performed to detect Nrf2 expression in matched tumor samples before and after neoadjuvant chemotherapy.\nRESULTS: Metformin was observed to synergistically augment cisplatin-induced cytotoxicity by strongly inhibiting the level of Nrf2, thereby weakening the antioxidant system and detoxification ability of Nrf2 and enhancing ROS-mediated apoptosis in NSCLC. The synergistic antitumor effect of combination therapy is blocked by treatment with the ROS scavenger N-acetyl cysteine (NAC) as well as overexpression of Nrf2 and its downstream antioxidant protein. Mechanistically, metformin extensively dephosphorylates Nrf2 by attenuating the interaction between Nrf2 and extracellular signal-regulated kinases 1/2 (ERK1/2), which then restores its polyubiquitination and accelerates its proteasomal degradation. Moreover, for the first time, an association of non-decreased Nrf2 expression in patients after neoadjuvant chemotherapy with poor survival and chemoresistance in NSCLC was revealed.\nCONCLUSIONS: Our findings illustrate the mechanism of metformin-mediated Nrf2 degradation through posttranslational modifications (PTMs), which weakens the ROS defense system in NSCLC. Fluctuations in Nrf2 expression have a strong predictive ability for chemotherapeutic response in neoadjuvant NSCLC patients. Targeting of the Nrf2 pathway could be a therapeutic strategy for overcoming chemoresistance, with metformin as the first choice for this strategy.",
+      "abstract_text": "BACKGROUND: The therapeutic efficacy of cisplatin-based chemotherapy for non-small cell lung cancer (NSCLC) is limited by drug resistance. In NSCLC, hyperactivation of nuclear factor erythroid 2-related factor 2 (Nrf2) counteracts oxidative stress to promote chemoresistance. Metformin-mediated downregulation of Nrf2 plays a pivotal role in overcoming drug resistance in NSCLC cells. Therefore, a deeper understanding of the molecular mechanisms of combination therapy and the role of Nrf2 in chemotherapeutic response is critical to clinical translation.\nMETHODS: The effects of combination therapy with metformin and cisplatin on cell proliferation and apoptosis, intracellular reactive oxygen species (ROS) levels, and xenograft tumor formation were analyzed in NSCLC cells. Co-immunoprecipitation (co-IP) and Phos-tag assays were used to explore the mechanism of metformin-mediated Nrf2 suppression. Immunohistochemical (IHC) staining was performed to detect Nrf2 expression in matched tumor samples before and after neoadjuvant chemotherapy.\nRESULTS: Metformin was observed to synergistically augment cisplatin-induced cytotoxicity by strongly inhibiting the level of Nrf2, thereby weakening the antioxidant system and detoxification ability of Nrf2 and enhancing ROS-mediated apoptosis in NSCLC. The synergistic antitumor effect of combination therapy is blocked by treatment with the ROS scavenger N-acetyl cysteine (NAC) as well as overexpression of Nrf2 and its downstream antioxidant protein. Mechanistically, metformin extensively dephosphorylates Nrf2 by attenuating the interaction between Nrf2 and extracellular signal-regulated kinases 1/2 (ERK1/2), which then restores its polyubiquitination and accelerates its proteasomal degradation. Moreover, for the first time, an association of non-decreased Nrf2 expression in patients after neoadjuvant chemotherapy with poor survival and chemoresistance in NSCLC was revealed.\nCONCLUSIONS: Our findings illustrate the mechanism of metformin-mediated Nrf2 degradation through posttranslational modifications (PTMs), which weakens the ROS defense system in NSCLC. Fluctuations in Nrf2 expression have a strong predictive ability for chemotherapeutic response in neoadjuvant NSCLC patients. Targeting of the Nrf2 pathway could be a therapeutic strategy for overcoming chemoresistance, with metformin as the first choice for this strategy.",
+      "abstract_sections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The therapeutic efficacy of cisplatin-based chemotherapy for non-small cell lung cancer (NSCLC) is limited by drug resistance. In NSCLC, hyperactivation of nuclear factor erythroid 2-related factor 2 (Nrf2) counteracts oxidative stress to promote chemoresistance. Metformin-mediated downregulation of Nrf2 plays a pivotal role in overcoming drug resistance in NSCLC cells. Therefore, a deeper understanding of the molecular mechanisms of combination therapy and the role of Nrf2 in chemotherapeutic response is critical to clinical translation."
+        },
+        {
+          "label": "METHODS",
+          "text": "The effects of combination therapy with metformin and cisplatin on cell proliferation and apoptosis, intracellular reactive oxygen species (ROS) levels, and xenograft tumor formation were analyzed in NSCLC cells. Co-immunoprecipitation (co-IP) and Phos-tag assays were used to explore the mechanism of metformin-mediated Nrf2 suppression. Immunohistochemical (IHC) staining was performed to detect Nrf2 expression in matched tumor samples before and after neoadjuvant chemotherapy."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Metformin was observed to synergistically augment cisplatin-induced cytotoxicity by strongly inhibiting the level of Nrf2, thereby weakening the antioxidant system and detoxification ability of Nrf2 and enhancing ROS-mediated apoptosis in NSCLC. The synergistic antitumor effect of combination therapy is blocked by treatment with the ROS scavenger N-acetyl cysteine (NAC) as well as overexpression of Nrf2 and its downstream antioxidant protein. Mechanistically, metformin extensively dephosphorylates Nrf2 by attenuating the interaction between Nrf2 and extracellular signal-regulated kinases 1/2 (ERK1/2), which then restores its polyubiquitination and accelerates its proteasomal degradation. Moreover, for the first time, an association of non-decreased Nrf2 expression in patients after neoadjuvant chemotherapy with poor survival and chemoresistance in NSCLC was revealed."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Our findings illustrate the mechanism of metformin-mediated Nrf2 degradation through posttranslational modifications (PTMs), which weakens the ROS defense system in NSCLC. Fluctuations in Nrf2 expression have a strong predictive ability for chemotherapeutic response in neoadjuvant NSCLC patients. Targeting of the Nrf2 pathway could be a therapeutic strategy for overcoming chemoresistance, with metformin as the first choice for this strategy."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33489797.json",
+      "timestamp": "2026-07-08T08:58:43.932930+00:00"
+    },
+    "33348637": {
+      "pmcid": "PMC7359808",
+      "pmid": "33348637",
+      "source": "pubmed",
+      "retrieval_query_id": "77c0557650481f9c",
+      "first_seen_query_id": "77c0557650481f9c",
+      "matched_query_ids": [
+        "77c0557650481f9c"
+      ],
+      "matched_query_groups": [
+        "context_coverage"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "77c0557650481f9c",
+        "query_string": "(reactive oxygen species ROS generation redox signaling cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "context_coverage",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species ROS generation redox signaling cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1016/j.tips.2020.07.003",
+      "title": "Nrf2-A Molecular Target for Sepsis Patients in Critical Care.",
+      "journal": "Biomolecules",
+      "publication_year": "2020",
+      "abstract": "The transcription factor NF-E2 p45-related factor 2 (Nrf2) is an established master regulator of the anti-oxidative and detoxifying cellular response. Thus, a role in inflammatory diseases associated with the generation of large amounts of reactive oxygen species (ROS) seems obvious. In line with this, data obtained in cell culture experiments and preclinical settings have shown that Nrf2 is important in regulating target genes that are necessary to ensure cellular redox balance. Additionally, Nrf2 is involved in the induction of phase II drug metabolizing enzymes, which are important both in degrading and converting drugs into active forms, and into putative carcinogens. Therefore, Nrf2 has also been implicated in tumorigenesis. This must be kept in mind when new therapy approaches are planned for the treatment of sepsis. Therefore, this review highlights the function of Nrf2 in sepsis with a special focus on the translation of rodent-based results into sepsis patients in the intensive care unit (ICU).",
+      "abstract_text": "The transcription factor NF-E2 p45-related factor 2 (Nrf2) is an established master regulator of the anti-oxidative and detoxifying cellular response. Thus, a role in inflammatory diseases associated with the generation of large amounts of reactive oxygen species (ROS) seems obvious. In line with this, data obtained in cell culture experiments and preclinical settings have shown that Nrf2 is important in regulating target genes that are necessary to ensure cellular redox balance. Additionally, Nrf2 is involved in the induction of phase II drug metabolizing enzymes, which are important both in degrading and converting drugs into active forms, and into putative carcinogens. Therefore, Nrf2 has also been implicated in tumorigenesis. This must be kept in mind when new therapy approaches are planned for the treatment of sepsis. Therefore, this review highlights the function of Nrf2 in sepsis with a special focus on the translation of rodent-based results into sepsis patients in the intensive care unit (ICU).",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "The transcription factor NF-E2 p45-related factor 2 (Nrf2) is an established master regulator of the anti-oxidative and detoxifying cellular response. Thus, a role in inflammatory diseases associated with the generation of large amounts of reactive oxygen species (ROS) seems obvious. In line with this, data obtained in cell culture experiments and preclinical settings have shown that Nrf2 is important in regulating target genes that are necessary to ensure cellular redox balance. Additionally, Nrf2 is involved in the induction of phase II drug metabolizing enzymes, which are important both in degrading and converting drugs into active forms, and into putative carcinogens. Therefore, Nrf2 has also been implicated in tumorigenesis. This must be kept in mind when new therapy approaches are planned for the treatment of sepsis. Therefore, this review highlights the function of Nrf2 in sepsis with a special focus on the translation of rodent-based results into sepsis patients in the intensive care unit (ICU)."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33348637.json",
+      "timestamp": "2026-07-08T08:58:45.313329+00:00"
+    },
+    "33292042": {
+      "pmcid": "PMC7788447",
+      "pmid": "33292042",
+      "source": "pubmed",
+      "retrieval_query_id": "77c0557650481f9c",
+      "first_seen_query_id": "77c0557650481f9c",
+      "matched_query_ids": [
+        "77c0557650481f9c"
+      ],
+      "matched_query_groups": [
+        "context_coverage"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "77c0557650481f9c",
+        "query_string": "(reactive oxygen species ROS generation redox signaling cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "context_coverage",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species ROS generation redox signaling cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1080/15548627.2020.1860490",
+      "title": "ATM plays antioxidant, boosting mitophagy via denitrosylation.",
+      "journal": "Autophagy",
+      "publication_year": "2021",
+      "abstract": "Mitophagy is a selective process aimed at removing damaged or burned-out mitochondria; it is activated upon different stimuli and plays a fundamental role in preventing overproduction of reactive oxygen species (ROS) that might be generated by dysfunctional mitochondria. From this angle, mitophagy can be considered a fully-fledged antioxidant process. Such a surrogate antioxidant function is recently emerging, being shared among many molecular pathways and players that are usually not included among - and, formally, do not directly act as - antioxidants. ATM (ataxia telangiectasia mutated) is a prototype of this class of \"neglected\" antioxidants. In spite of its well-known role in DNA damage response, many phenotypes of ataxia telangiectasia (A-T) patients are, indeed, related to chronic oxidative stress, arguing for an additional antioxidant role of ATM. In a recent study, we discovered the mechanism through which ATM exerts antioxidant activity. In particular, we provided evidence that this involves ADH5/GSNOR (alcohol dehydrogenase 5 (class III), chi polypeptide), which, in turn, sustains mitophagy via PARK2 denitrosylation, and protects the cell from detrimental effects due to ROS.",
+      "abstract_text": "Mitophagy is a selective process aimed at removing damaged or burned-out mitochondria; it is activated upon different stimuli and plays a fundamental role in preventing overproduction of reactive oxygen species (ROS) that might be generated by dysfunctional mitochondria. From this angle, mitophagy can be considered a fully-fledged antioxidant process. Such a surrogate antioxidant function is recently emerging, being shared among many molecular pathways and players that are usually not included among - and, formally, do not directly act as - antioxidants. ATM (ataxia telangiectasia mutated) is a prototype of this class of \"neglected\" antioxidants. In spite of its well-known role in DNA damage response, many phenotypes of ataxia telangiectasia (A-T) patients are, indeed, related to chronic oxidative stress, arguing for an additional antioxidant role of ATM. In a recent study, we discovered the mechanism through which ATM exerts antioxidant activity. In particular, we provided evidence that this involves ADH5/GSNOR (alcohol dehydrogenase 5 (class III), chi polypeptide), which, in turn, sustains mitophagy via PARK2 denitrosylation, and protects the cell from detrimental effects due to ROS.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Mitophagy is a selective process aimed at removing damaged or burned-out mitochondria; it is activated upon different stimuli and plays a fundamental role in preventing overproduction of reactive oxygen species (ROS) that might be generated by dysfunctional mitochondria. From this angle, mitophagy can be considered a fully-fledged antioxidant process. Such a surrogate antioxidant function is recently emerging, being shared among many molecular pathways and players that are usually not included among - and, formally, do not directly act as - antioxidants. ATM (ataxia telangiectasia mutated) is a prototype of this class of \"neglected\" antioxidants. In spite of its well-known role in DNA damage response, many phenotypes of ataxia telangiectasia (A-T) patients are, indeed, related to chronic oxidative stress, arguing for an additional antioxidant role of ATM. In a recent study, we discovered the mechanism through which ATM exerts antioxidant activity. In particular, we provided evidence that this involves ADH5/GSNOR (alcohol dehydrogenase 5 (class III), chi polypeptide), which, in turn, sustains mitophagy via PARK2 denitrosylation, and protects the cell from detrimental effects due to ROS."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33292042.json",
+      "timestamp": "2026-07-08T08:58:45.976807+00:00"
+    },
+    "33115253": {
+      "pmcid": null,
+      "pmid": "33115253",
+      "source": "pubmed",
+      "retrieval_query_id": "77c0557650481f9c",
+      "first_seen_query_id": "77c0557650481f9c",
+      "matched_query_ids": [
+        "77c0557650481f9c"
+      ],
+      "matched_query_groups": [
+        "context_coverage"
+      ],
+      "matched_query_scopes": [
+        "neutral_discovery"
+      ],
+      "query_record": {
+        "query_id": "77c0557650481f9c",
+        "query_string": "(reactive oxygen species ROS generation redox signaling cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "source": "pubmed",
+        "purpose": "context_coverage",
+        "priority": 1,
+        "must_include": [],
+        "should_include": [],
+        "exclude_terms": [],
+        "year_from": 2000,
+        "year_to": 2020,
+        "max_results": 60,
+        "expected_domain": "general_biomedical",
+        "from_seed_triples": [],
+        "warnings": [],
+        "expected_prompt_profile": "general_biomedical_l1_v2",
+        "stage": "abstract_retrieval",
+        "precision_level": "medium",
+        "requires_open_access": false,
+        "requires_fulltext": false,
+        "expansion_sources": [],
+        "allowed_for_conflict_source": true,
+        "query": "(reactive oxygen species ROS generation redox signaling cancer) AND (\"2000/01/01\"[PDAT] : \"2020/12/31\"[PDAT])",
+        "paper_year_filter_enabled": true,
+        "paper_year_from": 2000,
+        "paper_year_to": 2020,
+        "temporal_role": "discovery",
+        "year_filter_applied_to_query": true,
+        "search_intent_mode": "neutral_discovery",
+        "search_intent_confidence": 0.9,
+        "query_group": "context_coverage",
+        "allowed_for_l1_acquisition": true,
+        "seed_subject_required": true,
+        "seed_object_required": false,
+        "passed_query_guard": true,
+        "passed_context_guard": true,
+        "context_strict": false,
+        "allowed_for_context_specific_core": true,
+        "context_terms_required": [],
+        "context_terms_matched": [],
+        "context_guard_reason": "neutral_discovery_context_coverage",
+        "query_scope": "neutral_discovery",
+        "coverage_only": false,
+        "pubmed_date_syntax": "pdat_range"
+      },
+      "doi": "10.1089/ars.2020.8125",
+      "title": "Roles of Ion Fluxes, Metabolism, and Redox Balance in Cancer Therapy.",
+      "journal": "Antioxidants & redox signaling",
+      "publication_year": "2021",
+      "abstract": "Recent Advances: The 2019 Nobel Prize awarded to the mechanisms for oxygen sensing and adaptation according to oxygen availability, highlighting the fundamental importance of gaseous molecules. Gaseous molecules, including reactive oxygen species (ROS), can interact with different cations generated during metabolic and redox dysregulation in cancer cells. Cross talk between calcium signaling and metabolic/redox pathways leads to network-based dyregulation in cancer. Significance: Recent discovery on using small molecules targeting the ion channels, redox signaling, and protein modification on metabolic enzymes can effectively inhibit cancer growth. Several FDA-approved drugs and clinical trials are ongoing to target the calcium channels, such as TRPV6 and TRPM8. Multiple small molecules from natural products target metablic and redox enzymes to exert an anticancer effect. Critical Issues: Small molecules targeting key ion channels, metabolic enzymes that control key aspects of metabolism, and redox proteins are promising, but their action mechanisms of the target are needed to be elucidated with advanced-omic technologies, which can give network-based and highly dimensioal data. In addition, small molecules that can directly modify the protein residues have emerged as a novel anticancer strategy. Future Directions: Advanced technology accelerates the detection of ions and metabolic and redox changes in clinical samples for diagnosis and informs the decision of cancer treatment. The improvement of ROS detection, ROS target identification, and computational-aid drug discovery also improves clincal outcome.Overall, network-based or holistic regulations of cancer via ion therapy and metabolic and redox intervention are promising as new anticancer strategies. Antioxid. Redox Signal. 34, 1108-1127.",
+      "abstract_text": "Recent Advances: The 2019 Nobel Prize awarded to the mechanisms for oxygen sensing and adaptation according to oxygen availability, highlighting the fundamental importance of gaseous molecules. Gaseous molecules, including reactive oxygen species (ROS), can interact with different cations generated during metabolic and redox dysregulation in cancer cells. Cross talk between calcium signaling and metabolic/redox pathways leads to network-based dyregulation in cancer. Significance: Recent discovery on using small molecules targeting the ion channels, redox signaling, and protein modification on metabolic enzymes can effectively inhibit cancer growth. Several FDA-approved drugs and clinical trials are ongoing to target the calcium channels, such as TRPV6 and TRPM8. Multiple small molecules from natural products target metablic and redox enzymes to exert an anticancer effect. Critical Issues: Small molecules targeting key ion channels, metabolic enzymes that control key aspects of metabolism, and redox proteins are promising, but their action mechanisms of the target are needed to be elucidated with advanced-omic technologies, which can give network-based and highly dimensioal data. In addition, small molecules that can directly modify the protein residues have emerged as a novel anticancer strategy. Future Directions: Advanced technology accelerates the detection of ions and metabolic and redox changes in clinical samples for diagnosis and informs the decision of cancer treatment. The improvement of ROS detection, ROS target identification, and computational-aid drug discovery also improves clincal outcome.Overall, network-based or holistic regulations of cancer via ion therapy and metabolic and redox intervention are promising as new anticancer strategies. Antioxid. Redox Signal. 34, 1108-1127.",
+      "abstract_sections": [
+        {
+          "label": "",
+          "text": "Recent Advances: The 2019 Nobel Prize awarded to the mechanisms for oxygen sensing and adaptation according to oxygen availability, highlighting the fundamental importance of gaseous molecules. Gaseous molecules, including reactive oxygen species (ROS), can interact with different cations generated during metabolic and redox dysregulation in cancer cells. Cross talk between calcium signaling and metabolic/redox pathways leads to network-based dyregulation in cancer. Significance: Recent discovery on using small molecules targeting the ion channels, redox signaling, and protein modification on metabolic enzymes can effectively inhibit cancer growth. Several FDA-approved drugs and clinical trials are ongoing to target the calcium channels, such as TRPV6 and TRPM8. Multiple small molecules from natural products target metablic and redox enzymes to exert an anticancer effect. Critical Issues: Small molecules targeting key ion channels, metabolic enzymes that control key aspects of metabolism, and redox proteins are promising, but their action mechanisms of the target are needed to be elucidated with advanced-omic technologies, which can give network-based and highly dimensioal data. In addition, small molecules that can directly modify the protein residues have emerged as a novel anticancer strategy. Future Directions: Advanced technology accelerates the detection of ions and metabolic and redox changes in clinical samples for diagnosis and informs the decision of cancer treatment. The improvement of ROS detection, ROS target identification, and computational-aid drug discovery also improves clincal outcome.Overall, network-based or holistic regulations of cancer via ion therapy and metabolic and redox intervention are promising as new anticancer strategies. Antioxid. Redox Signal. 34, 1108-1127."
+        }
+      ],
+      "abstract_available": true,
+      "metadata_source": "pubmed_xml",
+      "raw_path": "data/raw/abstracts/33115253.json",
+      "timestamp": "2026-07-08T08:58:46.832934+00:00"
     }
   }
 }

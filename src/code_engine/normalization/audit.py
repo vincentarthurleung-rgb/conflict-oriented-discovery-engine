@@ -30,16 +30,30 @@ class EntityResolutionAuditWriter:
         network_calls = api_calls = 0
 
         # Failure taxonomy accumulators
+        # --- Redefined provider eligibility ---
+        # provider_eligible = mention has at least one concrete external provider
+        # that actually attempted lookup (not just registered but returning "not_applicable")
+        CONCRETE_EXTERNAL_PROVIDERS = {
+            "PubChemCandidateProvider", "ChEMBLCandidateProvider",
+            "MyGeneCandidateProvider", "UniProtCandidateProvider",
+        }
         provider_eligible_count = 0
+        provider_ineligible_count = 0
+        provider_eligible_by_type: dict[str, int] = {}
         provider_ineligible_by_type: dict[str, int] = {}
+        provider_ineligible_reason_counts: dict[str, int] = {}
         provider_attempt_by_provider: dict[str, int] = {}
         provider_no_result_count = 0
         provider_ambiguous_count = 0
         provider_resolved_count = 0
         adjudicator_rejected_count = 0
-        top_unresolved_eligible: list[str] = []
-        top_unresolved_ineligible: list[str] = []
+        top_unresolved_eligible: list[dict[str, str]] = []
+        top_unresolved_ineligible: list[dict[str, str]] = []
         top_llm_cleaned_unverified: list[str] = []
+
+        # --- cleaner verified-but-rejected tracking ---
+        cleaner_verified_but_rejected_count = 0
+        top_cleaner_verified_but_rejected: list[dict[str, str]] = []
 
         for item in decisions:
             status = item.get("normalization_status", "unknown")
@@ -56,18 +70,40 @@ class EntityResolutionAuditWriter:
                 network_calls += int(trace.get("network_calls_made", 0))
                 api_calls += int(trace.get("api_calls_made", 0))
 
-            # Failure taxonomy
-            has_external_provider = any(
-                t.get("provider_name") in {"PubChemCandidateProvider", "ChEMBLCandidateProvider",
-                                             "MyGeneCandidateProvider", "UniProtCandidateProvider"}
-                for t in item.get("provider_trace", [])
-            )
+            # --- Redefined failure taxonomy: provider eligibility ---
+            # A mention is provider_eligible ONLY if at least one concrete external
+            # provider (PubChem/ChEMBL/MyGene/UniProt) was actually invoked
+            # (status != "not_applicable" and status != "not_needed").
+            # LocalCuratedProvider / LocalCacheProvider / NullProvider do NOT count.
+            provider_trace = item.get("provider_trace", [])
+            active_external_providers = [
+                t for t in provider_trace
+                if t.get("provider_name") in CONCRETE_EXTERNAL_PROVIDERS
+                and t.get("status") not in {"not_applicable", "not_needed"}
+            ]
+            has_active_external_provider = len(active_external_providers) > 0
+
             entity_type = request.get("l1_entity_type_hint", "unknown")
 
-            if has_external_provider:
+            if has_active_external_provider:
                 provider_eligible_count += 1
+                provider_eligible_by_type[entity_type] = provider_eligible_by_type.get(entity_type, 0) + 1
             else:
+                provider_ineligible_count += 1
                 provider_ineligible_by_type[entity_type] = provider_ineligible_by_type.get(entity_type, 0) + 1
+                # Determine ineligibility reason
+                has_external_but_not_applicable = any(
+                    t.get("provider_name") in CONCRETE_EXTERNAL_PROVIDERS
+                    and t.get("status") in {"not_applicable"}
+                    for t in provider_trace
+                )
+                if has_external_but_not_applicable:
+                    reason = "no_matching_provider_for_entity_type"
+                elif any(t.get("provider_name") in CONCRETE_EXTERNAL_PROVIDERS for t in provider_trace):
+                    reason = "external_provider_registered_but_not_invoked"
+                else:
+                    reason = "no_external_provider_registered"
+                provider_ineligible_reason_counts[reason] = provider_ineligible_reason_counts.get(reason, 0) + 1
 
             for trace in item.get("provider_trace", []):
                 pname = trace.get("provider_name", "")
@@ -76,10 +112,10 @@ class EntityResolutionAuditWriter:
 
             if status == "unresolved":
                 provider_no_result_count += 1
-                if has_external_provider and len(top_unresolved_eligible) < 20:
-                    top_unresolved_eligible.append(surface)
-                elif not has_external_provider and len(top_unresolved_ineligible) < 20:
-                    top_unresolved_ineligible.append(surface)
+                if has_active_external_provider and len(top_unresolved_eligible) < 20:
+                    top_unresolved_eligible.append({"surface": surface, "entity_type": entity_type})
+                elif not has_active_external_provider and len(top_unresolved_ineligible) < 20:
+                    top_unresolved_ineligible.append({"surface": surface, "entity_type": entity_type})
             elif status == "ambiguous":
                 provider_ambiguous_count += 1
             elif status in {"resolved_external_grounded", "resolved_curated", "resolved_cache"}:
@@ -91,9 +127,26 @@ class EntityResolutionAuditWriter:
             if status == "llm_suggestion_ungrounded" and len(top_llm_cleaned_unverified) < 20:
                 top_llm_cleaned_unverified.append(surface)
 
+            # Track cleaner verified-but-rejected decisions
+            decision_reason = item.get("decision_reason", "")
+            if "llm_cleaned" in decision_reason and status not in {
+                "resolved_external_grounded", "resolved_curated", "resolved_cache",
+            }:
+                cleaner_verified_but_rejected_count += 1
+                if len(top_cleaner_verified_but_rejected) < 20:
+                    top_cleaner_verified_but_rejected.append({
+                        "surface": surface,
+                        "entity_type": entity_type,
+                        "status": status,
+                        "decision_reason": decision_reason,
+                    })
+
         failure_taxonomy = {
             "entity_provider_eligible_count": provider_eligible_count,
+            "entity_provider_ineligible_count": provider_ineligible_count,
+            "provider_eligible_count_by_type": provider_eligible_by_type,
             "provider_ineligible_count_by_type": provider_ineligible_by_type,
+            "provider_ineligible_reason_counts": provider_ineligible_reason_counts,
             "provider_attempt_count_by_provider": provider_attempt_by_provider,
             "provider_no_result_count": provider_no_result_count,
             "provider_ambiguous_count": provider_ambiguous_count,
@@ -102,6 +155,10 @@ class EntityResolutionAuditWriter:
             "top_unresolved_provider_eligible_mentions": top_unresolved_eligible,
             "top_unresolved_provider_ineligible_mentions": top_unresolved_ineligible,
             "top_llm_cleaned_but_unverified_mentions": top_llm_cleaned_unverified,
+            "cleaner_verified_but_rejected_count": cleaner_verified_but_rejected_count,
+            "top_cleaner_verified_but_rejected_mentions": top_cleaner_verified_but_rejected,
+            "top_provider_ineligible_mentions": top_unresolved_ineligible[:20],
+            "top_provider_eligible_unresolved_mentions": top_unresolved_eligible[:20],
         }
 
         self.summary_path.write_text(json.dumps({

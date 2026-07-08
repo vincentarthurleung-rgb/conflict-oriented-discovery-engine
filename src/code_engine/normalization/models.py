@@ -62,3 +62,10 @@ class NormalizationDecision(CODEBaseModel):
     entity_resolution_status: str = "unresolved"
     requires_manual_review: bool = False
     audit_ref: str | None = None
+    # --- Cleaner integration fields ---
+    selected_source: str = ""  # "external_after_cleaning", "curated", "cache", "llm_unverified", etc.
+    selected_cleaned_surface: str = ""  # cleaned surface from LLM/deterministic cleaner
+    original_surface: str = ""  # original mention before any cleaning
+    external_verification_provider: str = ""  # provider name that verified the cleaned entity
+    rejection_reason: str = ""  # reason if adjudicator rejected
+    cleaner_trace: dict[str, Any] | None = None  # full cleaner audit trace

@@ -138,6 +138,22 @@ MODIFIER_PATTERNS: list[tuple[str, str]] = [
     (r"\bexpression\s+of\s+", "expression_modifier"),
     (r"\bthe\s+role\s+of\s+", "role_modifier"),
     (r"\bthe\s+(effect|effects|impact)\s+of\s+", "effect_modifier"),
+
+    # Drug/treatment modifiers
+    (r"\b([a-zA-Z][a-zA-Z0-9\-]+)\s+therapy\s*$", "therapy_suffix"),
+    (r"\btreatment\s+with\s+", "treatment_with_modifier"),
+    (r"\btherapeutic\s+effect\s+of\s+", "therapeutic_effect_of_modifier"),
+    (r"\bthe\s+treatment\s+effect\s+of\s+", "treatment_effect_of_modifier"),
+
+    # Dose/exposure modifiers
+    (r"\bhigh\s+doses?\s+of\s+(exogenous\s+)?", "high_doses_modifier"),
+    (r"\blow\s+(doses?|levels?)\s+of\s+(exogenous\s+)?", "low_doses_modifier"),
+    (r"\b(endogenous|exogenous)\s+or\s+(low|high)\s+levels?\s+of\s+(exogenous\s+)?", "endogenous_exogenous_level_modifier"),
+    (r"\bendogenous\s+levels?\s+of\s+", "endogenous_levels_modifier"),
+    (r"\bexogenous\s+", "exogenous_modifier"),
+
+    # inhibition of endogenous X production pattern
+    (r"\binhibition\s+of\s+endogenous\s+", "inhibition_of_endogenous_modifier"),
 ]
 
 # Known alias expansions (deterministic, no LLM)
@@ -168,25 +184,115 @@ KNOWN_ALIASES: dict[str, list[str]] = {
 }
 
 
-def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str]]:
-    """Deterministic pre-cleaning: remove common modifiers, extract head.
+def _is_drug_like(surface: str) -> bool:
+    """Heuristic check if a surface looks like a drug/compound name."""
+    import re
+    text = surface.strip()
+    # Common drug suffixes (kinase inhibitors, statins, ACE inhibitors, etc.)
+    if re.search(r"(mab|nib|mib|zomib|tinib|parib|stat|pril|olol|pine|done|zepam|profen|oxacin|cycline|mycin|platin|sert|triptyline|oxetine|prazole|sartan|dipine|afil|vir|mide|zine)\b", text, re.IGNORECASE):
+        return True
+    # Numeric-containing compound patterns like SB203580
+    if re.search(r"[A-Z]{2,}\d+", text):
+        return True
+    # Hyphenated small molecule
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9\-]{2,30}$", text) and "-" in text:
+        return True
+    # Long lowercase drug names (>8 chars, typically generic drug names)
+    if re.match(r"^[a-z]{8,}$", text):
+        return True
+    return False
 
-    Returns (cleaned_surface, removed_modifiers, found_aliases).
+
+def _is_compound_metabolite_like(surface: str) -> bool:
+    """Heuristic check if a surface looks like a compound/metabolite."""
+    import re
+    text = surface.strip()
+    # Simple chemical formulas: H2S, H2O2, NO, CO2, etc.
+    if re.fullmatch(r"[A-Z][a-z]?\d*(?:[A-Z][a-z]?\d*)*", text) and len(text) <= 5:
+        return True
+    # Common metabolites
+    if text.casefold() in {"h2s", "no", "co", "co2", "h2o2", "ros", "atp", "gtp", "nadph", "nadh", "fadh2", "camp", "cgmp"}:
+        return True
+    return False
+
+
+def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]:
+    """Deterministic pre-cleaning: remove common modifiers, extract head,
+    extract parenthetical aliases, decompose pathways.
+
+    Returns (cleaned_surface, removed_modifiers, found_aliases, extra_heads).
     """
     import re
     original = surface.strip()
     cleaned = original
     removed: list[str] = []
     found_aliases: list[str] = []
+    extra_heads: list = []
 
-    # Apply modifier patterns
+    # Step 0: Parenthetical alias extraction
+    # Pattern: "primary_name (ABBREV, ...)" or "primary_name (ABBREV)"
+    paren_match = re.match(r"^(.+?)\s*\(([A-Z0-9][A-Z0-9,\-\s]+)\)\s*$", cleaned)
+    if paren_match:
+        main_name = paren_match.group(1).strip()
+        alias_part = paren_match.group(2).strip()
+        paren_aliases = [a.strip() for a in re.split(r"[,;]", alias_part) if a.strip()]
+        cleaned_paren_aliases = []
+        for a in paren_aliases:
+            if re.fullmatch(r"[A-Z]", a):
+                continue
+            cleaned_paren_aliases.append(a)
+        found_aliases.extend(cleaned_paren_aliases)
+        cleaned = main_name
+
+    # Step 1: Apply modifier patterns
     for pattern, desc in MODIFIER_PATTERNS:
         m = re.match(pattern, cleaned, re.IGNORECASE)
         if m:
+            # Special handling for drug therapy pattern: "X therapy" -> "X"
+            if desc == "therapy_suffix" and _is_drug_like(m.group(1)):
+                removed.append("therapy_suffix_stripped")
+                cleaned = m.group(1).strip()
+                break
+            # Special handling for inhibition of endogenous X production
+            if desc == "inhibition_of_endogenous_modifier":
+                removed.append(desc)
+                inner = cleaned[m.end():].strip()
+                inner = re.sub(r"\s+production\s*$", "", inner, flags=re.IGNORECASE).strip()
+                if _is_compound_metabolite_like(inner):
+                    cleaned = inner
+                else:
+                    cleaned = inner
+                break
             removed.append(desc)
             cleaned = cleaned[m.end():].strip()
 
-    # Check known aliases
+    # Step 2: Pathway decomposition
+    pathway_match = re.match(
+        r"^([A-Z][A-Za-z0-9]+(?:[-/][A-Z][A-Za-z0-9]+)+)\s+(?:(?:signalling|signaling)\s+)?pathway\s*$",
+        cleaned, re.IGNORECASE
+    )
+    if pathway_match:
+        components_str = pathway_match.group(1)
+        raw_components = re.split(r"[-/]", components_str)
+        for comp in raw_components:
+            comp = comp.strip()
+            if comp and len(comp) >= 2 and re.match(r"^[A-Z]", comp):
+                comp_type = "gene" if re.fullmatch(r"[A-Z][A-Z0-9]{1,8}", comp) else "compound"
+                extra_heads.append(CleanedHeadEntity(
+                    surface=comp,
+                    aliases=[],
+                    entity_type=comp_type,
+                    ontology_routes=_route_entity_type(comp_type),
+                    removed_modifiers=["pathway_component_decomposition"],
+                    confidence=0.55,
+                    rationale_short=f"extracted from pathway: {original}",
+                ))
+
+    # Step 3: Post-processing
+    # Strip trailing "production" if present after other cleaning
+    cleaned = re.sub(r"\s+production\s*$", "", cleaned, flags=re.IGNORECASE).strip()
+
+    # Step 4: Check known aliases
     cleaned_lower = cleaned.casefold()
     for canonical, aliases in KNOWN_ALIASES.items():
         if cleaned_lower == canonical.casefold():
@@ -198,7 +304,7 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str]]:
                 found_aliases.extend(a for a in aliases if a.casefold() != cleaned_lower)
                 break
 
-    return cleaned, removed, found_aliases
+    return cleaned, removed, found_aliases, extra_heads
 
 
 def _infer_entity_type_heuristic(surface: str, l1_hint: str | None = None) -> str:
@@ -340,6 +446,10 @@ class LLMEntityCleaner:
         self.external_verified_after_cleaning_count: int = 0
         self.external_lookup_after_cleaning_calls: int = 0
 
+        # cleaner_verified_but_rejected tracking
+        self.cleaner_verified_but_rejected_count: int = 0
+        self._rejected_mentions: list[dict[str, Any]] = []
+
         # Audit records
         self._audit_records: list[dict[str, Any]] = []
 
@@ -356,6 +466,8 @@ class LLMEntityCleaner:
             "entity_llm_suggested_unverified_count": self.suggested_unverified_count,
             "entity_external_verified_after_llm_cleaning_count": self.external_verified_after_cleaning_count,
             "entity_external_lookup_after_cleaning_calls_made": self.external_lookup_after_cleaning_calls,
+            "cleaner_verified_but_rejected_count": self.cleaner_verified_but_rejected_count,
+            "top_cleaner_verified_but_rejected_mentions": self._rejected_mentions[:20],
         }
 
     # ------------------------------------------------------------------
@@ -412,7 +524,7 @@ class LLMEntityCleaner:
             )
 
         # Step 1: Deterministic pre-cleaning (always runs, even without LLM)
-        cleaned_surface, removed_mods, found_aliases = _deterministic_clean(mention)
+        cleaned_surface, removed_mods, found_aliases, extra_heads = _deterministic_clean(mention)
 
         # Step 2: Try LLM if available
         llm_heads: list[CleanedHeadEntity] = []
@@ -443,7 +555,7 @@ class LLMEntityCleaner:
             merged_heads = self._merge_heads(llm_heads, removed_mods, found_aliases)
             self.cleaned_count += 1
             status = "cleaned" if not llm_warnings else "cleaned_with_warnings"
-        elif cleaned_surface != mention or found_aliases:
+        elif cleaned_surface != mention or found_aliases or extra_heads:
             # Deterministic only produced improvements
             merged_heads = [
                 CleanedHeadEntity(
@@ -458,6 +570,8 @@ class LLMEntityCleaner:
                     rationale_short="deterministic_pre_cleaning_only",
                 )
             ]
+            # Append extra heads from pathway decomposition etc.
+            merged_heads.extend(extra_heads)
             self.cleaned_count += 1
             status = "cleaned_with_warnings"
             if not llm_warnings:
@@ -693,6 +807,13 @@ class LLMEntityCleaner:
                 "pending": sum(1 for r in self._audit_records if not r.get("external_verification_result")),
             },
             "high_confidence_allowed_count": sum(1 for r in self._audit_records if r.get("high_confidence_graph_allowed")),
+            "cleaner_verified_but_rejected_count": self.cleaner_verified_but_rejected_count,
+            "top_cleaner_verified_but_rejected_mentions": self._rejected_mentions[:20],
+            "accepted_after_cleaning_count": sum(
+                1 for r in self._audit_records
+                if r.get("external_verification_result") == "verified"
+                and r.get("high_confidence_graph_allowed")
+            ),
         }
         summary_path = artifacts_dir / "entity_llm_cleaner_summary.json"
         summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -719,6 +840,15 @@ class LLMEntityCleaner:
                     self.suggested_unverified_count += 1
                 elif verification_result == "verified":
                     self.external_verified_after_cleaning_count += 1
+                    # Track verified-but-rejected
+                    if not high_confidence_allowed:
+                        self.cleaner_verified_but_rejected_count += 1
+                        self._rejected_mentions.append({
+                            "original_mention": original_mention,
+                            "verification_result": verification_result,
+                            "final_decision": final_decision,
+                            "rejection_reason": rejection_reason or "unknown",
+                        })
                 break
 
 
