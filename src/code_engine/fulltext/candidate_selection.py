@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from code_engine.fulltext.candidate_bridge import canonical_fulltext_candidates
+
 
 @dataclass(frozen=True)
 class FulltextSelectionPolicy:
@@ -103,9 +105,12 @@ def select_conflict_related_papers(artifacts_dir: str | Path, *, include_near_co
     root = Path(artifacts_dir)
     selected: dict[str, dict] = {}
     sources: list[str] = []
-    discovery = _read_jsonl(root / "fulltext_discovery_escalation_candidates.jsonl") or _read_jsonl(root / "fulltext_escalation_candidates.jsonl")
+    discovery, _conflicts = canonical_fulltext_candidates(root)
     if discovery:
-        sources.append("fulltext_discovery_escalation_candidates.jsonl")
+        for paper in discovery:
+            for source_file in paper.get("source_files") or ["fulltext_candidate_bridge"]:
+                if source_file not in sources:
+                    sources.append(source_file)
     for paper in discovery:
         key = str(paper.get("paper_id") or paper.get("pmid") or paper.get("canonical_paper_id") or "")
         if key:

@@ -1072,16 +1072,27 @@ def run_fulltext_availability_step(*, run_dir: Path, l1_mode: str = "abstract_sc
                                    fulltext_availability_resolver: Any | None = None, **_: Any) -> StepResult:
     from code_engine.acquisition.fulltext_availability import resolve_fulltext_availability
     from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
+    from code_engine.fulltext.candidate_bridge import (
+        availability_summary_from_bridge,
+        canonical_fulltext_candidates,
+        write_candidate_bridge_audit,
+        write_pmcid_integrity_audit,
+    )
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"} and enable_fulltext_escalation
-    candidates = _read_jsonl(run_dir / "artifacts/fulltext_escalation_candidates.jsonl") if enabled else []
-    records = resolve_fulltext_availability(candidates, resolver=fulltext_availability_resolver)
+    artifacts = run_dir / "artifacts"
+    candidates, pmcid_conflicts = canonical_fulltext_candidates(artifacts) if enabled else ([], [])
+    if enabled and not candidates:
+        candidates = _read_jsonl(run_dir / "artifacts/fulltext_escalation_candidates.jsonl")
+    write_pmcid_integrity_audit(artifacts, pmcid_conflicts)
+    eligible = [item for item in candidates if item.get("pmcid") and item.get("pmcid_integrity_status", "ok") == "ok"]
+    records = resolve_fulltext_availability(eligible, resolver=fulltext_availability_resolver)
     record_path = run_dir / "artifacts/fulltext_availability_records.jsonl"
     summary_path = run_dir / "artifacts/fulltext_availability_summary.json"
     atomic_write_jsonl(record_path, iter(records))
-    summary = {"enabled": enabled, "candidate_count": len(candidates),
-               "available_count": sum(bool(item.get("fulltext_available")) for item in records),
-               "unavailable_count": sum(not bool(item.get("fulltext_available")) for item in records),
-               "after_conflict_screening": True, "open_access_required": True}
+    availability_by_id = {str(item.get("paper_id") or item.get("pmid") or ""): {"oa_status": "available" if item.get("fulltext_available") else "unavailable"} for item in records}
+    audit_rows = write_candidate_bridge_audit(artifacts, candidates, case_id=run_dir.name, availability_by_id=availability_by_id)
+    summary = {**availability_summary_from_bridge(candidates, audit_rows, enabled=enabled, retrieval_results=[]),
+               "after_conflict_screening": True}
     atomic_write_json(summary_path, summary)
     return StepResult(status="completed" if enabled else "skipped", summary=summary,
                       artifacts={"fulltext_availability_records": str(record_path), "fulltext_availability_summary": str(summary_path)},

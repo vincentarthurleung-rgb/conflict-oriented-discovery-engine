@@ -5,6 +5,13 @@ import os
 from pathlib import Path
 from typing import Callable
 
+from code_engine.fulltext.candidate_bridge import (
+    availability_summary_from_bridge,
+    canonical_fulltext_candidates,
+    normalize_pmcid,
+    write_candidate_bridge_audit,
+    write_pmcid_integrity_audit,
+)
 from code_engine.fulltext.candidate_selection import classify_oa_candidate, select_conflict_related_papers
 from code_engine.fulltext.conflict_confirmation import confirm_fulltext_conflicts
 from code_engine.fulltext.l1_extraction import extract_fulltext_claims
@@ -118,6 +125,8 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     selection = select_conflict_related_papers(artifacts, include_near_conflicts=include_near_conflicts, max_papers=max_papers) if enabled else {
         "candidate_papers": [], "status": "not_enabled", "message": "Full-text confirmation is disabled by case policy."}
     candidates = selection["candidate_papers"]
+    canonical_candidates, pmcid_conflicts = canonical_fulltext_candidates(artifacts)
+    write_pmcid_integrity_audit(artifacts, pmcid_conflicts)
     discovery_path = artifacts / "fulltext_discovery_escalation_candidates.jsonl"
     discovery_count = sum(bool(line.strip()) for line in discovery_path.read_text(encoding="utf-8").splitlines()) if discovery_path.is_file() else 0
     handoff = {"fulltext_escalation_candidate_count": discovery_count, "l35_candidate_paper_count": len(candidates),
@@ -126,6 +135,10 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     empty_counts = _counts(candidates)
     if not enabled or not candidates:
         status = "not_enabled" if not enabled else "completed_no_candidates"
+        bridge_candidates = canonical_candidates if canonical_candidates else candidates
+        bridge_audit = write_candidate_bridge_audit(artifacts, bridge_candidates, case_id=run.name)
+        _write_json(artifacts / "fulltext_availability_summary.json",
+                    availability_summary_from_bridge(bridge_candidates, bridge_audit, enabled=enabled, retrieval_results=[]))
         summary = {"status": status, "candidate_paper_count": 0, **empty_counts, "pmcid_resolved_count": 0,
             "oa_available_count": 0, "fulltext_downloaded_count": 0, "fulltext_l1_claim_count": 0,
             "fulltext_confirmed_conflict_count": 0, "copyright_safe": True, "non_oa_skipped_count": 0,
@@ -141,15 +154,35 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     resolved: list[dict] = []; availability_by_id: dict[str, dict] = {}
     cache = artifacts / "cache/pmc_idconv"; fulltext_root = artifacts / "fulltext/pmc_oa"
     classified: list[dict] = []
+    runtime_pmcid_conflicts: list[dict] = []
     for paper in candidates:
+        if paper.get("pmcid_integrity_status") in {"missing", "conflict"}:
+            classified.append(classify_oa_candidate(paper, oa_available=False))
+            continue
         identity = resolve_pmcid(paper, network_enabled=network_enabled, cache_dir=cache, transport=id_transport); resolved.append(identity)
-        enriched = {**paper, "pmcid": identity.get("pmcid") or paper.get("pmcid")}
+        original_pmcid = normalize_pmcid(paper.get("pmcid"))
+        resolved_pmcid = normalize_pmcid(identity.get("pmcid"))
+        if original_pmcid and resolved_pmcid and original_pmcid != resolved_pmcid:
+            runtime_pmcid_conflicts.append({
+                "pmid": paper.get("pmid"),
+                "title": paper.get("title"),
+                "candidate_pmcids": sorted({original_pmcid, resolved_pmcid}),
+                "source_files": paper.get("source_files") or ["pmc_id_converter_api"],
+                "selected_pmcid": None,
+                "resolution_rule": "idconv_mismatch_blocks_retrieval",
+                "action_taken": "skipped_retrieval_until_resolved",
+            })
+            classified.append(classify_oa_candidate({**paper, "pmcid": None, "pmcid_integrity_status": "conflict", "skip_reason": "pmcid_conflict"}, oa_available=False))
+            continue
+        enriched = {**paper, "pmcid": resolved_pmcid or original_pmcid}
         oa = check_oa_availability(enriched["pmcid"], network_enabled=network_enabled, transport=oa_transport) if enriched.get("pmcid") else {"oa_status": "unavailable", "reason": "no_pmcid", "decision": "skip_no_resource"}
         key = str(enriched.get("paper_id") or enriched.get("pmid")); availability_by_id[key] = oa
         classified.append(classify_oa_candidate(enriched, oa_available=oa.get("oa_status") == "available"))
     quota = max(0, min(max_papers, int(selection.get("max_fulltext_papers", max_papers))))
     selected_ids = set([str(x.get("paper_id") or x.get("pmid")) for x in classified if x.get("relevance_passed") and x.get("oa_available")][:quota])
     classified = [classify_oa_candidate(x, oa_available=bool(x.get("oa_available")), selected=str(x.get("paper_id") or x.get("pmid")) in selected_ids) for x in classified]
+    if runtime_pmcid_conflicts:
+        write_pmcid_integrity_audit(artifacts, pmcid_conflicts + runtime_pmcid_conflicts)
     _write_jsonl(artifacts / "l35_fulltext_candidate_papers.jsonl", classified)
     executable = [x for x in classified if x.get("selected_for_fulltext_l1")]
     _write_jsonl(artifacts / "l35_fulltext_oa_candidate_papers.jsonl", executable)
@@ -163,12 +196,18 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
             claims += extract_fulltext_claims(paper, article, extractor=extractor, provider=os.getenv("L1_PROVIDER"), model=os.getenv("MODEL_NAME"))
     diagnostics=[]
     result_by_id={str(x.get("paper_id") or x.get("pmid")):x for x in results}
-    for paper in executable:
+    for paper in classified:
+        if not (paper.get("pmcid") and paper.get("pmcid_integrity_status", "ok") == "ok"):
+            continue
         key=str(paper.get("paper_id") or paper.get("pmid"));oa=availability_by_id.get(key,{}) ;result=result_by_id.get(key,{})
         diagnostics.append({"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),
             "oa_metadata_available":oa.get("oa_status")=="available","resource_candidates":oa.get("download_resources",[]),
-            "selected_resource":oa.get("selected_resource"),"blocking_reason":result.get("reason") if result.get("full_text_status")!="available" else None})
+            "selected_resource":oa.get("selected_resource"),"blocking_reason":(result.get("reason") or oa.get("reason")) if result.get("full_text_status")!="available" else None})
     _write_jsonl(artifacts / "l35_fulltext_oa_resource_diagnostics.jsonl",diagnostics)
+    bridge_audit = write_candidate_bridge_audit(artifacts, classified, case_id=run.name,
+                                                availability_by_id=availability_by_id, retrieval_by_id=result_by_id)
+    _write_json(artifacts / "fulltext_availability_summary.json",
+                availability_summary_from_bridge(classified, bridge_audit, enabled=enabled, retrieval_results=results))
     l1_summary = {"fulltext_l1_status": "skipped", "api_calls_made": 0, "limit_hit": False}
     if extractor is None and executable:
         from code_engine.fulltext.fulltext_l1_extractor import run_fulltext_l1_extraction

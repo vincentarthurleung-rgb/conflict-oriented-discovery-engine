@@ -7,6 +7,14 @@ header{height:64px;background:#102f34;color:white;display:flex;align-items:cente
 .brand span{display:block;font-size:10px;font-weight:450;letter-spacing:.04em;color:#a8d9d5}
 header input{flex:1;max-width:600px;border:1px solid #416268;border-radius:9px;background:#183b41;color:white;padding:10px 13px}
 header select{max-width:260px;background:#183b41;color:white;border:1px solid #416268;border-radius:8px;padding:9px}
+.mode-switch{display:flex;align-items:center;gap:4px;flex-shrink:0;background:#183b41;border:1px solid #416268;border-radius:8px;padding:4px 6px}
+.mode-switch span{font-size:11px;color:#a8d9d5;margin-right:2px}
+.mode-switch button{border:0;background:transparent;color:#c7dcdf;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;white-space:nowrap}
+.mode-switch button.active{background:#dff2f0;color:#102f34;font-weight:700}
+.mode-help{margin-top:12px;padding:9px 12px;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--muted);font-size:13px}
+[data-atlas-mode="pharma"] .developer-only,[data-atlas-mode="pharma"] .reviewer-only{display:none!important}
+[data-atlas-mode="reviewer"] .developer-only,[data-atlas-mode="reviewer"] .pharma-only{display:none!important}
+[data-atlas-mode="developer"] .pharma-only-lite{display:none!important}
 .shell{display:grid;grid-template-columns:190px minmax(500px,1fr) 0;min-height:calc(100vh - 100px);transition:.2s}
 .shell.panel-open{grid-template-columns:190px minmax(500px,1fr) minmax(340px,32vw)}
 nav{background:#16383d;padding:22px 12px}
@@ -53,6 +61,19 @@ h4{margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06e
 .chain-edge{color:var(--teal);font-size:12px}
 .evidence{border-left:3px solid #6db1aa;padding:10px 13px;margin:10px 0;background:#f7fbfb;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
 .evidence blockquote{margin:4px 0;font-style:italic;color:#3a5054}
+.pharma-card{border-color:#c9e4df;background:#fbfefd}
+.pharma-label{font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:8px}
+.mechanism-card{border-left:4px solid var(--teal)}
+.mechanism-card p{margin:10px 0;color:#324b50}
+.evidence-reading-card{background:#fff;border:1px solid var(--line);border-left:4px solid #6db1aa;border-radius:var(--radius-sm);padding:14px 16px}
+.review-workbench-card{background:#f7fbfb;border:1px solid #c9e4df;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;color:#324b50}
+.pharma-judgment-lite{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.pharma-judgment-lite span{font-size:12px;color:var(--muted);font-weight:700}
+.pharma-judgment-lite button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 10px;cursor:pointer;font-size:12px}
+.pharma-judgment-lite button:hover{border-color:var(--teal);background:var(--cyan)}
+.developer-details{margin-top:12px;border:1px dashed #9aaeb3;border-radius:var(--radius-sm);background:#f8fafb;padding:8px 10px}
+.developer-details summary{cursor:pointer;font-size:12px;font-weight:700;color:#526b70}
+.developer-details pre{white-space:pre-wrap;word-break:break-word;font-size:11px;max-height:320px;overflow:auto;background:#102f34;color:#e9f5f3;border-radius:6px;padding:10px}
 .empty,.loading{color:var(--muted);padding:30px;text-align:center}
 .error{background:var(--red);padding:14px;border-radius:var(--radius-sm);color:#8b3f35}
 .button{border:0;border-radius:7px;background:var(--teal);color:white;padding:7px 11px;cursor:pointer;text-decoration:none;font-size:13px;display:inline-block}

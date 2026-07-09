@@ -168,7 +168,6 @@ KNOWN_ALIASES: dict[str, list[str]] = {
     "nuclear factor kappa B": ["NF-κB", "NF-kB", "NFKB"],
     "phosphatidylinositol 3-kinase": ["PI3K", "PI3 kinase"],
     "protein kinase B": ["AKT", "PKB"],
-    "mechanistic target of rapamycin": ["mTOR", "FRAP1"],
     "signal transducer and activator of transcription 3": ["STAT3"],
     "hypoxia-inducible factor 1 alpha": ["HIF-1α", "HIF1A", "HIF-1alpha"],
     "interleukin 6": ["IL-6", "IL6"],

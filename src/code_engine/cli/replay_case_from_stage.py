@@ -1,6 +1,6 @@
 """Replay downstream case stages from immutable upstream checkpoints."""
 from __future__ import annotations
-import argparse,json,shutil
+import argparse,json,os,shutil
 from datetime import datetime,timezone
 from pathlib import Path
 from code_engine.cli.export_case_bundle import export_case_bundle
@@ -40,8 +40,22 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     seed_provenance=synchronize_seed_metadata(target)
     if skip_l7:(artifacts/"l7_external_validation_summary.json").write_text(json.dumps({"status":"skipped","executed_validators":[],"skipped_validators":["all"],"reason":"stage_replay_skip_l7","network_used":network},indent=2)+"\n")
     if skip_fulltext:
+        from code_engine.fulltext.candidate_bridge import availability_summary_from_bridge,canonical_fulltext_candidates,write_candidate_bridge_audit,write_pmcid_integrity_audit
+        bridge_candidates,pmcid_conflicts=canonical_fulltext_candidates(artifacts)
+        write_pmcid_integrity_audit(artifacts,pmcid_conflicts)
+        bridge_audit=write_candidate_bridge_audit(artifacts,bridge_candidates,case_id=profile.case_id)
+        (artifacts/"fulltext_availability_summary.json").write_text(json.dumps(availability_summary_from_bridge(bridge_candidates,bridge_audit,enabled=True,retrieval_results=[]),indent=2)+"\n")
         (artifacts/"l35_fulltext_retrieval_summary.json").write_text(json.dumps({"status":"planned_discovery_escalation","reason":"offline_replay_selected_candidates_without_acquisition","network_used":network,"candidate_paper_count":discovery["fulltext_escalation_candidate_count"],"fulltext_escalation_mode":discovery["fulltext_escalation_mode"],"fulltext_escalation_candidate_count":discovery["fulltext_escalation_candidate_count"]},indent=2)+"\n")
         for name in ("l35_fulltext_l1_summary.json","l35_fulltext_conflict_confirmation_summary.json"):(artifacts/name).write_text(json.dumps({"status":"skipped","reason":"stage_replay_no_llm_no_network","network_used":network},indent=2)+"\n")
+    else:
+        from code_engine.fulltext.discovery_escalation import discovery_escalation_expected,finalize_discovery_escalation,prepare_discovery_escalation
+        from code_engine.fulltext.stage import run_l35_pmc_oa_stage
+        expected=discovery_escalation_expected(fulltext_enabled=True,network_enabled=network,discovery_mode=True,
+            weak_count=discovery["weak_conflict_candidate_count"],escalation_count=discovery["fulltext_escalation_candidate_count"],reviewable_count=discovery["reviewable_graph_observation_count"])
+        prepared=prepare_discovery_escalation(target,enabled=True)
+        shared_fulltext=run_l35_pmc_oa_stage(target,enabled=True,network_enabled=network,api_enabled=api,l1_client=None,l1_provider=os.getenv("L1_PROVIDER"),l1_model=os.getenv("MODEL_NAME"))
+        finalize_discovery_escalation(target,prepared=prepared,expected=expected,explicitly_disabled=False,shared_summary=shared_fulltext,strict_conflict_count=0)
+        rerun.append("l35_fulltext")
     audit_result=l2_audit(target);write_l2_audit(audit_result,artifacts)
     # --- read entity resolution audit to capture actual network call counts ---
     entity_audit_path = artifacts / "entity_resolution_audit.json"
