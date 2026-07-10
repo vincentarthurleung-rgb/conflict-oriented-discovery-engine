@@ -73,7 +73,7 @@ class PMCResourceFormatTests(unittest.TestCase):
     def test_archive_parse_mocked_l1_and_discovery_reentry(self):
         with tempfile.TemporaryDirectory() as td:
             run=Path(td);artifacts=run/"artifacts";artifacts.mkdir()
-            candidate={"paper_id":"paper-x","pmid":"paper-x","pmcid":"PMC-X","selection_score":.9,"anchor_strength":"strong","selection_source":"anchored_reviewable","linked_observation_ids":["abstract-x"]}
+            candidate={"paper_id":"paper-x","pmid":"paper-x","pmcid":"PMC-X","pmcid_verification_status":"verified","selection_score":.9,"anchor_strength":"strong","selection_source":"anchored_reviewable","linked_observation_ids":["abstract-x"]}
             (artifacts/"fulltext_discovery_escalation_candidates.jsonl").write_text(json.dumps(candidate)+"\n")
             (artifacts/"semantic_search_intent.json").write_text(json.dumps({"seed_triple":{"subject":{"name":"specific mechanism"},"object":{"name":"measured target"},"context":{}}}))
             (artifacts/"search_plan_replay.json").write_text(json.dumps({"enabled":True}));(artifacts/"intake.json").write_text("{}")

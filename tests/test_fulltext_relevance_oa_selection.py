@@ -36,8 +36,8 @@ class RelevanceFirstOATests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             run = Path(td); artifacts = run / "artifacts"; artifacts.mkdir()
             rows = [
-                {"paper_id": "high", "pmcid": "PMC1", "selection_score": .9, "anchor_strength": "strong"},
-                {"paper_id": "low", "pmcid": "PMC2", "selection_score": .2, "anchor_strength": "weak"},
+                {"paper_id": "high", "pmcid": "PMC1", "pmcid_verification_status": "verified", "selection_score": .9, "anchor_strength": "strong"},
+                {"paper_id": "low", "pmcid": "PMC2", "pmcid_verification_status": "verified", "selection_score": .2, "anchor_strength": "weak"},
             ]
             (artifacts / "fulltext_discovery_escalation_candidates.jsonl").write_text("".join(json.dumps(x) + "\n" for x in rows))
             def oa(url):
@@ -52,7 +52,7 @@ class RelevanceFirstOATests(unittest.TestCase):
     def test_relevant_oa_after_twentieth_candidate_is_selected(self):
         with tempfile.TemporaryDirectory() as td:
             run = Path(td); artifacts = run / "artifacts"; artifacts.mkdir()
-            rows = [{"paper_id": str(i), "pmcid": f"PMC{i}", "selection_score": .9, "anchor_strength": "strong"} for i in range(25)]
+            rows = [{"paper_id": str(i), "pmcid": f"PMC{i}", "pmcid_verification_status": "verified", "selection_score": .9, "anchor_strength": "strong"} for i in range(25)]
             (artifacts / "fulltext_discovery_escalation_candidates.jsonl").write_text("".join(json.dumps(x) + "\n" for x in rows))
             def oa(url):
                 return (b'<OA><records><record license="CC"><link format="xml" href="https://www.ncbi.nlm.nih.gov/a.xml"/></record></records></OA>'
@@ -70,7 +70,7 @@ class RelevanceFirstOATests(unittest.TestCase):
     def test_selected_oa_download_failure_has_concrete_execution_diagnostic(self):
         with tempfile.TemporaryDirectory() as td:
             run=Path(td); artifacts=run/"artifacts"; artifacts.mkdir()
-            row={"paper_id":"paper-a","pmid":"paper-a","pmcid":"PMC-A","selection_score":.9,"anchor_strength":"strong"}
+            row={"paper_id":"paper-a","pmid":"paper-a","pmcid":"PMC-A","pmcid_verification_status":"verified","selection_score":.9,"anchor_strength":"strong"}
             (artifacts/"fulltext_discovery_escalation_candidates.jsonl").write_text(json.dumps(row)+"\n")
             oa=lambda _: b'<OA><records><record license="CC"><link format="xml" href="https://www.ncbi.nlm.nih.gov/a.xml"/></record></records></OA>'
             summary=run_l35_pmc_oa_stage(run,enabled=True,network_enabled=True,oa_transport=oa,download_transport=lambda _: b"not xml")

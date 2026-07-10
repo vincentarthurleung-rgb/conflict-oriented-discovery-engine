@@ -35,7 +35,7 @@ class FulltextCandidateBridgeTests(unittest.TestCase):
     def test_valid_pmcid_is_diagnosed_and_retrieved_from_discovery_file(self):
         with tempfile.TemporaryDirectory() as td:
             run = Path(td); artifacts = run / "artifacts"; artifacts.mkdir()
-            candidate = {"paper_id": "p1", "pmid": "111", "pmcid": "PMC111", "selection_score": .9, "anchor_strength": "strong"}
+            candidate = {"paper_id": "p1", "pmid": "111", "pmcid": "PMC111", "pmcid_verification_status": "verified", "selection_score": .9, "anchor_strength": "strong"}
             (artifacts / "fulltext_discovery_escalation_candidates.jsonl").write_text(json.dumps(candidate) + "\n")
             summary = run_l35_pmc_oa_stage(run, enabled=True, network_enabled=True, oa_transport=lambda _: OA_XML, download_transport=lambda _: JATS)
             self.assertGreater(summary["resource_diagnostics_count"], 0)
@@ -63,8 +63,8 @@ class FulltextCandidateBridgeTests(unittest.TestCase):
     def test_conflicting_pmcid_for_same_pmid_is_audited_and_not_retrieved(self):
         with tempfile.TemporaryDirectory() as td:
             run = Path(td); artifacts = run / "artifacts"; artifacts.mkdir()
-            left = {"paper_id": "p1", "pmid": "111", "pmcid": "PMC111", "title": "Same", "selection_score": .9, "anchor_strength": "strong"}
-            right = {"paper_id": "p1b", "pmid": "111", "pmcid": "PMC222", "title": "Same", "selection_score": .9, "anchor_strength": "strong"}
+            left = {"paper_id": "p1", "pmid": "111", "pmcid": "PMC111", "pmcid_verification_status": "verified", "title": "Same", "selection_score": .9, "anchor_strength": "strong"}
+            right = {"paper_id": "p1b", "pmid": "111", "pmcid": "PMC222", "pmcid_verification_status": "verified", "title": "Same", "selection_score": .9, "anchor_strength": "strong"}
             (artifacts / "fulltext_discovery_escalation_candidates.jsonl").write_text(json.dumps(left) + "\n")
             (artifacts / "l35_fulltext_discovery_candidate_papers.jsonl").write_text(json.dumps(right) + "\n")
             run_l35_pmc_oa_stage(run, enabled=True, network_enabled=True, oa_transport=lambda _: OA_XML, download_transport=lambda _: JATS)
@@ -81,7 +81,7 @@ class FulltextCandidateBridgeTests(unittest.TestCase):
     def test_l35_only_candidate_with_pmcid_reaches_diagnostics(self):
         with tempfile.TemporaryDirectory() as td:
             run = Path(td); artifacts = run / "artifacts"; artifacts.mkdir()
-            candidate = {"paper_id": "wnt-like", "pmid": "222", "pmcid": "PMC222", "selection_score": .9, "anchor_strength": "strong"}
+            candidate = {"paper_id": "wnt-like", "pmid": "222", "pmcid": "PMC222", "pmcid_verification_status": "verified", "selection_score": .9, "anchor_strength": "strong"}
             (artifacts / "l35_fulltext_discovery_candidate_papers.jsonl").write_text(json.dumps(candidate) + "\n")
             run_l35_pmc_oa_stage(run, enabled=True, network_enabled=True, oa_transport=lambda _: OA_XML, download_transport=lambda _: JATS)
             self.assertEqual(len(rows(artifacts / "l35_fulltext_oa_resource_diagnostics.jsonl")), 1)

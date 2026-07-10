@@ -1084,7 +1084,7 @@ def run_fulltext_availability_step(*, run_dir: Path, l1_mode: str = "abstract_sc
     if enabled and not candidates:
         candidates = _read_jsonl(run_dir / "artifacts/fulltext_escalation_candidates.jsonl")
     write_pmcid_integrity_audit(artifacts, pmcid_conflicts)
-    eligible = [item for item in candidates if item.get("pmcid") and item.get("pmcid_integrity_status", "ok") == "ok"]
+    eligible = [item for item in candidates if item.get("pmcid") and item.get("pmcid_integrity_status") == "verified"]
     records = resolve_fulltext_availability(eligible, resolver=fulltext_availability_resolver)
     record_path = run_dir / "artifacts/fulltext_availability_records.jsonl"
     summary_path = run_dir / "artifacts/fulltext_availability_summary.json"

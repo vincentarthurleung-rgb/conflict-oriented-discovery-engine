@@ -15,7 +15,7 @@ from code_engine.fulltext.candidate_bridge import (
 from code_engine.fulltext.candidate_selection import classify_oa_candidate, select_conflict_related_papers
 from code_engine.fulltext.conflict_confirmation import confirm_fulltext_conflicts
 from code_engine.fulltext.l1_extraction import extract_fulltext_claims
-from code_engine.fulltext.pmc_id_resolver import resolve_pmcid
+from code_engine.fulltext.pmc_id_resolver import resolve_pmcid, verify_pmcid_maps_to_pmid
 from code_engine.fulltext.pmc_oa_client import check_oa_availability
 from code_engine.fulltext.pmc_oa_downloader import download_oa_article
 
@@ -156,11 +156,19 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     classified: list[dict] = []
     runtime_pmcid_conflicts: list[dict] = []
     for paper in candidates:
-        if paper.get("pmcid_integrity_status") in {"missing", "conflict"}:
+        if paper.get("pmcid_integrity_status") in {"missing", "conflict", "mismatch", "no_pmc_mapping", "network_unavailable", "unverified"}:
             classified.append(classify_oa_candidate(paper, oa_available=False))
             continue
-        identity = resolve_pmcid(paper, network_enabled=network_enabled, cache_dir=cache, transport=id_transport); resolved.append(identity)
         original_pmcid = normalize_pmcid(paper.get("pmcid"))
+        verification = None if paper.get("pmcid_integrity_status") == "verified" else (
+            verify_pmcid_maps_to_pmid(original_pmcid or "", str(paper.get("pmid") or ""),
+                network_enabled=network_enabled, cache_dir=cache, transport=id_transport) if original_pmcid else None)
+        if verification and verification.status != "verified":
+            status = "mismatch" if verification.status == "mismatch" else "unverified"
+            classified.append(classify_oa_candidate({**paper, "pmcid": None, "pmcid_integrity_status": status,
+                "skip_reason": "pmcid_mismatch" if status == "mismatch" else "pmcid_unverified"}, oa_available=False))
+            continue
+        identity = resolve_pmcid(paper, network_enabled=network_enabled, cache_dir=cache, transport=id_transport) if not original_pmcid else {"pmcid": original_pmcid, "idconv_status": "resolved"}; resolved.append(identity)
         resolved_pmcid = normalize_pmcid(identity.get("pmcid"))
         if original_pmcid and resolved_pmcid and original_pmcid != resolved_pmcid:
             runtime_pmcid_conflicts.append({
@@ -174,7 +182,7 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
             })
             classified.append(classify_oa_candidate({**paper, "pmcid": None, "pmcid_integrity_status": "conflict", "skip_reason": "pmcid_conflict"}, oa_available=False))
             continue
-        enriched = {**paper, "pmcid": resolved_pmcid or original_pmcid}
+        enriched = {**paper, "pmcid": resolved_pmcid or original_pmcid, "pmcid_integrity_status": "verified"}
         oa = check_oa_availability(enriched["pmcid"], network_enabled=network_enabled, transport=oa_transport) if enriched.get("pmcid") else {"oa_status": "unavailable", "reason": "no_pmcid", "decision": "skip_no_resource"}
         key = str(enriched.get("paper_id") or enriched.get("pmid")); availability_by_id[key] = oa
         classified.append(classify_oa_candidate(enriched, oa_available=oa.get("oa_status") == "available"))
@@ -197,7 +205,7 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     diagnostics=[]
     result_by_id={str(x.get("paper_id") or x.get("pmid")):x for x in results}
     for paper in classified:
-        if not (paper.get("pmcid") and paper.get("pmcid_integrity_status", "ok") == "ok"):
+        if not (paper.get("pmcid") and paper.get("pmcid_integrity_status") == "verified"):
             continue
         key=str(paper.get("paper_id") or paper.get("pmid"));oa=availability_by_id.get(key,{}) ;result=result_by_id.get(key,{})
         diagnostics.append({"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),

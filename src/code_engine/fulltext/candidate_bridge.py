@@ -87,7 +87,7 @@ def canonical_fulltext_candidates(artifacts_dir: str | Path) -> tuple[list[dict]
         source = row.get("_source_file")
         if source and source not in item["_source_files"]:
             item["_source_files"].append(source)
-        pmcid = normalize_pmcid(row.get("pmcid"))
+        pmcid = normalize_pmcid(row.get("pmcid") or row.get("original_pmcid"))
         if pmcid:
             item["_pmcids"].add(pmcid)
 
@@ -95,16 +95,18 @@ def canonical_fulltext_candidates(artifacts_dir: str | Path) -> tuple[list[dict]
     conflict_audit: list[dict] = []
     for item in grouped.values():
         records = item["_records"]
-        primary = next((row for row in records if normalize_pmcid(row.get("pmcid"))), records[0])
+        verified_records = [row for row in records if row.get("pmcid_verification_status") == "verified" and normalize_pmcid(row.get("pmcid"))]
+        primary = verified_records[0] if verified_records else records[0]
         pmid = str(primary.get("pmid") or "").strip() or None
         pmcids = sorted(item["_pmcids"])
+        verified_pmcids = sorted({normalize_pmcid(row.get("pmcid")) for row in verified_records})
         status = "missing"
         selected_pmcid = None
         skip_reason = "missing_pmcid"
-        if pmid and pmid in conflicts:
+        record_statuses = {str(row.get("pmcid_verification_status") or "") for row in records}
+        if len(verified_pmcids) > 1:
             status = "conflict"
             skip_reason = "pmcid_conflict"
-            pmcids = sorted(conflicts[pmid])
             conflict_audit.append({
                 "pmid": pmid,
                 "title": primary.get("title"),
@@ -114,10 +116,31 @@ def canonical_fulltext_candidates(artifacts_dir: str | Path) -> tuple[list[dict]
                 "resolution_rule": "none",
                 "action_taken": "skipped_retrieval_until_resolved",
             })
-        elif pmcids:
-            status = "ok"
-            selected_pmcid = pmcids[0]
+        elif verified_pmcids:
+            status = "verified"
+            selected_pmcid = verified_pmcids[0]
             skip_reason = None
+        elif pmcids:
+            if "no_pmc_mapping" in record_statuses:
+                status, skip_reason = "no_pmc_mapping", "no_pmc_mapping"
+            elif "network_unavailable" in record_statuses:
+                status, skip_reason = "network_unavailable", "pmcid_verification_unavailable"
+            elif "mismatch" in record_statuses:
+                status, skip_reason = "mismatch", "pmcid_mismatch"
+            else:
+                status, skip_reason = "unverified", "pmcid_unverified"
+        elif "mismatch" in record_statuses:
+            status = "mismatch"
+            skip_reason = "pmcid_mismatch"
+        elif "no_pmc_mapping" in record_statuses:
+            status = "no_pmc_mapping"
+            skip_reason = "no_pmc_mapping"
+        elif "network_unavailable" in record_statuses:
+            status = "network_unavailable"
+            skip_reason = "pmcid_verification_unavailable"
+        elif record_statuses & {"invalid_format", "rejected"}:
+            status = "unverified"
+            skip_reason = "pmcid_unverified"
         canonical.append({
             **{k: v for k, v in primary.items() if not str(k).startswith("_")},
             "paper_id": primary.get("paper_id") or primary.get("canonical_paper_id") or pmid or primary.get("doi"),
@@ -132,6 +155,7 @@ def canonical_fulltext_candidates(artifacts_dir: str | Path) -> tuple[list[dict]
             "pmcid_integrity_status": status,
             "skip_reason": skip_reason,
             "candidate_pmcids": pmcids,
+            "verified_pmcids": verified_pmcids,
         })
     return canonical, conflict_audit
 
@@ -154,6 +178,14 @@ def write_candidate_bridge_audit(artifacts_dir: str | Path, candidates: list[dic
             skip_reason = "missing_pmcid"
         if not skip_reason and candidate.get("pmcid_integrity_status") == "conflict":
             skip_reason = "pmcid_conflict"
+        if not skip_reason and candidate.get("pmcid_integrity_status") == "unverified":
+            skip_reason = "pmcid_unverified"
+        if not skip_reason and candidate.get("pmcid_integrity_status") == "mismatch":
+            skip_reason = "pmcid_mismatch"
+        if not skip_reason and candidate.get("pmcid_integrity_status") == "no_pmc_mapping":
+            skip_reason = "no_pmc_mapping"
+        if not skip_reason and candidate.get("pmcid_integrity_status") == "network_unavailable":
+            skip_reason = "pmcid_verification_unavailable"
         oa = availability_by_id.get(key) or {}
         retrieval = retrieval_by_id.get(key) or {}
         if not skip_reason and oa and oa.get("oa_status") != "available":
@@ -167,10 +199,10 @@ def write_candidate_bridge_audit(artifacts_dir: str | Path, candidates: list[dic
             "pmcid": candidate.get("pmcid"),
             "title": candidate.get("title"),
             "source_files": candidate.get("source_files") or [],
-            "passed_to_oa_diagnostics": bool(candidate.get("pmcid") and candidate.get("pmcid_integrity_status") == "ok"),
+            "passed_to_oa_diagnostics": bool(candidate.get("pmcid") and candidate.get("pmcid_integrity_status") == "verified"),
             "passed_to_retrieval": bool(retrieval),
             "skip_reason": None if retrieval else skip_reason,
-            "pmcid_integrity_status": candidate.get("pmcid_integrity_status") or ("ok" if candidate.get("pmcid") else "missing"),
+            "pmcid_integrity_status": candidate.get("pmcid_integrity_status") or ("unverified" if candidate.get("pmcid") else "missing"),
         })
     _write_jsonl(Path(artifacts_dir) / "fulltext_candidate_bridge_audit.jsonl", rows)
     return rows
@@ -186,7 +218,9 @@ def availability_summary_from_bridge(candidates: list[dict], audit_rows: list[di
         "enabled": bool(enabled),
         "candidate_count": len(candidates),
         "candidate_with_pmcid_count": with_source_pmcid,
-        "candidate_missing_pmcid_count": sum((x.get("pmcid_integrity_status") or ("ok" if x.get("pmcid") else "missing")) == "missing" for x in candidates),
+        "candidate_with_verified_pmcid_count": sum(x.get("pmcid_integrity_status") == "verified" for x in candidates),
+        "verified_pmcid_count": sum(x.get("pmcid_integrity_status") == "verified" for x in candidates),
+        "candidate_missing_pmcid_count": sum((x.get("pmcid_integrity_status") or ("unverified" if x.get("pmcid") else "missing")) == "missing" for x in candidates),
         "pmcid_conflict_count": sum((x.get("pmcid_integrity_status") == "conflict") for x in candidates),
         "available_count": sum(row.get("skip_reason") is None or row.get("passed_to_retrieval") for row in audit_rows),
         "unavailable_count": sum(bool(row.get("skip_reason")) and not row.get("passed_to_retrieval") for row in audit_rows),
