@@ -43,6 +43,7 @@ class GraphProjection:
     def overview(self,params):
         limit_nodes=_int(params,"limit_nodes",150,1,300);limit_edges=_int(params,"limit_edges",240,1,500)
         triples=self._filtered_triples(params)
+        triples=self._quota_triples(triples,limit_edges)
         scores=Counter()
         for t in triples:
             for eid in (t.get("subject_id"),t.get("object_id")):
@@ -57,6 +58,26 @@ class GraphProjection:
         nodes=[self.node(self.api.entity_by_id[eid],scores[eid]) for eid in node_ids if eid in self.api.entity_by_id]
         clusters=[{"cluster_id":case,"label":case,"node_ids":[n["id"] for n in nodes if case in n.get("case_ids",[])],"ui_only":True} for case in self.api.cases]
         return {"nodes":nodes,"edges":edges,"clusters":clusters,"summary":{"visible_nodes":len(nodes),"visible_edges":len(edges),"total_nodes":len(self.api.entities),"total_edges":len(self.api.triples)},"filters":{k:_one(params,k) for k in ("case_id","entity_type","has_fulltext","has_conflict")}}
+
+    def _quota_triples(self,triples,limit_edges):
+        if len(triples)<=limit_edges:return triples
+        by_case=defaultdict(list)
+        for triple in triples:
+            for case_id in triple.get("case_ids",[]) or ["unknown"]:
+                by_case[case_id].append(triple)
+        selected=[];seen=set()
+        quota=max(2,min(12,limit_edges//max(1,len(by_case)*2)))
+        for case_id in sorted(by_case):
+            for triple in sorted(by_case[case_id],key=lambda x:(-x.get("display_priority_score_v2",0),x.get("triple_id","")))[:quota]:
+                tid=triple.get("triple_id")
+                if tid not in seen:
+                    seen.add(tid);selected.append(triple)
+        for triple in triples:
+            if len(selected)>=limit_edges:break
+            tid=triple.get("triple_id")
+            if tid not in seen:
+                seen.add(tid);selected.append(triple)
+        return selected
 
     def neighborhood(self,entity_id,params):
         depth=_int(params,"depth",1,1,2);limit=_int(params,"limit",100,1,200);direction=_one(params,"direction","both");case=_one(params,"case_id")

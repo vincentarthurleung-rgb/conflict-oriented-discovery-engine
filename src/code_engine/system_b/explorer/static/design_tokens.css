@@ -1,0 +1,29 @@
+:root{
+  --atlas-font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --atlas-bg:#f6f8f8;
+  --atlas-surface:#ffffff;
+  --atlas-ink:#172326;
+  --atlas-muted:#667579;
+  --atlas-line:#d9e2e3;
+  --atlas-accent:#176b6d;
+  --atlas-accent-2:#a85522;
+  --atlas-success:#146c43;
+  --atlas-warning:#8a5a00;
+  --atlas-danger:#b42318;
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:24px;
+  --radius-sm:6px;
+  --radius:8px;
+  --shadow-sm:0 1px 2px rgba(18,35,38,.08);
+  --shadow:0 8px 24px rgba(18,35,38,.12);
+  --focus-ring:0 0 0 3px rgba(23,107,109,.28);
+  --motion-fast:120ms;
+}
+button,a,input,select,textarea{font-family:var(--atlas-font)}
+:focus-visible{outline:2px solid var(--atlas-accent);outline-offset:2px;box-shadow:var(--focus-ring)}
+.button,.button-sm,button,input,select,textarea{min-height:36px}
+.badge{border-radius:var(--radius-sm)}
+.card{border-radius:var(--radius)}

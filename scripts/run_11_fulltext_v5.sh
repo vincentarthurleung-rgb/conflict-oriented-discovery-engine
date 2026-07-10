@@ -1,0 +1,416 @@
+#!/usr/bin/env bash
+
+set -uo pipefail
+
+cd ~/project/conflict-oriented-discovery-engine
+
+export PYTHONUNBUFFERED=1
+
+if [[ ! -f ".env" ]]; then
+    echo "ERROR: .env not found"
+    exit 1
+fi
+
+set -a
+source .env
+set +a
+
+if [[ -z "${L1_PROVIDER:-}" ]]; then
+    echo "ERROR: L1_PROVIDER is missing"
+    exit 1
+fi
+
+if [[ -z "${MODEL_NAME:-}" ]]; then
+    echo "ERROR: MODEL_NAME is missing"
+    exit 1
+fi
+
+if [[ "${L1_PROVIDER}" == "deepseek" && -z "${DEEPSEEK_API_KEY:-}" ]]; then
+    echo "ERROR: DEEPSEEK_API_KEY is missing"
+    exit 1
+fi
+
+echo "===== ENVIRONMENT ====="
+echo "L1_PROVIDER=${L1_PROVIDER}"
+echo "MODEL_NAME=${MODEL_NAME}"
+echo "DEEPSEEK_API_KEY=$(
+    [[ -n "${DEEPSEEK_API_KEY:-}" ]] && echo SET || echo MISSING
+)"
+echo
+
+echo "===== CLI PREFLIGHT ====="
+
+check_cli_flags() {
+    local module="$1"
+    shift
+
+    local help_text
+    if ! help_text="$(python -m "$module" --help 2>&1)"; then
+        echo "ERROR: unable to load CLI: $module"
+        echo "$help_text"
+        exit 1
+    fi
+
+    for flag in "$@"; do
+        if ! grep -q -- "$flag" <<<"$help_text"; then
+            echo "ERROR: $module does not expose required flag $flag"
+            exit 1
+        fi
+    done
+
+    echo "OK: $module"
+}
+
+check_cli_flags \
+    code_engine.cli.repair_fulltext_candidate_pmcids \
+    --source-run \
+    --output-root \
+    --output-suffix \
+    --network \
+    --overwrite
+
+check_cli_flags \
+    code_engine.cli.fulltext_bridge_replay \
+    --case-id \
+    --source-run \
+    --output-root \
+    --output-suffix \
+    --network \
+    --api \
+    --open-access-required \
+    --overwrite
+
+check_cli_flags \
+    code_engine.cli.fulltext_reentry_replay \
+    --case-id \
+    --base-run \
+    --fulltext-run \
+    --output-root \
+    --output-suffix \
+    --overwrite
+
+echo
+
+BATCH_TAG="$(date +%Y%m%d_%H%M%S)"
+LOG_ROOT="logs/fulltext_batch11_${BATCH_TAG}"
+STATUS_FILE="${LOG_ROOT}/status.tsv"
+
+mkdir -p "$LOG_ROOT"
+
+git rev-parse HEAD > "${LOG_ROOT}/git_head.txt" 2>/dev/null || true
+git status --short > "${LOG_ROOT}/git_status_before.txt" 2>/dev/null || true
+
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "case" \
+    "status" \
+    "input_claims" \
+    "core" \
+    "mechanism" \
+    "reviewable" \
+    "off_seed" \
+    "exploratory" \
+    "conflict_eligible" \
+    "confirmed_conflicts" \
+    "hypotheses" \
+    "base_run" \
+    "fulltext_run" \
+    "reentry_run" \
+    > "$STATUS_FILE"
+
+run_logged() {
+    local logfile="$1"
+    shift
+
+    "$@" 2>&1 | tee "$logfile"
+    return "${PIPESTATUS[0]}"
+}
+
+latest_run() {
+    local token="$1"
+
+    find runs \
+        -maxdepth 1 \
+        -mindepth 1 \
+        -type d \
+        -name "*${token}*" \
+        -printf '%T@\t%p\n' 2>/dev/null \
+        | sort -nr \
+        | head -n 1 \
+        | cut -f 2-
+}
+
+find_base_run() {
+    local prefix="$1"
+
+    find runs \
+        -maxdepth 1 \
+        -mindepth 1 \
+        -type d \
+        -name "${prefix}_*" \
+        | sort \
+        | head -n 1
+}
+
+write_failure() {
+    local slug="$1"
+    local stage="$2"
+    local base_run="${3:-}"
+    local fulltext_run="${4:-}"
+    local reentry_run="${5:-}"
+
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$slug" \
+        "FAILED_${stage}" \
+        "" "" "" "" "" "" "" "" "" \
+        "$base_run" \
+        "$fulltext_run" \
+        "$reentry_run" \
+        >> "$STATUS_FILE"
+}
+
+write_success_summary() {
+    local slug="$1"
+    local base_run="$2"
+    local fulltext_run="$3"
+    local reentry_run="$4"
+
+    python - \
+        "$slug" \
+        "$base_run" \
+        "$fulltext_run" \
+        "$reentry_run" \
+        >> "$STATUS_FILE" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+slug, base_run, fulltext_run, reentry_run = sys.argv[1:5]
+
+summary_path = (
+    Path(reentry_run)
+    / "artifacts"
+    / "fulltext_reentry_summary.json"
+)
+
+if not summary_path.exists():
+    values = [
+        slug,
+        "FAILED_MISSING_REENTRY_SUMMARY",
+        "", "", "", "", "", "", "", "", "",
+        base_run,
+        fulltext_run,
+        reentry_run,
+    ]
+    print("\t".join(values))
+    raise SystemExit(0)
+
+summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+values = [
+    slug,
+    "OK",
+    str(summary.get("input_fulltext_claim_count", "")),
+    str(summary.get("core_seed_relation_count", "")),
+    str(summary.get("seed_neighborhood_mechanism_count", "")),
+    str(summary.get("reviewable_context_relation_count", "")),
+    str(summary.get("off_seed_relation_count", "")),
+    str(summary.get("exploratory_graph_eligible_count", "")),
+    str(summary.get("conflict_eligible_count", "")),
+    str(summary.get("confirmed_conflict_count", "")),
+    str(summary.get("hypothesis_count", "")),
+    base_run,
+    fulltext_run,
+    reentry_run,
+]
+
+print("\t".join(values))
+PY
+}
+
+# slug | replay-run timestamp prefix | case_id | trusted existing fulltext run
+CASES=(
+"wnt|20260709_163622|wnt_beta_catenin_cancer_stemness_immunity_discovery_v1|runs/20260710_140752_wnt_beta_catenin_cancer_stemness_immunity_discovery_v1_wnt_bridge_authoritative_with_deepseek_l1"
+"emt|20260709_171518|emt_metastasis_drug_resistance_discovery_v1|"
+"ferroptosis|20260709_173629|ferroptosis_cancer_therapy_response_discovery_v1|"
+"hif1a|20260709_180220|hif1a_hypoxia_cancer_response_discovery_v1|"
+"il6_stat3|20260709_185150|il6_stat3_cancer_response_discovery_v1|"
+"pi3k|20260709_192939|pi3k_akt_mtor_cancer_resistance_discovery_v1|"
+"nfkb|20260709_194538|nfkb_inflammation_cancer_response_discovery_v1|"
+"pdl1|20260709_195003|pdl1_immune_checkpoint_cancer_response_discovery_v1|"
+"ros|20260709_195232|ros_oxidative_stress_cancer_response_discovery_v1|"
+"senescence|20260709_203426|senescence_sasp_cancer_therapy_response_discovery_v1|"
+"tp53|20260709_210514|tp53_apoptosis_cancer_therapy_response_discovery_v1|"
+)
+
+TOTAL="${#CASES[@]}"
+INDEX=0
+
+for row in "${CASES[@]}"; do
+    INDEX=$((INDEX + 1))
+
+    IFS='|' read -r \
+        SLUG \
+        BASE_PREFIX \
+        CASE_ID \
+        TRUSTED_FULLTEXT_RUN \
+        <<< "$row"
+
+    echo
+    echo "============================================================"
+    echo "CASE ${INDEX}/${TOTAL}: ${SLUG}"
+    echo "CASE_ID=${CASE_ID}"
+    echo "============================================================"
+
+    CASE_LOG_DIR="${LOG_ROOT}/${SLUG}"
+    mkdir -p "$CASE_LOG_DIR"
+
+    BASE_RUN="$(find_base_run "$BASE_PREFIX")"
+
+    if [[ -z "$BASE_RUN" || ! -d "$BASE_RUN" ]]; then
+        echo "ERROR: base run not found for prefix ${BASE_PREFIX}"
+        write_failure "$SLUG" "BASE_RUN_NOT_FOUND"
+        continue
+    fi
+
+    echo "BASE_RUN=${BASE_RUN}"
+
+    FULLTEXT_RUN=""
+
+    # Wnt 已有经过 authoritative PMCID 验证的可信全文 L1，
+    # 直接复用，避免再次产生 104 次 DeepSeek 调用。
+    if [[ -n "$TRUSTED_FULLTEXT_RUN" && -d "$TRUSTED_FULLTEXT_RUN" ]]; then
+        FULLTEXT_RUN="$TRUSTED_FULLTEXT_RUN"
+        echo "REUSING_TRUSTED_FULLTEXT_RUN=${FULLTEXT_RUN}"
+    else
+        REPAIR_SUFFIX="${SLUG}_authoritative_pmcid_batch11_${BATCH_TAG}"
+
+        echo
+        echo "----- STAGE 1: AUTHORITATIVE PMID -> PMCID REPAIR -----"
+
+        if ! run_logged \
+            "${CASE_LOG_DIR}/01_pmcid_repair.log" \
+            python -m code_engine.cli.repair_fulltext_candidate_pmcids \
+                --source-run "$BASE_RUN" \
+                --output-root runs \
+                --output-suffix "$REPAIR_SUFFIX" \
+                --network \
+                --overwrite
+        then
+            echo "ERROR: PMCID repair failed for ${SLUG}"
+            write_failure "$SLUG" "PMCID_REPAIR" "$BASE_RUN"
+            continue
+        fi
+
+        REPAIR_RUN="$(latest_run "$REPAIR_SUFFIX")"
+
+        if [[ -z "$REPAIR_RUN" || ! -d "$REPAIR_RUN" ]]; then
+            echo "ERROR: repair run directory not found for ${SLUG}"
+            write_failure "$SLUG" "REPAIR_RUN_NOT_FOUND" "$BASE_RUN"
+            continue
+        fi
+
+        echo "REPAIR_RUN=${REPAIR_RUN}"
+
+        sleep 2
+
+        BRIDGE_SUFFIX="${SLUG}_authoritative_fulltext_l1_batch11_${BATCH_TAG}"
+
+        echo
+        echo "----- STAGE 2: OA FULLTEXT + DEEPSEEK FULLTEXT L1 -----"
+
+        if ! run_logged \
+            "${CASE_LOG_DIR}/02_fulltext_bridge_l1.log" \
+            python -m code_engine.cli.fulltext_bridge_replay \
+                --case-id "$CASE_ID" \
+                --source-run "$REPAIR_RUN" \
+                --output-root runs \
+                --output-suffix "$BRIDGE_SUFFIX" \
+                --network \
+                --api \
+                --open-access-required \
+                --overwrite
+        then
+            echo "ERROR: fulltext bridge/L1 failed for ${SLUG}"
+            write_failure \
+                "$SLUG" \
+                "FULLTEXT_BRIDGE_L1" \
+                "$BASE_RUN"
+            continue
+        fi
+
+        FULLTEXT_RUN="$(latest_run "$BRIDGE_SUFFIX")"
+
+        if [[ -z "$FULLTEXT_RUN" || ! -d "$FULLTEXT_RUN" ]]; then
+            echo "ERROR: fulltext run directory not found for ${SLUG}"
+            write_failure \
+                "$SLUG" \
+                "FULLTEXT_RUN_NOT_FOUND" \
+                "$BASE_RUN"
+            continue
+        fi
+
+        echo "FULLTEXT_RUN=${FULLTEXT_RUN}"
+    fi
+
+    sleep 2
+
+    REENTRY_SUFFIX="${SLUG}_fulltext_reentry_high_recall_v5_batch11_${BATCH_TAG}"
+
+    echo
+    echo "----- STAGE 3: OFFLINE HIGH-RECALL V5 RE-ENTRY -----"
+
+    if ! run_logged \
+        "${CASE_LOG_DIR}/03_fulltext_reentry_v5.log" \
+        python -m code_engine.cli.fulltext_reentry_replay \
+            --case-id "$CASE_ID" \
+            --base-run "$BASE_RUN" \
+            --fulltext-run "$FULLTEXT_RUN" \
+            --output-root runs \
+            --output-suffix "$REENTRY_SUFFIX" \
+            --overwrite
+    then
+        echo "ERROR: offline re-entry failed for ${SLUG}"
+        write_failure \
+            "$SLUG" \
+            "REENTRY_V5" \
+            "$BASE_RUN" \
+            "$FULLTEXT_RUN"
+        continue
+    fi
+
+    REENTRY_RUN="$(latest_run "$REENTRY_SUFFIX")"
+
+    if [[ -z "$REENTRY_RUN" || ! -d "$REENTRY_RUN" ]]; then
+        echo "ERROR: re-entry run directory not found for ${SLUG}"
+        write_failure \
+            "$SLUG" \
+            "REENTRY_RUN_NOT_FOUND" \
+            "$BASE_RUN" \
+            "$FULLTEXT_RUN"
+        continue
+    fi
+
+    echo "REENTRY_RUN=${REENTRY_RUN}"
+
+    write_success_summary \
+        "$SLUG" \
+        "$BASE_RUN" \
+        "$FULLTEXT_RUN" \
+        "$REENTRY_RUN"
+
+    echo "CASE COMPLETED: ${SLUG}"
+
+    sleep 3
+done
+
+git status --short > "${LOG_ROOT}/git_status_after.txt" 2>/dev/null || true
+
+echo
+echo "============================================================"
+echo "BATCH FINISHED"
+echo "LOG_ROOT=${LOG_ROOT}"
+echo "STATUS_FILE=${STATUS_FILE}"
+echo "============================================================"
+echo
+
+cat "$STATUS_FILE"

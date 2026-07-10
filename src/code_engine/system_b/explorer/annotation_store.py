@@ -11,7 +11,7 @@ from pathlib import Path
 FINAL_LABELS={"VALID","PARTIAL","INVALID","VALID_MECHANISM_SPLIT","VALID_CONTEXT_SPLIT","VALID_WEAK_CONFLICT","CORRECTLY_REJECTED_NON_COMPARABLE","WRONGLY_REJECTED_SHOULD_BE_WEAK","NOISE","DUPLICATE","UNCLEAR"}
 BOOL_FIELDS={"evidence_supported","subject_correct","relation_correct","object_correct","direction_correct","context_captured","anchor_correct","comparability_correct","candidate_type_correct","correctly_rejected","should_have_been_weak"}
 ORDINAL_FIELDS={"seed_relevance","mechanistic_usefulness","worth_followup"}
-FIELDS=("review_item_id","case_id","item_type","final_label","evidence_supported","seed_relevance","subject_correct","relation_correct","object_correct","direction_correct","context_captured","anchor_correct","mechanistic_usefulness","comparability_correct","candidate_type_correct","correctly_rejected","should_have_been_weak","worth_followup","error_type","notes","reviewer_id","updated_at")
+FIELDS=("review_item_id","case_id","item_type","final_label","review_disposition","uncertainty_reason","evidence_supported","seed_relevance","subject_correct","relation_correct","object_correct","direction_correct","context_captured","anchor_correct","mechanistic_usefulness","comparability_correct","candidate_type_correct","correctly_rejected","should_have_been_weak","worth_followup","error_type","notes","reviewer_id","updated_at")
 METRIC_NOTE="Manual-review metrics assess extraction and triage quality; they are not biological truth or validation."
 
 def _atomic(path:Path,text:str):
@@ -37,8 +37,10 @@ class AnnotationStore:
         if isinstance(value,list):self.records={x["review_item_id"]:x for x in value if isinstance(x,dict) and x.get("review_item_id") in self.queue_by_id}
     def get(self,item_id):return self.records.get(item_id)
     def validate(self,payload):
-        errors=[];label=str(payload.get("final_label","")).strip().upper()
-        if label not in FINAL_LABELS:errors.append("final_label must be one of: "+", ".join(sorted(FINAL_LABELS)))
+        errors=[];label=str(payload.get("final_label","")).strip().upper();disposition=str(payload.get("review_disposition","submitted")).strip().lower()
+        if disposition not in {"submitted","skipped","revisit"}:errors.append("review_disposition must be submitted, skipped, or revisit")
+        if disposition=="submitted" and label not in FINAL_LABELS:errors.append("final_label must be one of: "+", ".join(sorted(FINAL_LABELS)))
+        if disposition!="submitted" and label and label not in FINAL_LABELS:errors.append("final_label must be one of: "+", ".join(sorted(FINAL_LABELS)))
         for field in BOOL_FIELDS:
             if field in payload and str(payload[field]).upper() not in {"","0","1","NA"}:errors.append(f"{field} must be 1, 0, or NA")
         for field in ORDINAL_FIELDS:
@@ -50,7 +52,9 @@ class AnnotationStore:
         if not item:raise KeyError("review_item_not_found")
         self.validate(payload);prior=self.records.get(item_id,{})
         record={field:"" for field in FIELDS};record.update(prior);record.update({k:str(v).upper() if k in BOOL_FIELDS|ORDINAL_FIELDS else v for k,v in payload.items() if k in FIELDS})
-        record.update({"review_item_id":item_id,"case_id":item.get("case_id","") ,"item_type":item.get("item_type","") ,"final_label":str(payload["final_label"]).upper(),"reviewer_id":payload.get("reviewer_id") or prior.get("reviewer_id") or "local_user","updated_at":datetime.now(timezone.utc).isoformat()})
+        disposition=str(payload.get("review_disposition") or prior.get("review_disposition") or "submitted").lower()
+        label=str(payload.get("final_label") or "").upper() if disposition=="submitted" or payload.get("final_label") else ""
+        record.update({"review_item_id":item_id,"case_id":item.get("case_id","") ,"item_type":item.get("item_type","") ,"final_label":label,"review_disposition":disposition,"reviewer_id":payload.get("reviewer_id") or prior.get("reviewer_id") or "local_user","updated_at":datetime.now(timezone.utc).isoformat()})
         self.records[item_id]=record;self.write_all();return record
     def write_all(self):
         rows=[self.records[x] for x in sorted(self.records)]
@@ -71,8 +75,8 @@ class AnnotationStore:
     @staticmethod
     def _ratio(n,d):return round(n/d,6) if d else None
     def metrics(self):
-        reviewed=list(self.records.values());total=len(self.queue);labels=Counter(x["final_label"] for x in reviewed);types=Counter(x["item_type"] for x in reviewed);cases=Counter(x["case_id"] for x in reviewed)
+        reviewed=list(self.records.values());total=len(self.queue);labels=Counter(x["final_label"] for x in reviewed if x.get("final_label"));dispositions=Counter(x.get("review_disposition") or "submitted" for x in reviewed);types=Counter(x["item_type"] for x in reviewed);cases=Counter(x["case_id"] for x in reviewed)
         claims=[x for x in reviewed if x["item_type"]=="fulltext_l1_claim"];reviewable=[x for x in reviewed if x["item_type"] in {"abstract_reviewable_observation","fulltext_reviewable_observation"}];noncomp=[x for x in reviewed if x["item_type"]=="non_comparable_direction_pair"]
         follow=[x for x in reviewed if str(x.get("worth_followup","")).upper() not in {"","NA"}]
-        return {"reviewed_count":len(reviewed),"unreviewed_count":total-len(reviewed),"reviewed_fraction":self._ratio(len(reviewed),total),"counts_by_final_label":dict(labels),"counts_by_item_type":dict(types),"counts_by_case":dict(cases),"claim_precision":self._ratio(sum(x["final_label"]=="VALID" for x in claims),len(claims)),"claim_usable_rate":self._ratio(sum(x["final_label"] in {"VALID","PARTIAL"} for x in claims),len(claims)),"reviewable_valid_rate":self._ratio(sum(x["final_label"]=="VALID" for x in reviewable),len(reviewable)),"noise_rate":self._ratio(labels["NOISE"],len(reviewed)),"non_comparable_rejection_accuracy":self._ratio(sum(x["final_label"]=="CORRECTLY_REJECTED_NON_COMPARABLE" for x in noncomp),len(noncomp)),"should_have_been_weak_rate":self._ratio(sum(x["final_label"]=="WRONGLY_REJECTED_SHOULD_BE_WEAK" for x in noncomp),len(noncomp)),"worth_followup_rate":self._ratio(sum(int(x["worth_followup"])>=1 for x in follow),len(follow)),"note":METRIC_NOTE}
+        return {"reviewed_count":len(reviewed),"unreviewed_count":total-len(reviewed),"reviewed_fraction":self._ratio(len(reviewed),total),"counts_by_final_label":dict(labels),"counts_by_disposition":dict(dispositions),"counts_by_item_type":dict(types),"counts_by_case":dict(cases),"claim_precision":self._ratio(sum(x["final_label"]=="VALID" for x in claims),len(claims)),"claim_usable_rate":self._ratio(sum(x["final_label"] in {"VALID","PARTIAL"} for x in claims),len(claims)),"reviewable_valid_rate":self._ratio(sum(x["final_label"]=="VALID" for x in reviewable),len(reviewable)),"noise_rate":self._ratio(labels["NOISE"],len(reviewed)),"non_comparable_rejection_accuracy":self._ratio(sum(x["final_label"]=="CORRECTLY_REJECTED_NON_COMPARABLE" for x in noncomp),len(noncomp)),"should_have_been_weak_rate":self._ratio(sum(x["final_label"]=="WRONGLY_REJECTED_SHOULD_BE_WEAK" for x in noncomp),len(noncomp)),"worth_followup_rate":self._ratio(sum(int(x["worth_followup"])>=1 for x in follow),len(follow)),"note":METRIC_NOTE}
     def _metrics_md(self,m):return "# Live Manual Review Metrics\n\n"+"\n".join(f"- {k}: {v}" for k,v in m.items() if k!="note")+f"\n\n{m['note']}\n"

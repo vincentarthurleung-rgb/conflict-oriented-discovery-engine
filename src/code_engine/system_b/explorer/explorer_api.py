@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from urllib.parse import unquote
 from .annotation_store import AnnotationStore
+from .dossier_projection import DossierProjection
 from .graph_projection import GraphProjection
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
@@ -64,7 +65,7 @@ class ExplorerAPI:
         self.paper_metrics=_json(self.review_root/"paper_metrics_starter.json") if self.review_root else {}
         self.annotation_status=self._annotation_status()
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])})
-        self.graph=GraphProjection(self)
+        self.graph=GraphProjection(self);self.dossiers=DossierProjection(self)
 
     def _annotation_status(self):
         path=self.review_root/"manual_review_annotations_template.csv" if self.review_root else None
@@ -125,6 +126,21 @@ class ExplorerAPI:
         if path=="/api/review-export.csv":return 200,{"_raw":self.annotations.csv_text(),"_content_type":"text/csv; charset=utf-8","_filename":"manual_review_annotations_live.csv"}
         if path=="/api/review-export.jsonl":return 200,{"_raw":self.annotations.jsonl_text(),"_content_type":"application/x-ndjson; charset=utf-8","_filename":"manual_review_annotations_live.jsonl"}
         if path=="/api/search":return 200,self._search(_one(params,"q").casefold(),params)
+        if path=="/api/dossiers":return 200,self.dossiers.list(params)
+        if path=="/api/dossiers/audit" or path=="/api/dossier-audit":return 200,self.dossiers.audit()
+        if path.startswith("/api/dossier/"):
+            tail=unquote(path.removeprefix("/api/dossier/"))
+            if tail.endswith("/evidence"):
+                value=self.dossiers.evidence(tail.removesuffix("/evidence"))
+            elif tail.endswith("/context-matrix"):
+                value=self.dossiers.context_matrix(tail.removesuffix("/context-matrix"))
+            elif tail.endswith("/paths"):
+                value=self.dossiers.paths(tail.removesuffix("/paths"),params)
+            elif tail.endswith("/review-target"):
+                value=self.dossiers.review_target(tail.removesuffix("/review-target"))
+            else:
+                value=self.dossiers.detail(tail)
+            return (200,value) if value else (404,{"error":"dossier_not_found"})
         if path=="/api/graph/filters":return 200,self.graph.filters()
         if path=="/api/graph/overview":return 200,self.graph.overview(params)
         if path.startswith("/api/graph/neighborhood/"):
@@ -470,5 +486,52 @@ class ExplorerAPI:
         return {**triple,"evidence_links":enriched,"evidence_total":len(evidence),"contexts":self.context_by_triple[tid],"validator_annotations":[x for x in self.validators if x.get("case_id") in cases],"conflict_lens_records":self.conflict_by_triple[tid],"manual_review_status":{"status":"evidence_level","note":"Manual labels assess extraction and triage quality, not biological validation."}}
 
     def _search(self,q,p):
-        if not q:return {"entities":[],"triples":[],"chains":[]}
-        return {"entities":self._entities({"q":[q]})[:20],"triples":self._triples({"q":[q]})[:20],"chains":self._chains({"q":[q]})[:20]}
+        if not q:return {"cases":[],"dossiers":[],"entities":[],"papers":[],"paths":[]}
+        def rank_text(labels,aliases=()):
+            candidates=[str(x or "") for x in list(labels)+list(aliases) if x]
+            folded=[x.casefold() for x in candidates]
+            if any(x==q for x in folded):return 0,"exact"
+            if any(x.startswith(q) for x in folded):return 1,"prefix"
+            qtokens=[x for x in q.split() if x]
+            if qtokens and any(all(tok in x.split() for tok in qtokens) for x in folded):return 2,"token"
+            if any(q in x for x in folded):return 3,"contains"
+            return 99,"no_match"
+        cases=[]
+        for c in self.cases:
+            rank,reason=rank_text([c.replace("_"," "),c],[c.split("_")[0] if "_" in c else ""])
+            if rank<99:
+                row=self._case_summary(c);row.update({"search_rank":rank,"match_reason":reason});cases.append(row)
+        cases=sorted(cases,key=lambda x:(x["search_rank"],x["case_id"]))[:20]
+        dossiers=[]
+        for row in self.dossiers.list({"limit":["200"]})["items"]:
+            labels=[row.get("humanized_statement"),row.get("dossier_id"),row.get("backing_triple_id")]
+            aliases=[row.get("subject",{}).get("label"),row.get("object",{}).get("label"),row.get("relation",{}).get("normalized")]
+            rank,reason=rank_text(labels,aliases)
+            if rank<99:
+                row={**row,"search_rank":rank,"match_reason":reason};dossiers.append(row)
+        dossiers=sorted(dossiers,key=lambda x:(x["search_rank"],-x.get("priority_score",0),x["dossier_id"]))[:20]
+        entities=[]
+        for entity in self.entities:
+            rank,reason=rank_text([entity.get("display_label"),entity.get("label"),entity.get("entity_id")],entity.get("aliases",[]))
+            if rank<99:
+                entities.append({**entity,"search_rank":rank,"match_reason":reason})
+        entities=sorted(entities,key=lambda x:(x["search_rank"],-(x.get("display_priority_score") or 0),x.get("display_label","")))[:20]
+        paths=[]
+        for chain in self.chains:
+            rank,reason=rank_text(chain.get("entity_path",[]),chain.get("relation_path",[])+[chain.get("chain_id")])
+            if rank<99:
+                paths.append({**chain,"search_rank":rank,"match_reason":reason})
+        paths=sorted(paths,key=lambda x:(x["search_rank"],-x.get("chain_quality_score",0),x.get("chain_id","")))[:20]
+        papers=[];seen={}
+        for e in self.evidence:
+            key=e.get("pmid") or e.get("pmcid") or e.get("paper_title")
+            if not key:continue
+            rank,reason=rank_text([e.get("paper_title"),e.get("pmid"),e.get("pmcid")],[e.get("evidence_sentence")])
+            if rank>=99:continue
+            if q in {str(e.get("pmid","")).casefold(),str(e.get("pmcid","")).casefold()}:rank=-1;reason="identifier_exact"
+            row={"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"case_id":e.get("case_id"),"evidence_sentence":e.get("evidence_sentence"),"search_rank":rank,"match_reason":reason}
+            prior=seen.get(key)
+            if prior is None or (row["search_rank"],row.get("paper_title") or "")<(prior["search_rank"],prior.get("paper_title") or ""):
+                seen[key]=row
+        papers=sorted(seen.values(),key=lambda x:(x["search_rank"],x.get("paper_title") or "",x.get("pmid") or ""))[:20]
+        return {"cases":cases,"dossiers":dossiers,"entities":entities,"papers":papers,"paths":paths}

@@ -72,3 +72,6 @@ data/cache/
 case_bundles_preserved/
 batch_runs/
 system_b_replays/
+
+# System B runtime inputs
+system_b_inputs/

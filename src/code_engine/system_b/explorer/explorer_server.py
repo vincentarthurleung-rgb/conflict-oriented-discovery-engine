@@ -18,7 +18,8 @@ WARNING_PUBLIC_PREVIEW_HTTP = (
 )
 LOGIN_ERROR="用户名或密码错误，或账号不可用。"
 ROLE_ALLOWED_MODES={"admin":["pharma","reviewer","developer"],"developer":["pharma","reviewer","developer"],"reviewer":["pharma","reviewer"],"pharma":["pharma"]}
-DEBUG_FIELDS={"source_file","source_line","bundle_path","display_priority_score","display_priority_score_v2","noise_risk_score","chain_noise_risk_score","validator_annotations","validator_details","raw_json","raw","bridge_provenance","fulltext_provenance"}
+ROLE_WORKSPACES={"admin":["discover","review","library","console"],"developer":["discover","review","library","console"],"reviewer":["discover","review","library"],"pharma":["discover","library"]}
+DEBUG_FIELDS={"source_file","source_line","bundle_path","display_priority_score","display_priority_score_v2","priority_score","backing_triple_id","noise_risk_score","chain_noise_risk_score","validator_annotations","validator_details","raw_json","raw","bridge_provenance","fulltext_provenance"}
 LOGIN_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Login</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>C.O.D.E. Atlas</h1><h2>Biomedical Evidence &amp; Mechanism Explorer</h2><p>Public preview access is restricted.</p>{error}<form method="post"><input type="hidden" name="csrf_token" value="{csrf}"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="button" type="submit">Sign in</button></form><p id="registration-link" class="muted" hidden>没有账号？<a href="/register">使用邀请码注册</a></p><script>fetch('/api/registration-config').then(function(r){{return r.json()}}).then(function(x){{if(x.allow_registration)document.getElementById('registration-link').hidden=false}}).catch(function(){{}})</script>{warning}</main></body></html>"""
 REGISTER_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Register</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>邀请码注册</h1><h2>C.O.D.E. Atlas</h2><p>注册仅面向收到邀请码的审核人员。注册成功后请返回登录页登录。</p><div id="register-message"></div><form id="register-form"><input type="hidden" name="csrf_token" value="{csrf}"><label>用户名<input name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{{3,32}}" required></label><label>显示名<input name="display_name" autocomplete="name" minlength="1" maxlength="80" required></label><label>密码<input type="password" name="password" autocomplete="new-password" minlength="12" required></label><label>确认密码<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required></label><label>邀请码<input name="invite_code" autocomplete="off" required></label><button class="button" type="submit">注册</button><a class="button-sm" href="/login">返回登录</a></form><script>fetch('/api/registration-config').then(function(r){{return r.json()}}).then(function(x){{if(!x.allow_registration)location.href='/login'}});document.getElementById('register-form').addEventListener('submit',async function(e){{e.preventDefault();var f=e.target,b=f.querySelector('button'),m=document.getElementById('register-message');if(f.password.value!==f.confirm_password.value){{m.innerHTML='<p class="error">注册失败，请检查信息或联系管理员</p>';return}}b.disabled=true;m.textContent='';try{{var r=await fetch('/api/register',{{method:'POST',headers:{{'Content-Type':'application/json','X-CSRF-Token':f.csrf_token.value}},body:JSON.stringify({{username:f.username.value,display_name:f.display_name.value,password:f.password.value,confirm_password:f.confirm_password.value,invite_code:f.invite_code.value}})}});var data=await r.json();if(r.ok){{m.innerHTML='<p class="badge saved-indicator">注册成功，请登录</p>';f.reset()}}else{{m.innerHTML='<p class="error">'+(data.error||'注册失败，请检查信息或联系管理员')+'</p>'}}}}catch(err){{m.innerHTML='<p class="error">注册失败，请检查信息或联系管理员</p>'}}finally{{b.disabled=false}}}})</script></main></body></html>"""
 
@@ -35,6 +36,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
         user=session.get("atlas_user") or {}
         return user.get("role","reviewer")
     def allowed_modes_for_role(role):return ROLE_ALLOWED_MODES.get(role,ROLE_ALLOWED_MODES["reviewer"])
+    def allowed_workspaces_for_role(role):return ROLE_WORKSPACES.get(role,ROLE_WORKSPACES["reviewer"])
     def can_view_debug():return current_role() in {"admin","developer"}
     def can_use_review():return not require_auth or current_role() in {"admin","developer","reviewer"}
     def can_use_dev():return not require_auth or current_role() in {"admin","developer"}
@@ -110,7 +112,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     @app.route("/api/session")
     def api_session():
         if not authenticated():return jsonify({"error":"authentication_required"}),401
-        user=session.get("atlas_user") or None;role=current_role();payload={"user":user,"csrf_token":csrf(),"auth_required":require_auth,"allowed_modes":allowed_modes_for_role(role),"registration_enabled":bool(require_auth and allow_registration)}
+        user=session.get("atlas_user") or None;role=current_role();payload={"user":user,"csrf_token":csrf(),"auth_required":require_auth,"allowed_modes":allowed_modes_for_role(role),"allowed_workspaces":allowed_workspaces_for_role(role),"debug_access":can_view_debug(),"registration_enabled":bool(require_auth and allow_registration)}
         if user:payload.update({"username":user.get("username"),"display_name":user.get("display_name"),"role":role})
         else:payload.update({"username":None,"display_name":None,"role":role})
         return jsonify(payload)
@@ -127,6 +129,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
         return jsonify(redact_debug(value)),status
     @app.route("/app.js")
     @app.route("/style.css")
+    @app.route("/design_tokens.css")
     def asset():return send_from_directory(static,request.path.lstrip("/"))
     @app.route("/",defaults={"path":""})
     @app.route("/<path:path>")
@@ -135,7 +138,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     @app.before_request
     def workspace_rbac():
         if request.path in {"/review","/metrics","/progress"} and authenticated() and not can_use_review():return Response("Forbidden",403)
-        if request.path=="/dev" and authenticated() and not can_use_dev():return Response("Forbidden",403)
+        if request.path in {"/dev","/console"} and authenticated() and not can_use_dev():return Response("Forbidden",403)
     return app
 
 def serve(display_kg_root,review_root=None,host="127.0.0.1",port=8765,on_ready=None,**options):

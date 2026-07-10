@@ -316,6 +316,24 @@ def _polarity_identity(row: dict[str, Any], fallback: str = "") -> str:
     return value if value in {"positive", "negative", "neutral", "unknown"} else fallback
 
 
+def _claim_identity_parts(row: dict[str, Any], evidence_digest: str = "") -> dict[str, str]:
+    return {
+        "pmid": _pmid_value(row),
+        "evidence_hash": evidence_digest,
+        "subject": _canonical_or_strict_surface(row, "subject"),
+        "relation": _relation_identity(row),
+        "object": _canonical_or_strict_surface(row, "object"),
+        "polarity": _polarity_identity(row),
+    }
+
+
+def _claim_identity_hash(parts: dict[str, str]) -> str:
+    if not all(parts.get(k) for k in ("pmid", "evidence_hash", "subject", "relation", "object", "polarity")):
+        return ""
+    payload = json.dumps({k: parts[k] for k in ("pmid", "evidence_hash", "subject", "relation", "object", "polarity")}, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _abstract_duplicate_decision(claim: dict[str, Any], observation: dict[str, Any] | None, abstract_rows: list[dict[str, Any]]) -> dict[str, Any]:
     origin = _evidence_origin(claim, observation)
     linked = list(claim.get("linked_abstract_observation_ids") or (observation or {}).get("linked_abstract_observation_ids") or [])
@@ -332,15 +350,24 @@ def _abstract_duplicate_decision(claim: dict[str, Any], observation: dict[str, A
     current_relation = _relation_identity(current)
     current_object = _canonical_or_strict_surface(current, "object")
     current_polarity = _polarity_identity(current)
+    current_identity = _claim_identity_parts(current, evidence_digest)
+    current_identity_hash = _claim_identity_hash(current_identity)
+    same_sentence_match: str | None = None
     for row in abstract_rows:
         if not pmid or _pmid_value(row) != pmid:
             continue
-        if evidence_digest and evidence_digest == _evidence_hash(row.get("evidence_sentence")):
+        row_evidence_digest = _evidence_hash(row.get("evidence_sentence"))
+        row_identity = _claim_identity_parts(row, row_evidence_digest)
+        row_identity_hash = _claim_identity_hash(row_identity)
+        if evidence_digest and evidence_digest == row_evidence_digest:
+            same_sentence_match = same_sentence_match or _row_id(row)
+        if current_identity_hash and current_identity_hash == row_identity_hash:
             return {
                 "evidence_origin": origin,
                 "abstract_duplicate_status": "exact_evidence_duplicate",
-                "duplicate_match_basis": ["same_pmid", "same_evidence_hash"],
+                "duplicate_match_basis": ["same_pmid", "same_evidence_hash", "same_subject", "same_relation_family", "same_object", "same_polarity"],
                 "matched_abstract_observation_id": _row_id(row),
+                "claim_identity_hash": current_identity_hash,
                 "dedup_action": "merge_provenance_into_abstract",
             }
         row_subject = _canonical_or_strict_surface(row, "subject")
@@ -362,14 +389,25 @@ def _abstract_duplicate_decision(claim: dict[str, Any], observation: dict[str, A
                 "abstract_duplicate_status": "deterministic_claim_duplicate",
                 "duplicate_match_basis": ["same_pmid", "same_subject", "same_relation_family", "same_object", "same_polarity"],
                 "matched_abstract_observation_id": _row_id(row),
+                "claim_identity_hash": current_identity_hash,
                 "dedup_action": "merge_provenance_into_abstract",
             }
+    if same_sentence_match:
+        return {
+            "evidence_origin": origin,
+            "abstract_duplicate_status": "same_sentence_possible_duplicate",
+            "duplicate_match_basis": ["same_pmid", "same_evidence_hash"],
+            "matched_abstract_observation_id": same_sentence_match,
+            "claim_identity_hash": current_identity_hash,
+            "dedup_action": "preserve_without_automatic_merge",
+        }
     if linked:
         return {
             "evidence_origin": origin,
             "abstract_duplicate_status": "possible_linked_duplicate",
             "duplicate_match_basis": ["linked_abstract_observation_only"],
             "matched_abstract_observation_id": None,
+            "claim_identity_hash": current_identity_hash,
             "dedup_action": "preserve_without_automatic_merge",
         }
     if origin == "body_section":
@@ -383,6 +421,7 @@ def _abstract_duplicate_decision(claim: dict[str, Any], observation: dict[str, A
         "abstract_duplicate_status": "not_duplicate",
         "duplicate_match_basis": [],
         "matched_abstract_observation_id": None,
+        "claim_identity_hash": current_identity_hash,
         "dedup_action": action,
     }
 
@@ -456,9 +495,11 @@ def _evaluate_core_conflict_eligibility(
 
 
 def _core_gate_lane_reason(failures: list[str]) -> str:
-    if "linked_abstract_duplicate" in failures:
-        return "linked_abstract_duplicate_not_independent_fulltext_evidence"
-    if "exact_evidence_duplicate" in failures or "possible_duplicate" in failures:
+    if "possible_linked_duplicate" in failures:
+        return "possible_linked_duplicate_not_independent_fulltext_confirmation"
+    if "same_sentence_possible_duplicate" in failures:
+        return "same_sentence_possible_duplicate_not_independent_fulltext_confirmation"
+    if "exact_evidence_duplicate" in failures or "deterministic_claim_duplicate" in failures:
         return "abstract_duplicate_not_independent_fulltext_evidence"
     if "canonical_graph_ineligible" in failures:
         return "direct_seed_but_canonical_grounding_failed"
@@ -508,19 +549,17 @@ def _classify_lane(claim: dict[str, Any], observation: dict[str, Any] | None, *,
     if not subject_is_seed and core_gate["recommended_lane"] == "core_seed_relation":
         core_gate = {**core_gate, "core_gate_passed": False, "conflict_eligible": False, "recommended_lane": "seed_neighborhood_mechanism", "core_gate_failures": ["seed_subject_not_direct_seed_endpoint"]}
     conflict_eligible = bool(core_gate["conflict_eligible"])
+    confirmed_duplicate = duplicate["abstract_duplicate_status"] in {"exact_evidence_duplicate", "deterministic_claim_duplicate"}
     if distance == "direct" and relation_class == "causal_regulation" and polarity_status == "resolved" and structural:
         if core_gate["core_gate_passed"]:
             lane = "core_seed_relation"
             lane_reason = "direct_seed_relation_with_resolved_polarity"
-        elif duplicate["abstract_duplicate_status"] != "not_duplicate" or subject_is_seed or composite_status == "composite":
+        elif confirmed_duplicate or subject_is_seed or composite_status == "composite":
             lane = "reviewable_context_relation"
             lane_reason = _core_gate_lane_reason(core_gate["core_gate_failures"])
         else:
             lane = "seed_neighborhood_mechanism"
             lane_reason = "direct_seed_mechanism_core_gate_failed_not_conflict_comparable"
-    elif duplicate["abstract_duplicate_status"] != "not_duplicate":
-        lane = "reviewable_context_relation"
-        lane_reason = "linked_abstract_duplicate_not_independent_fulltext_evidence" if duplicate["abstract_duplicate_status"] == "linked_abstract_duplicate" else "abstract_duplicate_not_independent_fulltext_evidence"
     elif relation_class == "expression_state":
         lane = "reviewable_context_relation"
         lane_reason = "expression_state_claim_not_causal_graph_edge"
@@ -551,6 +590,21 @@ def _classify_lane(claim: dict[str, Any], observation: dict[str, Any] | None, *,
     else:
         lane = "off_seed_relation"
         lane_reason = "no_claim_level_seed_endpoint"
+    independent_body = bool(duplicate["evidence_origin"] == "body_section" and duplicate["abstract_duplicate_status"] not in {"exact_evidence_duplicate", "deterministic_claim_duplicate"})
+    abstract_reextract = bool(duplicate["evidence_origin"] == "abstract_section" and duplicate["abstract_duplicate_status"] not in {"exact_evidence_duplicate", "deterministic_claim_duplicate"})
+    source_requires_review = duplicate["evidence_origin"] == "unknown_section"
+    if lane == "seed_neighborhood_mechanism" and structural:
+        exploratory = True
+        exploratory_reason = "body_seed_mechanism_preserved_for_recall" if independent_body else "seed_mechanism_preserved_for_recall"
+    elif lane == "core_seed_relation" and not conflict_eligible:
+        exploratory = True
+        exploratory_reason = "direct_seed_blocked_from_core_preserved_for_recall"
+    elif relation_class in {"dependency", "target_of", "rescue", "causal_regulation"} and structural and distance in {"direct", "one_hop"}:
+        exploratory = True
+        exploratory_reason = "structurally_coherent_mechanism_preserved_for_recall"
+    else:
+        exploratory = False
+        exploratory_reason = "not_exploratory_mechanism_lane"
     return {
         "relation_class": relation_class,
         "structural_graph_eligible": structural,
@@ -566,7 +620,16 @@ def _classify_lane(claim: dict[str, Any], observation: dict[str, Any] | None, *,
         "core_gate_passed": bool(core_gate["core_gate_passed"]),
         "core_gate_failures": list(core_gate["core_gate_failures"]),
         "abstract_duplicate_status": duplicate["abstract_duplicate_status"],
+        "evidence_origin": duplicate["evidence_origin"],
+        "duplicate_match_basis": list(duplicate["duplicate_match_basis"]),
+        "matched_abstract_observation_id": duplicate["matched_abstract_observation_id"],
+        "claim_identity_hash": duplicate["claim_identity_hash"],
         "dedup_action": duplicate["dedup_action"],
+        "exploratory_graph_eligible": exploratory,
+        "exploratory_retention_reason": exploratory_reason,
+        "independent_fulltext_body_evidence": independent_body,
+        "abstract_section_reextraction": abstract_reextract,
+        "source_requires_review": source_requires_review,
         "subject_is_composite": subject_is_composite,
         "object_is_composite": object_is_composite,
         "composite_entity_status": composite_status,
@@ -620,10 +683,16 @@ def _audit_row(claim: dict[str, Any], observation: dict[str, Any] | None, *, sou
         "pmid": claim.get("pmid"),
         "pmcid": claim.get("pmcid"),
         "subject": claim.get("subject") or claim.get("subject_raw"),
+        "subject_raw": claim.get("subject") or claim.get("subject_raw") or (observation or {}).get("subject_raw"),
         "relation": claim.get("predicate") or claim.get("relation_raw") or claim.get("relation_family"),
+        "relation_raw": claim.get("predicate") or claim.get("relation_raw") or claim.get("relation_family") or (observation or {}).get("relation_raw"),
         "object": claim.get("object") or claim.get("object_raw"),
+        "object_raw": claim.get("object") or claim.get("object_raw") or (observation or {}).get("object_raw"),
         "sign": claim.get("polarity") or claim.get("direction"),
         "original_evidence_sentence": claim.get("evidence_sentence"),
+        "evidence_sentence": claim.get("evidence_sentence") or (observation or {}).get("evidence_sentence"),
+        "section_type": _section_value(claim, observation, "section_type"),
+        "section_title": _section_value(claim, observation, "section_title"),
         "linked_abstract_observation_ids": list(claim.get("linked_abstract_observation_ids") or (observation or {}).get("linked_abstract_observation_ids") or []),
         "section_provenance": {
             "section_title": claim.get("section_title"),
@@ -691,7 +760,20 @@ def reenter_fulltext_l1_claims(
             "core_gate_failure_counts": {},
             "abstract_duplicate_count": 0,
             "abstract_provenance_merge_count": 0,
+            "abstract_section_claim_count": 0,
+            "body_section_claim_count": 0,
+            "unknown_section_claim_count": 0,
+            "exact_evidence_duplicate_count": 0,
+            "same_sentence_possible_duplicate_count": 0,
+            "exact_claim_duplicate_count": 0,
+            "deterministic_claim_duplicate_count": 0,
+            "possible_linked_duplicate_count": 0,
+            "not_duplicate_count": 0,
+            "abstract_section_reextraction_count": 0,
             "independent_fulltext_body_evidence_count": 0,
+            "exploratory_graph_eligible_count": 0,
+            "exploratory_seed_mechanism_count": 0,
+            "exploratory_direct_seed_count": 0,
             "rejection_reason_counts": {},
             "merged_graph_observation_count": len(abstract_graph),
             "abstract_observation_count": len(abstract_graph),
@@ -732,7 +814,10 @@ def reenter_fulltext_l1_claims(
             "polarity_resolution_status", "canonical_endpoint_eligible", "subject_is_composite",
             "object_is_composite", "composite_entity_status", "base_entity_polarity_derived",
             "original_intervention_claim_preserved", "core_gate_passed", "core_gate_failures",
-            "abstract_duplicate_status", "dedup_action", "lane_reason",
+            "abstract_duplicate_status", "evidence_origin", "duplicate_match_basis",
+            "matched_abstract_observation_id", "dedup_action", "lane_reason",
+            "claim_identity_hash", "exploratory_graph_eligible", "exploratory_retention_reason",
+            "independent_fulltext_body_evidence", "abstract_section_reextraction", "source_requires_review",
         }}
         annotated_observations.append({**row, **lane, "graph_eligibility": bool(lane.get("structural_graph_eligible"))})
     reentered = [row for row in annotated_observations if row.get("evidence_lane") == "core_seed_relation"]
@@ -743,10 +828,10 @@ def reenter_fulltext_l1_claims(
 
     abstract_by_id = {str(row.get("observation_id") or row.get("claim_id") or row.get("triple_id") or ""): row for row in abstract_retained}
     for row in audit:
-        if row.get("abstract_duplicate_status") != "linked_abstract_duplicate" or row.get("dedup_action") != "merge_provenance_into_abstract":
+        if row.get("dedup_action") != "merge_provenance_into_abstract":
             continue
         observation = by_claim.get(str(row.get("claim_id"))) or {}
-        linked = list(observation.get("linked_abstract_observation_ids") or [])
+        linked = [row.get("matched_abstract_observation_id")] if row.get("matched_abstract_observation_id") else list(observation.get("linked_abstract_observation_ids") or [])
         provenance = {
             "claim_id": row.get("claim_id"),
             "pmid": row.get("pmid"),
@@ -811,6 +896,8 @@ def reenter_fulltext_l1_claims(
     seed_distance_counts = Counter(str(row.get("seed_distance") or "none") for row in audit)
     polarity_counts = Counter(str(row.get("polarity_resolution_status") or "ambiguous") for row in audit)
     core_gate_failure_counts = Counter(reason for row in audit for reason in (row.get("core_gate_failures") or []))
+    origin_counts = Counter(str(row.get("evidence_origin") or "unknown_section") for row in audit)
+    duplicate_counts = Counter(str(row.get("abstract_duplicate_status") or "not_duplicate") for row in audit)
     summary = {
         "input_fulltext_claim_count": len(claims),
         "source_fulltext_claim_count": len(claims),
@@ -837,9 +924,22 @@ def reenter_fulltext_l1_claims(
         "core_gate_pass_count": sum(bool(row.get("core_gate_passed")) for row in audit),
         "core_gate_fail_count": sum(not bool(row.get("core_gate_passed")) for row in audit),
         "core_gate_failure_counts": dict(sorted(core_gate_failure_counts.items())),
-        "abstract_duplicate_count": sum(str(row.get("abstract_duplicate_status")) != "not_duplicate" for row in audit),
+        "abstract_duplicate_count": duplicate_counts.get("exact_evidence_duplicate", 0) + duplicate_counts.get("deterministic_claim_duplicate", 0),
+        "abstract_section_claim_count": origin_counts.get("abstract_section", 0),
+        "body_section_claim_count": origin_counts.get("body_section", 0),
+        "unknown_section_claim_count": origin_counts.get("unknown_section", 0),
+        "exact_evidence_duplicate_count": duplicate_counts.get("exact_evidence_duplicate", 0),
+        "same_sentence_possible_duplicate_count": duplicate_counts.get("same_sentence_possible_duplicate", 0),
+        "exact_claim_duplicate_count": duplicate_counts.get("exact_evidence_duplicate", 0),
+        "deterministic_claim_duplicate_count": duplicate_counts.get("deterministic_claim_duplicate", 0),
+        "possible_linked_duplicate_count": duplicate_counts.get("possible_linked_duplicate", 0),
+        "not_duplicate_count": duplicate_counts.get("not_duplicate", 0),
         "abstract_provenance_merge_count": sum(str(row.get("dedup_action")) == "merge_provenance_into_abstract" for row in audit),
-        "independent_fulltext_body_evidence_count": sum(str(row.get("dedup_action")) == "keep_as_fulltext_body_evidence" for row in audit),
+        "abstract_section_reextraction_count": sum(bool(row.get("abstract_section_reextraction")) for row in audit),
+        "independent_fulltext_body_evidence_count": sum(bool(row.get("independent_fulltext_body_evidence")) for row in audit),
+        "exploratory_graph_eligible_count": sum(bool(row.get("exploratory_graph_eligible")) for row in audit),
+        "exploratory_seed_mechanism_count": sum(bool(row.get("exploratory_graph_eligible")) and row.get("evidence_lane") == "seed_neighborhood_mechanism" for row in audit),
+        "exploratory_direct_seed_count": sum(bool(row.get("exploratory_graph_eligible")) and row.get("seed_distance") == "direct" for row in audit),
         "rejection_reason_counts": dict(sorted(reason_counts.items())),
         "merged_graph_observation_count": len(merged_graph),
         "abstract_observation_count": len(abstract_graph),

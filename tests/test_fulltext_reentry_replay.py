@@ -251,7 +251,7 @@ class FulltextReentryReplayTests(unittest.TestCase):
         self.assertFalse(audit[0]["conflict_eligible"])
 
     def test_actual_wnt_abstract_duplicate_core_candidate_is_hard_vetoed(self):
-        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "24c6d7688b83c730", "pmid": "34621119", "subject_raw": "Canonical Wnt signaling pathway", "relation_raw": "promotes", "object_raw": "cancer cell proliferation", "evidence_sentence": "Canonical Wnt signaling pathway plays a crucial role in cancer cell proliferation.", "retained": True, "graph_observation_eligible": True, "source_scope": "abstract"}])
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "24c6d7688b83c730", "pmid": "34621119", "subject_raw": "Canonical Wnt signaling pathway", "relation_raw": "promotes", "object_raw": "cancer cell proliferation", "direction": "positive", "evidence_sentence": "Canonical Wnt signaling pathway plays a crucial role in cancer cell proliferation.", "retained": True, "graph_observation_eligible": True, "source_scope": "abstract"}])
         write_rows(self.artifacts / "l2_graph_observations.jsonl", [])
         seed = {"subject": {"name": "Canonical Wnt signaling pathway"}, "object": {"name": "cancer cell proliferation"}, "context": {"context_terms": ["Wnt signaling"]}}
         write_json(self.artifacts / "semantic_search_intent.json", {"seed_triple": seed})
@@ -266,15 +266,143 @@ class FulltextReentryReplayTests(unittest.TestCase):
         self.assertFalse(audit[0]["core_gate_passed"])
         self.assertFalse(audit[0]["conflict_eligible"])
         self.assertEqual(audit[0]["evidence_lane"], "reviewable_context_relation")
-        self.assertEqual(audit[0]["abstract_duplicate_status"], "linked_abstract_duplicate")
+        self.assertEqual(audit[0]["evidence_origin"], "abstract_section")
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "exact_evidence_duplicate")
+        self.assertEqual(audit[0]["duplicate_match_basis"], ["same_pmid", "same_evidence_hash", "same_subject", "same_relation_family", "same_object", "same_polarity"])
+        self.assertEqual(audit[0]["matched_abstract_observation_id"], "24c6d7688b83c730")
         self.assertEqual(audit[0]["dedup_action"], "merge_provenance_into_abstract")
         self.assertEqual(core_rows, [])
         self.assertEqual(summary["core_seed_relation_count"], 0)
         self.assertEqual(summary["conflict_eligible_count"], 0)
-        expected_failures = {"canonical_graph_ineligible", "high_confidence_graph_use_disallowed", "conflict_reasoning_ineligible", "excluded_from_high_confidence_conflict", "excluded_from_core_reason_present", "predicate_direction_inconsistent", "predicate_anchor_not_accepted", "unresolved_subject", "unresolved_object", "subject_requires_manual_review", "object_requires_manual_review", "linked_abstract_duplicate"}
+        expected_failures = {"canonical_graph_ineligible", "high_confidence_graph_use_disallowed", "conflict_reasoning_ineligible", "excluded_from_high_confidence_conflict", "excluded_from_core_reason_present", "predicate_direction_inconsistent", "predicate_anchor_not_accepted", "unresolved_subject", "unresolved_object", "subject_requires_manual_review", "object_requires_manual_review", "exact_evidence_duplicate"}
         self.assertTrue(expected_failures.issubset(set(audit[0]["core_gate_failures"])))
         linked = next(row for row in retained if row.get("observation_id") == "24c6d7688b83c730")
         self.assertEqual(linked["merged_fulltext_provenance"][0]["claim_id"], "ft_501a95357d76_0")
+
+    def test_linked_abstract_id_alone_is_possible_not_confirmed_duplicate(self):
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS1", "pmid": "9", "subject_raw": "A", "relation_raw": "promotes", "object_raw": "B", "direction": "positive", "evidence_sentence": "A promotes B.", "retained": True, "source_scope": "abstract"}])
+        claims = [
+            {**self.claim, "claim_id": "L1", "pmid": "9", "subject": "NUSAP1", "predicate": "promotes", "object": "NSCLC proliferation", "linked_abstract_observation_ids": ["ABS1"], "section_type": "abstract", "section_title": "abstract", "evidence_sentence": "NUSAP1 promotes NSCLC proliferation."},
+            {**self.claim, "claim_id": "L2", "pmid": "9", "subject": "MEF2D", "predicate": "enhances", "object": "NUSAP1 expression", "linked_abstract_observation_ids": ["ABS1"], "section_type": "abstract", "section_title": "abstract", "evidence_sentence": "MEF2D enhances NUSAP1 expression."},
+            {**self.claim, "claim_id": "L3", "pmid": "9", "subject": "F. nucleatum", "predicate": "induced", "object": "Wnt signaling", "linked_abstract_observation_ids": ["ABS1"], "section_type": "abstract", "section_title": "abstract", "evidence_sentence": "F. nucleatum induced Wnt signaling."},
+        ]
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", claims)
+        observations = [{**self.accepted_observation(row["claim_id"]), "pmid": "9", "subject_raw": row["subject"], "relation_raw": row["predicate"], "object_raw": row["object"], "evidence_sentence": row["evidence_sentence"], "linked_abstract_observation_ids": ["ABS1"]} for row in claims]
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=observations):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual({row["abstract_duplicate_status"] for row in audit}, {"possible_linked_duplicate"})
+        self.assertEqual({row["dedup_action"] for row in audit}, {"preserve_without_automatic_merge"})
+        self.assertEqual(summary["possible_linked_duplicate_count"], 3)
+        self.assertEqual(summary["abstract_provenance_merge_count"], 0)
+
+    def test_deterministic_claim_duplicate_requires_matching_identity(self):
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS2", "pmid": "2", "subject_raw": "A", "relation_raw": "promotes", "object_raw": "B", "direction": "positive", "evidence_sentence": "Different wording.", "retained": True, "source_scope": "abstract"}])
+        claim = {**self.claim, "claim_id": "DUP1", "pmid": "2", "subject": "A", "predicate": "promotes", "object": "B", "polarity": "positive", "section_type": "abstract", "evidence_sentence": "A causally promotes B in another sentence."}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[self.accepted_observation("DUP1") | {"pmid": "2"}]):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "deterministic_claim_duplicate")
+        self.assertEqual(audit[0]["matched_abstract_observation_id"], "ABS2")
+        self.assertEqual(summary["deterministic_claim_duplicate_count"], 1)
+        self.assertEqual(summary["abstract_provenance_merge_count"], 1)
+
+    def test_different_claim_identity_does_not_merge_even_with_link(self):
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS3", "pmid": "3", "subject_raw": "A", "relation_raw": "promotes", "object_raw": "B", "direction": "positive", "evidence_sentence": "A promotes B.", "retained": True, "source_scope": "abstract"}])
+        claim = {**self.claim, "claim_id": "DIFF1", "pmid": "3", "subject": "X", "predicate": "suppresses", "object": "Y", "polarity": "negative", "linked_abstract_observation_ids": ["ABS3"], "section_type": "abstract", "evidence_sentence": "X suppresses Y."}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        normalized = {**self.accepted_observation("DIFF1"), "pmid": "3", "subject_raw": "X", "relation_raw": "suppresses", "object_raw": "Y", "direction": "negative", "linked_abstract_observation_ids": ["ABS3"]}
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[normalized]):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "possible_linked_duplicate")
+        self.assertEqual(audit[0]["dedup_action"], "preserve_without_automatic_merge")
+        self.assertEqual(summary["abstract_provenance_merge_count"], 0)
+
+    def test_section_origin_actions_and_audit_provenance_are_explicit(self):
+        claim = {**self.claim, "claim_id": "ABSNEW", "pmid": "4", "section_type": "abstract", "section_title": "abstract", "evidence_sentence": "A promotes B with new abstract wording."}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[self.accepted_observation("ABSNEW") | {"pmid": "4", "evidence_sentence": claim["evidence_sentence"]}]):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        for field in ("subject_raw", "relation_raw", "object_raw", "evidence_sentence", "section_type", "section_title", "section_provenance", "linked_abstract_observation_ids", "evidence_origin", "duplicate_match_basis", "matched_abstract_observation_id"):
+            self.assertIn(field, audit[0])
+        self.assertEqual(audit[0]["evidence_origin"], "abstract_section")
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "not_duplicate")
+        self.assertEqual(audit[0]["dedup_action"], "keep_as_abstract_section_reextraction")
+        self.assertEqual(summary["abstract_section_reextraction_count"], 1)
+
+    def test_body_claim_with_coarse_link_is_body_evidence_and_missing_section_is_unknown(self):
+        body = {**self.claim, "claim_id": "BODY1", "section_type": "Results", "section_title": "Results", "linked_abstract_observation_ids": ["ABS1"]}
+        unknown = {k: v for k, v in {**self.claim, "claim_id": "UNK1"}.items() if k not in {"section_type", "section_title"}}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [body, unknown])
+        observations = [self.accepted_observation("BODY1") | {"linked_abstract_observation_ids": ["ABS1"]}, self.accepted_observation("UNK1")]
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=observations):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = {row["claim_id"]: row for row in [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]}
+        self.assertEqual(audit["BODY1"]["evidence_origin"], "body_section")
+        self.assertEqual(audit["BODY1"]["abstract_duplicate_status"], "possible_linked_duplicate")
+        self.assertEqual(audit["BODY1"]["dedup_action"], "preserve_without_automatic_merge")
+        self.assertEqual(audit["UNK1"]["evidence_origin"], "unknown_section")
+        self.assertEqual(summary["body_section_claim_count"], 1)
+        self.assertEqual(summary["unknown_section_claim_count"], 1)
+
+    def test_possible_linked_duplicate_preserves_mechanism_lane_and_body_independence(self):
+        seed = {"subject": {"name": "cancer stemness"}, "object": {"name": "Wnt beta catenin signaling"}, "context": {"context_terms": ["Wnt/β-catenin signaling"]}}
+        write_json(self.artifacts / "semantic_search_intent.json", {"seed_triple": seed})
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS1", "pmid": "5", "subject_raw": "Different", "relation_raw": "associated with", "object_raw": "Thing", "evidence_sentence": "Different evidence.", "retained": True, "source_scope": "abstract"}])
+        claim = {**self.claim, "claim_id": "PLM1", "pmid": "5", "subject": "NUSAP1", "predicate": "promotes activation of", "object": "Wnt/β-catenin signaling", "section_type": "Results", "section_title": "Results", "linked_abstract_observation_ids": ["ABS1"], "evidence_sentence": "NUSAP1 promotes activation of Wnt/β-catenin signaling."}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        normalized = {**self.accepted_observation("PLM1"), "pmid": "5", "subject_raw": claim["subject"], "relation_raw": claim["predicate"], "object_raw": claim["object"], "linked_abstract_observation_ids": ["ABS1"]}
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[normalized]):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "possible_linked_duplicate")
+        self.assertEqual(audit[0]["evidence_lane"], "seed_neighborhood_mechanism")
+        self.assertTrue(audit[0]["exploratory_graph_eligible"])
+        self.assertTrue(audit[0]["independent_fulltext_body_evidence"])
+        self.assertFalse(audit[0]["conflict_eligible"])
+        self.assertEqual(summary["independent_fulltext_body_evidence_count"], 1)
+
+    def test_possible_linked_duplicate_preserves_off_seed_lane(self):
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS1", "pmid": "6", "subject_raw": "A", "relation_raw": "promotes", "object_raw": "B", "evidence_sentence": "A promotes B.", "retained": True, "source_scope": "abstract"}])
+        claim = {**self.claim, "claim_id": "PLO1", "pmid": "6", "subject": "NUSAP1", "predicate": "promotes", "object": "NSCLC cell proliferation", "section_type": "Results", "linked_abstract_observation_ids": ["ABS1"], "evidence_sentence": "NUSAP1 promotes NSCLC cell proliferation."}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        normalized = {**self.accepted_observation("PLO1"), "pmid": "6", "subject_raw": "NUSAP1", "relation_raw": "promotes", "object_raw": "NSCLC cell proliferation", "linked_abstract_observation_ids": ["ABS1"]}
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[normalized]):
+            reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "possible_linked_duplicate")
+        self.assertEqual(audit[0]["evidence_lane"], "off_seed_relation")
+        self.assertTrue(audit[0]["independent_fulltext_body_evidence"])
+
+    def test_abstract_possible_linked_duplicate_is_reextraction_not_body_evidence(self):
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS1", "pmid": "7", "subject_raw": "A", "relation_raw": "promotes", "object_raw": "B", "evidence_sentence": "A promotes B.", "retained": True, "source_scope": "abstract"}])
+        claim = {**self.claim, "claim_id": "PLA1", "pmid": "7", "subject": "NUSAP1", "predicate": "promotes", "object": "NSCLC cell proliferation", "section_type": "abstract", "section_title": "abstract", "linked_abstract_observation_ids": ["ABS1"], "evidence_sentence": "NUSAP1 promotes NSCLC cell proliferation."}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        normalized = {**self.accepted_observation("PLA1"), "pmid": "7", "subject_raw": "NUSAP1", "relation_raw": "promotes", "object_raw": "NSCLC cell proliferation", "linked_abstract_observation_ids": ["ABS1"]}
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[normalized]):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual(audit[0]["dedup_action"], "preserve_without_automatic_merge")
+        self.assertTrue(audit[0]["abstract_section_reextraction"])
+        self.assertFalse(audit[0]["independent_fulltext_body_evidence"])
+        self.assertEqual(summary["abstract_section_reextraction_count"], 1)
+
+    def test_same_sentence_different_triples_are_not_exact_duplicates(self):
+        sentence = "A promotes B and X suppresses Y."
+        write_rows(self.artifacts / "l2_retained_observations.jsonl", [{"observation_id": "ABS1", "pmid": "8", "subject_raw": "A", "relation_raw": "promotes", "object_raw": "B", "direction": "positive", "evidence_sentence": sentence, "retained": True, "source_scope": "abstract"}])
+        claim = {**self.claim, "claim_id": "SS1", "pmid": "8", "subject": "X", "predicate": "suppresses", "object": "Y", "polarity": "negative", "section_type": "abstract", "evidence_sentence": sentence}
+        write_rows(self.artifacts / "l35_fulltext_l1_claims.jsonl", [claim])
+        normalized = {**self.accepted_observation("SS1", direction="negative"), "pmid": "8", "subject_raw": "X", "relation_raw": "suppresses", "object_raw": "Y", "evidence_sentence": sentence}
+        with patch("code_engine.fulltext.reentry._normalize_progressive_records", return_value=[normalized]):
+            summary = reenter_fulltext_l1_claims(self.run, source_fulltext_run=Path("fulltext"))
+        audit = [json.loads(line) for line in (self.artifacts / "fulltext_reentry_audit.jsonl").read_text().splitlines()]
+        self.assertEqual(audit[0]["abstract_duplicate_status"], "same_sentence_possible_duplicate")
+        self.assertEqual(audit[0]["dedup_action"], "preserve_without_automatic_merge")
+        self.assertEqual(summary["same_sentence_possible_duplicate_count"], 1)
+        self.assertEqual(summary["exact_claim_duplicate_count"], 0)
 
     def test_hard_vetoes_prevent_direct_seed_core_eligibility(self):
         cases = [
