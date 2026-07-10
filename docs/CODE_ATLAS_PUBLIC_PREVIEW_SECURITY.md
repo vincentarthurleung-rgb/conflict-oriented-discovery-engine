@@ -1,98 +1,134 @@
 # C.O.D.E. Atlas Public Preview Security
 
-C.O.D.E. Atlas may expose unpublished bundles, evidence text, source metadata, annotations, and draft metrics. Treat every preview as sensitive. This layer provides preview-grade controls, not full production or multi-tenant security.
+C.O.D.E. Atlas Public Preview is intended for local development, controlled demos, and small human review groups. It is not a production SaaS user system.
 
-## Create preconfigured users
+## Local Development
 
-Real user files are ignored by Git. Passwords are prompted without echo and stored only as PBKDF2-SHA256 hashes.
+Use no-auth only on loopback:
+
+```bash
+python -m code_engine.cli.system_b_serve_knowledge_explorer \
+  --display-kg-root system_b_outputs/three_case_clean_kg_v3 \
+  --review-root system_b_outputs/three_case_review \
+  --no-auth \
+  --host 127.0.0.1 \
+  --port 8765
+```
+
+Do not expose `--no-auth` to the public internet.
+
+## Public Preview
+
+Use a stable secret key, a users file, auth, and a secured reverse proxy or tunnel:
+
+```bash
+export ATLAS_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+
+python -m code_engine.cli.system_b_serve_knowledge_explorer \
+  --display-kg-root system_b_outputs/three_case_clean_kg_v3 \
+  --review-root system_b_outputs/three_case_review \
+  --users-file configs/atlas_users.json \
+  --require-auth \
+  --public-preview \
+  --host 127.0.0.1 \
+  --port 8765
+```
+
+`--public-preview` requires `ATLAS_SECRET_KEY` and sets secure session cookies. It should be served through HTTPS. The CLI rejects binding public preview directly to non-loopback hosts.
+
+## Create an Admin
 
 ```bash
 python -m code_engine.cli.atlas_user_admin create-user \
   --users-file configs/atlas_users.json \
-  --username vincent --display-name "Vincent" --role admin
-
-python -m code_engine.cli.atlas_user_admin list-users \
-  --users-file configs/atlas_users.json
+  --username vincent \
+  --display-name "Vincent" \
+  --role admin
 ```
 
-`--password-env` is intended for controlled automation. Do not put passwords directly in command arguments or shell history.
+Passwords are stored as PBKDF2-SHA256 hashes. Plaintext password fields are rejected when Atlas loads the users file.
 
-## Mode A: safest local-only
+## Invite-Only Registration
+
+Registration is disabled by default. Create an invite first:
 
 ```bash
-python -m code_engine.cli.system_b_serve_knowledge_explorer \
-  --display-kg-root system_b_outputs/three_case_clean_kg_v3 \
-  --review-root system_b_outputs/three_case_review \
-  --host 127.0.0.1 --port 8765 --no-auth
+python -m code_engine.cli.atlas_user_admin create-invite \
+  --users-file configs/atlas_users.json \
+  --label pharmacy_batch_1 \
+  --role reviewer \
+  --max-uses 20 \
+  --expires-in-days 14
 ```
 
-This mode is for the local machine only. Do not expose it through a tunnel or public interface.
+The CLI prints the invite code once. The users file stores only a `sha256:` hash of that code. `list-invites` never displays plaintext invite codes.
 
-## Mode B: recommended temporary Cloudflare Tunnel preview
+Recommended invite settings:
 
-Generate a fresh session secret and keep Atlas bound to loopback:
+- Use short expiry windows, typically 7-14 days.
+- Set `--max-uses` to the actual number of expected reviewers.
+- Use `--role reviewer` for external human reviewers.
+- Disable leaked or unused invites immediately.
+
+Enable registration only when needed:
 
 ```bash
-export ATLAS_SECRET_KEY="$(python - <<'PY'
-import secrets
-print(secrets.token_urlsafe(48))
-PY
-)"
-
 python -m code_engine.cli.system_b_serve_knowledge_explorer \
   --display-kg-root system_b_outputs/three_case_clean_kg_v3 \
   --review-root system_b_outputs/three_case_review \
   --users-file configs/atlas_users.json \
-  --require-auth --public-preview \
-  --host 127.0.0.1 --port 8765
+  --require-auth \
+  --public-preview \
+  --allow-registration \
+  --host 127.0.0.1 \
+  --port 8765
 ```
 
-In another terminal:
+Registered users are enabled immediately and receive the role configured on the invite, normally `reviewer`. Registration does not auto-login; users must log in after registration.
+
+Disable a leaked invite immediately:
 
 ```bash
-cloudflared tunnel --url http://127.0.0.1:8765
+python -m code_engine.cli.atlas_user_admin disable-invite \
+  --users-file configs/atlas_users.json \
+  --label pharmacy_batch_1
 ```
 
-Do not expose a Flask debug server. A tunnel is a temporary preview mechanism, Atlas authentication remains required, and links must not be shared with untrusted people. Never place API keys or secrets in browser code.
+## Security Controls
 
-## Mode C: VPS, Nginx, and UFW
+Atlas auth currently includes:
 
-Keep Atlas listening only on `127.0.0.1:8765`. Permit only SSH and web ingress:
+- PBKDF2-SHA256 password hashes.
+- Atomic users file writes.
+- Invite code hashes instead of plaintext invite storage.
+- Login CSRF protection.
+- CSRF protection for state-changing API requests.
+- HttpOnly session cookies, `SameSite=Lax`, and `Secure` cookies in public preview.
+- In-memory login and registration rate limiting.
+- Security headers including CSP, frame denial, referrer policy, and clipboard permissions.
 
-```bash
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-sudo ufw status verbose
-```
+## Roles And Modes
 
-Example Nginx reverse proxy:
+Atlas distinguishes UI mode from authenticated role. UI mode is not a security boundary by itself.
 
-```nginx
-server {
-    listen 80;
-    server_name atlas.example.com;
+Current allowed modes:
 
-    location / {
-        proxy_pass http://127.0.0.1:8765;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+- `admin`: `pharma`, `reviewer`, `developer`
+- `developer`: `pharma`, `reviewer`, `developer`
+- `reviewer`: `pharma`, `reviewer`
+- `pharma`: `pharma`
 
-Configure HTTPS with Certbot or an equivalent TLS process before public use. This repository does not automate certificates, firewall changes, tunnel installation, backups, monitoring, or host hardening.
+The server returns `allowed_modes` from `/api/session`, and the frontend hides unauthorized mode buttons. Reviewer users cannot enter developer mode through normal UI or by editing `localStorage`; unsupported modes are downgraded to the first allowed mode.
 
-## Security boundaries
+For public preview, reviewer/pharma JSON API responses also redact common debug fields such as source file paths, source lines, bundle paths, display priority scores, noise risk scores, and validator internals. Admin/developer users and no-auth local development retain full debug responses.
 
-- No registration, OAuth, RBAC beyond stored role metadata, or multi-user database
-- Sessions use an environment-provided secret in public-preview mode
-- Annotation writes require a session-bound CSRF token
-- Login throttling is in-memory and resets on process restart
-- Annotation files use atomic replacement but do not provide multi-editor conflict resolution
-- Authentication protects access; it does not make Atlas output biological validation
+## Limits
+
+Atlas Public Preview is not a production identity system:
+
+- Lockout state is in memory and resets on process restart.
+- There is no MFA, OAuth, email verification, password reset workflow, audit database, or distributed rate limit.
+- Invite-only registration is for controlled review groups, not open self-service signup.
+- If an invite code leaks, disable it and create a new one.
+- Do not expose no-auth mode publicly.
+- Enable `--allow-registration` only when you are actively collecting external reviewer accounts; leave registration disabled otherwise.
