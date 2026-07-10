@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse,getpass,os
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
+from sqlalchemy import select
 from code_engine.system_b.explorer.auth import generate_invite_code,hash_invite_code,hash_password,load_user_store,utc_now_iso,write_user_store
+from code_engine.system_b.persistence.database import create_atlas_engine,database_url,session_factory,session_scope
+from code_engine.system_b.persistence.models import SystemSetting,User
 
 def _store(path):return load_user_store(path) if Path(path).is_file() else {"users":{},"invites":[]}
 def _users(path):return _store(path)["users"]
@@ -24,7 +27,21 @@ def main(argv=None):
     q=sub.add_parser("create-invite");q.add_argument("--users-file",required=True);q.add_argument("--label",required=True);q.add_argument("--role",choices=("admin","developer","reviewer","pharma"),default="reviewer");q.add_argument("--max-uses",type=int,default=1);q.add_argument("--expires-in-days",type=int,required=True);q.add_argument("--created-by",default="admin")
     q=sub.add_parser("list-invites");q.add_argument("--users-file",required=True)
     q=sub.add_parser("disable-invite");q.add_argument("--users-file",required=True);q.add_argument("--label",required=True)
-    a=p.parse_args(argv);store=_store(a.users_file);users=store["users"];invites=store["invites"]
+    q=sub.add_parser("create-owner");q.add_argument("--database-url",default=None);q.add_argument("--username",required=True);q.add_argument("--display-name",required=True);q.add_argument("--password-env")
+    a=p.parse_args(argv)
+    if a.command=="create-owner":
+        username=a.username.strip().casefold()
+        if not username:raise ValueError("--username is required")
+        engine=create_atlas_engine(database_url(a.database_url));factory=session_factory(engine)
+        with session_scope(factory) as session:
+            owners=session.execute(select(User).where(User.role=="owner",User.enabled==True)).scalars().all()  # noqa: E712
+            if owners:raise ValueError("An enabled owner already exists")
+            if session.execute(select(User).where(User.username==username)).scalar_one_or_none():raise ValueError(f"User already exists: {username}")
+            user=User(username=username,display_name=a.display_name,password_hash=hash_password(_password(a.password_env)),role="owner",enabled=True)
+            session.add(user);session.flush();session.merge(SystemSetting(key="owner_user_id",value=user.user_id))
+            print(f"Created owner: {username} ({user.user_id})")
+        return 0
+    store=_store(a.users_file);users=store["users"];invites=store["invites"]
     if a.command=="list-users":
         for x in users.values():print(f"{x['username']}\t{x.get('display_name','')}\t{x.get('role','reviewer')}\t{'enabled' if x.get('enabled',True) else 'disabled'}")
         return 0
