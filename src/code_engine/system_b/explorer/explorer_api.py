@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from urllib.parse import unquote
 from .annotation_store import AnnotationStore
+from .graph_projection import GraphProjection
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
 LAYER_MAP = {
@@ -63,6 +64,7 @@ class ExplorerAPI:
         self.paper_metrics=_json(self.review_root/"paper_metrics_starter.json") if self.review_root else {}
         self.annotation_status=self._annotation_status()
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])})
+        self.graph=GraphProjection(self)
 
     def _annotation_status(self):
         path=self.review_root/"manual_review_annotations_template.csv" if self.review_root else None
@@ -123,6 +125,11 @@ class ExplorerAPI:
         if path=="/api/review-export.csv":return 200,{"_raw":self.annotations.csv_text(),"_content_type":"text/csv; charset=utf-8","_filename":"manual_review_annotations_live.csv"}
         if path=="/api/review-export.jsonl":return 200,{"_raw":self.annotations.jsonl_text(),"_content_type":"application/x-ndjson; charset=utf-8","_filename":"manual_review_annotations_live.jsonl"}
         if path=="/api/search":return 200,self._search(_one(params,"q").casefold(),params)
+        if path=="/api/graph/filters":return 200,self.graph.filters()
+        if path=="/api/graph/overview":return 200,self.graph.overview(params)
+        if path.startswith("/api/graph/neighborhood/"):
+            return 200,self.graph.neighborhood(unquote(path.removeprefix("/api/graph/neighborhood/")),params)
+        if path=="/api/graph/path":return 200,self.graph.path(params)
         return 404,{"error":"not_found"}
 
     def _entities(self,p):

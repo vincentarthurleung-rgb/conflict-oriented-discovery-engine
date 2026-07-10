@@ -36,6 +36,8 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
         return user.get("role","reviewer")
     def allowed_modes_for_role(role):return ROLE_ALLOWED_MODES.get(role,ROLE_ALLOWED_MODES["reviewer"])
     def can_view_debug():return current_role() in {"admin","developer"}
+    def can_use_review():return not require_auth or current_role() in {"admin","developer","reviewer"}
+    def can_use_dev():return not require_auth or current_role() in {"admin","developer"}
     def redact_debug(value):
         if can_view_debug():return value
         if isinstance(value,list):return [redact_debug(x) for x in value]
@@ -116,6 +118,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     def api_route(subpath):
         if not authenticated():return jsonify({"error":"authentication_required"}),401
         path="/api/"+subpath
+        if path.startswith(("/api/review","/api/annotation","/api/annotations")) and not can_use_review():return jsonify({"error":"forbidden"}),403
         if request.method in {"POST","PUT","DELETE"}:
             if not secrets.compare_digest(request.headers.get("X-CSRF-Token",""),csrf()):return jsonify({"error":"csrf_token_invalid"}),403
         try:status,value=api.dispatch(path,request.args.to_dict(flat=False),method=request.method,body=request.get_json(silent=True) or {})
@@ -129,6 +132,10 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     @app.route("/<path:path>")
     @page_auth
     def page(path):return send_from_directory(static,"index.html")
+    @app.before_request
+    def workspace_rbac():
+        if request.path in {"/review","/metrics","/progress"} and authenticated() and not can_use_review():return Response("Forbidden",403)
+        if request.path=="/dev" and authenticated() and not can_use_dev():return Response("Forbidden",403)
     return app
 
 def serve(display_kg_root,review_root=None,host="127.0.0.1",port=8765,on_ready=None,**options):
