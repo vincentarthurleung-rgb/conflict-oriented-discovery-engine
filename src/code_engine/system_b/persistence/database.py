@@ -83,18 +83,6 @@ def sqlite_health(engine: Engine) -> dict:
             version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
         except Exception:
             version = None
-        if version is None:
-            try:
-                tables = {row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).all()}
-                expected = {"users", "review_items", "annotations", "annotation_events", "metric_results", "audit_events"}
-                if expected.issubset(tables):
-                    conn.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)"))
-                    conn.execute(text("DELETE FROM alembic_version"))
-                    conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('0005_metrics_and_audit')"))
-                    conn.commit()
-                    version = "0005_metrics_and_audit"
-            except Exception:
-                version = None
     return {
         "status": "ok" if integrity == "ok" and foreign_keys == 1 else "failed",
         "integrity_check": integrity,

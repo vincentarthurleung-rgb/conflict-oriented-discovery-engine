@@ -1,0 +1,193 @@
+"""Assignment-scoped review queue services."""
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime
+from typing import Iterable
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from code_engine.system_b.persistence.models import Assignment, AssignmentBatch, EvaluationProject, EvaluationProtocol, ReviewItem, User, utcnow
+from code_engine.system_b.persistence.services.audit_service import write_audit_event
+
+
+def _json(value) -> str:
+    return json.dumps(value or {}, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _sha(value) -> str:
+    return hashlib.sha256(_json(value).encode("utf-8")).hexdigest()
+
+
+def _user(session: Session, user_id: str, expected_role: str | None = None) -> User:
+    user = session.get(User, user_id)
+    if not user or not user.enabled:
+        raise ValueError("user_not_found")
+    if expected_role and user.role != expected_role:
+        raise ValueError(f"user_must_be_{expected_role}")
+    return user
+
+
+def create_project_with_assignments(
+    session: Session,
+    *,
+    owner: dict,
+    name: str,
+    namespace: str,
+    annotation_schema_version: str,
+    primary_reviewer_user_id: str,
+    secondary_reviewer_user_id: str,
+    adjudicator_user_id: str,
+    batch_size: int = 50,
+    due_at: datetime | None = None,
+    case_ids: Iterable[str] | None = None,
+    item_ids: Iterable[str] | None = None,
+) -> dict:
+    if namespace != "production":
+        raise ValueError("formal_projects_must_use_production_namespace")
+    if primary_reviewer_user_id == secondary_reviewer_user_id:
+        raise ValueError("primary_secondary_must_differ")
+    primary = _user(session, primary_reviewer_user_id)
+    secondary = _user(session, secondary_reviewer_user_id)
+    adjudicator = _user(session, adjudicator_user_id)
+    if primary.user_id == adjudicator.user_id or secondary.user_id == adjudicator.user_id:
+        raise ValueError("adjudicator_must_be_distinct")
+
+    query = select(ReviewItem).where(ReviewItem.namespace == namespace)
+    cases = sorted(set(case_ids or []))
+    items = sorted(set(item_ids or []))
+    if cases:
+        query = query.where(ReviewItem.case_id.in_(cases))
+    if items:
+        query = query.where(ReviewItem.review_item_id.in_(items))
+    review_items = session.execute(query.order_by(ReviewItem.case_id, ReviewItem.item_type, ReviewItem.review_item_id)).scalars().all()
+    if not review_items:
+        raise ValueError("no_review_items_selected")
+
+    project = EvaluationProject(
+        name=name,
+        description="Owner-created formal production evaluation project.",
+        namespace=namespace,
+        status="active",
+        created_by_user_id=owner.get("user_id"),
+    )
+    session.add(project)
+    session.flush()
+    protocol_payload = {
+        "annotation_schema_version": annotation_schema_version,
+        "case_ids": [item.case_id for item in review_items],
+        "item_ids": [item.review_item_id for item in review_items],
+    }
+    protocol = EvaluationProtocol(
+        project_id=project.project_id,
+        version=1,
+        protocol_json=_json(protocol_payload),
+        case_ids_sha256=_sha(protocol_payload["case_ids"]),
+        metric_registry_sha256=_sha({"registry": "atlas_metric_registry_v1"}),
+        annotation_schema_sha256=_sha({"annotation_schema_version": annotation_schema_version}),
+        dataset_split_sha256=_sha(protocol_payload["item_ids"]),
+        frozen=True,
+        created_by_user_id=owner.get("user_id"),
+        frozen_at=utcnow(),
+    )
+    session.add(protocol)
+
+    created_assignments = []
+    for role, reviewer in (("primary", primary), ("secondary", secondary), ("adjudicator", adjudicator)):
+        batch = AssignmentBatch(
+            project_id=project.project_id,
+            reviewer_user_id=reviewer.user_id,
+            batch_index=0,
+            batch_size=batch_size,
+            filter_json=_json({"case_ids": cases, "item_ids": items}),
+            status="assigned",
+            assigned_by_user_id=owner.get("user_id"),
+            due_at=due_at,
+        )
+        session.add(batch)
+        session.flush()
+        for item in review_items:
+            existing = session.execute(select(Assignment).where(
+                Assignment.project_id == project.project_id,
+                Assignment.review_item_id == item.review_item_id,
+                Assignment.reviewer_user_id == reviewer.user_id,
+                Assignment.assignment_role == role,
+            )).scalar_one_or_none()
+            if existing:
+                continue
+            assignment = Assignment(
+                project_id=project.project_id,
+                batch_id=batch.batch_id,
+                review_item_id=item.review_item_id,
+                reviewer_user_id=reviewer.user_id,
+                assignment_role=role,
+                status="assigned",
+                assigned_by_user_id=owner.get("user_id"),
+            )
+            session.add(assignment)
+            created_assignments.append(assignment)
+    session.flush()
+    write_audit_event(session, action="assignment_batch_created", object_type="project", object_id=project.project_id, actor=owner, project_id=project.project_id, metadata={"items": len(review_items), "primary": primary.user_id, "secondary": secondary.user_id, "adjudicator": adjudicator.user_id})
+    return {
+        "project_id": project.project_id,
+        "protocol_id": protocol.protocol_id,
+        "review_item_count": len(review_items),
+        "assignment_count": len(created_assignments),
+    }
+
+
+def assignment_to_dict(row: Assignment) -> dict:
+    return {
+        "assignment_id": row.assignment_id,
+        "project_id": row.project_id,
+        "batch_id": row.batch_id,
+        "review_item_id": row.review_item_id,
+        "reviewer_user_id": row.reviewer_user_id,
+        "assignment_role": row.assignment_role,
+        "status": row.status,
+        "assigned_at": row.assigned_at.isoformat() if row.assigned_at else "",
+        "completed_at": row.completed_at.isoformat() if row.completed_at else "",
+    }
+
+
+def my_assignments(session: Session, *, user_id: str) -> list[dict]:
+    rows = session.execute(select(Assignment).where(Assignment.reviewer_user_id == user_id).order_by(Assignment.assigned_at, Assignment.assignment_id)).scalars().all()
+    return [assignment_to_dict(row) for row in rows]
+
+
+def my_batches(session: Session, *, user_id: str) -> list[dict]:
+    rows = session.execute(select(AssignmentBatch).where(AssignmentBatch.reviewer_user_id == user_id).order_by(AssignmentBatch.batch_index, AssignmentBatch.batch_id)).scalars().all()
+    return [{
+        "batch_id": row.batch_id,
+        "project_id": row.project_id,
+        "batch_index": row.batch_index,
+        "batch_size": row.batch_size,
+        "status": row.status,
+        "assigned_at": row.assigned_at.isoformat() if row.assigned_at else "",
+        "due_at": row.due_at.isoformat() if row.due_at else "",
+    } for row in rows]
+
+
+def my_review_items(session: Session, *, user_id: str) -> list[dict]:
+    rows = session.execute(
+        select(Assignment, ReviewItem)
+        .join(ReviewItem, Assignment.review_item_id == ReviewItem.review_item_id)
+        .where(Assignment.reviewer_user_id == user_id)
+        .order_by(Assignment.assigned_at, ReviewItem.case_id, ReviewItem.review_item_id)
+    ).all()
+    items = []
+    for assignment, item in rows:
+        payload = json.loads(item.payload_json or "{}")
+        payload.update({"assignment_id": assignment.assignment_id, "assignment_role": assignment.assignment_role, "assignment_status": assignment.status, "project_id": assignment.project_id})
+        items.append(payload)
+    return items
+
+
+def my_progress(session: Session, *, user_id: str) -> dict:
+    rows = session.execute(select(Assignment.status, func.count()).where(Assignment.reviewer_user_id == user_id).group_by(Assignment.status)).all()
+    counts = {status: count for status, count in rows}
+    total = sum(counts.values())
+    done = sum(counts.get(status, 0) for status in ("submitted", "skipped", "revisit", "completed"))
+    return {"total": total, "completed": done, "remaining": max(0, total - done), "counts_by_status": counts, "fraction_complete": round(done / total, 6) if total else None}

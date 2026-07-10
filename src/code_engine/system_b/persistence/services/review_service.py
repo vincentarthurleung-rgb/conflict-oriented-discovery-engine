@@ -20,6 +20,7 @@ from code_engine.system_b.persistence.models import (
     User,
     utcnow,
 )
+from code_engine.system_b.persistence.services.audit_service import write_audit_event
 
 
 DEFAULT_PROJECT_NAME = "Atlas default review project"
@@ -71,6 +72,7 @@ def import_review_items(session: Session, review_root: str | Path, *, namespace:
     run_id = import_run_id or sha256_text(str(root.resolve()))[:16]
     inserted = 0
     unchanged = 0
+    warnings = []
     for row in rows:
         item_id = row.get("review_item_id")
         if not item_id:
@@ -79,6 +81,8 @@ def import_review_items(session: Session, review_root: str | Path, *, namespace:
         source_hash = sha256_text(payload)
         existing = session.get(ReviewItem, item_id)
         if existing:
+            if existing.source_hash != source_hash:
+                warnings.append({"review_item_id": item_id, "warning": "source_hash_changed", "old_hash": existing.source_hash, "new_hash": source_hash})
             unchanged += 1
             continue
         session.add(ReviewItem(
@@ -95,7 +99,7 @@ def import_review_items(session: Session, review_root: str | Path, *, namespace:
         ))
         inserted += 1
     session.flush()
-    return {"review_items_seen": len(rows), "review_items_inserted": inserted, "review_items_unchanged": unchanged, "import_run_id": run_id}
+    return {"review_items_seen": len(rows), "review_items_inserted": inserted, "review_items_unchanged": unchanged, "import_run_id": run_id, "warnings": warnings}
 
 
 def annotation_to_dict(annotation: Annotation) -> dict:
@@ -161,13 +165,32 @@ def save_annotation(
         else:
             raise PermissionError("authenticated user is not present in Atlas database")
 
-    project = ensure_project(session, namespace=namespace, name=project_name)
+    project = None
     assignment_id = payload.get("assignment_id") or None
+    assignment = None
     if assignment_id:
         assignment = session.get(Assignment, assignment_id)
         if not assignment or assignment.reviewer_user_id != user.user_id or assignment.review_item_id != review_item_id:
             raise PermissionError("assignment_not_owned_by_current_user")
-
+    elif namespace == "production":
+        rows = session.execute(select(Assignment).where(
+            Assignment.review_item_id == review_item_id,
+            Assignment.reviewer_user_id == user.user_id,
+        )).scalars().all()
+        if len(rows) != 1:
+            raise PermissionError("assignment_required")
+        assignment = rows[0]
+        assignment_id = assignment.assignment_id
+    if assignment:
+        project = session.get(EvaluationProject, assignment.project_id)
+        if not project or project.status != "active" or project.namespace != namespace:
+            raise PermissionError("assignment_project_not_active")
+        if assignment.assignment_role not in {"primary", "secondary", "expert"}:
+            raise PermissionError("assignment_role_cannot_submit_annotation")
+        if assignment.status not in {"assigned", "in_progress", "revisit"}:
+            raise PermissionError("assignment_not_open")
+    else:
+        project = ensure_project(session, namespace=namespace, name=project_name)
     client_submission_id = payload.get("client_submission_id") or None
     if client_submission_id:
         prior = session.execute(select(Annotation).where(
@@ -239,6 +262,12 @@ def save_annotation(
     annotation.updated_at = now
     if status == "submitted":
         annotation.submitted_at = now
+    if assignment:
+        assignment.status = {"submitted": "submitted", "skipped": "skipped", "revisit": "revisit", "draft": "in_progress"}[disposition]
+        if assignment.status in {"submitted", "skipped", "revisit"}:
+            assignment.completed_at = now
+        elif not assignment.started_at:
+            assignment.started_at = now
     session.flush()
 
     snapshot = annotation_to_dict(annotation)
@@ -257,6 +286,19 @@ def save_annotation(
         ip_hash=ip_hash,
         session_hash=session_hash,
     ))
+    write_audit_event(
+        session,
+        action=action,
+        object_type="annotation",
+        object_id=annotation.annotation_id,
+        actor=identity,
+        project_id=project.project_id,
+        review_item_id=review_item_id,
+        metadata={"assignment_id": assignment_id, "disposition": disposition, "revision": annotation.revision},
+        request_id=request_id,
+        ip_hash=ip_hash,
+        session_hash=session_hash,
+    )
     return snapshot
 
 

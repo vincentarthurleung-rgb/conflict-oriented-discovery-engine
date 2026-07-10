@@ -59,6 +59,7 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (_check("ck_users_role", "role", ROLES),)
+    # SQLite enforces the enabled-owner uniqueness through Alembic partial index.
 
 
 class Invite(Base):
@@ -255,6 +256,7 @@ class Adjudication(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    __table_args__ = (UniqueConstraint("project_id", "review_item_id", name="uq_adjudication_current_item"),)
 
 
 class AdjudicationSource(Base):

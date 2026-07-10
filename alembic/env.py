@@ -6,13 +6,11 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from code_engine.system_b.persistence.models import Base
-
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
+target_metadata = None
 
 
 def _database_url() -> str:
@@ -43,12 +41,7 @@ def run_migrations_online() -> None:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
-        if connection.dialect.name == "sqlite":
-            connection.exec_driver_sql("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)")
-            count = connection.exec_driver_sql("SELECT COUNT(*) FROM alembic_version").scalar()
-            if count == 0:
-                connection.exec_driver_sql("INSERT INTO alembic_version (version_num) VALUES ('0005_metrics_and_audit')")
-                connection.commit()
+        connection.commit()
 
 
 if context.is_offline_mode():

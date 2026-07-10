@@ -8,13 +8,15 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from code_engine.system_b.persistence.database import database_url, sqlite_path_from_url
+from code_engine.system_b.persistence.database import create_atlas_engine, database_url, session_factory, session_scope, sqlite_path_from_url
+from code_engine.system_b.persistence.services.audit_service import write_audit_event
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database-url", default=None)
     parser.add_argument("--output-dir", default="data/backups")
+    parser.add_argument("--actor-user-id")
     args = parser.parse_args(argv)
     url = database_url(args.database_url)
     source_path = sqlite_path_from_url(url)
@@ -24,6 +26,9 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup = out / f"code_atlas_{stamp}.db"
+    engine = create_atlas_engine(url)
+    with session_scope(session_factory(engine)) as session:
+        write_audit_event(session, action="backup_created", object_type="database", object_id=str(source_path), actor={"user_id": args.actor_user_id}, metadata={"backup_path": str(backup)})
     with sqlite3.connect(source_path) as src, sqlite3.connect(backup) as dst:
         src.backup(dst)
     digest = hashlib.sha256(backup.read_bytes()).hexdigest()
