@@ -46,8 +46,8 @@ def create_project_with_assignments(
     case_ids: Iterable[str] | None = None,
     item_ids: Iterable[str] | None = None,
 ) -> dict:
-    if namespace != "production":
-        raise ValueError("formal_projects_must_use_production_namespace")
+    if namespace not in {"pilot", "production"}:
+        raise ValueError("projects_must_use_pilot_or_production_namespace")
     if primary_reviewer_user_id == secondary_reviewer_user_id:
         raise ValueError("primary_secondary_must_differ")
     primary = _user(session, primary_reviewer_user_id)

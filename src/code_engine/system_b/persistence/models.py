@@ -55,6 +55,10 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    session_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invite_source_id: Mapped[str | None] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -74,7 +78,44 @@ class Invite(Base):
     max_uses: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     uses: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"))
+    project_scope_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (_check("ck_invites_role", "role", ROLES),)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+    reset_token_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_text)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    created_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class InviteUsageEvent(Base):
+    __tablename__ = "invite_usage_events"
+    invite_usage_event_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_text)
+    invite_id: Mapped[str] = mapped_column(ForeignKey("invites.invite_id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), nullable=False)
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    request_id: Mapped[str | None] = mapped_column(String(80))
+    ip_hash: Mapped[str | None] = mapped_column(String(64))
+
+
+class UserOnboardingAcknowledgement(Base):
+    __tablename__ = "user_onboarding_acknowledgements"
+    ack_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_text)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("evaluation_projects.project_id"), nullable=False)
+    schema_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    instructions_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    instructions_hash: Mapped[str] = mapped_column(String(160), nullable=False)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (UniqueConstraint("user_id", "project_id", "schema_id", "instructions_hash", name="uq_onboarding_ack_schema"),)
 
 
 class SystemSetting(Base):

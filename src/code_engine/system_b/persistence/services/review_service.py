@@ -19,6 +19,7 @@ from code_engine.system_b.persistence.models import (
     Assignment,
     EvaluationProject,
     ReviewItem,
+    UserOnboardingAcknowledgement,
     User,
     utcnow,
 )
@@ -199,7 +200,7 @@ def save_annotation(
     item = session.get(ReviewItem, review_item_id)
     if not item:
         raise KeyError("review_item_not_found")
-    if namespace == "production" and (not identity.get("authenticated") or identity.get("user_id") == "local-dev-user"):
+    if namespace in {"production", "pilot"} and (not identity.get("authenticated") or identity.get("user_id") == "local-dev-user"):
         raise PermissionError("production annotations require authenticated users")
 
     user = session.get(User, identity.get("user_id") or "")
@@ -216,6 +217,15 @@ def save_annotation(
         assignment = session.get(Assignment, assignment_id)
         if not assignment or assignment.reviewer_user_id != user.user_id or assignment.review_item_id != review_item_id:
             raise PermissionError("assignment_not_owned_by_current_user")
+    elif payload.get("project_id") and namespace in {"pilot", "production"}:
+        assignment = session.execute(select(Assignment).where(
+            Assignment.project_id == payload.get("project_id"),
+            Assignment.review_item_id == review_item_id,
+            Assignment.reviewer_user_id == user.user_id,
+        )).scalar_one_or_none()
+        if not assignment:
+            raise PermissionError("assignment_required")
+        assignment_id = assignment.assignment_id
     elif namespace == "production":
         rows = session.execute(select(Assignment).where(
             Assignment.review_item_id == review_item_id,
@@ -227,8 +237,9 @@ def save_annotation(
         assignment_id = assignment.assignment_id
     if assignment:
         project = session.get(EvaluationProject, assignment.project_id)
-        if not project or project.status != "active" or project.namespace != namespace:
+        if not project or project.status != "active":
             raise PermissionError("assignment_project_not_active")
+        namespace = project.namespace
         if assignment.assignment_role not in {"primary", "secondary", "expert"}:
             raise PermissionError("assignment_role_cannot_submit_annotation")
         if assignment.status not in {"assigned", "in_progress", "revisit"}:
@@ -259,6 +270,15 @@ def save_annotation(
     if disposition not in {"submitted", "skipped", "revisit", "draft"}:
         raise ValueError("review_disposition must be submitted, skipped, revisit, or draft")
     schema = schema_for_item_type(item.item_type)
+    if assignment and project and project.namespace == "pilot" and schema and disposition == "submitted":
+        ack = session.execute(select(UserOnboardingAcknowledgement).where(
+            UserOnboardingAcknowledgement.user_id == user.user_id,
+            UserOnboardingAcknowledgement.project_id == project.project_id,
+            UserOnboardingAcknowledgement.schema_id == schema.schema_id,
+            UserOnboardingAcknowledgement.instructions_hash == schema.instructions_hash,
+        )).scalar_one_or_none()
+        if not ack:
+            raise PermissionError("onboarding_acknowledgement_required")
     if not schema:
         if namespace == "production" and disposition == "submitted":
             raise ValueError("annotation_schema_not_configured")

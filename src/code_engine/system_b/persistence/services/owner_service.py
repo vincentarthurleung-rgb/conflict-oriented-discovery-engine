@@ -1,19 +1,31 @@
 """Owner-only overview and identity helpers."""
 from __future__ import annotations
 
+import json
+import secrets
+from datetime import datetime, timezone
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from code_engine.system_b.explorer.auth import generate_invite_code, hash_password, validate_display_name, validate_username
 from code_engine.system_b.persistence.models import (
     Annotation,
     Assignment,
+    AssignmentBatch,
     AuditEvent,
+    EvaluationProject,
     GoldRecord,
+    Invite,
+    InviteUsageEvent,
     ReviewItem,
     SystemSetting,
     User,
+    utcnow,
 )
+from code_engine.system_b.persistence.services.auth_service import create_invite, issue_password_reset
 from code_engine.system_b.persistence.services.agreement_service import project_disagreements
+from code_engine.system_b.persistence.services.audit_service import write_audit_event
 
 
 def validate_single_owner(session: Session) -> dict:
@@ -34,6 +46,10 @@ def owner_overview(session: Session) -> dict:
         by_namespace[row.namespace] = by_namespace.get(row.namespace, 0) + 1
     assignments_total = session.execute(select(func.count()).select_from(Assignment)).scalar() or 0
     frozen_gold = session.execute(select(func.count()).select_from(GoldRecord).where(GoldRecord.status == "frozen")).scalar() or 0
+    active_invites = session.execute(select(func.count()).select_from(Invite).where(Invite.enabled == True)).scalar() or 0  # noqa: E712
+    disabled_users = session.execute(select(func.count()).select_from(User).where(User.enabled == False)).scalar() or 0  # noqa: E712
+    never_logged = session.execute(select(func.count()).select_from(User).where(User.last_login_at == None)).scalar() or 0  # noqa: E711
+    pending_first = session.execute(select(func.count()).select_from(User).where(User.must_change_password == True)).scalar() or 0  # noqa: E712
     review_items = session.execute(select(func.count()).select_from(ReviewItem)).scalar() or 0
     audit_events = session.execute(select(func.count()).select_from(AuditEvent)).scalar() or 0
     owner_state = validate_single_owner(session)
@@ -42,9 +58,17 @@ def owner_overview(session: Session) -> dict:
         warnings.append({"code": "owner_configuration_invalid", "owner_count": owner_state["owner_count"]})
     if by_namespace.get("test", 0) and by_namespace.get("production", 0):
         warnings.append({"code": "test_and_production_annotations_present", "severity": "info"})
+    for project in session.execute(select(EvaluationProject)).scalars().all():
+        if "pilot" in project.name.casefold() and project.namespace == "production":
+            warnings.append({"code": "pilot_named_project_in_production_namespace", "severity": "high", "project_id": project.project_id})
     return {
         "formal_user_count": total_users,
         "active_reviewer_count": active_reviewers,
+        "active_users": total_users - disabled_users,
+        "disabled_users": disabled_users,
+        "never_logged_in": never_logged,
+        "pending_first_login": pending_first,
+        "active_invites": active_invites,
         "annotations_by_namespace": by_namespace,
         "production_annotations": by_namespace.get("production", 0),
         "pilot_annotations": by_namespace.get("pilot", 0),
@@ -79,6 +103,8 @@ def owner_people(session: Session) -> dict:
             "display_name": user.display_name,
             "role": user.role,
             "enabled": user.enabled,
+            "must_change_password": user.must_change_password,
+            "status": user_status(user),
             "assigned": assignments,
             "submitted": dispositions.get("submitted", 0),
             "skipped": dispositions.get("skipped", 0),
@@ -89,6 +115,208 @@ def owner_people(session: Session) -> dict:
     return {"items": rows, "total": len(rows)}
 
 
+def user_status(user: User) -> str:
+    if not user.enabled:
+        return "disabled"
+    if user.locked_until and user.locked_until > utcnow():
+        return "locked"
+    if user.must_change_password or not user.last_login_at:
+        return "pending_first_login"
+    return "active"
+
+
+def serialize_user(session: Session, user: User) -> dict:
+    annotations = session.execute(select(Annotation).where(Annotation.reviewer_user_id == user.user_id)).scalars().all()
+    assignments = session.execute(select(Assignment).where(Assignment.reviewer_user_id == user.user_id)).scalars().all()
+    audit_count = session.execute(select(func.count()).select_from(AuditEvent).where(AuditEvent.actor_user_id == user.user_id)).scalar() or 0
+    return {
+        "user_id": user.user_id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "role": user.role,
+        "enabled": user.enabled,
+        "status": user_status(user),
+        "must_change_password": user.must_change_password,
+        "session_version": user.session_version,
+        "created_at": user.created_at.isoformat() if user.created_at else "",
+        "last_login_at": user.last_login_at.isoformat() if user.last_login_at else "",
+        "last_activity_at": max([a.updated_at for a in annotations], default=user.last_login_at or user.updated_at).isoformat() if (annotations or user.last_login_at or user.updated_at) else "",
+        "assigned_count": len(assignments),
+        "submitted_count": sum(1 for a in annotations if a.review_disposition == "submitted"),
+        "pilot_annotation_count": sum(1 for a in annotations if a.namespace == "pilot"),
+        "production_annotation_count": sum(1 for a in annotations if a.namespace == "production"),
+        "open_assignment_count": sum(1 for a in assignments if a.status in {"assigned", "in_progress", "revisit"}),
+        "invite_source": user.invite_source_id,
+        "audit_event_count": audit_count,
+    }
+
+
+def owner_users(session: Session, *, q: str | None = None, role: str | None = None, enabled: str | None = None) -> dict:
+    query = select(User).order_by(User.username)
+    if q:
+        term = f"%{q.casefold()}%"
+        query = query.where((User.username.ilike(term)) | (User.display_name.ilike(term)) | (User.user_id.ilike(term)))
+    if role:
+        query = query.where(User.role == role)
+    if enabled in {"true", "false"}:
+        query = query.where(User.enabled == (enabled == "true"))
+    rows = session.execute(query).scalars().all()
+    return {"items": [serialize_user(session, user) for user in rows], "total": len(rows)}
+
+
+def owner_create_user(session: Session, *, owner: dict, username: str, display_name: str, role: str, temporary_password: bool = True) -> dict:
+    if role == "owner" or role not in {"admin", "developer", "reviewer", "pharma"}:
+        raise ValueError("invalid_role")
+    username = validate_username(username)
+    display_name = validate_display_name(display_name)
+    if session.execute(select(User).where(User.username == username)).scalar_one_or_none():
+        raise ValueError("user_create_failed")
+    password = secrets.token_urlsafe(18)
+    user = User(username=username, display_name=display_name, role=role, enabled=True, password_hash=hash_password(password), must_change_password=temporary_password, session_version=1)
+    session.add(user)
+    session.flush()
+    write_audit_event(session, action="user_created_by_owner", object_type="user", object_id=user.user_id, actor=owner, metadata={"target_user_id": user.user_id, "role": role, "temporary_password": temporary_password})
+    return {"user": serialize_user(session, user), "temporary_password": password, "one_time_notice": "This temporary password is shown once only."}
+
+
+def owner_update_user(session: Session, *, owner: dict, user_id: str, display_name: str | None = None, enabled: bool | None = None) -> dict:
+    user = session.get(User, user_id)
+    if not user:
+        raise KeyError("user_not_found")
+    if display_name is not None and display_name != user.display_name:
+        old = user.display_name
+        user.display_name = validate_display_name(display_name)
+        write_audit_event(session, action="user_display_name_changed", object_type="user", object_id=user.user_id, actor=owner, metadata={"target_user_id": user.user_id, "old_display_name": old})
+    if enabled is not None and enabled != user.enabled:
+        if user.role == "owner" and not enabled:
+            raise ValueError("cannot_disable_owner")
+        user.enabled = enabled
+        user.session_version += 1
+        write_audit_event(session, action="user_enabled" if enabled else "user_disabled", object_type="user", object_id=user.user_id, actor=owner, metadata={"target_user_id": user.user_id, "open_assignment_count": serialize_user(session, user)["open_assignment_count"]})
+    return serialize_user(session, user)
+
+
+def owner_change_role(session: Session, *, owner: dict, user_id: str, role: str) -> dict:
+    user = session.get(User, user_id)
+    if not user:
+        raise KeyError("user_not_found")
+    if role == "owner" or role not in {"admin", "developer", "reviewer", "pharma"}:
+        raise ValueError("invalid_role")
+    if user.role == "owner":
+        raise ValueError("cannot_change_owner_role")
+    old = user.role
+    user.role = role
+    user.session_version += 1
+    impact = serialize_user(session, user)
+    write_audit_event(session, action="user_role_changed", object_type="user", object_id=user.user_id, actor=owner, metadata={"target_user_id": user.user_id, "old_role": old, "new_role": role, "open_assignment_count": impact["open_assignment_count"]})
+    return impact
+
+
+def owner_revoke_sessions(session: Session, *, owner: dict, user_id: str) -> dict:
+    user = session.get(User, user_id)
+    if not user:
+        raise KeyError("user_not_found")
+    user.session_version += 1
+    write_audit_event(session, action="sessions_revoked", object_type="user", object_id=user.user_id, actor=owner, metadata={"target_user_id": user.user_id})
+    return {"user_id": user.user_id, "session_version": user.session_version}
+
+
+def owner_issue_temporary_password(session: Session, *, owner: dict, user_id: str) -> dict:
+    user = session.get(User, user_id)
+    if not user:
+        raise KeyError("user_not_found")
+    if user.role == "owner" and user.user_id != owner.get("user_id"):
+        raise ValueError("cannot_reset_other_owner")
+    password = secrets.token_urlsafe(18)
+    user.password_hash = hash_password(password)
+    user.must_change_password = True
+    user.session_version += 1
+    write_audit_event(session, action="password_reset_issued", object_type="user", object_id=user.user_id, actor=owner, metadata={"target_user_id": user.user_id, "method": "temporary_password"})
+    return {"user_id": user.user_id, "temporary_password": password, "one_time_notice": "This temporary password is shown once only."}
+
+
+def owner_issue_reset_link(session: Session, *, owner: dict, user_id: str, base_url: str = "") -> dict:
+    user = session.get(User, user_id)
+    if not user:
+        raise KeyError("user_not_found")
+    result = issue_password_reset(session, target_user=user, owner=owner)
+    link = (base_url.rstrip("/") if base_url else "") + "/password-reset/" + result["token"]
+    return {"user_id": user.user_id, "reset_link": link, "token": result["token"], "expires_at": result["expires_at"], "one_time_notice": "This reset token is shown once only."}
+
+
+def invite_status(invite: Invite) -> str:
+    now = utcnow()
+    if not invite.enabled:
+        return "disabled"
+    if invite.expires_at and now > invite.expires_at:
+        return "expired"
+    if invite.uses >= invite.max_uses:
+        return "exhausted"
+    return "active"
+
+
+def serialize_invite(invite: Invite) -> dict:
+    return {
+        "invite_id": invite.invite_id,
+        "label": invite.label,
+        "role": invite.role,
+        "status": invite_status(invite),
+        "enabled": invite.enabled,
+        "created_by_user_id": invite.created_by_user_id,
+        "created_at": invite.created_at.isoformat() if invite.created_at else "",
+        "expires_at": invite.expires_at.isoformat() if invite.expires_at else "",
+        "max_uses": invite.max_uses,
+        "uses": invite.uses,
+        "remaining_uses": max(0, invite.max_uses - invite.uses),
+        "project_scope": json.loads(invite.project_scope_json or "{}"),
+        "last_used_at": invite.last_used_at.isoformat() if invite.last_used_at else "",
+        "notes": invite.notes,
+    }
+
+
+def owner_invites(session: Session) -> dict:
+    rows = session.execute(select(Invite).order_by(Invite.created_at.desc())).scalars().all()
+    return {"items": [serialize_invite(row) for row in rows], "total": len(rows)}
+
+
+def owner_create_invite(session: Session, *, owner: dict, label: str, role: str, max_uses: int, expires_at: datetime | None = None, project_scope: dict | None = None, notes: str = "", base_url: str = "") -> dict:
+    code = generate_invite_code()
+    invite = create_invite(session, code=code, label=label, role=role, max_uses=max_uses, expires_at=expires_at, created_by=owner, project_scope=project_scope, notes=notes)
+    link = (base_url.rstrip("/") if base_url else "") + "/register?invite=" + code
+    return {"invite": serialize_invite(invite), "invite_code": code, "registration_link": link, "one_time_notice": "This invite code is shown once only."}
+
+
+def owner_set_invite_enabled(session: Session, *, owner: dict, invite_id: str, enabled: bool) -> dict:
+    invite = session.get(Invite, invite_id)
+    if not invite:
+        raise KeyError("invite_not_found")
+    if enabled and invite_status(invite) in {"expired", "exhausted"}:
+        raise ValueError("invite_not_reenableable")
+    invite.enabled = enabled
+    write_audit_event(session, action="invite_enabled" if enabled else "invite_disabled", object_type="invite", object_id=invite.invite_id, actor=owner, metadata={"invite_id": invite.invite_id})
+    return serialize_invite(invite)
+
+
+def owner_invite_usage(session: Session, *, invite_id: str) -> dict:
+    rows = session.execute(select(InviteUsageEvent).where(InviteUsageEvent.invite_id == invite_id).order_by(InviteUsageEvent.used_at.desc())).scalars().all()
+    return {"items": [{"user_id": r.user_id, "used_at": r.used_at.isoformat() if r.used_at else "", "request_id": r.request_id} for r in rows], "total": len(rows)}
+
+
+def correct_empty_pilot_project_namespace(session: Session, *, owner: dict, project_id: str) -> dict:
+    project = session.get(EvaluationProject, project_id)
+    if not project:
+        raise KeyError("project_not_found")
+    if project.namespace != "production" or "pilot" not in project.name.casefold():
+        return {"changed": False, "project_id": project_id, "namespace": project.namespace}
+    annotations = session.execute(select(func.count()).select_from(Annotation).where(Annotation.project_id == project_id)).scalar() or 0
+    if annotations:
+        raise ValueError("project_has_annotations_create_new_pilot")
+    old = project.namespace
+    project.namespace = "pilot"
+    write_audit_event(session, action="project_namespace_corrected", object_type="evaluation_project", object_id=project.project_id, actor=owner, project_id=project.project_id, metadata={"old_namespace": old, "new_namespace": "pilot", "reason": "empty_pilot_readiness_project"})
+    return {"changed": True, "project_id": project_id, "old_namespace": old, "namespace": project.namespace}
+
+
 def owner_quality_alerts(session: Session) -> dict:
     alerts = []
     production_unattributed = session.execute(select(func.count()).select_from(Annotation).where(Annotation.namespace == "production", Annotation.reviewer_user_id == None)).scalar() or 0  # noqa: E711
@@ -97,6 +325,19 @@ def owner_quality_alerts(session: Session) -> dict:
     duplicate_role_rows = session.execute(select(Assignment.project_id, Assignment.review_item_id, Assignment.reviewer_user_id, func.count()).where(Assignment.assignment_role.in_(["primary", "secondary"])).group_by(Assignment.project_id, Assignment.review_item_id, Assignment.reviewer_user_id).having(func.count() > 1)).all()
     if duplicate_role_rows:
         alerts.append({"code": "same_user_primary_secondary", "severity": "high", "count": len(duplicate_role_rows)})
+    for project in session.execute(select(EvaluationProject)).scalars().all():
+        if "pilot" in project.name.casefold() and project.namespace == "production":
+            alerts.append({"code": "namespace_contamination_pilot_project_in_production", "severity": "high", "project_id": project.project_id})
+    disabled_open = session.execute(select(Assignment, User).join(User, Assignment.reviewer_user_id == User.user_id).where(User.enabled == False, Assignment.status.in_(["assigned", "in_progress", "revisit"]))).all()  # noqa: E712
+    if disabled_open:
+        alerts.append({"code": "disabled_user_still_has_open_assignments", "severity": "medium", "count": len(disabled_open)})
+    incompatible = session.execute(select(Assignment, User).join(User, Assignment.reviewer_user_id == User.user_id).where(Assignment.assignment_role.in_(["primary", "secondary"]), User.role.notin_(["reviewer", "pharma", "developer", "owner"]))).all()
+    if incompatible:
+        alerts.append({"code": "account_role_incompatible_with_assignment", "severity": "medium", "count": len(incompatible)})
+    for invite in session.execute(select(Invite)).scalars().all():
+        status = invite_status(invite)
+        if status in {"expired", "exhausted"}:
+            alerts.append({"code": f"invite_{status}", "severity": "info", "invite_id": invite.invite_id, "label": invite.label})
     for project_id in sorted({row.project_id for row in session.execute(select(Assignment.project_id)).all()}):
         statuses = project_disagreements(session, project_id=project_id)
         unresolved = sum(1 for row in statuses if row.get("status") == "needs_adjudication")

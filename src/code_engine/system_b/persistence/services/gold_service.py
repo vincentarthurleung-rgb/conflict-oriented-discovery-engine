@@ -27,8 +27,8 @@ def gold_readiness(session: Session, *, project_id: str) -> dict:
     for row in statuses:
         counts[row["status"]] = counts.get(row["status"], 0) + 1
     blocked = []
-    if project.namespace != "production":
-        blocked.append("namespace_not_production")
+    if project.namespace not in {"production", "pilot"}:
+        blocked.append("namespace_not_gold_eligible")
     if not protocol:
         blocked.append("protocol_not_frozen")
     if counts.get("waiting_for_second_annotation"):

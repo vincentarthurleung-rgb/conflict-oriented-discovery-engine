@@ -11,14 +11,14 @@ from werkzeug.security import check_password_hash
 from .auth import PUBLIC_REGISTER_ERROR,LoginLimiter,find_usable_invite,hash_password,load_user_store,utc_now_iso,validate_display_name,validate_password_strength,validate_username,write_user_store
 from .explorer_api import ExplorerAPI
 from code_engine.system_b.persistence.database import create_atlas_engine, database_url as resolve_database_url, session_factory, session_scope, sqlite_health
-from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User
+from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User, UserOnboardingAcknowledgement
 from code_engine.system_b.persistence.services.adjudication_service import adjudication_detail, adjudication_queue, submit_adjudication
 from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items
-from code_engine.system_b.persistence.services.auth_service import AuthError, authenticate_user, identity_from_user, load_identity, register_with_invite
+from code_engine.system_b.persistence.services.auth_service import AuthError, authenticate_user, change_password, complete_password_reset, identity_from_user, load_identity, register_with_invite
 from code_engine.system_b.persistence.services.evaluation_service import evaluation_readiness, run_evaluation
 from code_engine.system_b.persistence.services.gold_service import freeze_gold, gold_candidates, gold_readiness, supersede_gold
-from code_engine.system_b.persistence.services.owner_service import owner_audit_events, owner_overview, owner_people, owner_quality_alerts
-from code_engine.system_b.annotation_schemas import SchemaValidationError
+from code_engine.system_b.persistence.services.owner_service import correct_empty_pilot_project_namespace, owner_audit_events, owner_change_role, owner_create_invite, owner_create_user, owner_invite_usage, owner_invites, owner_issue_reset_link, owner_issue_temporary_password, owner_overview, owner_people, owner_quality_alerts, owner_revoke_sessions, owner_set_invite_enabled, owner_update_user, owner_users, serialize_user
+from code_engine.system_b.annotation_schemas import SchemaValidationError, get_schema, schema_for_item_type
 from code_engine.system_b.persistence.services.review_service import StaleAnnotationRevision, annotation_to_dict, import_review_items, metrics as db_metrics, review_item_to_dict, save_annotation
 from sqlalchemy import select
 
@@ -33,7 +33,7 @@ ROLE_ALLOWED_MODES={"owner":["pharma","reviewer","developer"],"admin":["pharma",
 ROLE_WORKSPACES={"owner":["discover","review","library","console","owner"],"admin":["discover","review","library","console"],"developer":["discover","review","library","console"],"reviewer":["discover","review","library"],"pharma":["discover","library"]}
 DEBUG_FIELDS={"source_file","source_line","bundle_path","display_priority_score","display_priority_score_v2","priority_score","backing_triple_id","noise_risk_score","chain_noise_risk_score","validator_annotations","validator_details","raw_json","raw","bridge_provenance","fulltext_provenance"}
 LOGIN_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Login</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>C.O.D.E. Atlas</h1><h2>Biomedical Evidence &amp; Mechanism Explorer</h2><p>Public preview access is restricted.</p>{error}<form method="post"><input type="hidden" name="csrf_token" value="{csrf}"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="button" type="submit">Sign in</button></form><p id="registration-link" class="muted" hidden>没有账号？<a href="/register">使用邀请码注册</a></p><script>fetch('/api/registration-config').then(function(r){{return r.json()}}).then(function(x){{if(x.allow_registration)document.getElementById('registration-link').hidden=false}}).catch(function(){{}})</script>{warning}</main></body></html>"""
-REGISTER_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Register</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>邀请码注册</h1><h2>C.O.D.E. Atlas</h2><p>注册仅面向收到邀请码的审核人员。注册成功后请返回登录页登录。</p><div id="register-message"></div><form id="register-form"><input type="hidden" name="csrf_token" value="{csrf}"><label>用户名<input name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{{3,32}}" required></label><label>显示名<input name="display_name" autocomplete="name" minlength="1" maxlength="80" required></label><label>密码<input type="password" name="password" autocomplete="new-password" minlength="12" required></label><label>确认密码<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required></label><label>邀请码<input name="invite_code" autocomplete="off" required></label><button class="button" type="submit">注册</button><a class="button-sm" href="/login">返回登录</a></form><script>fetch('/api/registration-config').then(function(r){{return r.json()}}).then(function(x){{if(!x.allow_registration)location.href='/login'}});document.getElementById('register-form').addEventListener('submit',async function(e){{e.preventDefault();var f=e.target,b=f.querySelector('button'),m=document.getElementById('register-message');if(f.password.value!==f.confirm_password.value){{m.innerHTML='<p class="error">注册失败，请检查信息或联系管理员</p>';return}}b.disabled=true;m.textContent='';try{{var r=await fetch('/api/register',{{method:'POST',headers:{{'Content-Type':'application/json','X-CSRF-Token':f.csrf_token.value}},body:JSON.stringify({{username:f.username.value,display_name:f.display_name.value,password:f.password.value,confirm_password:f.confirm_password.value,invite_code:f.invite_code.value}})}});var data=await r.json();if(r.ok){{m.innerHTML='<p class="badge saved-indicator">注册成功，请登录</p>';f.reset()}}else{{m.innerHTML='<p class="error">'+(data.error||'注册失败，请检查信息或联系管理员')+'</p>'}}}}catch(err){{m.innerHTML='<p class="error">注册失败，请检查信息或联系管理员</p>'}}finally{{b.disabled=false}}}})</script></main></body></html>"""
+REGISTER_HTML="""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C.O.D.E. Atlas Register</title><link rel="stylesheet" href="/style.css"></head><body class="login-page"><main class="login-card"><h1>邀请码注册</h1><h2>C.O.D.E. Atlas</h2><p>注册仅面向收到邀请码的审核人员。注册成功后请返回登录页登录。</p><div id="register-message"></div><form id="register-form"><input type="hidden" name="csrf_token" value="{csrf}"><label>用户名<input name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{{3,32}}" required></label><label>显示名<input name="display_name" autocomplete="name" minlength="1" maxlength="80" required></label><label>密码<input type="password" name="password" autocomplete="new-password" minlength="12" required></label><label>确认密码<input type="password" name="confirm_password" autocomplete="new-password" minlength="12" required></label><label>邀请码<input name="invite_code" autocomplete="off" required></label><button class="button" type="submit">注册</button><a class="button-sm" href="/login">返回登录</a></form><script>fetch('/api/registration-config').then(function(r){{return r.json()}}).then(function(x){{if(!x.allow_registration)location.href='/login'}});var invite=new URLSearchParams(location.search).get('invite');if(invite)document.querySelector('[name=invite_code]').value=invite;document.getElementById('register-form').addEventListener('submit',async function(e){{e.preventDefault();var f=e.target,b=f.querySelector('button'),m=document.getElementById('register-message');if(f.password.value!==f.confirm_password.value){{m.innerHTML='<p class="error">注册失败，请检查信息或联系管理员</p>';return}}b.disabled=true;m.textContent='';try{{var r=await fetch('/api/register',{{method:'POST',headers:{{'Content-Type':'application/json','X-CSRF-Token':f.csrf_token.value}},body:JSON.stringify({{username:f.username.value,display_name:f.display_name.value,password:f.password.value,confirm_password:f.confirm_password.value,invite_code:f.invite_code.value}})}});var data=await r.json();if(r.ok){{m.innerHTML='<p class="badge saved-indicator">注册成功，请登录</p>';f.reset()}}else{{m.innerHTML='<p class="error">'+(data.error||'注册失败，请检查信息或联系管理员')+'</p>'}}}}catch(err){{m.innerHTML='<p class="error">注册失败，请检查信息或联系管理员</p>'}}finally{{b.disabled=false}}}})</script></main></body></html>"""
 
 def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=None,secret_key=None,public_preview=False,allow_registration=False,max_failed_attempts=5,lockout_seconds=300,testing=False,database_url=None,require_database=False,legacy_json_readonly=False):
     if public_preview:require_auth=True
@@ -42,7 +42,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     if database_url or require_database:
         db_engine=create_atlas_engine(resolve_database_url(database_url));db_factory=session_factory(db_engine)
         health=sqlite_health(db_engine)
-        if require_database and health.get("schema_version")!="0006_schema_registry_and_gold_dataset_versions":raise RuntimeError("Atlas database is not migrated to head")
+        if require_database and health.get("schema_version")!="0007_owner_access_management":raise RuntimeError("Atlas database is not migrated to head")
         if review_root and not legacy_json_readonly:
             with session_scope(db_factory) as dbs:import_review_items(dbs,review_root,namespace="test" if not require_auth else "production")
     if require_auth and not db_factory and (not users_file or not Path(users_file).is_file()):raise FileNotFoundError("Authentication requires an existing --users-file")
@@ -51,7 +51,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     limiter=LoginLimiter(max_failed_attempts,lockout_seconds);register_limiter=LoginLimiter(max_failed_attempts,lockout_seconds);app.extensions["atlas_api"]=api;app.extensions["atlas_limiter"]=limiter;app.extensions["atlas_register_limiter"]=register_limiter;app.extensions["atlas_db_engine"]=db_engine;app.extensions["atlas_db_factory"]=db_factory
     def db_identity():
         if not db_factory or not require_auth:return None
-        with session_scope(db_factory) as dbs:return load_identity(dbs,session.get("atlas_user_id"))
+        with session_scope(db_factory) as dbs:return load_identity(dbs,session.get("atlas_user_id"),session.get("atlas_session_version"))
     def legacy_session_user():return session.get("atlas_user") or None
     def authenticated():
         if not require_auth:return True
@@ -125,7 +125,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         with session_scope(db_factory) as dbs:
                             user=authenticate_user(dbs,username=normalized,password=request.form.get("password",""),request_context={"ip_hash":hash_remote(remote),"session_hash":hash_remote(token),"request_id":request.headers.get("X-Request-ID")})
                             user_id=user.user_id
-                        limiter.success(remote,normalized);session.clear();session["atlas_user_id"]=user_id;session["csrf_token"]=secrets.token_urlsafe(32);LOG.info("atlas_db_auth_success username=%s",normalized);destination=request.args.get("next") or "/";destination=destination if destination.startswith("/") and not destination.startswith("//") else "/";return redirect(destination)
+                        limiter.success(remote,normalized);session.clear();session["atlas_user_id"]=user_id;session["atlas_session_version"]=user.session_version;session["csrf_token"]=secrets.token_urlsafe(32);LOG.info("atlas_db_auth_success username=%s",normalized);destination=request.args.get("next") or "/";destination=destination if destination.startswith("/") and not destination.startswith("//") else "/";return redirect(destination)
                     except (AuthError,ValueError):
                         limiter.fail(remote,normalized);LOG.warning("atlas_db_auth_failed username=%s remote_addr=%s",normalized or "<empty>",remote);error=LOGIN_ERROR
                 else:
@@ -174,7 +174,9 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     @app.route("/api/session")
     def api_session():
         if not authenticated():return jsonify({"error":"authentication_required"}),401
-        user=current_identity() if require_auth else None;role=current_role();payload={"user":user,"csrf_token":csrf(),"auth_required":require_auth,"allowed_modes":allowed_modes_for_role(role),"allowed_workspaces":allowed_workspaces_for_role(role),"debug_access":can_view_debug(),"registration_enabled":bool(require_auth and allow_registration),"database_enabled":bool(db_factory),"namespace":atlas_namespace()}
+        user=current_identity() if require_auth else None;role=current_role();allowed=allowed_workspaces_for_role(role)
+        if user and user.get("must_change_password"):allowed=["discover"]
+        payload={"user":user,"csrf_token":csrf(),"auth_required":require_auth,"allowed_modes":allowed_modes_for_role(role),"allowed_workspaces":allowed,"debug_access":can_view_debug(),"registration_enabled":bool(require_auth and allow_registration),"database_enabled":bool(db_factory),"namespace":atlas_namespace(),"must_change_password":bool(user and user.get("must_change_password"))}
         if user:payload.update({"username":user.get("username"),"display_name":user.get("display_name"),"role":role})
         else:payload.update({"username":None,"display_name":None,"role":role})
         return jsonify(payload)
@@ -185,6 +187,35 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
         if path=="/api/db/health":
             if not db_engine:return jsonify({"error":"database_not_configured"}),503
             return jsonify(sqlite_health(db_engine))
+        ident_for_gate=current_identity()
+        if ident_for_gate.get("must_change_password") and path not in {"/api/session","/api/logout","/api/account","/api/account/change-password"} and not path.startswith("/api/password-reset/"):
+            return jsonify({"error":"password_change_required"}),403
+        if path.startswith("/api/password-reset/"):
+            token=path.removeprefix("/api/password-reset/")
+            if request.method=="GET":return jsonify({"valid":True})
+            body=request.get_json(silent=True) or {}
+            with session_scope(db_factory) as dbs:return jsonify(complete_password_reset(dbs,token=token,new_password=body.get("password",""),confirm_password=body.get("confirm_password","")))
+        if path=="/api/account":
+            ident=current_identity()
+            if not ident.get("authenticated"):return jsonify({"error":"authentication_required"}),401
+            with session_scope(db_factory) as dbs:
+                user=dbs.get(User,ident.get("user_id"))
+                return jsonify({"user":serialize_user(dbs,user) if user else None})
+        if path=="/api/account/change-password" and request.method=="POST":
+            ident=current_identity()
+            if not ident.get("authenticated"):return jsonify({"error":"authentication_required"}),401
+            body=request.get_json(silent=True) or {}
+            with session_scope(db_factory) as dbs:
+                result=change_password(dbs,user_id=ident.get("user_id"),current_password=body.get("current_password",""),new_password=body.get("password",""),confirm_password=body.get("confirm_password",""),actor=ident)
+            session["atlas_session_version"]=result["session_version"]
+            return jsonify(result)
+        if path.startswith("/api/guidelines/"):
+            schema_id=path.removeprefix("/api/guidelines/")
+            try:
+                schema=get_schema(schema_id)
+            except Exception:
+                return jsonify({"error":"schema_not_found"}),404
+            return jsonify({"schema_id":schema.schema_id,"instructions_version":schema.instructions_version,"instructions_hash":schema.instructions_hash,"updated_at":"2026-07-11","fields":schema.definition.get("fields",[]),"examples":["Static example: opposite signs alone are not sufficient for true_conflict.","Static example: time maps deterministically to duration for context evaluation."],"title":schema.definition.get("title","")})
         if request.method in {"POST","PUT","DELETE"}:
             if not secrets.compare_digest(request.headers.get("X-CSRF-Token",""),csrf()):return jsonify({"error":"csrf_token_invalid"}),403
         if path.startswith("/api/owner/"):
@@ -192,28 +223,75 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             if denied:return denied
             body=request.get_json(silent=True) or {}
             ident=current_identity()
-            with session_scope(db_factory) as dbs:
-                if path=="/api/owner/overview":return jsonify(owner_overview(dbs))
-                if path=="/api/owner/people":return jsonify(owner_people(dbs))
-                if path=="/api/owner/quality":return jsonify(owner_quality_alerts(dbs))
-                if path=="/api/owner/audit":return jsonify(owner_audit_events(dbs,actor=request.args.get("actor"),action=request.args.get("action"),project_id=request.args.get("project_id"),limit=int(request.args.get("limit",200))))
-                if path=="/api/owner/assignments" and request.method=="POST":
-                    return jsonify(create_project_with_assignments(dbs,owner=ident,name=body.get("name") or "Atlas Production Evaluation",namespace=body.get("namespace") or "production",annotation_schema_version=body.get("annotation_schema_version") or "atlas_annotation_v1",primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),batch_size=int(body.get("batch_size") or 50),case_ids=body.get("case_ids"),item_ids=body.get("item_ids"))),201
-                if path=="/api/owner/gold/readiness":return jsonify(gold_readiness(dbs,project_id=request.args.get("project_id") or body.get("project_id")))
-                if path=="/api/owner/gold/candidates":return jsonify({"items":gold_candidates(dbs,project_id=request.args.get("project_id") or body.get("project_id"))})
-                if path=="/api/owner/gold/freeze" and request.method=="POST":return jsonify(freeze_gold(dbs,owner=ident,project_id=body.get("project_id"),confirm=bool(body.get("confirm"))))
-                if path=="/api/owner/gold/supersede" and request.method=="POST":return jsonify(supersede_gold(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
-                if path=="/api/owner/evaluation/readiness":return jsonify(evaluation_readiness(dbs,project_id=request.args.get("project_id") or body.get("project_id"),gold_version=int(request.args.get("gold_version") or body.get("gold_version") or 0) or None))
-                if path=="/api/owner/evaluation/run" and request.method=="POST":return jsonify(run_evaluation(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
+            try:
+                with session_scope(db_factory) as dbs:
+                    if path=="/api/owner/overview":return jsonify(owner_overview(dbs))
+                    if path=="/api/owner/users":return jsonify(owner_users(dbs,q=request.args.get("q"),role=request.args.get("role"),enabled=request.args.get("enabled"))) if request.method=="GET" else (jsonify(owner_create_user(dbs,owner=ident,username=body.get("username"),display_name=body.get("display_name"),role=body.get("role"),temporary_password=True)),201)
+                    if path.startswith("/api/owner/user/"):
+                        tail=path.removeprefix("/api/owner/user/").strip("/")
+                        parts=tail.split("/")
+                        user_id=parts[0]
+                        if len(parts)==1 and request.method=="GET":
+                            user=dbs.get(User,user_id);return (jsonify({"user":serialize_user(dbs,user)}) if user else (jsonify({"error":"user_not_found"}),404))
+                        action=parts[1] if len(parts)>1 else ""
+                        if action=="enable" and request.method=="POST":return jsonify(owner_update_user(dbs,owner=ident,user_id=user_id,enabled=True))
+                        if action=="disable" and request.method=="POST":return jsonify(owner_update_user(dbs,owner=ident,user_id=user_id,enabled=False))
+                        if action=="change-role" and request.method=="POST":return jsonify(owner_change_role(dbs,owner=ident,user_id=user_id,role=body.get("role")))
+                        if action=="revoke-sessions" and request.method=="POST":return jsonify(owner_revoke_sessions(dbs,owner=ident,user_id=user_id))
+                        if action=="issue-temporary-password" and request.method=="POST":return jsonify(owner_issue_temporary_password(dbs,owner=ident,user_id=user_id))
+                        if action=="issue-password-reset" and request.method=="POST":return jsonify(owner_issue_reset_link(dbs,owner=ident,user_id=user_id,base_url=request.host_url.rstrip("/")))
+                        if len(parts)==1 and request.method=="PATCH":return jsonify(owner_update_user(dbs,owner=ident,user_id=user_id,display_name=body.get("display_name")))
+                    if path=="/api/owner/invites":return jsonify(owner_invites(dbs)) if request.method=="GET" else (jsonify(owner_create_invite(dbs,owner=ident,label=body.get("label"),role=body.get("role") or body.get("default_role") or "reviewer",max_uses=int(body.get("max_uses") or 1),project_scope=body.get("project_scope") or {},notes=body.get("notes") or "",base_url=request.host_url.rstrip("/"))),201)
+                    if path.startswith("/api/owner/invite/"):
+                        tail=path.removeprefix("/api/owner/invite/").strip("/")
+                        parts=tail.split("/")
+                        invite_id=parts[0];action=parts[1] if len(parts)>1 else ""
+                        if action=="disable" and request.method=="POST":return jsonify(owner_set_invite_enabled(dbs,owner=ident,invite_id=invite_id,enabled=False))
+                        if action=="enable" and request.method=="POST":return jsonify(owner_set_invite_enabled(dbs,owner=ident,invite_id=invite_id,enabled=True))
+                        if action=="usage":return jsonify(owner_invite_usage(dbs,invite_id=invite_id))
+                    if path=="/api/owner/projects/correct-pilot-namespace" and request.method=="POST":return jsonify(correct_empty_pilot_project_namespace(dbs,owner=ident,project_id=body.get("project_id")))
+                    if path=="/api/owner/people":return jsonify(owner_people(dbs))
+                    if path=="/api/owner/quality":return jsonify(owner_quality_alerts(dbs))
+                    if path=="/api/owner/audit":return jsonify(owner_audit_events(dbs,actor=request.args.get("actor"),action=request.args.get("action"),project_id=request.args.get("project_id"),limit=int(request.args.get("limit",200))))
+                    if path=="/api/owner/assignments" and request.method=="POST":
+                        return jsonify(create_project_with_assignments(dbs,owner=ident,name=body.get("name") or "Atlas Production Evaluation",namespace=body.get("namespace") or "production",annotation_schema_version=body.get("annotation_schema_version") or "atlas_annotation_v1",primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),batch_size=int(body.get("batch_size") or 50),case_ids=body.get("case_ids"),item_ids=body.get("item_ids"))),201
+                    if path=="/api/owner/gold/readiness":return jsonify(gold_readiness(dbs,project_id=request.args.get("project_id") or body.get("project_id")))
+                    if path=="/api/owner/gold/candidates":return jsonify({"items":gold_candidates(dbs,project_id=request.args.get("project_id") or body.get("project_id"))})
+                    if path=="/api/owner/gold/freeze" and request.method=="POST":return jsonify(freeze_gold(dbs,owner=ident,project_id=body.get("project_id"),confirm=bool(body.get("confirm"))))
+                    if path=="/api/owner/gold/supersede" and request.method=="POST":return jsonify(supersede_gold(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
+                    if path=="/api/owner/evaluation/readiness":return jsonify(evaluation_readiness(dbs,project_id=request.args.get("project_id") or body.get("project_id"),gold_version=int(request.args.get("gold_version") or body.get("gold_version") or 0) or None))
+                    if path=="/api/owner/evaluation/run" and request.method=="POST":return jsonify(run_evaluation(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
+            except PermissionError as error:return jsonify({"error":str(error)}),403
+            except KeyError as error:return jsonify({"error":str(error)}),404
+            except (ValueError,TypeError) as error:return jsonify({"error":str(error)}),400
             return jsonify({"error":"not_found"}),404
         if db_factory and not legacy_json_readonly and path.startswith("/api/my/"):
             ident=current_identity()
             if not ident.get("authenticated"):return jsonify({"error":"authentication_required"}),401
+            body=request.get_json(silent=True) or {}
             with session_scope(db_factory) as dbs:
                 if path=="/api/my/assignments":return jsonify({"items":my_assignments(dbs,user_id=ident.get("user_id"))})
                 if path=="/api/my/batches":return jsonify({"items":my_batches(dbs,user_id=ident.get("user_id"))})
                 if path=="/api/my/review-items":return jsonify({"items":redact_debug(my_review_items(dbs,user_id=ident.get("user_id")))})
                 if path=="/api/my/progress":return jsonify(my_progress(dbs,user_id=ident.get("user_id")))
+                if path=="/api/my/onboarding":
+                    rows=dbs.execute(select(Assignment,ReviewItem,EvaluationProject).join(ReviewItem,Assignment.review_item_id==ReviewItem.review_item_id).join(EvaluationProject,Assignment.project_id==EvaluationProject.project_id).where(Assignment.reviewer_user_id==ident.get("user_id"))).all()
+                    items=[];seen=set()
+                    for assignment,item,project in rows:
+                        schema=schema_for_item_type(item.item_type)
+                        if not schema:continue
+                        key=(project.project_id,schema.schema_id,schema.instructions_hash)
+                        if key in seen:continue
+                        seen.add(key)
+                        ack=dbs.execute(select(UserOnboardingAcknowledgement).where(UserOnboardingAcknowledgement.user_id==ident.get("user_id"),UserOnboardingAcknowledgement.project_id==project.project_id,UserOnboardingAcknowledgement.schema_id==schema.schema_id,UserOnboardingAcknowledgement.instructions_hash==schema.instructions_hash)).scalar_one_or_none()
+                        items.append({"project_id":project.project_id,"project_name":project.name,"namespace":project.namespace,"schema_id":schema.schema_id,"instructions_version":schema.instructions_version,"instructions_hash":schema.instructions_hash,"acknowledged":bool(ack),"acknowledged_at":ack.acknowledged_at.isoformat() if ack else ""})
+                    return jsonify({"items":items,"required":any(not x["acknowledged"] and x["namespace"]=="pilot" for x in items)})
+                if path=="/api/my/onboarding/acknowledge" and request.method=="POST":
+                    schema=get_schema(body.get("schema_id") or "claim_review_v1")
+                    existing=dbs.execute(select(UserOnboardingAcknowledgement).where(UserOnboardingAcknowledgement.user_id==ident.get("user_id"),UserOnboardingAcknowledgement.project_id==body.get("project_id"),UserOnboardingAcknowledgement.schema_id==schema.schema_id,UserOnboardingAcknowledgement.instructions_hash==schema.instructions_hash)).scalar_one_or_none()
+                    if not existing:
+                        dbs.add(UserOnboardingAcknowledgement(user_id=ident.get("user_id"),project_id=body.get("project_id"),schema_id=schema.schema_id,instructions_version=schema.instructions_version,instructions_hash=schema.instructions_hash))
+                    return jsonify({"ok":True})
             return jsonify({"error":"not_found"}),404
         if db_factory and not legacy_json_readonly and path.startswith("/api/adjudication"):
             ident=current_identity()
