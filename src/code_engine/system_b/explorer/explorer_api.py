@@ -8,6 +8,8 @@ from urllib.parse import unquote
 from .annotation_store import AnnotationStore
 from .dossier_projection import DossierProjection
 from .graph_projection import GraphProjection
+from code_engine.system_b.annotation_schemas import schema_for_item_type
+from code_engine.system_b.annotation_schemas.render_projection import form_projection
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
 LAYER_MAP = {
@@ -110,7 +112,7 @@ class ExplorerAPI:
         if path=="/api/review-items":return 200,_page(self._review_items(params),params)
         if path.startswith("/api/review-item/"):
             item_id=unquote(path.removeprefix("/api/review-item/"));item=self.review_by_id.get(item_id)
-            return (200,{**item,"annotation":self.annotations.get(item_id)}) if item else (404,{"error":"review_item_not_found"})
+            return (200,self._review_item_payload(item)) if item else (404,{"error":"review_item_not_found"})
         if path=="/api/annotations":return 200,{"items":list(self.annotations.records.values()),"total":len(self.annotations.records)}
         if path.startswith("/api/annotation/"):
             item_id=unquote(path.removeprefix("/api/annotation/"))
@@ -444,7 +446,7 @@ class ExplorerAPI:
     def _review_items(self,p):
         rows=[];case=_one(p,"case_id");kind=_one(p,"item_type");status=_one(p,"review_status");label=_one(p,"final_label").upper();q=_one(p,"q").casefold()
         for item in self.review:
-            annotation=self.annotations.get(item["review_item_id"]);row={**item,"annotation":annotation,"review_status":"reviewed" if annotation else "unreviewed"}
+            annotation=self.annotations.get(item["review_item_id"]);row=self._review_item_payload(item);row.update({"review_status":"reviewed" if annotation else "unreviewed"})
             if case and item.get("case_id")!=case:continue
             if kind and item.get("item_type")!=kind:continue
             if status and status!="all" and row["review_status"]!=status:continue
@@ -452,6 +454,17 @@ class ExplorerAPI:
             if q and q not in " ".join(str(item.get(x,"")) for x in ("claim_text","evidence_sentence","subject","relation","object","pmid","paper_title")).casefold():continue
             rows.append(row)
         return rows
+
+    def _review_item_payload(self, item):
+        schema = schema_for_item_type(item.get("item_type", ""))
+        return {
+            **item,
+            "annotation": self.annotations.get(item["review_item_id"]),
+            "schema_id": schema.schema_id if schema else None,
+            "schema_version": schema.version if schema else None,
+            "schema_hash": schema.sha256 if schema else None,
+            "form_definition": form_projection(schema),
+        }
 
     def _case_summary(self,case):
         triples=[x for x in self.case_triples if x["case_id"]==case]; chains=[x for x in self.case_chains if x["case_id"]==case]

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from code_engine.system_b.persistence.models import Assignment, AssignmentBatch, EvaluationProject, EvaluationProtocol, ReviewItem, User, utcnow
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
+from code_engine.system_b.persistence.services.review_service import review_item_to_dict
 
 
 def _json(value) -> str:
@@ -179,9 +180,8 @@ def my_review_items(session: Session, *, user_id: str) -> list[dict]:
     ).all()
     items = []
     for assignment, item in rows:
-        payload = json.loads(item.payload_json or "{}")
-        payload.update({"assignment_id": assignment.assignment_id, "assignment_role": assignment.assignment_role, "assignment_status": assignment.status, "project_id": assignment.project_id})
-        items.append(payload)
+        project = session.get(EvaluationProject, assignment.project_id)
+        items.append(review_item_to_dict(item, assignment=assignment, project=project))
     return items
 
 

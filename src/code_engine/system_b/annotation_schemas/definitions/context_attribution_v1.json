@@ -1,0 +1,19 @@
+{
+  "schema_id": "context_attribution_v1",
+  "version": "1.0.0",
+  "title": "Context Attribution",
+  "description": "Expert attribution of context factors needed to evaluate a claim or pair.",
+  "applicable_item_types": ["context_attribution", "context"],
+  "fields": [
+    {"field_id": "gold_context_factors", "label": "Gold context factors", "type": "context_slot_set", "required": true, "allowed_values": ["species", "cell_type", "tissue", "disease_subtype", "treatment", "dose", "duration", "genotype", "localization", "assay_method", "outcome_definition", "disease_stage"], "gold_field": true, "metric_role": "context_set"},
+    {"field_id": "minimal_context_set", "label": "Minimal context set", "type": "context_slot_set", "required": true, "allowed_values": ["species", "cell_type", "tissue", "disease_subtype", "treatment", "dose", "duration", "genotype", "localization", "assay_method", "outcome_definition", "disease_stage"], "gold_field": true, "metric_role": "minimal_context_set"},
+    {"field_id": "factor_ranking", "label": "Factor ranking", "type": "ranked_list", "required": false, "allowed_values": ["species", "cell_type", "tissue", "disease_subtype", "treatment", "dose", "duration", "genotype", "localization", "assay_method", "outcome_definition", "disease_stage"], "gold_field": true, "metric_role": "ranking"},
+    {"field_id": "insufficient_context_information", "label": "Insufficient context information", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "notes", "label": "Notes", "type": "long_text", "required": false}
+  ],
+  "skip_options": ["insufficient_context_information", "technical_problem"],
+  "validation_rules": ["single_minimal_context_set_v1"],
+  "instructions_version": "context_guideline_v1",
+  "instructions_hash": "sha256:context_guideline_v1_placeholder",
+  "frozen": true
+}

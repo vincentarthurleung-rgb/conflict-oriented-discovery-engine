@@ -11,14 +11,15 @@ from werkzeug.security import check_password_hash
 from .auth import PUBLIC_REGISTER_ERROR,LoginLimiter,find_usable_invite,hash_password,load_user_store,utc_now_iso,validate_display_name,validate_password_strength,validate_username,write_user_store
 from .explorer_api import ExplorerAPI
 from code_engine.system_b.persistence.database import create_atlas_engine, database_url as resolve_database_url, session_factory, session_scope, sqlite_health
-from code_engine.system_b.persistence.models import Annotation, Assignment, ReviewItem, User
+from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User
 from code_engine.system_b.persistence.services.adjudication_service import adjudication_detail, adjudication_queue, submit_adjudication
 from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items
 from code_engine.system_b.persistence.services.auth_service import AuthError, authenticate_user, identity_from_user, load_identity, register_with_invite
 from code_engine.system_b.persistence.services.evaluation_service import evaluation_readiness, run_evaluation
 from code_engine.system_b.persistence.services.gold_service import freeze_gold, gold_candidates, gold_readiness, supersede_gold
 from code_engine.system_b.persistence.services.owner_service import owner_audit_events, owner_overview, owner_people, owner_quality_alerts
-from code_engine.system_b.persistence.services.review_service import StaleAnnotationRevision, annotation_to_dict, import_review_items, metrics as db_metrics, save_annotation
+from code_engine.system_b.annotation_schemas import SchemaValidationError
+from code_engine.system_b.persistence.services.review_service import StaleAnnotationRevision, annotation_to_dict, import_review_items, metrics as db_metrics, review_item_to_dict, save_annotation
 from sqlalchemy import select
 
 LOG=logging.getLogger("code_engine.atlas.security")
@@ -41,7 +42,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     if database_url or require_database:
         db_engine=create_atlas_engine(resolve_database_url(database_url));db_factory=session_factory(db_engine)
         health=sqlite_health(db_engine)
-        if require_database and health.get("schema_version")!="0005_metrics_and_audit":raise RuntimeError("Atlas database is not migrated to head")
+        if require_database and health.get("schema_version")!="0006_schema_registry_and_gold_dataset_versions":raise RuntimeError("Atlas database is not migrated to head")
         if review_root and not legacy_json_readonly:
             with session_scope(db_factory) as dbs:import_review_items(dbs,review_root,namespace="test" if not require_auth else "production")
     if require_auth and not db_factory and (not users_file or not Path(users_file).is_file()):raise FileNotFoundError("Authentication requires an existing --users-file")
@@ -233,6 +234,16 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             if require_auth and path=="/api/review-items" and request.method=="GET":
                 ident=current_identity()
                 with session_scope(db_factory) as dbs:return jsonify({"items":redact_debug(my_review_items(dbs,user_id=ident.get("user_id"))),"total":len(my_review_items(dbs,user_id=ident.get("user_id")))})
+            if require_auth and path.startswith("/api/review-item/") and request.method=="GET":
+                ident=current_identity()
+                item_id=path.removeprefix("/api/review-item/")
+                with session_scope(db_factory) as dbs:
+                    row=dbs.execute(select(Assignment,ReviewItem).join(ReviewItem,Assignment.review_item_id==ReviewItem.review_item_id).where(Assignment.reviewer_user_id==ident.get("user_id"),Assignment.review_item_id==item_id)).first()
+                    if not row:return jsonify({"error":"review_item_not_found"}),404
+                    assignment,item=row
+                    annotation=dbs.execute(select(Annotation).where(Annotation.project_id==assignment.project_id,Annotation.review_item_id==item.review_item_id,Annotation.reviewer_user_id==ident.get("user_id"))).scalar_one_or_none()
+                    project=dbs.get(EvaluationProject,assignment.project_id)
+                    return jsonify(redact_debug(review_item_to_dict(item,annotation,assignment=assignment,project=project))),200
             if path.startswith("/api/annotation/") and request.method=="POST":
                 item_id=path.removeprefix("/api/annotation/")
                 try:
@@ -240,6 +251,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         value=save_annotation(dbs,review_item_id=item_id,payload=request.get_json(silent=True) or {},identity=current_identity(),namespace=atlas_namespace(),request_id=request.headers.get("X-Request-ID"),ip_hash=hash_remote(request.remote_addr),session_hash=hash_remote(session.sid if hasattr(session,"sid") else session.get("csrf_token")))
                     return jsonify(redact_debug(value)),200
                 except StaleAnnotationRevision as error:return jsonify({"error":str(error)}),409
+                except SchemaValidationError as error:return jsonify({"error":str(error),"field_errors":error.field_errors}),400
                 except PermissionError as error:return jsonify({"error":str(error)}),403
                 except KeyError:return jsonify({"error":"review_item_not_found"}),404
                 except (ValueError,TypeError) as error:return jsonify({"error":str(error)}),400
@@ -266,7 +278,8 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     def workspace_rbac():
         if request.path in {"/review","/metrics","/progress"} and authenticated() and not can_use_review():return Response("Forbidden",403)
         if request.path in {"/dev","/console"} and authenticated() and not can_use_dev():return Response("Forbidden",403)
-        if request.path=="/owner" and authenticated() and not can_use_owner():return Response("Forbidden",403)
+        if (request.path=="/owner" or request.path.startswith("/owner/")) and authenticated() and not can_use_owner():return Response("Forbidden",403)
+        if (request.path=="/evaluation" or request.path.startswith("/evaluation/")) and authenticated() and not can_use_dev():return Response("Forbidden",403)
     return app
 
 def serve(display_kg_root,review_root=None,host="127.0.0.1",port=8765,on_ready=None,**options):

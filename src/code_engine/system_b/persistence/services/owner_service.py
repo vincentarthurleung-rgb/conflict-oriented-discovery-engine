@@ -76,6 +76,7 @@ def owner_people(session: Session) -> dict:
         rows.append({
             "user_id": user.user_id,
             "username": user.username,
+            "display_name": user.display_name,
             "role": user.role,
             "enabled": user.enabled,
             "assigned": assignments,

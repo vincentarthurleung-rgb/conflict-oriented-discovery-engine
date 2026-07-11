@@ -1,0 +1,26 @@
+{
+  "schema_id": "conflict_pair_v1",
+  "version": "1.0.0",
+  "title": "Conflict Pair Evaluation",
+  "description": "Expert review of whether paired evidence represents a true conflict.",
+  "applicable_item_types": ["conflict_pair", "weak_candidate", "non_comparable_direction_pair"],
+  "fields": [
+    {"field_id": "same_normalized_pair", "label": "Same normalized pair", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "same_relation_family", "label": "Same relation family", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "same_outcome_definition", "label": "Same outcome definition", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "same_experimental_level", "label": "Same experimental level", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "context_comparable", "label": "Context comparable", "type": "boolean", "required": true, "gold_field": true, "metric_role": "comparable"},
+    {"field_id": "sign_a", "label": "Sign A", "type": "single_choice", "required": true, "allowed_values": ["positive", "negative", "neutral", "unknown"], "gold_field": true},
+    {"field_id": "sign_b", "label": "Sign B", "type": "single_choice", "required": true, "allowed_values": ["positive", "negative", "neutral", "unknown"], "gold_field": true},
+    {"field_id": "true_conflict", "label": "True conflict", "type": "boolean", "required": true, "gold_field": true, "metric_role": "label"},
+    {"field_id": "conflict_type", "label": "Conflict type", "type": "single_choice", "required": true, "allowed_values": ["directional", "contextual", "outcome_definition", "experimental_level", "other"], "visible_when": {"field": "true_conflict", "equals": true}, "gold_field": true, "metric_role": "conflict_type"},
+    {"field_id": "non_conflict_reason", "label": "Non-conflict reason", "type": "single_choice", "required": true, "allowed_values": ["same_sign_non_conflict", "different_context_non_comparable", "association_not_causal", "expression_state_not_causal", "duplicate_evidence", "insufficient_information", "other"], "visible_when": {"field": "true_conflict", "equals": false}, "gold_field": true, "metric_role": "label"},
+    {"field_id": "information_sufficient", "label": "Information sufficient", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "notes", "label": "Notes", "type": "long_text", "required": false}
+  ],
+  "skip_options": ["insufficient_information", "technical_problem"],
+  "validation_rules": ["opposite_sign_does_not_imply_true_conflict"],
+  "instructions_version": "conflict_guideline_v1",
+  "instructions_hash": "sha256:conflict_guideline_v1_placeholder",
+  "frozen": true
+}

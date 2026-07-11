@@ -11,7 +11,7 @@ ASSIGNMENT_ROLES = ("primary", "secondary", "expert", "adjudicator")
 ASSIGNMENT_STATUSES = ("assigned", "in_progress", "submitted", "skipped", "revisit", "completed")
 ANNOTATION_DISPOSITIONS = ("submitted", "skipped", "revisit", "draft")
 ANNOTATION_STATUSES = ("draft", "submitted", "superseded")
-GOLD_STATUSES = ("draft", "adjudicated", "frozen", "superseded")
+GOLD_STATUSES = ("draft", "candidate", "adjudicated", "frozen", "superseded")
 METRIC_STATUSES = (
     "ready",
     "partial",
@@ -21,4 +21,5 @@ METRIC_STATUSES = (
     "insufficient_sample",
     "configuration_mismatch",
     "failed",
+    "not_implemented",
 )

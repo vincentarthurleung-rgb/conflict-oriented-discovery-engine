@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from code_engine.system_b.explorer.annotation_store import FINAL_LABELS
 from code_engine.system_b.explorer.explorer_api import _jsonl
+from code_engine.system_b.annotation_schemas import SchemaValidationError, schema_for_item_type, validate_annotation_payload
+from code_engine.system_b.annotation_schemas.render_projection import form_projection
 from code_engine.system_b.persistence.models import (
     Annotation,
     AnnotationEvent,
@@ -113,7 +115,11 @@ def annotation_to_dict(annotation: Annotation) -> dict:
         "reviewer_display_name_snapshot": annotation.reviewer_display_name_snapshot,
         "reviewer_role_snapshot": annotation.reviewer_role_snapshot,
         "namespace": annotation.namespace,
+        "schema_id": annotation.schema_id,
         "schema_version": annotation.schema_version,
+        "schema_hash": annotation.schema_hash,
+        "instructions_version": annotation.instructions_version,
+        "instructions_hash": annotation.instructions_hash,
         "final_label": annotation.final_label,
         "structured_fields": json.loads(annotation.structured_fields_json or "{}"),
         "notes": annotation.notes,
@@ -128,7 +134,7 @@ def annotation_to_dict(annotation: Annotation) -> dict:
     }
 
 
-def _structured_fields(payload: dict) -> dict:
+def _legacy_structured_fields(payload: dict) -> dict:
     direct = payload.get("structured_fields")
     if isinstance(direct, dict):
         return direct
@@ -138,6 +144,44 @@ def _structured_fields(payload: dict) -> dict:
         "mechanistic_usefulness", "worth_followup", "error_type",
     )
     return {k: payload.get(k, "") for k in keys if payload.get(k, "") != ""}
+
+
+def review_item_schema_payload(item: ReviewItem) -> dict:
+    schema = schema_for_item_type(item.item_type)
+    payload = {
+        "schema_id": schema.schema_id if schema else None,
+        "schema_version": schema.version if schema else None,
+        "schema_hash": schema.sha256 if schema else None,
+        "form_definition": form_projection(schema),
+    }
+    if schema:
+        payload.update({
+            "instructions_version": schema.instructions_version,
+            "instructions_hash": schema.instructions_hash,
+        })
+    return payload
+
+
+def review_item_to_dict(item: ReviewItem, annotation: Annotation | None = None, *, assignment: Assignment | None = None, project: EvaluationProject | None = None) -> dict:
+    payload = json.loads(item.payload_json or "{}")
+    payload.update(review_item_schema_payload(item))
+    if annotation:
+        payload["annotation"] = annotation_to_dict(annotation)
+    if assignment:
+        payload.update({
+            "assignment_id": assignment.assignment_id,
+            "assignment_role": assignment.assignment_role,
+            "assignment_status": assignment.status,
+            "project_id": assignment.project_id,
+        })
+    if project:
+        payload["evaluation_project"] = {
+            "project_id": project.project_id,
+            "name": project.name,
+            "namespace": project.namespace,
+            "status": project.status,
+        }
+    return payload
 
 
 def save_annotation(
@@ -212,16 +256,33 @@ def save_annotation(
         raise StaleAnnotationRevision("stale_annotation_revision")
 
     disposition = str(payload.get("review_disposition") or "submitted").lower()
-    final_label = str(payload.get("final_label") or "").upper()
-    if disposition == "submitted" and final_label not in FINAL_LABELS:
-        raise ValueError("final_label must be one of: " + ", ".join(sorted(FINAL_LABELS)))
-    if disposition != "submitted" and final_label and final_label not in FINAL_LABELS:
-        raise ValueError("final_label must be one of: " + ", ".join(sorted(FINAL_LABELS)))
     if disposition not in {"submitted", "skipped", "revisit", "draft"}:
         raise ValueError("review_disposition must be submitted, skipped, revisit, or draft")
+    schema = schema_for_item_type(item.item_type)
+    if not schema:
+        if namespace == "production" and disposition == "submitted":
+            raise ValueError("annotation_schema_not_configured")
+        structured_values = _legacy_structured_fields(payload)
+        final_label = str(payload.get("final_label") or "").upper()
+        if disposition == "submitted" and final_label not in FINAL_LABELS:
+            raise ValueError("final_label must be one of: " + ", ".join(sorted(FINAL_LABELS)))
+    else:
+        raw_fields = payload.get("structured_fields") if isinstance(payload.get("structured_fields"), dict) else None
+        schema_field_ids = {field["field_id"] for field in schema.definition.get("fields", [])}
+        if raw_fields is None:
+            raw_fields = {key: payload[key] for key in schema_field_ids if key in payload}
+        if "final_label" in schema_field_ids and "final_label" not in raw_fields and payload.get("final_label"):
+            raw_fields["final_label"] = str(payload.get("final_label") or "").upper()
+        try:
+            structured_values = validate_annotation_payload(schema, raw_fields, allow_draft=disposition in {"draft", "skipped", "revisit"})
+        except SchemaValidationError:
+            raise
+        final_label = str(structured_values.get("final_label") or payload.get("final_label") or "").upper()
+        if disposition == "submitted" and not final_label:
+            raise ValueError("final_label_required")
 
     now = utcnow()
-    structured = canonical_json(_structured_fields(payload))
+    structured = canonical_json({k: v for k, v in structured_values.items() if k != "final_label"})
     status = "submitted" if disposition in {"submitted", "skipped", "revisit"} else "draft"
     previous_revision = current.revision if current else None
     if current:
@@ -254,6 +315,12 @@ def save_annotation(
 
     annotation.final_label = final_label if disposition == "submitted" else final_label
     annotation.structured_fields_json = structured
+    if schema:
+        annotation.schema_id = schema.schema_id
+        annotation.schema_version = schema.version
+        annotation.schema_hash = schema.sha256
+        annotation.instructions_version = schema.instructions_version
+        annotation.instructions_hash = schema.instructions_hash
     annotation.notes = str(payload.get("notes") or "")
     annotation.review_disposition = disposition
     annotation.uncertainty_reason = str(payload.get("uncertainty_reason") or "")
@@ -294,7 +361,7 @@ def save_annotation(
         actor=identity,
         project_id=project.project_id,
         review_item_id=review_item_id,
-        metadata={"assignment_id": assignment_id, "disposition": disposition, "revision": annotation.revision},
+        metadata={"assignment_id": assignment_id, "disposition": disposition, "revision": annotation.revision, "schema_id": annotation.schema_id, "schema_hash": annotation.schema_hash},
         request_id=request_id,
         ip_hash=ip_hash,
         session_hash=session_hash,

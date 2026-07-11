@@ -1,0 +1,24 @@
+{
+  "schema_id": "hypothesis_expert_v1",
+  "version": "1.0.0",
+  "title": "Hypothesis Expert Review",
+  "description": "Expert 1-5 scoring for generated hypotheses.",
+  "applicable_item_types": ["hypothesis", "formal_hypothesis"],
+  "fields": [
+    {"field_id": "groundedness", "label": "Groundedness", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "plausibility", "label": "Plausibility", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "specificity", "label": "Specificity", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "falsifiability", "label": "Falsifiability", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "novelty", "label": "Novelty", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "actionability", "label": "Actionability", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "impact", "label": "Impact", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "clarity", "label": "Clarity", "type": "likert_1_5", "required": true, "gold_field": true},
+    {"field_id": "overall_valid", "label": "Overall valid", "type": "boolean", "required": true, "gold_field": true, "metric_role": "label"},
+    {"field_id": "notes", "label": "Notes", "type": "long_text", "required": false}
+  ],
+  "skip_options": ["outside_expertise", "technical_problem"],
+  "validation_rules": [],
+  "instructions_version": "hypothesis_guideline_v1",
+  "instructions_hash": "sha256:hypothesis_guideline_v1_placeholder",
+  "frozen": true
+}

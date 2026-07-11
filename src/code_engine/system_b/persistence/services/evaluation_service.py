@@ -40,10 +40,10 @@ def evaluation_readiness(session: Session, *, project_id: str, gold_version: int
     project = session.get(EvaluationProject, project_id)
     if not project:
         raise KeyError("project_not_found")
-    version = gold_version or (session.execute(select(GoldRecord.gold_version).where(GoldRecord.project_id == project_id, GoldRecord.status == "frozen").order_by(GoldRecord.gold_version.desc())).scalar())
+    version = gold_version or (session.execute(select(GoldRecord.gold_dataset_version).where(GoldRecord.project_id == project_id, GoldRecord.status == "frozen").order_by(GoldRecord.gold_dataset_version.desc())).scalar())
     frozen = []
     if version:
-        frozen = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.status == "frozen", GoldRecord.gold_version == version)).scalars().all()
+        frozen = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.status == "frozen", GoldRecord.gold_dataset_version == version)).scalars().all()
     if project.namespace != "production":
         status = "configuration_mismatch"
         reason = "project_namespace_not_production"
@@ -55,6 +55,7 @@ def evaluation_readiness(session: Session, *, project_id: str, gold_version: int
         reason = ""
     return {
         "project_id": project_id,
+        "gold_dataset_version": version,
         "gold_version": version,
         "primary_endpoints": {key: {"status": status, "missing_reason": reason} for key in PRIMARY_ENDPOINTS},
         "frozen_gold_count": len(frozen),
@@ -76,7 +77,7 @@ def run_evaluation(session: Session, *, owner: dict, project_id: str, gold_versi
     if not project or project.namespace != "production":
         raise ValueError("project_namespace_not_production")
     protocol = session.execute(select(EvaluationProtocol).where(EvaluationProtocol.project_id == project_id, EvaluationProtocol.frozen == True).order_by(EvaluationProtocol.version.desc())).scalar_one_or_none()  # noqa: E712
-    config = {"gold_version": gold_version, "seed": seed}
+    config = {"gold_dataset_version": gold_version, "seed": seed}
     run = MetricRun(
         project_id=project_id,
         protocol_id=protocol.protocol_id if protocol else None,
@@ -91,7 +92,7 @@ def run_evaluation(session: Session, *, owner: dict, project_id: str, gold_versi
     session.add(run)
     session.flush()
     try:
-        rows = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.status == "frozen", GoldRecord.gold_version == gold_version)).scalars().all()
+        rows = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.status == "frozen", GoldRecord.gold_dataset_version == gold_version)).scalars().all()
         if not rows:
             raise ValueError("no_frozen_gold_records")
         gold = {row.review_item_id: row.final_gold_label for row in rows}
@@ -116,16 +117,16 @@ def run_evaluation(session: Session, *, owner: dict, project_id: str, gold_versi
                 included_case_ids_json=json.dumps(case_ids),
                 excluded_case_ids_json="[]",
                 exclusion_reasons_json="{}",
-                provenance_json=canonical_json({"project_id": project_id, "protocol_id": run.protocol_id, "gold_version": gold_version, "formula_version": "v1", "git_commit": run.git_commit, "config_hash": run.config_hash, "computed_by_user_id": owner.get("user_id")}),
+                provenance_json=canonical_json({"project_id": project_id, "protocol_id": run.protocol_id, "gold_dataset_version": gold_version, "formula_version": "v1", "git_commit": run.git_commit, "config_hash": run.config_hash, "computed_by_user_id": owner.get("user_id")}),
                 sample_size_cases=len(case_ids),
                 sample_size_items=len(rows),
             ))
         run.finished_at = utcnow()
-        write_audit_event(session, action="metric_run_finished", object_type="metric_run", object_id=run.metric_run_id, actor=owner, project_id=project_id, metadata={"gold_version": gold_version})
+        write_audit_event(session, action="metric_run_finished", object_type="metric_run", object_id=run.metric_run_id, actor=owner, project_id=project_id, metadata={"gold_dataset_version": gold_version})
     except Exception as error:
         run.status = "failed"
         run.error_message = str(error)
         run.finished_at = utcnow()
         write_audit_event(session, action="metric_run_failed", object_type="metric_run", object_id=run.metric_run_id, actor=owner, project_id=project_id, metadata={"error": str(error)})
-        return {"metric_run_id": run.metric_run_id, "status": run.status, "error_message": run.error_message, "gold_version": gold_version}
-    return {"metric_run_id": run.metric_run_id, "status": run.status, "gold_version": gold_version}
+        return {"metric_run_id": run.metric_run_id, "status": run.status, "error_message": run.error_message, "gold_dataset_version": gold_version, "gold_version": gold_version}
+    return {"metric_run_id": run.metric_run_id, "status": run.status, "gold_dataset_version": gold_version, "gold_version": gold_version}

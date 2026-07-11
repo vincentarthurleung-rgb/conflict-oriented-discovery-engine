@@ -41,14 +41,18 @@ def gold_readiness(session: Session, *, project_id: str) -> dict:
 
 
 def gold_candidates(session: Session, *, project_id: str) -> list[dict]:
-    rows = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id).order_by(GoldRecord.review_item_id, GoldRecord.gold_version)).scalars().all()
+    rows = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id).order_by(GoldRecord.review_item_id, GoldRecord.candidate_revision, GoldRecord.gold_dataset_version)).scalars().all()
     return [{
         "gold_record_id": row.gold_record_id,
         "review_item_id": row.review_item_id,
         "final_gold_label": row.final_gold_label,
         "status": row.status,
-        "gold_version": row.gold_version,
+        "candidate_revision": row.candidate_revision,
+        "gold_dataset_version": row.gold_dataset_version,
+        "gold_version": row.gold_dataset_version or row.gold_version,
+        "schema_id": row.schema_id,
         "schema_version": row.schema_version,
+        "schema_hash": row.schema_hash,
     } for row in rows]
 
 
@@ -63,7 +67,7 @@ def freeze_gold(session: Session, *, owner: dict, project_id: str, confirm: bool
     protocol = session.get(EvaluationProtocol, readiness["protocol_id"])
     if not protocol:
         raise ValueError("protocol_not_frozen")
-    existing_version = session.execute(select(func.max(GoldRecord.gold_version)).where(GoldRecord.project_id == project_id)).scalar() or 0
+    existing_version = session.execute(select(func.max(GoldRecord.gold_dataset_version)).where(GoldRecord.project_id == project_id, GoldRecord.status.in_(("frozen", "superseded")))).scalar() or 0
     new_version = int(existing_version) + 1
     now = utcnow()
     item_ids = session.execute(select(Assignment.review_item_id).where(Assignment.project_id == project_id, Assignment.assignment_role == "primary").order_by(Assignment.review_item_id)).scalars().all()
@@ -76,23 +80,48 @@ def freeze_gold(session: Session, *, owner: dict, project_id: str, confirm: bool
             structured = annotation.structured_fields_json
             adjudication_id = None
         else:
-            candidate = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.review_item_id == item_id, GoldRecord.status == "adjudicated").order_by(GoldRecord.gold_version.desc())).scalar_one_or_none()
+            candidate = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.review_item_id == item_id, GoldRecord.status.in_(("candidate", "adjudicated"))).order_by(GoldRecord.candidate_revision.desc())).scalar_one_or_none()
             if not candidate:
                 raise ValueError("missing_adjudicated_candidate")
             label = candidate.final_gold_label
             structured = candidate.structured_gold_json
             adjudication_id = candidate.adjudication_id
-        session.add(GoldRecord(project_id=project_id, protocol_id=protocol.protocol_id, review_item_id=item_id, adjudication_id=adjudication_id, final_gold_label=label, structured_gold_json=structured, schema_version="atlas_gold_v1", status="frozen", frozen_by_user_id=owner.get("user_id"), frozen_at=now, gold_version=new_version))
+            schema_id = candidate.schema_id
+            schema_version = candidate.schema_version
+            schema_hash = candidate.schema_hash
+            candidate_revision = candidate.candidate_revision
+        if comparison["status"] == "agreement":
+            schema_id = annotation.schema_id
+            schema_version = annotation.schema_version
+            schema_hash = annotation.schema_hash
+            candidate_revision = (session.execute(select(func.max(GoldRecord.candidate_revision)).where(GoldRecord.project_id == project_id, GoldRecord.review_item_id == item_id)).scalar() or 0) + 1
+        session.add(GoldRecord(
+            project_id=project_id,
+            protocol_id=protocol.protocol_id,
+            review_item_id=item_id,
+            adjudication_id=adjudication_id,
+            final_gold_label=label,
+            structured_gold_json=structured,
+            schema_id=schema_id,
+            schema_version=schema_version,
+            schema_hash=schema_hash,
+            status="frozen",
+            frozen_by_user_id=owner.get("user_id"),
+            frozen_at=now,
+            candidate_revision=candidate_revision,
+            gold_dataset_version=new_version,
+            gold_version=new_version,
+        ))
         created += 1
-    write_audit_event(session, action="gold_frozen", object_type="gold_version", object_id=str(new_version), actor=owner, project_id=project_id, metadata={"record_count": created, "gold_version": new_version})
-    return {"project_id": project_id, "gold_version": new_version, "frozen_count": created}
+    write_audit_event(session, action="gold_frozen", object_type="gold_dataset_version", object_id=str(new_version), actor=owner, project_id=project_id, metadata={"record_count": created, "gold_dataset_version": new_version})
+    return {"project_id": project_id, "gold_dataset_version": new_version, "gold_version": new_version, "frozen_count": created}
 
 
 def supersede_gold(session: Session, *, owner: dict, project_id: str, gold_version: int) -> dict:
     if owner.get("role") != "owner":
         raise PermissionError("owner_required")
-    rows = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.gold_version == gold_version, GoldRecord.status == "frozen")).scalars().all()
+    rows = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.gold_dataset_version == gold_version, GoldRecord.status == "frozen")).scalars().all()
     for row in rows:
         row.status = "superseded"
-    write_audit_event(session, action="gold_superseded", object_type="gold_version", object_id=str(gold_version), actor=owner, project_id=project_id, metadata={"record_count": len(rows)})
-    return {"project_id": project_id, "gold_version": gold_version, "superseded_count": len(rows)}
+    write_audit_event(session, action="gold_superseded", object_type="gold_dataset_version", object_id=str(gold_version), actor=owner, project_id=project_id, metadata={"record_count": len(rows)})
+    return {"project_id": project_id, "gold_dataset_version": gold_version, "gold_version": gold_version, "superseded_count": len(rows)}

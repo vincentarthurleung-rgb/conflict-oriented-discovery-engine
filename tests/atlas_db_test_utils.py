@@ -30,10 +30,10 @@ def add_user(session, username: str, role: str = "reviewer", enabled: bool = Tru
     return user
 
 
-def add_review_item(session, item_id: str = "item1", case_id: str = "case1", namespace: str = "production") -> ReviewItem:
-    payload = {"review_item_id": item_id, "case_id": case_id, "item_type": "fulltext_l1_claim", "evidence_sentence": "A promotes B."}
+def add_review_item(session, item_id: str = "item1", case_id: str = "case1", namespace: str = "production", item_type: str = "fulltext_l1_claim") -> ReviewItem:
+    payload = {"review_item_id": item_id, "case_id": case_id, "item_type": item_type, "evidence_sentence": "A promotes B."}
     raw = canonical_json(payload)
-    item = ReviewItem(review_item_id=item_id, case_id=case_id, item_type="fulltext_l1_claim", payload_json=raw, source_hash=sha256_text(raw), import_run_id="test", namespace=namespace)
+    item = ReviewItem(review_item_id=item_id, case_id=case_id, item_type=item_type, payload_json=raw, source_hash=sha256_text(raw), import_run_id="test", namespace=namespace)
     session.add(item)
     session.flush()
     return item

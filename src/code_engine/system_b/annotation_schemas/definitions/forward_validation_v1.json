@@ -1,0 +1,21 @@
+{
+  "schema_id": "forward_validation_v1",
+  "version": "1.0.0",
+  "title": "Forward Validation",
+  "description": "Forward-looking support or contradiction after a cutoff.",
+  "applicable_item_types": ["forward_validation"],
+  "fields": [
+    {"field_id": "future_status", "label": "Future status", "type": "single_choice", "required": true, "allowed_values": ["future_supported", "partially_supported", "future_contradicted", "unresolved"], "gold_field": true, "metric_role": "label"},
+    {"field_id": "support_date", "label": "Support date", "type": "short_text", "required": false, "gold_field": true},
+    {"field_id": "independent_lab", "label": "Independent lab", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "same_context", "label": "Same context", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "novel_before_cutoff", "label": "Novel before cutoff", "type": "boolean", "required": true, "gold_field": true},
+    {"field_id": "future_paper_ids", "label": "Future paper IDs", "type": "entity_reference", "required": false, "gold_field": true},
+    {"field_id": "notes", "label": "Notes", "type": "long_text", "required": false}
+  ],
+  "skip_options": ["unresolved", "technical_problem"],
+  "validation_rules": [],
+  "instructions_version": "forward_validation_guideline_v1",
+  "instructions_hash": "sha256:forward_validation_guideline_v1_placeholder",
+  "frozen": true
+}

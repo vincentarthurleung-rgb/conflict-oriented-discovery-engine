@@ -1,0 +1,24 @@
+{
+  "schema_id": "claim_review_v1",
+  "version": "1.0.0",
+  "title": "Claim Review",
+  "description": "Evidence support review for extracted biomedical claims.",
+  "applicable_item_types": ["claim", "fulltext_l1_claim", "fulltext_reviewable_observation", "abstract_reviewable_observation"],
+  "fields": [
+    {"field_id": "final_label", "label": "Final label", "description": "Overall evidence support judgment.", "type": "single_choice", "required": true, "allowed_values": ["VALID", "PARTIAL", "INVALID", "UNCLEAR"], "gold_field": true, "metric_role": "label"},
+    {"field_id": "evidence_supported", "label": "Evidence supported", "type": "boolean", "required": false, "gold_field": true, "metric_role": "field"},
+    {"field_id": "subject_correct", "label": "Subject correct", "type": "boolean", "required": false, "gold_field": true, "metric_role": "field"},
+    {"field_id": "relation_correct", "label": "Relation correct", "type": "boolean", "required": false, "gold_field": true, "metric_role": "field"},
+    {"field_id": "object_correct", "label": "Object correct", "type": "boolean", "required": false, "gold_field": true, "metric_role": "field"},
+    {"field_id": "direction_correct", "label": "Direction correct", "type": "boolean", "required": false, "gold_field": true, "metric_role": "field"},
+    {"field_id": "negation_correct", "label": "Negation correct", "type": "boolean", "required": false, "gold_field": true, "metric_role": "field"},
+    {"field_id": "context_complete", "label": "Context complete", "type": "boolean", "required": false, "gold_field": true, "metric_role": "context"},
+    {"field_id": "error_types", "label": "Error types", "type": "multi_choice", "required": false, "allowed_values": ["subject_error", "relation_error", "object_error", "direction_error", "negation_error", "context_error", "evidence_not_supporting", "too_vague", "duplicate_or_noise"], "visible_when": {"field": "final_label", "in": ["PARTIAL", "INVALID"]}, "gold_field": true, "metric_role": "error_type"},
+    {"field_id": "notes", "label": "Notes", "type": "long_text", "required": false}
+  ],
+  "skip_options": ["reviewer_unfamiliar", "insufficient_evidence_preview", "technical_problem"],
+  "validation_rules": [],
+  "instructions_version": "claim_guideline_v1",
+  "instructions_hash": "sha256:claim_guideline_v1_placeholder",
+  "frozen": true
+}

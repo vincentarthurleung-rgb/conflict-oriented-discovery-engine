@@ -20,7 +20,8 @@ class AtlasGoldVersionTests(unittest.TestCase):
                 ready = gold_readiness(session, project_id=project["project_id"])
                 self.assertTrue(ready["ready"])
                 result = freeze_gold(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], confirm=True)
-                self.assertEqual(result["gold_version"], 2)
+                self.assertEqual(result["gold_dataset_version"], 1)
+                self.assertEqual(result["gold_version"], 1)
                 self.assertEqual(session.query(GoldRecord).filter_by(project_id=project["project_id"], status="frozen").count(), 1)
 
 

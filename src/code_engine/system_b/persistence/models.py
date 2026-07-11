@@ -199,7 +199,11 @@ class Annotation(Base):
     reviewer_display_name_snapshot: Mapped[str] = mapped_column(String(160), nullable=False)
     reviewer_role_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
     namespace: Mapped[str] = mapped_column(String(32), nullable=False)
+    schema_id: Mapped[str] = mapped_column(String(120), default="claim_review_v1", nullable=False)
     schema_version: Mapped[str] = mapped_column(String(40), default="atlas_annotation_v1", nullable=False)
+    schema_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    instructions_version: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    instructions_hash: Mapped[str] = mapped_column(String(160), default="", nullable=False)
     final_label: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     structured_fields_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
@@ -251,8 +255,10 @@ class Adjudication(Base):
     status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
     final_label: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     structured_gold_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    schema_id: Mapped[str] = mapped_column(String(120), default="claim_review_v1", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     schema_version: Mapped[str] = mapped_column(String(40), default="atlas_gold_v1", nullable=False)
+    schema_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -276,13 +282,17 @@ class GoldRecord(Base):
     adjudication_id: Mapped[str | None] = mapped_column(ForeignKey("adjudications.adjudication_id"))
     final_gold_label: Mapped[str] = mapped_column(String(80), nullable=False)
     structured_gold_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    schema_id: Mapped[str] = mapped_column(String(120), default="claim_review_v1", nullable=False)
     schema_version: Mapped[str] = mapped_column(String(40), default="atlas_gold_v1", nullable=False)
+    schema_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
     frozen_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"))
     frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    candidate_revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    gold_dataset_version: Mapped[int | None] = mapped_column(Integer)
     gold_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     __table_args__ = (
-        UniqueConstraint("project_id", "review_item_id", "gold_version", name="uq_gold_project_item_version"),
+        UniqueConstraint("project_id", "review_item_id", "status", "candidate_revision", "gold_dataset_version", name="uq_gold_project_item_status_revision_dataset"),
         _check("ck_gold_status", "status", GOLD_STATUSES),
     )
 

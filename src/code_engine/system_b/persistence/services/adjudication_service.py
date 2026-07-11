@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from code_engine.system_b.persistence.models import Adjudication, AdjudicationSource, Annotation, Assignment, GoldRecord, EvaluationProtocol, User, utcnow
@@ -45,6 +45,9 @@ def adjudication_detail(session: Session, *, identity: dict, project_id: str, re
         "annotation_id": a.annotation_id,
         "assignment_id": a.assignment_id,
         "reviewer_username_snapshot": a.reviewer_username_snapshot,
+        "schema_id": a.schema_id,
+        "schema_version": a.schema_version,
+        "schema_hash": a.schema_hash,
         "final_label": a.final_label,
         "structured_fields": json.loads(a.structured_fields_json or "{}"),
         "revision": a.revision,
@@ -74,6 +77,7 @@ def submit_adjudication(
     if current and expected not in (None, "") and int(expected) != current.revision:
         raise StaleAnnotationRevision("stale_adjudication_revision")
     structured = payload.get("structured_gold") if isinstance(payload.get("structured_gold"), dict) else {}
+    source_annotation = session.get(Annotation, comparison.get("annotation_a_id") or "") if comparison.get("annotation_a_id") else None
     now = utcnow()
     if current:
         adjudication = current
@@ -90,11 +94,26 @@ def submit_adjudication(
     adjudication.structured_gold_json = canonical_json(structured)
     adjudication.notes = str(payload.get("notes") or "")
     adjudication.schema_version = str(payload.get("schema_version") or "atlas_gold_v1")
+    adjudication.schema_id = str(payload.get("schema_id") or (source_annotation.schema_id if source_annotation else "claim_review_v1"))
+    adjudication.schema_hash = str(payload.get("schema_hash") or (source_annotation.schema_hash if source_annotation else ""))
     adjudication.submitted_at = now
     protocol = session.execute(select(EvaluationProtocol).where(EvaluationProtocol.project_id == project_id, EvaluationProtocol.frozen == True).order_by(EvaluationProtocol.version.desc())).scalar_one_or_none()  # noqa: E712
     if protocol:
-        existing_gold = session.execute(select(GoldRecord).where(GoldRecord.project_id == project_id, GoldRecord.review_item_id == review_item_id, GoldRecord.gold_version == 1)).scalar_one_or_none()
-        if not existing_gold:
-            session.add(GoldRecord(project_id=project_id, protocol_id=protocol.protocol_id, review_item_id=review_item_id, adjudication_id=adjudication.adjudication_id, final_gold_label=adjudication.final_label, structured_gold_json=adjudication.structured_gold_json, schema_version=adjudication.schema_version, status="adjudicated", gold_version=1))
+        candidate_revision = (session.execute(select(func.max(GoldRecord.candidate_revision)).where(GoldRecord.project_id == project_id, GoldRecord.review_item_id == review_item_id)).scalar() or 0) + 1
+        session.add(GoldRecord(
+            project_id=project_id,
+            protocol_id=protocol.protocol_id,
+            review_item_id=review_item_id,
+            adjudication_id=adjudication.adjudication_id,
+            final_gold_label=adjudication.final_label,
+            structured_gold_json=adjudication.structured_gold_json,
+            schema_id=adjudication.schema_id,
+            schema_version=adjudication.schema_version,
+            schema_hash=adjudication.schema_hash,
+            status="candidate",
+            candidate_revision=candidate_revision,
+            gold_dataset_version=None,
+            gold_version=candidate_revision,
+        ))
     write_audit_event(session, action="adjudication_submitted", object_type="adjudication", object_id=adjudication.adjudication_id, actor=identity, project_id=project_id, review_item_id=review_item_id, metadata={"revision": adjudication.revision}, **(request_context or {}))
     return {"adjudication_id": adjudication.adjudication_id, "project_id": project_id, "review_item_id": review_item_id, "status": adjudication.status, "revision": adjudication.revision}
