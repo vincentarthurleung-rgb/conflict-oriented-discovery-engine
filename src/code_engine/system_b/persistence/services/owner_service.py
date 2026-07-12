@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from code_engine.system_b.explorer.auth import generate_invite_code, hash_password, validate_display_name, validate_username
 from code_engine.system_b.persistence.models import (
+    Adjudication,
     Annotation,
     Assignment,
     AssignmentBatch,
@@ -18,11 +19,15 @@ from code_engine.system_b.persistence.models import (
     GoldRecord,
     Invite,
     InviteUsageEvent,
+    MetricResult,
+    MetricRun,
     ReviewItem,
     SystemSetting,
     User,
+    UserOnboardingAcknowledgement,
     utcnow,
 )
+from code_engine.system_b.annotation_schemas import schema_for_item_type
 from code_engine.system_b.persistence.services.auth_service import create_invite, issue_password_reset
 from code_engine.system_b.persistence.services.agreement_service import project_disagreements
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
@@ -83,6 +88,180 @@ def owner_overview(session: Session) -> dict:
         "waiting_adjudication_count": None,
         "data_quality_warnings": warnings,
         "owner_state": owner_state,
+    }
+
+
+def owner_projects(session: Session) -> dict:
+    rows = session.execute(select(EvaluationProject).order_by(EvaluationProject.created_at.desc(), EvaluationProject.name)).scalars().all()
+    items = []
+    for project in rows:
+        assignments = session.execute(select(func.count()).select_from(Assignment).where(Assignment.project_id == project.project_id)).scalar() or 0
+        unique_items = session.execute(select(func.count(func.distinct(Assignment.review_item_id))).where(Assignment.project_id == project.project_id)).scalar() or 0
+        unique_cases = session.execute(
+            select(func.count(func.distinct(ReviewItem.case_id)))
+            .join(Assignment, Assignment.review_item_id == ReviewItem.review_item_id)
+            .where(Assignment.project_id == project.project_id)
+        ).scalar() or 0
+        frozen = session.execute(select(func.max(GoldRecord.gold_dataset_version)).where(GoldRecord.project_id == project.project_id, GoldRecord.status == "frozen")).scalar()
+        items.append({
+            "project_id": project.project_id,
+            "name": project.name,
+            "description": project.description,
+            "namespace": project.namespace,
+            "status": project.status,
+            "created_at": project.created_at.isoformat() if project.created_at else "",
+            "assignment_count": assignments,
+            "unique_review_items": unique_items,
+            "unique_cases": unique_cases,
+            "gold_dataset_version": frozen,
+        })
+    return {"items": items, "total": len(items)}
+
+
+def owner_system_state(session: Session, *, database_path: str = "data/code_atlas.db", schema_head: str | None = None) -> dict:
+    owner_state = validate_single_owner(session)
+    owner = session.get(User, owner_state.get("owner_user_id")) if owner_state.get("owner_user_id") else None
+    projects = owner_projects(session)["items"]
+    review_items_by_namespace = [
+        {"namespace": ns, "review_items": count, "unique_cases": cases}
+        for ns, count, cases in session.execute(select(ReviewItem.namespace, func.count(), func.count(func.distinct(ReviewItem.case_id))).group_by(ReviewItem.namespace)).all()
+    ]
+    review_items_by_project = []
+    for project_id, name, namespace, item_type, count, cases in session.execute(
+        select(EvaluationProject.project_id, EvaluationProject.name, EvaluationProject.namespace, ReviewItem.item_type, func.count(func.distinct(ReviewItem.review_item_id)), func.count(func.distinct(ReviewItem.case_id)))
+        .join(Assignment, Assignment.project_id == EvaluationProject.project_id)
+        .join(ReviewItem, ReviewItem.review_item_id == Assignment.review_item_id)
+        .group_by(EvaluationProject.project_id, ReviewItem.item_type)
+    ).all():
+        review_items_by_project.append({"project_id": project_id, "project_name": name, "namespace": namespace, "item_type": item_type, "review_items": count, "unique_cases": cases})
+    assignment_rows = []
+    for project_id, role, status, count, items, cases in session.execute(
+        select(Assignment.project_id, Assignment.assignment_role, Assignment.status, func.count(), func.count(func.distinct(Assignment.review_item_id)), func.count(func.distinct(ReviewItem.case_id)))
+        .join(ReviewItem, ReviewItem.review_item_id == Assignment.review_item_id)
+        .group_by(Assignment.project_id, Assignment.assignment_role, Assignment.status)
+    ).all():
+        assignment_rows.append({"project_id": project_id, "assignment_role": role, "status": status, "assignments": count, "unique_review_items": items, "unique_cases": cases})
+    annotation_rows = []
+    for namespace, disposition, count, items, cases in session.execute(
+        select(Annotation.namespace, Annotation.review_disposition, func.count(), func.count(func.distinct(Annotation.review_item_id)), func.count(func.distinct(ReviewItem.case_id)))
+        .join(ReviewItem, ReviewItem.review_item_id == Annotation.review_item_id, isouter=True)
+        .group_by(Annotation.namespace, Annotation.review_disposition)
+    ).all():
+        annotation_rows.append({"namespace": namespace, "review_disposition": disposition, "annotations": count, "unique_review_items": items, "unique_cases": cases})
+    gold_rows = [{"project_id": p, "status": s, "gold_version": gv, "gold_dataset_version": gdv, "count": c} for p, s, gv, gdv, c in session.execute(select(GoldRecord.project_id, GoldRecord.status, GoldRecord.gold_version, GoldRecord.gold_dataset_version, func.count()).group_by(GoldRecord.project_id, GoldRecord.status, GoldRecord.gold_version, GoldRecord.gold_dataset_version)).all()]
+    metric_runs = [{"project_id": p, "status": s, "count": c} for p, s, c in session.execute(select(MetricRun.project_id, MetricRun.status, func.count()).group_by(MetricRun.project_id, MetricRun.status)).all()]
+    warnings = owner_quality_alerts(session)["items"]
+    pilot_projects = [p for p in projects if p["namespace"] == "pilot"]
+    for project in pilot_projects:
+        if project["assignment_count"] and project["unique_cases"] < 3:
+            warnings.append({"code": "pilot_assignments_cover_fewer_than_three_cases", "severity": "medium", "project_id": project["project_id"], "unique_cases": project["unique_cases"], "explanation": "Pilot assignments should cover at least 3 unique cases for internal smoke coverage."})
+    return {
+        "database_path": database_path,
+        "schema_head": schema_head or "unknown",
+        "owner": serialize_user(session, owner) if owner else None,
+        "owner_state": owner_state,
+        "user_counts_by_role": [{"role": role, "enabled": bool(enabled), "count": count} for role, enabled, count in session.execute(select(User.role, User.enabled, func.count()).group_by(User.role, User.enabled)).all()],
+        "projects": projects,
+        "review_items_by_namespace": review_items_by_namespace,
+        "review_items_by_project": review_items_by_project,
+        "assignment_counts": assignment_rows,
+        "annotation_counts": annotation_rows,
+        "gold_counts": gold_rows,
+        "metric_run_counts": metric_runs,
+        "metric_result_count": session.execute(select(func.count()).select_from(MetricResult)).scalar() or 0,
+        "adjudication_count": session.execute(select(func.count()).select_from(Adjudication)).scalar() or 0,
+        "assignment_batch_count": session.execute(select(func.count()).select_from(AssignmentBatch)).scalar() or 0,
+        "audit_event_count": session.execute(select(func.count()).select_from(AuditEvent)).scalar() or 0,
+        "active_invite_count": session.execute(select(func.count()).select_from(Invite).where(Invite.enabled == True)).scalar() or 0,  # noqa: E712
+        "quality_warnings": warnings,
+    }
+
+
+def owner_pilot_preview(
+    session: Session,
+    *,
+    namespace: str = "pilot",
+    case_ids: list[str] | None = None,
+    item_types: list[str] | None = None,
+    source_scope: str | None = None,
+    item_ids: list[str] | None = None,
+    primary_reviewer_user_id: str | None = None,
+    secondary_reviewer_user_id: str | None = None,
+    adjudicator_user_id: str | None = None,
+    batch_size: int = 20,
+    random_seed: str | int | None = None,
+) -> dict:
+    if namespace != "pilot":
+        raise ValueError("pilot_wizard_namespace_is_fixed_to_pilot")
+    query = select(ReviewItem).where(ReviewItem.namespace == "pilot")
+    if case_ids:
+        query = query.where(ReviewItem.case_id.in_(sorted(set(case_ids))))
+    if item_types:
+        query = query.where(ReviewItem.item_type.in_(sorted(set(item_types))))
+    if source_scope:
+        query = query.where(ReviewItem.source_scope == source_scope)
+    if item_ids:
+        query = query.where(ReviewItem.review_item_id.in_(sorted(set(item_ids))))
+    rows = session.execute(query.order_by(ReviewItem.case_id, ReviewItem.item_type, ReviewItem.review_item_id)).scalars().all()
+    schema_distribution: dict[str, int] = {}
+    missing_schemas: dict[str, int] = {}
+    by_case: dict[str, int] = {}
+    by_source: dict[str, int] = {}
+    for item in rows:
+        by_case[item.case_id] = by_case.get(item.case_id, 0) + 1
+        by_source[item.source_scope or "当前数据未提供"] = by_source.get(item.source_scope or "当前数据未提供", 0) + 1
+        schema = schema_for_item_type(item.item_type)
+        if schema:
+            schema_distribution[schema.schema_id] = schema_distribution.get(schema.schema_id, 0) + 1
+        else:
+            missing_schemas[item.item_type] = missing_schemas.get(item.item_type, 0) + 1
+    warnings = []
+    errors = []
+    if primary_reviewer_user_id and secondary_reviewer_user_id and primary_reviewer_user_id == secondary_reviewer_user_id:
+        errors.append({"code": "primary_secondary_must_differ"})
+    for label, user_id in (("primary", primary_reviewer_user_id), ("secondary", secondary_reviewer_user_id), ("adjudicator", adjudicator_user_id)):
+        if not user_id:
+            continue
+        user = session.get(User, user_id)
+        if not user or not user.enabled:
+            errors.append({"code": "user_not_available", "role": label, "user_id": user_id})
+        elif label in {"primary", "secondary"} and user.role not in {"reviewer", "pharma", "developer"}:
+            errors.append({"code": "reviewer_role_mismatch", "role": label, "user_id": user_id, "actual_role": user.role})
+        elif label == "adjudicator" and user.role not in {"reviewer", "developer", "admin"}:
+            errors.append({"code": "adjudicator_role_mismatch", "user_id": user_id, "actual_role": user.role})
+        if user and not session.execute(select(func.count()).select_from(UserOnboardingAcknowledgement).where(UserOnboardingAcknowledgement.user_id == user.user_id)).scalar():
+            warnings.append({"code": "onboarding_not_yet_acknowledged", "role": label, "user_id": user.user_id})
+    if missing_schemas:
+        errors.append({"code": "formal_schema_missing", "item_types": missing_schemas})
+    if not rows:
+        errors.append({"code": "no_review_items_selected"})
+    duplicate_assignments = 0
+    if rows and primary_reviewer_user_id and secondary_reviewer_user_id:
+        selected = [r.review_item_id for r in rows]
+        duplicate_assignments = session.execute(
+            select(func.count()).select_from(Assignment).where(Assignment.review_item_id.in_(selected), Assignment.reviewer_user_id.in_([primary_reviewer_user_id, secondary_reviewer_user_id]))
+        ).scalar() or 0
+        if duplicate_assignments:
+            warnings.append({"code": "duplicate_assignments_existing", "count": duplicate_assignments})
+    return {
+        "namespace": "pilot",
+        "unique_cases": len(by_case),
+        "unique_review_items": len(rows),
+        "review_item_count_is_not_case_count": True,
+        "item_count_by_case": by_case,
+        "item_count_by_schema": schema_distribution,
+        "source_distribution": by_source,
+        "primary_assignments": len(rows) if primary_reviewer_user_id else None,
+        "secondary_assignments": len(rows) if secondary_reviewer_user_id else None,
+        "adjudication_assignments": len(rows) if adjudicator_user_id else None,
+        "expected_batches": ((len(rows) + max(batch_size, 1) - 1) // max(batch_size, 1)) if rows else 0,
+        "duplicate_assignments": duplicate_assignments,
+        "assignment_order": "case_id,item_type,review_item_id",
+        "random_seed": str(random_seed or ""),
+        "warnings": warnings,
+        "errors": errors,
+        "blocked": bool(errors),
+        "selected_review_item_ids": [r.review_item_id for r in rows],
     }
 
 

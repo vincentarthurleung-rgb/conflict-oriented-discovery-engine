@@ -13,6 +13,9 @@ __pycache__/
 configs/atlas_users.json
 .venv/
 venv/
+node_modules/
+test-results/
+playwright-report/
 .DS_Store
 
 # Research runtime artifacts
@@ -35,6 +38,8 @@ data/external/
 *.parquet
 *.sqlite
 *.db
+*.db-wal
+*.db-shm
 logs/
 logs/**
 runs/

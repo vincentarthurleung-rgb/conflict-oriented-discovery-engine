@@ -341,6 +341,18 @@ select,button,input{font-family:inherit}
 .login-card label{display:block;margin:15px 0}
 .login-card input{display:block;width:100%;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:8px}
 
+/* ── Owner Control Center ── */
+.owner-shell{display:grid;grid-template-columns:190px minmax(0,1fr);gap:16px;align-items:start}
+.owner-side{position:sticky;top:76px;display:flex;flex-direction:column;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;box-shadow:var(--shadow-sm)}
+.owner-side a{padding:8px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:13px}
+.owner-side a.active,.owner-side a:focus-visible{background:#e7f4f2;color:#0d5b5e;outline:2px solid transparent}
+.owner-main{min-width:0}
+.owner-project-bar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:12px;background:var(--paper);border:1px solid var(--line);border-radius:8px}
+.owner-project-bar label{font-size:12px;font-weight:700;color:var(--muted)}
+.owner-project-bar select{display:block;min-width:min(520px,72vw);margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:7px;background:white}
+.credential-box{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px;background:#f8fafc;border:1px solid var(--line);border-radius:7px}
+.credential-box code{word-break:break-all}
+
 /* ── Responsive ── */
 @media(max-width:1200px){
 .review-workspace{grid-template-columns:220px minmax(0,1fr)}
@@ -373,6 +385,10 @@ main{padding:18px}
 .hero h1{font-size:22px}
 .review-choice{min-width:70px;font-size:12px;padding:8px 12px}
 .secondary-field-grid{grid-template-columns:1fr}
+.owner-shell{grid-template-columns:1fr}
+.owner-side{position:static;flex-direction:row;overflow:auto}
+.owner-side a{white-space:nowrap}
+.owner-project-bar select{min-width:100%}
 }
 
 /* ── Evidence Detail Panel ── */
