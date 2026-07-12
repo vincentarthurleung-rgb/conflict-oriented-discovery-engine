@@ -40,6 +40,31 @@ class GraphProjection:
             "fulltext_support":[False,True],
         }
 
+    def case_overview(self):
+        items = []
+        for case_id in self.api.cases:
+            triples = [row for row in self.api.triples if case_id in row.get("case_ids", [])]
+            entity_ids = {entity_id for row in triples for entity_id in (row.get("subject_id"), row.get("object_id")) if entity_id}
+            ranked = sorted(triples, key=lambda row: (-float(row.get("display_priority_score_v2") or 0), row.get("triple_id", "")))
+            items.append({
+                "case_id": case_id,
+                "entity_count": len(entity_ids),
+                "relation_count": len(triples),
+                "evidence_count": sum(int(row.get("evidence_count") or 0) for row in triples),
+                "fulltext_relation_count": sum(1 for row in triples if int(row.get("fulltext_evidence_count") or 0) > 0),
+                "conflict_relation_count": sum(1 for row in triples if row.get("conflict_status") not in {None, "", "none"}),
+                "top_relations": [self.edge(row) for row in ranked[:3]],
+            })
+        return {
+            "projection": "case_overview",
+            "items": items,
+            "summary": {
+                "case_count": len(items),
+                "total_nodes": len(self.api.entities),
+                "total_edges": len(self.api.triples),
+            },
+        }
+
     def overview(self,params):
         limit_nodes=_int(params,"limit_nodes",150,1,300);limit_edges=_int(params,"limit_edges",240,1,500)
         triples=self._filtered_triples(params)
@@ -130,10 +155,10 @@ class GraphProjection:
         return score
 
     def node(self,ent,score):
-        return {"id":ent.get("entity_id"),"label":ent.get("display_label") or ent.get("label"),"entity_type":ent.get("entity_type","unknown"),"degree":ent.get("degree",0),"evidence_count":ent.get("evidence_count",0),"case_ids":ent.get("source_case_ids",[]),"score":round(score,4),"node_kind":"display_entity"}
+        return {"id":ent.get("entity_id"),"label":ent.get("display_label") or ent.get("label"),"canonical_name":ent.get("canonical_label") or ent.get("label"),"aliases":ent.get("aliases",[]),"entity_type":ent.get("entity_type","unknown"),"degree":ent.get("degree",0),"in_degree":ent.get("in_degree",0),"out_degree":ent.get("out_degree",0),"evidence_count":ent.get("evidence_count",0),"fulltext_evidence_count":ent.get("fulltext_evidence_count",0),"case_ids":ent.get("source_case_ids",[]),"score":round(score,4),"node_kind":"display_entity"}
 
     def edge(self,t):
-        return {"id":t.get("triple_id"),"source":t.get("subject_id"),"target":t.get("object_id"),"source_label":t.get("subject_display_label"),"target_label":t.get("object_display_label"),"relation":t.get("relation_normalized"),"relation_label":_relation_label(t.get("relation_normalized")),"evidence_count":t.get("evidence_count",0),"fulltext_evidence_count":t.get("fulltext_evidence_count",0),"case_ids":t.get("case_ids",[]),"conflict_status":t.get("conflict_status","none"),"review_status":"unknown","weight":float(t.get("display_priority_score_v2") or 0)}
+        return {"id":t.get("triple_id"),"source":t.get("subject_id"),"target":t.get("object_id"),"source_label":t.get("subject_display_label"),"target_label":t.get("object_display_label"),"relation":t.get("relation_normalized"),"relation_label":_relation_label(t.get("relation_normalized")),"direction":t.get("direction"),"evidence_count":t.get("evidence_count",0),"fulltext_evidence_count":t.get("fulltext_evidence_count",0),"results_section_evidence_count":t.get("results_section_evidence_count",0),"case_ids":t.get("case_ids",[]),"conflict_status":t.get("conflict_status","none"),"review_status":"unknown","ui_badges":t.get("ui_badges",[]),"weight":float(t.get("display_priority_score_v2") or 0)}
 
     def _chain_projection(self,c):
         return {"chain_id":c.get("chain_id"),"entity_path":c.get("entity_path",[]),"relation_path":c.get("relation_path",[]),"triple_ids":c.get("triple_ids",[]),"case_ids":c.get("case_ids",[]),"depth":c.get("depth"),"fulltext_evidence_count_sum":c.get("fulltext_evidence_count_sum",0)}

@@ -1,5 +1,16 @@
 # C.O.D.E. — Conflict-Oriented Discovery Engine
 
+## 推荐的 System A → Atlas 命令
+
+```bash
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
+  --case-id <case_id> \
+  --api \
+  --network
+```
+
+该命令可断点恢复，并自动完成 frozen case package、base discovery、权威 PMCID 修复、OA Fulltext L1、v5 re-entry、handoff、全局 Atlas 同步和最终安全校验。详见 [One-command System A → Atlas](docs/system_b/one_command_case_to_atlas.md)。
+
 C.O.D.E. 是一个面向生物医学研究的冲突驱动发现引擎。它从自然语言研究问题出发，规划检索、获取文献、抽取并归一化证据，识别机制冲突，生成可追溯假设，并按资源可用性执行外部验证。
 
 项目当前处于 `4.0.0a0` 研究软件阶段。输出用于形成和审计研究假设，不应被视为临床建议或最终科学结论。

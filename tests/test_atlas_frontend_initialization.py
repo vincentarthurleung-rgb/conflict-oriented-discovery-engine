@@ -88,13 +88,13 @@ class AtlasFrontendInitializationTests(unittest.TestCase):
         const ctx={console,document,location,localStorage,fetch,navigator:{},setTimeout,requestAnimationFrame:(cb)=>cb(),CSS:{escape:(s)=>String(s)},addEventListener(){}};
         ctx.window=ctx;
         vm.runInNewContext(fs.readFileSync('src/code_engine/system_b/explorer/static/app.js','utf8'),ctx,{filename:'app.js'});
-        setTimeout(()=>{ console.log(JSON.stringify({nav:el('nav').innerHTML,workspace:el('#workspace').innerHTML})); },50);
+        setTimeout(()=>{ console.log(JSON.stringify({nav:el('nav').innerHTML,workspace:el('#workspace').innerHTML,ownerBody:el('#owner-page-body').innerHTML})); },50);
         """
         result = subprocess.run(["node", "-e", script], check=True, text=True, capture_output=True)
         payload = json.loads(result.stdout.strip().splitlines()[-1])
         self.assertIn("Owner", payload["nav"])
-        self.assertIn("System State", payload["workspace"])
-        self.assertNotIn("Loading workspace", payload["workspace"])
+        self.assertIn("System State", payload["ownerBody"])
+        self.assertNotIn("Loading workspace", payload["workspace"] + payload["ownerBody"])
 
     def test_initialization_failure_replaces_loading(self):
         app_js = Path("src/code_engine/system_b/explorer/static/app.js").read_text()

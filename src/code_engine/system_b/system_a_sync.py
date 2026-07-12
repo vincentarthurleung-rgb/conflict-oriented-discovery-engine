@@ -120,6 +120,19 @@ def sync_system_a(
     paths = discover_handoffs(runs_root, manifest)
     if batch_id:
         paths = [path for path in paths if batch_id in path.parts[-3]]
+    current_hashes = {}
+    registry_path = Path(output_root) / "current_projection.json"
+    if registry_path.is_file():
+        try:
+            registry = json.loads(registry_path.read_text(encoding="utf-8"))
+            projection_manifest = json.loads((Path(output_root) / registry["projection_relative_path"] / "projection_manifest.json").read_text(encoding="utf-8"))
+            for source in projection_manifest.get("source_manifests", []):
+                current_hashes[source["case_id"]] = source["manifest_hash"]
+                source_path = Path(runs_root) / source["source_run_id"] / "artifacts/atlas_handoff_manifest.json"
+                if source_path.is_file() and source_path.resolve() not in {item.resolve() for item in paths}: paths.append(source_path.resolve())
+        except (OSError, KeyError, json.JSONDecodeError):
+            current_hashes = {}
+    paths = sorted(paths)
     quarantine = Path(quarantine_root or Path(output_root) / "quarantine")
     valid = []; rejected = []
     for path in paths:
@@ -139,6 +152,20 @@ def sync_system_a(
         except Exception:
             if not dry_run: raise
         finally: session.close()
+    grouped = {}
+    for item in valid: grouped.setdefault(item["manifest"]["case_id"], []).append(item)
+    missing_current = sorted(set(current_hashes) - set(grouped))
+    if missing_current: raise HandoffError("current_projection_source_missing", ", ".join(missing_current))
+    selected = []
+    for case_id, candidates in sorted(grouped.items()):
+        fresh = [item for item in candidates if (item["manifest"]["source_run_id"], item["manifest_hash"], adapter_version) not in existing_keys]
+        if len(fresh) > 1: raise HandoffError("ambiguous_new_case_runs", f"{case_id} has {len(fresh)} un-ingested ready handoffs")
+        if fresh: selected.append(fresh[0]); continue
+        current = [item for item in candidates if item["manifest_hash"] == current_hashes.get(case_id)]
+        if len(current) == 1: selected.append(current[0]); continue
+        if len(candidates) == 1: selected.append(candidates[0]); continue
+        raise HandoffError("ambiguous_current_case_run", f"{case_id} has no unique current handoff")
+    valid = selected
     new = [item for item in valid if (item["manifest"]["source_run_id"], item["manifest_hash"], adapter_version) not in existing_keys]
     adapter = FulltextReentryV5Adapter()
     projects = [adapter.project(item, prediction_run_id=_prediction_id(item, adapter_version)) for item in valid]

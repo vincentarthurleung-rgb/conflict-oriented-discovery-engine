@@ -51,8 +51,8 @@ def evaluation_readiness(session: Session, *, project_id: str, gold_version: int
         status = "needs_annotation"
         reason = "no_frozen_gold_records"
     else:
-        status = "ready"
-        reason = ""
+        status = "not_implemented"
+        reason = "prediction_adapter_not_configured"
     return {
         "project_id": project_id,
         "gold_dataset_version": version,
@@ -76,6 +76,8 @@ def run_evaluation(session: Session, *, owner: dict, project_id: str, gold_versi
     project = session.get(EvaluationProject, project_id)
     if not project or project.namespace != "production":
         raise ValueError("project_namespace_not_production")
+    if predictions is None:
+        raise ValueError("prediction_adapter_not_configured")
     protocol = session.execute(select(EvaluationProtocol).where(EvaluationProtocol.project_id == project_id, EvaluationProtocol.frozen == True).order_by(EvaluationProtocol.version.desc())).scalar_one_or_none()  # noqa: E712
     config = {"gold_dataset_version": gold_version, "seed": seed}
     run = MetricRun(
@@ -96,7 +98,6 @@ def run_evaluation(session: Session, *, owner: dict, project_id: str, gold_versi
         if not rows:
             raise ValueError("no_frozen_gold_records")
         gold = {row.review_item_id: row.final_gold_label for row in rows}
-        predictions = predictions or dict(gold)
         merged = {}
         merged.update(classification_metrics(gold, predictions))
         merged.update(macro_micro_f1(gold, predictions))

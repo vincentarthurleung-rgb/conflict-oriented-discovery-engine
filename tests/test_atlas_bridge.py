@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,6 +56,15 @@ class AtlasBridgeTest(unittest.TestCase):
         publish_atlas_handoff(self.run,runs_root=self.root);output=Path(self.tmp.name)/"out"
         report=sync_system_a(runs_root=self.root,output_root=output,no_database_write=True)
         self.assertEqual(report["status"],"completed");api=ExplorerAPI(output);self.assertEqual(api.summary()["cases"],1);self.assertEqual(api.dossiers.list({})["total"],1)
+
+    def test_single_manifest_sync_preserves_current_cases(self):
+        publish_atlas_handoff(self.run,runs_root=self.root);output=Path(self.tmp.name)/"out"
+        sync_system_a(runs_root=self.root,output_root=output,no_database_write=True)
+        second=self.root/"run-two";shutil.copytree(self.run,second);(second/"artifacts/atlas_handoff_manifest.json").unlink();(second/"artifacts/ATLAS_READY").unlink()
+        source=json.loads((second/"fulltext_reentry_manifest.json").read_text());source["case_id"]="case-two";(second/"fulltext_reentry_manifest.json").write_text(json.dumps(source))
+        published=publish_atlas_handoff(second,runs_root=self.root)
+        report=sync_system_a(runs_root=self.root,manifest=published["manifest_path"],output_root=output,no_database_write=True)
+        self.assertEqual(report["status"],"completed");self.assertEqual(ExplorerAPI(output).summary()["cases"],2)
 
 
 if __name__ == "__main__": unittest.main()

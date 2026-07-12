@@ -172,6 +172,7 @@ class ExplorerAPI:
                 value=self.dossiers.detail(tail)
             return (200,value) if value else (404,{"error":"dossier_not_found"})
         if path=="/api/graph/filters":return 200,self.graph.filters()
+        if path=="/api/graph/case-overview":return 200,self.graph.case_overview()
         if path=="/api/graph/overview":return 200,self.graph.overview(params)
         if path.startswith("/api/graph/neighborhood/"):
             return 200,self.graph.neighborhood(unquote(path.removeprefix("/api/graph/neighborhood/")),params)

@@ -21,7 +21,7 @@ class AtlasPaperExportTests(unittest.TestCase):
                 owner, adj, project = prepared_disagreement(session)
                 submit_adjudication(session, identity={"user_id": adj.user_id, "username": adj.username, "role": "reviewer", "authenticated": True}, project_id=project["project_id"], review_item_id="item1", payload={"final_label": "VALID"})
                 frozen = freeze_gold(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], confirm=True)
-                run = run_evaluation(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], gold_version=frozen["gold_version"])
+                run = run_evaluation(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], gold_version=frozen["gold_version"], predictions={"item1": "VALID"})
             out = export_paper(url, Path(tmp) / "eval", project["project_id"], run["metric_run_id"])
             self.assertTrue((out / "evaluation_manifest.json").exists())
             self.assertTrue((out / "paper_tables" / "table_1_dataset_statistics.csv").exists())

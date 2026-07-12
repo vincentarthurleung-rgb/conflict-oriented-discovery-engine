@@ -1,5 +1,13 @@
 # System A Sync Operations
 
+For normal case execution, use the single orchestrated command:
+
+```bash
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas --case-id <case_id> --api --network
+```
+
+The manual sync commands below are recovery and developer diagnostics. The one-command service always performs a global ready-handoff sync so adding one case cannot replace the current projection with a single-case projection.
+
 The importer performs discover → ready/manifest validation → path/hash/count verification → v5 adaptation → temporary projection → projection validation → one database transaction → immutable-directory finalize → atomic current-registry switch. A failure before the last step cannot change `current_projection.json`; a rejected source receives a structured report under `quarantine/`.
 
 Ingestion identity is `(source_run_id, manifest_hash, adapter_version)`. The same identity is a no-op. A new adapter version may create a new projection; a new System A run creates new ingestion and prediction provenance without deleting its predecessor. SQLite stores only ingestion and artifact metadata. Evidence and claims stay in versioned files.

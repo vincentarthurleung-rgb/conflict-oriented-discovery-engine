@@ -24,6 +24,17 @@ class AtlasGlobalGraphTests(unittest.TestCase):
             data=api.dispatch("/api/graph/neighborhood/e1",{"depth":["1"],"limit":["2"]})[1]
             self.assertEqual(data["center"],"e1");self.assertLessEqual(len(data["nodes"]),2);self.assertLessEqual(data["summary"]["depth"],1)
 
+    def test_default_ui_projection_is_case_overview(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);KnowledgeExplorerTests().fixture(root)
+            api=ExplorerAPI(root,root/"missing-review")
+            status,data=api.dispatch("/api/graph/case-overview")
+            self.assertEqual(status,200)
+            self.assertEqual(data["projection"],"case_overview")
+            self.assertEqual(data["summary"]["case_count"],1)
+            self.assertEqual(data["items"][0]["case_id"],"case")
+            self.assertIn("top_relations",data["items"][0])
+
     def test_path_uses_existing_display_chains(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);KnowledgeExplorerTests().fixture(root)

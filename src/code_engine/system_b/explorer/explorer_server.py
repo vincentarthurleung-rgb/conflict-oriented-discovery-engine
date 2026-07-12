@@ -13,7 +13,7 @@ from .explorer_api import ExplorerAPI
 from code_engine.system_b.persistence.database import create_atlas_engine, database_url as resolve_database_url, session_factory, session_scope, sqlite_health
 from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User, UserOnboardingAcknowledgement
 from code_engine.system_b.persistence.services.adjudication_service import adjudication_detail, adjudication_queue, submit_adjudication
-from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items
+from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items, my_review_metrics, my_review_workspace
 from code_engine.system_b.persistence.services.auth_service import AuthError, authenticate_user, change_password, complete_password_reset, identity_from_user, load_identity, register_with_invite
 from code_engine.system_b.persistence.services.evaluation_service import evaluation_readiness, run_evaluation
 from code_engine.system_b.persistence.services.gold_service import freeze_gold, gold_candidates, gold_readiness, supersede_gold
@@ -269,7 +269,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                     if path=="/api/owner/gold/freeze" and request.method=="POST":return jsonify(freeze_gold(dbs,owner=ident,project_id=body.get("project_id"),confirm=bool(body.get("confirm"))))
                     if path=="/api/owner/gold/supersede" and request.method=="POST":return jsonify(supersede_gold(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
                     if path=="/api/owner/evaluation/readiness":return jsonify(evaluation_readiness(dbs,project_id=request.args.get("project_id") or body.get("project_id"),gold_version=int(request.args.get("gold_version") or body.get("gold_version") or 0) or None))
-                    if path=="/api/owner/evaluation/run" and request.method=="POST":return jsonify(run_evaluation(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
+                    if path=="/api/owner/evaluation/run" and request.method=="POST":return jsonify(run_evaluation(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version")),predictions=body.get("predictions") if isinstance(body.get("predictions"),dict) else None))
             except PermissionError as error:return jsonify({"error":str(error)}),403
             except KeyError as error:return jsonify({"error":str(error)}),404
             except (ValueError,TypeError) as error:return jsonify({"error":str(error)}),400
@@ -311,16 +311,29 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                     if path=="/api/adjudication/queue":return jsonify({"items":adjudication_queue(dbs,identity=ident,project_id=request.args.get("project_id"))})
                     review_item_id=path.removeprefix("/api/adjudication/").strip("/")
                     project_id=request.args.get("project_id") or body.get("project_id")
-                    if request.method=="GET":return jsonify(adjudication_detail(dbs,identity=ident,project_id=project_id,review_item_id=review_item_id))
+                    if request.method=="GET":return jsonify(redact_debug(adjudication_detail(dbs,identity=ident,project_id=project_id,review_item_id=review_item_id)))
                     if request.method=="POST":return jsonify(submit_adjudication(dbs,identity=ident,project_id=project_id,review_item_id=review_item_id,payload=body,request_context={"request_id":request.headers.get("X-Request-ID"),"ip_hash":hash_remote(request.remote_addr),"session_hash":hash_remote(session.get("csrf_token"))}))
             except StaleAnnotationRevision as error:return jsonify({"error":str(error)}),409
             except PermissionError as error:return jsonify({"error":str(error)}),403
             except (ValueError,KeyError,TypeError) as error:return jsonify({"error":str(error)}),400
         if path.startswith(("/api/review","/api/annotation","/api/annotations")) and not can_use_review():return jsonify({"error":"forbidden"}),403
         if db_factory and not legacy_json_readonly:
+            if require_auth and path == "/api/review-workspace" and request.method == "GET":
+                ident = current_identity()
+                with session_scope(db_factory) as dbs:
+                    return jsonify(my_review_workspace(dbs, user_id=ident.get("user_id")))
+            if require_auth and path == "/api/review-layers" and request.method == "GET":
+                ident = current_identity()
+                case_id = request.args.get("case_id") or ""
+                with session_scope(db_factory) as dbs:
+                    workspace = my_review_workspace(dbs, user_id=ident.get("user_id"))
+                case = next((row for row in workspace["cases"] if row["case_id"] == case_id), None)
+                return jsonify(case or {"case_id": case_id, "total": 0, "reviewed": 0, "unreviewed": 0, "layers": []})
             if require_auth and path=="/api/review-items" and request.method=="GET":
                 ident=current_identity()
-                with session_scope(db_factory) as dbs:return jsonify({"items":redact_debug(my_review_items(dbs,user_id=ident.get("user_id"))),"total":len(my_review_items(dbs,user_id=ident.get("user_id")))})
+                with session_scope(db_factory) as dbs:
+                    items=my_review_items(dbs,user_id=ident.get("user_id"),case_id=request.args.get("case_id"),item_type=request.args.get("item_type"),project_id=request.args.get("project_id"))
+                return jsonify({"items":redact_debug(items),"total":len(items)})
             if require_auth and path.startswith("/api/review-item/") and request.method=="GET":
                 ident=current_identity()
                 item_id=path.removeprefix("/api/review-item/")
@@ -342,6 +355,11 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                 except PermissionError as error:return jsonify({"error":str(error)}),403
                 except KeyError:return jsonify({"error":"review_item_not_found"}),404
                 except (ValueError,TypeError) as error:return jsonify({"error":str(error)}),400
+            if require_auth and path=="/api/review-metrics":
+                ident=current_identity()
+                with session_scope(db_factory) as dbs:return jsonify(my_review_metrics(dbs,user_id=ident.get("user_id"))),200
+            if require_auth and path in {"/api/review-metrics/recompute","/api/review-export.csv","/api/review-export.jsonl"}:
+                return jsonify({"error":"legacy_review_artifact_access_disabled"}),403
             if path=="/api/review-metrics":
                 with session_scope(db_factory) as dbs:return jsonify(db_metrics(dbs,namespace=atlas_namespace())),200
             if path=="/api/annotations":
@@ -363,7 +381,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     def page(path):return send_from_directory(static,"index.html")
     @app.before_request
     def workspace_rbac():
-        if request.path in {"/review","/metrics","/progress"} and authenticated() and not can_use_review():return Response("Forbidden",403)
+        if request.path in {"/review","/metrics","/progress","/adjudication"} and authenticated() and not can_use_review():return Response("Forbidden",403)
         if request.path in {"/dev","/console"} and authenticated() and not can_use_dev():return Response("Forbidden",403)
         if (request.path=="/owner" or request.path.startswith("/owner/")) and authenticated() and not can_use_owner():return Response("Forbidden",403)
         if (request.path=="/evaluation" or request.path.startswith("/evaluation/")) and authenticated() and not can_use_dev():return Response("Forbidden",403)

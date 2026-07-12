@@ -205,6 +205,11 @@ def run_abstract_l1_screening(
             for claim in paper_claims:
                 claim.update(metadata)
             cache.setdefault("entries", {})[key] = {"claims": paper_claims}
+            # Persist each paid paper result immediately so a process interruption
+            # resumes without repeating already successful Abstract L1 calls.
+            if cache_path:
+                from code_engine.corpus.io import atomic_write_json
+                atomic_write_json(cache_path, cache)
         else:
             paper_claims = []
         claims.extend(paper_claims)

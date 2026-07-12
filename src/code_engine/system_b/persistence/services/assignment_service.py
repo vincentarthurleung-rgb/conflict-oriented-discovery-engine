@@ -6,10 +6,10 @@ import json
 from datetime import datetime
 from typing import Iterable
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from code_engine.system_b.persistence.models import Assignment, AssignmentBatch, EvaluationProject, EvaluationProtocol, ReviewItem, User, utcnow
+from code_engine.system_b.persistence.models import Annotation, Assignment, AssignmentBatch, EvaluationProject, EvaluationProtocol, ReviewItem, User, utcnow
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
 from code_engine.system_b.persistence.services.review_service import review_item_to_dict
 
@@ -171,18 +171,100 @@ def my_batches(session: Session, *, user_id: str) -> list[dict]:
     } for row in rows]
 
 
-def my_review_items(session: Session, *, user_id: str) -> list[dict]:
-    rows = session.execute(
-        select(Assignment, ReviewItem)
+def my_review_items(
+    session: Session,
+    *,
+    user_id: str,
+    case_id: str | None = None,
+    item_type: str | None = None,
+    project_id: str | None = None,
+) -> list[dict]:
+    query = (
+        select(Assignment, ReviewItem, EvaluationProject, Annotation)
         .join(ReviewItem, Assignment.review_item_id == ReviewItem.review_item_id)
+        .join(EvaluationProject, Assignment.project_id == EvaluationProject.project_id)
+        .outerjoin(Annotation, and_(
+            Annotation.project_id == Assignment.project_id,
+            Annotation.review_item_id == Assignment.review_item_id,
+            Annotation.reviewer_user_id == Assignment.reviewer_user_id,
+        ))
         .where(Assignment.reviewer_user_id == user_id)
         .order_by(Assignment.assigned_at, ReviewItem.case_id, ReviewItem.review_item_id)
-    ).all()
+    )
+    if case_id:
+        query = query.where(ReviewItem.case_id == case_id)
+    if item_type:
+        query = query.where(ReviewItem.item_type == item_type)
+    if project_id:
+        query = query.where(Assignment.project_id == project_id)
+    rows = session.execute(query).all()
     items = []
-    for assignment, item in rows:
-        project = session.get(EvaluationProject, assignment.project_id)
-        items.append(review_item_to_dict(item, assignment=assignment, project=project))
+    for assignment, item, project, annotation in rows:
+        payload = review_item_to_dict(item, annotation, assignment=assignment, project=project)
+        payload["review_status"] = "reviewed" if assignment.status in {"submitted", "skipped", "revisit", "completed"} else "unreviewed"
+        items.append(payload)
     return items
+
+
+def my_review_workspace(session: Session, *, user_id: str) -> dict:
+    items = my_review_items(session, user_id=user_id)
+    cases: dict[str, dict] = {}
+    for item in items:
+        case_id = item.get("case_id") or "unknown"
+        item_type = item.get("item_type") or "unknown"
+        case = cases.setdefault(case_id, {"case_id": case_id, "total": 0, "reviewed": 0, "unreviewed": 0, "layers": {}})
+        layer = case["layers"].setdefault(item_type, {
+            "layer_id": item_type,
+            "label": item_type.replace("_", " ").title(),
+            "total": 0,
+            "reviewed": 0,
+            "unreviewed": 0,
+            "valid": 0,
+            "partial": 0,
+            "invalid": 0,
+            "unclear": 0,
+        })
+        reviewed = item.get("review_status") == "reviewed"
+        case["total"] += 1
+        case["reviewed" if reviewed else "unreviewed"] += 1
+        layer["total"] += 1
+        layer["reviewed" if reviewed else "unreviewed"] += 1
+        label = str((item.get("annotation") or {}).get("final_label") or "").lower()
+        if label in {"valid", "partial", "invalid", "unclear"}:
+            layer[label] += 1
+    result = []
+    for case in cases.values():
+        case["layers"] = sorted(case["layers"].values(), key=lambda row: (row["label"], row["layer_id"]))
+        result.append(case)
+    return {"cases": sorted(result, key=lambda row: row["case_id"]), "total_items": len(items)}
+
+
+def my_review_metrics(session: Session, *, user_id: str) -> dict:
+    items = my_review_items(session, user_id=user_id)
+    reviewed = [item for item in items if item.get("review_status") == "reviewed"]
+    labels: dict[str, int] = {}
+    dispositions: dict[str, int] = {}
+    cases: dict[str, int] = {}
+    for item in reviewed:
+        annotation = item.get("annotation") or {}
+        label = annotation.get("final_label")
+        disposition = annotation.get("review_disposition")
+        if label:
+            labels[label] = labels.get(label, 0) + 1
+        if disposition:
+            dispositions[disposition] = dispositions.get(disposition, 0) + 1
+        case_id = item.get("case_id") or "unknown"
+        cases[case_id] = cases.get(case_id, 0) + 1
+    total = len(items)
+    return {
+        "reviewed_count": len(reviewed),
+        "unreviewed_count": total - len(reviewed),
+        "reviewed_fraction": round(len(reviewed) / total, 6) if total else None,
+        "counts_by_final_label": labels,
+        "counts_by_disposition": dispositions,
+        "counts_by_case": cases,
+        "note": "Assignment-scoped live metrics for the current reviewer.",
+    }
 
 
 def my_progress(session: Session, *, user_id: str) -> dict:

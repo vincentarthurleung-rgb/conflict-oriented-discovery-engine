@@ -64,10 +64,11 @@ def run_replay(
     entity_llm_cleaner: bool = False,
     overwrite: bool = False,
     publish_atlas: bool = True,
+    output_run: Path | None = None,
 ) -> dict[str, Any]:
     source = base_run.resolve()
     fulltext = fulltext_run.resolve()
-    target = output_root / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{case_id}_{output_suffix}"
+    target = Path(output_run) if output_run is not None else output_root / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{case_id}_{output_suffix}"
     if target.exists():
         if not overwrite:
             raise FileExistsError(f"output run exists: {target}")
@@ -131,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-run", type=Path, required=True)
     parser.add_argument("--fulltext-run", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, default=Path("runs"))
+    parser.add_argument("--output-run", type=Path)
     parser.add_argument("--output-suffix", required=True)
     parser.add_argument("--network", action="store_true")
     parser.add_argument("--api", action="store_true")
@@ -151,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         entity_llm_cleaner=args.entity_llm_cleaner,
         overwrite=args.overwrite,
         publish_atlas=not args.no_publish_atlas_handoff,
+        output_run=args.output_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

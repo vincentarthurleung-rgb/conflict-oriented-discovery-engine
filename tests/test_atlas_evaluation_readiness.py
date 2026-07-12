@@ -20,8 +20,11 @@ class AtlasEvaluationReadinessTests(unittest.TestCase):
                 submit_adjudication(session, identity={"user_id": adj.user_id, "username": adj.username, "role": "reviewer", "authenticated": True}, project_id=project["project_id"], review_item_id="item1", payload={"final_label": "VALID"})
                 frozen = freeze_gold(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], confirm=True)
                 ready = evaluation_readiness(session, project_id=project["project_id"], gold_version=frozen["gold_version"])
-                self.assertEqual(ready["primary_endpoints"]["conflict_macro_f1"]["status"], "ready")
-                run = run_evaluation(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], gold_version=frozen["gold_version"])
+                self.assertEqual(ready["primary_endpoints"]["conflict_macro_f1"]["status"], "not_implemented")
+                self.assertEqual(ready["primary_endpoints"]["conflict_macro_f1"]["missing_reason"], "prediction_adapter_not_configured")
+                with self.assertRaisesRegex(ValueError, "prediction_adapter_not_configured"):
+                    run_evaluation(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], gold_version=frozen["gold_version"])
+                run = run_evaluation(session, owner={"user_id": owner.user_id, "username": owner.username, "role": "owner"}, project_id=project["project_id"], gold_version=frozen["gold_version"], predictions={"item1": "VALID"})
                 self.assertEqual(run["status"], "ready")
 
 

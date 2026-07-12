@@ -1,5 +1,13 @@
 # System A → C.O.D.E. Atlas Handoff Protocol
 
+Recommended end-to-end use:
+
+```bash
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas --case-id <case_id> --api --network
+```
+
+The lower-level publisher described below is normally invoked by this orchestration service.
+
 `atlas_handoff_v1` is the file boundary between the scientific pipeline and Atlas. System A owns scientific artifacts and never writes Atlas SQLite or calls Flask. Atlas is an offline, read-only consumer and never calls an LLM during ingestion.
 
 A completed run publishes `artifacts/atlas_handoff_manifest.json` first and `artifacts/ATLAS_READY` last. Both are written through a temporary file, fsynced, and switched with `os.replace`. The marker contains the schema version and exact manifest SHA-256. Repeating publication of identical bytes is a no-op.

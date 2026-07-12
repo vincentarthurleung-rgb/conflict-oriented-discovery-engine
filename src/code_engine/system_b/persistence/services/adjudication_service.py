@@ -6,10 +6,10 @@ import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from code_engine.system_b.persistence.models import Adjudication, AdjudicationSource, Annotation, Assignment, GoldRecord, EvaluationProtocol, User, utcnow
+from code_engine.system_b.persistence.models import Adjudication, AdjudicationSource, Annotation, Assignment, GoldRecord, EvaluationProtocol, ReviewItem, User, utcnow
 from code_engine.system_b.persistence.services.agreement_service import compare_annotations, project_disagreements
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
-from code_engine.system_b.persistence.services.review_service import StaleAnnotationRevision, canonical_json
+from code_engine.system_b.persistence.services.review_service import StaleAnnotationRevision, canonical_json, review_item_to_dict
 
 
 def _can_adjudicate(session: Session, *, identity: dict, project_id: str, review_item_id: str) -> bool:
@@ -41,10 +41,12 @@ def adjudication_detail(session: Session, *, identity: dict, project_id: str, re
         raise PermissionError("not_assigned_adjudicator")
     comparison = compare_annotations(session, project_id=project_id, review_item_id=review_item_id)
     annotations = session.execute(select(Annotation).where(Annotation.project_id == project_id, Annotation.review_item_id == review_item_id).order_by(Annotation.created_at)).scalars().all()
-    return {"project_id": project_id, "review_item_id": review_item_id, "comparison": comparison, "annotations": [json.loads(canonical_json({
+    item = session.get(ReviewItem, review_item_id)
+    current = session.execute(select(Adjudication).where(Adjudication.project_id == project_id, Adjudication.review_item_id == review_item_id)).scalar_one_or_none()
+    return {"project_id": project_id, "review_item_id": review_item_id, "review_item": review_item_to_dict(item) if item else None, "comparison": comparison, "current_revision": current.revision if current else 0, "annotations": [json.loads(canonical_json({
         "annotation_id": a.annotation_id,
         "assignment_id": a.assignment_id,
-        "reviewer_username_snapshot": a.reviewer_username_snapshot,
+        "reviewer_label": f"Reviewer {chr(65 + index)}",
         "schema_id": a.schema_id,
         "schema_version": a.schema_version,
         "schema_hash": a.schema_hash,
@@ -52,7 +54,7 @@ def adjudication_detail(session: Session, *, identity: dict, project_id: str, re
         "structured_fields": json.loads(a.structured_fields_json or "{}"),
         "revision": a.revision,
         "submitted_at": a.submitted_at.isoformat() if a.submitted_at else "",
-    })) for a in annotations]}
+    })) for index, a in enumerate(annotations)]}
 
 
 def submit_adjudication(
