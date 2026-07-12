@@ -63,6 +63,7 @@ def run_replay(
     entity_network_lookup: bool = False,
     entity_llm_cleaner: bool = False,
     overwrite: bool = False,
+    publish_atlas: bool = True,
 ) -> dict[str, Any]:
     source = base_run.resolve()
     fulltext = fulltext_run.resolve()
@@ -113,6 +114,14 @@ def run_replay(
     pipeline = _json(artifacts / "pipeline_stage_summary.json", {})
     pipeline.update({"status": pipeline.get("status", "completed"), "fulltext_reentry": summary})
     (artifacts / "pipeline_stage_summary.json").write_text(json.dumps(pipeline, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if publish_atlas:
+        from code_engine.integration.atlas_handoff import publish_atlas_handoff
+        handoff = publish_atlas_handoff(
+            target,
+            runs_root=output_root,
+            lineage={"base_run": source, "fulltext_l1_run": fulltext, "reentry_run": target},
+        )
+        manifest["atlas_handoff"] = {key: handoff[key] for key in ("status", "manifest_path", "manifest_hash")}
     return manifest
 
 
@@ -128,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--entity-network-lookup", action="store_true")
     parser.add_argument("--entity-llm-cleaner", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--no-publish-atlas-handoff", action="store_true")
     args = parser.parse_args(argv)
     result = run_replay(
         case_id=args.case_id,
@@ -140,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         entity_network_lookup=args.entity_network_lookup,
         entity_llm_cleaner=args.entity_llm_cleaner,
         overwrite=args.overwrite,
+        publish_atlas=not args.no_publish_atlas_handoff,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

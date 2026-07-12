@@ -1,6 +1,7 @@
 """Cached read-only API over display KG v2 and manual-review artifacts."""
 from __future__ import annotations
 import csv
+import hashlib
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -50,7 +51,10 @@ def _page(rows,params):
 
 class ExplorerAPI:
     def __init__(self, display_kg_root, review_root=None):
-        self.root=Path(display_kg_root); self.review_root=Path(review_root) if review_root else None
+        configured=Path(display_kg_root);self.registry_path=configured/"current_projection.json" if configured.is_dir() and (configured/"current_projection.json").is_file() else None
+        self.registry_mtime_ns=self.registry_path.stat().st_mtime_ns if self.registry_path else None
+        self.configured_root=configured
+        self.root=self._root_from_registry(configured) if self.registry_path else configured; self.review_root=Path(review_root) if review_root else None
         missing=[x for x in REQUIRED if not (self.root/x).is_file()]
         if missing: raise FileNotFoundError("Missing display KG v2 files: "+", ".join(missing)+". Run system_b_build_clean_kg first.")
         self.entities=_jsonl(self.root/"display_entities_v2.jsonl"); self.triples=_jsonl(self.root/"display_triples_v2.jsonl"); self.chains=_jsonl(self.root/"display_chains_v2.jsonl")
@@ -63,11 +67,34 @@ class ExplorerAPI:
         for x in self.conflicts:
             for tid in x.get("linked_triple_ids",[]):self.conflict_by_triple[tid].append(x)
         self.review=_jsonl(self.review_root/"manual_review_queue.jsonl") if self.review_root else []
+        dossier_index=_json(self.root/"dossier_index.json")
+        self.dossier_triples=dossier_index.get("items",[]) if isinstance(dossier_index,dict) else []
+        for x in _jsonl(self.root/"dossier_evidence.jsonl"):
+            self.evidence_by_triple[x.get("triple_id")].append(x)
         self.review_by_id={x["review_item_id"]:x for x in self.review};self.annotations=AnnotationStore(self.review_root,self.review)
         self.paper_metrics=_json(self.review_root/"paper_metrics_starter.json") if self.review_root else {}
         self.annotation_status=self._annotation_status()
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])})
         self.graph=GraphProjection(self);self.dossiers=DossierProjection(self)
+
+    def _root_from_registry(self,configured):
+        registry=_json(configured/"current_projection.json");relative=registry.get("projection_relative_path")
+        if not relative or Path(relative).is_absolute() or ".." in Path(relative).parts:raise ValueError("unsafe current projection registry")
+        root=(configured/relative).resolve();configured_resolved=configured.resolve()
+        if configured_resolved not in root.parents:raise ValueError("current projection escapes configured root")
+        manifest=root/"projection_manifest.json"
+        if not manifest.is_file():raise FileNotFoundError("current projection manifest missing")
+        expected=registry.get("projection_manifest_sha256")
+        if expected and hashlib.sha256(manifest.read_bytes()).hexdigest()!=expected:raise ValueError("current projection manifest hash mismatch")
+        return root
+
+    def _refresh_if_needed(self):
+        if not self.registry_path:return
+        try:mtime=self.registry_path.stat().st_mtime_ns
+        except OSError:return
+        if mtime==self.registry_mtime_ns:return
+        refreshed=ExplorerAPI(self.configured_root,self.review_root)
+        self.__dict__.clear();self.__dict__.update(refreshed.__dict__)
 
     def _annotation_status(self):
         path=self.review_root/"manual_review_annotations_template.csv" if self.review_root else None
@@ -83,6 +110,7 @@ class ExplorerAPI:
         return {"cases":len(self.cases),"display_entities":len(self.entities),"display_triples":len(self.triples),"display_chains":len(self.chains),"fulltext_evidence_count":fulltext,"conflict_lens_records":len(self.conflicts),"review_queue_count":len(self.review),"warnings":warnings,"scientific_boundary":BOUNDARY}
 
     def dispatch(self,path,params=None,method="GET",body=None):
+        self._refresh_if_needed()
         params=params or {}
         if path=="/api/summary":return 200,self.summary()
         if path=="/api/cases":return 200,{"items":[self._case_summary(x) for x in self.cases],"total":len(self.cases)}

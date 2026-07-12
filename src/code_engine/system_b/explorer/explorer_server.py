@@ -42,7 +42,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     if database_url or require_database:
         db_engine=create_atlas_engine(resolve_database_url(database_url));db_factory=session_factory(db_engine)
         health=sqlite_health(db_engine)
-        if require_database and health.get("schema_version")!="0007_owner_access_management":raise RuntimeError("Atlas database is not migrated to head")
+        if require_database and health.get("schema_version")!="0008_system_a_ingestion_ledger":raise RuntimeError("Atlas database is not migrated to head")
         if review_root and not legacy_json_readonly:
             with session_scope(db_factory) as dbs:import_review_items(dbs,review_root,namespace="test" if not require_auth else "production")
     if require_auth and not db_factory and (not users_file or not Path(users_file).is_file()):raise FileNotFoundError("Authentication requires an existing --users-file")

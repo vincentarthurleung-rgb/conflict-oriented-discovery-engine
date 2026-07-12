@@ -125,6 +125,60 @@ class SystemSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
+class SourceIngestion(Base):
+    __tablename__ = "source_ingestions"
+    ingestion_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_text)
+    case_id: Mapped[str] = mapped_column(String(240), nullable=False, index=True)
+    source_run_id: Mapped[str] = mapped_column(String(240), nullable=False, index=True)
+    manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    handoff_schema_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    adapter_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    prediction_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    namespace: Mapped[str] = mapped_column(String(32), nullable=False, default="system_a")
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_code: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    error_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    projection_root: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    supersedes_ingestion_id: Mapped[str | None] = mapped_column(ForeignKey("source_ingestions.ingestion_id"))
+    created_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    __table_args__ = (
+        UniqueConstraint("source_run_id", "manifest_hash", "adapter_version", name="uq_source_ingestion_idempotency"),
+        CheckConstraint("status IN ('discovered','validating','projecting','completed','failed','quarantined')", name="ck_source_ingestions_status"),
+    )
+
+
+class PredictionRun(Base):
+    __tablename__ = "prediction_runs"
+    prediction_run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(240), nullable=False, index=True)
+    source_ingestion_id: Mapped[str] = mapped_column(ForeignKey("source_ingestions.ingestion_id"), nullable=False, unique=True)
+    prediction_version: Mapped[str] = mapped_column(String(120), nullable=False)
+    system_a_git_commit: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    configuration_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    source_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class SourceArtifact(Base):
+    __tablename__ = "source_artifacts"
+    source_artifact_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_text)
+    source_ingestion_id: Mapped[str] = mapped_column(ForeignKey("source_ingestions.ingestion_id"), nullable=False, index=True)
+    logical_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    relative_path: Mapped[str] = mapped_column(Text, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    record_count: Mapped[int | None] = mapped_column(Integer)
+    required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    validation_status: Mapped[str] = mapped_column(String(32), nullable=False, default="valid")
+    __table_args__ = (UniqueConstraint("source_ingestion_id", "logical_name", name="uq_source_artifact_logical_name"),)
+
+
 class EvaluationProject(Base):
     __tablename__ = "evaluation_projects"
     project_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_text)

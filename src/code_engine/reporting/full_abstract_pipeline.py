@@ -90,7 +90,8 @@ def build_l4_context_mining(run_dir: str | Path) -> dict[str, Any]:
         "source_l2_observation_count": len(observations), "core_context_count": graph_layers["core_canonical_graph"],
         "context_factor_count": len(factors), "cancer_contexts": sorted({x for row in factors for x in row["cancer_contexts"]}),
         "mechanism_terms": [x for x in MECHANISM_TERMS if any(x in row["mechanism_terms"] for row in factors)],
-        "drug_resistance_contexts": sorted({row["title"] for row in factors if row["drug_resistance_state"]}),
+        # A missing bibliographic title is a valid provenance gap, not a sortable label.
+        "drug_resistance_contexts": sorted({row["title"] for row in factors if row["drug_resistance_state"] and row["title"] is not None}),
         "treatment_combination_contexts": sorted({str(row["treatment_combination"]) for row in factors if row["treatment_combination"]}),
         "pathway_contexts": sorted({x for row in factors for x in row["pathway_contexts"]}),
         "graph_layer_distribution": dict(sorted(graph_layers.items())), "context_compatibility_distribution": dict(sorted(compat.items())),

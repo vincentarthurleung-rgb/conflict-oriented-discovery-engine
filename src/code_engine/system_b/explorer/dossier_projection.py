@@ -50,10 +50,11 @@ def _label(ent):return ent.get("display_label") or ent.get("label") or ent.get("
 class DossierProjection:
     def __init__(self,api):
         self.api=api
+        self.triples=api.dossier_triples or api.triples
         self.by_id={}
         self.alias_to_dossier={}
         self.triple_to_dossier={}
-        for triple in api.triples:
+        for triple in self.triples:
             did=dossier_id_for(triple)
             self.by_id[did]=triple
             legacy=legacy_dossier_id_for(triple)
@@ -64,7 +65,7 @@ class DossierProjection:
         return value if value in self.by_id else self.alias_to_dossier.get(value) or self.triple_to_dossier.get(value)
 
     def list(self,params):
-        rows=[self._summary_for(t) for t in self.api.triples]
+        rows=[self._summary_for(t) for t in self.triples]
         q=_one(params,"q").casefold();case=_one(params,"case_id");etype=_one(params,"entity_type");status=_one(params,"review_status")
         if q:
             rows=[x for x in rows if q in " ".join(str(x.get(k,"")) for k in ("humanized_statement","dossier_id","backing_triple_id")).casefold()]
@@ -129,7 +130,7 @@ class DossierProjection:
     def audit(self):
         by_semantic={}
         unresolved=[];mixed_direction=[];mixed_negation=[];mixed_raw_relation=[]
-        for triple in self.api.triples:
+        for triple in self.triples:
             did=dossier_id_for(triple)
             by_semantic.setdefault(did,[]).append(triple)
             if triple.get("subject_id") not in self.api.entity_by_id or triple.get("object_id") not in self.api.entity_by_id:
@@ -148,9 +149,9 @@ class DossierProjection:
         if unresolved:issues.append({"issue":"unresolved_entity_reference","count":len(set(unresolved)),"examples":sorted(set(unresolved))[:10]})
         return {
             "dossier_count":len(by_semantic),
-            "triple_count":len(self.api.triples),
+            "triple_count":len(self.triples),
             "legacy_alias_count":len(self.alias_to_dossier),
-            "multi_case_dossier_count":sum(1 for t in self.api.triples if len(t.get("case_ids",[]))>1),
+            "multi_case_dossier_count":sum(1 for t in self.triples if len(t.get("case_ids",[]))>1),
             "multi_direction_dossier_count":len(mixed_direction),
             "mixed_negation_dossier_count":len(mixed_negation),
             "mixed_relation_raw_count":len(mixed_raw_relation),
@@ -191,7 +192,7 @@ class DossierProjection:
     def _summary_for(self,triple):
         did=dossier_id_for(triple);subject=self.api.entity_by_id.get(triple.get("subject_id"),{});obj=self.api.entity_by_id.get(triple.get("object_id"),{})
         rel=triple.get("relation_normalized")
-        return {"dossier_id":did,"public_id":did,"backing_triple_id":triple.get("triple_id"),"subject":{"entity_id":triple.get("subject_id"),"label":triple.get("subject_display_label") or _label(subject),"entity_type":subject.get("entity_type")},"relation":{"normalized":rel,"label":relation_label(rel)},"object":{"entity_id":triple.get("object_id"),"label":triple.get("object_display_label") or _label(obj),"entity_type":obj.get("entity_type")},"humanized_statement":f"{triple.get('subject_display_label')} {relation_label(rel)} {triple.get('object_display_label')}","evidence_summary":{"total":triple.get("evidence_count",0),"fulltext_count":triple.get("fulltext_evidence_count",0),"abstract_count":max(0,triple.get("evidence_count",0)-triple.get("fulltext_evidence_count",0))},"related_cases":triple.get("case_ids",[]),"priority_score":triple.get("display_priority_score_v2",0)}
+        return {"dossier_id":did,"public_id":did,"backing_triple_id":triple.get("triple_id"),"subject":{"entity_id":triple.get("subject_id"),"label":triple.get("subject_display_label") or _label(subject),"entity_type":subject.get("entity_type") or triple.get("subject_entity_type")},"relation":{"normalized":rel,"label":relation_label(rel)},"object":{"entity_id":triple.get("object_id"),"label":triple.get("object_display_label") or _label(obj),"entity_type":obj.get("entity_type") or triple.get("object_entity_type")},"humanized_statement":f"{triple.get('subject_display_label')} {relation_label(rel)} {triple.get('object_display_label')}","evidence_summary":{"total":triple.get("evidence_count",0),"fulltext_count":triple.get("fulltext_evidence_count",0),"abstract_count":max(0,triple.get("evidence_count",0)-triple.get("fulltext_evidence_count",0))},"related_cases":triple.get("case_ids",[]),"priority_score":triple.get("display_priority_score_v2",0)}
 
     def _coverage_summary(self,triple,context,conflicts,review):
         papers={(e.get("pmid"),e.get("pmcid")) for e in self.api.evidence_by_triple.get(triple.get("triple_id"),[]) if e.get("pmid") or e.get("pmcid")}
