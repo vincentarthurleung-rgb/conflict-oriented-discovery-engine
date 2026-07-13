@@ -63,6 +63,9 @@ test('researcher completes the Wnt evidence-reading path on real eleven-case dat
   await page.goto(dossierHref);
   await expect(page.getByRole('heading', { name: '证据显示了什么' })).toBeVisible();
   await expect(page.locator('#evidence-shows')).toContainText(/PMID|PMCID|全文/);
+  const dossierHeader = await page.locator('.dossier-header').boundingBox();
+  const sectionJump = await page.locator('.section-jump').boundingBox();
+  expect(dossierHeader && sectionJump && dossierHeader.y + dossierHeader.height <= sectionJump.y).toBeTruthy();
   await page.screenshot({ path: `${out}/05-dossier.png`, fullPage: true });
   await page.locator('#reasoning-trace').scrollIntoViewIfNeeded();
   await expect(page.locator('#reasoning-trace')).toContainText(/实验推理证据链|该运行未生成全文推理证据链/);
@@ -94,7 +97,9 @@ test('reviewer and owner task workspaces expose actions before internals', async
   await expect(reviewer.getByRole('heading', { name: '证据判断工作台' })).toBeVisible();
   await reviewer.locator('.review-layer-card').first().click();
   await expect(reviewer.locator('.review-save-btn')).toContainText('提交判断并进入下一条');
-  await reviewer.screenshot({ path: `${out}/08-review-task.png`, fullPage: true });
+  // Capture the independently scrolling workbench itself so the task,
+  // evidence and action stay together without Chromium stitching artifacts.
+  await reviewer.locator('.review-workspace').screenshot({ path: `${out}/08-review-task.png` });
   await reviewerContext.close();
 
   const ownerContext = await browser.newContext({ viewport: { width: 1366, height: 768 } });

@@ -1,13 +1,14 @@
 :root{--bg:#f4f7f8;--paper:#fff;--ink:#17272b;--muted:#687d82;--line:#dbe5e7;--teal:#176b6d;--cyan:#dff2f0;--blue:#e7effc;--amber:#fff1d4;--red:#fbe5e2;--green-bg:#e3f5ec;--green-ink:#1a6b3c;--shadow:0 8px 28px rgba(20,52,58,.08);--radius:12px;--radius-sm:8px}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%;overflow:hidden}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 var(--atlas-font);display:flex;flex-direction:column;overflow-x:hidden}
 .app-main,.page,.review-page{max-width:100%}
-header{height:64px;flex:0 0 64px;background:#102f34;color:white;display:flex;align-items:center;gap:18px;padding:0 24px;position:relative;z-index:4}
+body>header{height:64px;flex:0 0 64px;background:#102f34;color:white;display:flex;align-items:center;gap:18px;padding:0 24px;position:relative;z-index:4}
 .brand{font-size:19px;font-weight:750;color:white;text-decoration:none;white-space:nowrap}
 .brand span{display:block;font-size:10px;font-weight:450;letter-spacing:.04em;color:#a8d9d5}
-header input{flex:1;max-width:600px;border:1px solid #416268;border-radius:9px;background:#183b41;color:white;padding:10px 13px}
-header select{max-width:260px;background:#183b41;color:white;border:1px solid #416268;border-radius:8px;padding:9px}
+body>header input{flex:1;max-width:600px;border:1px solid #416268;border-radius:9px;background:#183b41;color:white;padding:10px 13px}
+body>header select{max-width:260px;background:#183b41;color:white;border:1px solid #416268;border-radius:8px;padding:9px}
 .mode-switch{display:flex;align-items:center;gap:4px;flex-shrink:0;background:#183b41;border:1px solid #416268;border-radius:8px;padding:4px 6px}
 .mode-switch span{font-size:11px;color:#a8d9d5;margin-right:2px}
 .mode-switch button{border:0;background:transparent;color:#c7dcdf;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;white-space:nowrap}
@@ -23,8 +24,8 @@ header select{max-width:260px;background:#183b41;color:white;border:1px solid #4
 [data-atlas-mode="pharma"] .mode-banner{border-color:#b7ded8;background:#f7fffc}
 [data-atlas-mode="reviewer"] .mode-banner{border-color:#bfdbfe;background:#eff6ff}
 [data-atlas-mode="developer"] .mode-banner{border-color:#ddd6fe;background:#f5f3ff}
-[data-atlas-mode="reviewer"] nav{background:#1e3a5f}
-[data-atlas-mode="developer"] nav{background:#1f1638}
+[data-atlas-mode="reviewer"] .shell>nav{background:#1e3a5f}
+[data-atlas-mode="developer"] .shell>nav{background:#1f1638}
 [data-atlas-mode="developer"] .hero{background:linear-gradient(120deg,#fff,#f5f3ff);border-color:#ddd6fe}
 [data-atlas-mode="developer"] .developer-card,[data-atlas-mode="developer"] .developer-metric{border-color:#ddd6fe;background:#fbfaff}
 [data-atlas-mode="pharma"] .developer-only,[data-atlas-mode="pharma"] .reviewer-only{display:none!important}
@@ -33,9 +34,9 @@ header select{max-width:260px;background:#183b41;color:white;border:1px solid #4
 .developer-only{display:none!important}
 .shell{display:grid;grid-template-columns:190px minmax(500px,1fr) 0;flex:1 1 auto;min-height:0;height:calc(100vh - 101px);overflow:hidden;transition:.2s}
 .shell.panel-open{grid-template-columns:190px minmax(500px,1fr) minmax(340px,32vw)}
-nav{background:#16383d;padding:22px 12px;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-nav a{display:block;color:#c7dcdf;text-decoration:none;padding:9px 13px;border-radius:7px;margin:2px 0}
-nav a:hover,nav a.active{background:#245158;color:white}
+.shell>nav{background:#16383d;padding:22px 12px;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.shell>nav a{display:block;color:#c7dcdf;text-decoration:none;padding:9px 13px;border-radius:7px;margin:2px 0}
+.shell>nav a:hover,.shell>nav a.active{background:#245158;color:white}
 .nav-label{font-size:10px;letter-spacing:.13em;color:#709399;margin:22px 13px 7px}
 main{padding:30px;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 aside{background:white;border-left:1px solid var(--line);overflow:hidden;position:relative;box-shadow:-8px 0 24px rgba(20,52,58,.04);min-height:0;display:flex;flex-direction:column}
@@ -410,8 +411,8 @@ select,button,input{font-family:inherit}
 }
 @media(max-width:900px){
 .shell,.shell.panel-open{grid-template-columns:1fr}
-nav{display:flex;overflow:auto;padding:6px}
-nav .nav-label{display:none}
+.shell>nav{display:flex;overflow:auto;padding:6px}
+.shell>nav .nav-label{display:none}
 aside{position:fixed;right:0;top:64px;bottom:0;width:min(92vw,440px);z-index:5}
 .shell:not(.panel-open) aside{display:none}
 main{padding:18px}

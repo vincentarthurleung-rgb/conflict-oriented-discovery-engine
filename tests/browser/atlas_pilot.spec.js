@@ -66,7 +66,13 @@ test('owner pages render in their content region without runtime failures', asyn
     ['/owner/exports', 'Exports'],
   ];
   for (const [path, text] of pages) {
-    const response = await page.goto(path);
+    let response = await page.goto(path);
+    // The E2E server rotates same-account sessions across repeated viewport
+    // projects. Re-authenticate once when that rotation lands mid-walkthrough.
+    if (new URL(page.url()).pathname === '/login') {
+      await login(page, 'owner', 'Owner');
+      response = await page.goto(path);
+    }
     expect(response.status(), path).toBe(200);
     await expect(page.locator('#owner-page-body')).toContainText(text);
     await expect(page.locator('#owner-page-body .loading')).toHaveCount(0);
