@@ -7,7 +7,8 @@ from unittest.mock import patch
 from pathlib import Path
 
 from code_engine.cli.run_case_to_atlas import main as cli_main
-from code_engine.orchestration.case_to_atlas import CaseToAtlasOrchestrator, OrchestrationError
+from code_engine.integration.atlas_handoff import sha256_file
+from code_engine.orchestration.case_to_atlas import CaseToAtlasOrchestrator, OrchestrationError, validate_base_run_for_downstream
 from code_engine.orchestration.models import CaseToAtlasRequest, STAGES
 
 
@@ -28,10 +29,26 @@ class ArtifactOrchestrator(CaseToAtlasOrchestrator):
     def _execute(self,name,request,state,record):
         self.calls.append(name)
         if name != "base_run": raise AssertionError(name)
-        run=Path(record["output_run"]);artifacts=run/"artifacts";artifacts.mkdir(parents=True)
-        (run/"run_state.json").write_text(json.dumps({"steps":{"fulltext_escalation":{"status":"completed"}}}))
-        (artifacts/"fulltext_escalation_candidates.jsonl").write_text('{"pmid":"1"}\n')
+        write_valid_base_run(Path(record["output_run"]), request, legacy_status="completed")
         return {"api_calls":0,"network_calls":0}
+
+
+def write_valid_base_run(run: Path, request: CaseToAtlasRequest, *, legacy_status="skipped", manifest_status="completed", case_id=None, plan_hash=None, include_candidates=True):
+    artifacts=run/"artifacts";artifacts.mkdir(parents=True,exist_ok=True)
+    profile=json.loads(Path(request.case_profile_path).read_text())
+    run_state={"query":profile["query"],"final_status":"partial","steps":{"fulltext_escalation":{"status":legacy_status}}}
+    (run/"run_state.json").write_text(json.dumps(run_state))
+    manifest={"status":manifest_status,"case_id":case_id or request.case_id,"input_hash":None,"run_dir":str(run)}
+    (run/"triple_run_manifest.json").write_text(json.dumps(manifest))
+    (run/"triple_card.json").write_text(json.dumps({"status":manifest_status}))
+    (artifacts/"search_plan_replay.json").write_text(json.dumps({"frozen_plan_hash":plan_hash or sha256_file(Path(request.search_plan_path))}))
+    (artifacts/"abstract_l1_claims.jsonl").write_text('{"claim_id":"a1"}\n')
+    (artifacts/"abstract_l1_summary.json").write_text(json.dumps({"abstract_claim_count":1}))
+    (artifacts/"l2_abstract_observations.json").write_text(json.dumps([{"observation_id":"o1"}]))
+    (artifacts/"l2_abstract_summary.json").write_text(json.dumps({"retained_observation_count":1}))
+    if include_candidates:
+        (artifacts/"fulltext_escalation_candidates.jsonl").write_text('{"pmid":"1","title":"Paper"}\n')
+        (artifacts/"fulltext_escalation_plan.json").write_text(json.dumps({"selected":[{"pmid":"1","title":"Paper"}]}))
 
 
 class CaseToAtlasOrchestrationTests(unittest.TestCase):
@@ -81,6 +98,55 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
         (run/"artifacts/fulltext_escalation_candidates.jsonl").write_text('{"pmid":"tampered"}\n')
         resumed=ArtifactOrchestrator();resumed.run(request)
         self.assertEqual(resumed.calls,["base_run"])
+
+    def test_base_validation_accepts_skipped_legacy_with_required_artifacts(self):
+        run=self.root/"runs"/f"{FakeOrchestrator().orchestration_id(self.request.resolved())}_case_one_base_run_v1"
+        write_valid_base_run(run,self.request,legacy_status="skipped")
+        result=validate_base_run_for_downstream(run,request=self.request.resolved(),orchestration_id=FakeOrchestrator().orchestration_id(self.request.resolved()))
+        self.assertTrue(result.valid,result.to_dict())
+
+    def test_base_validation_accepts_not_requested_legacy_with_required_artifacts(self):
+        run=self.root/"runs"/f"{FakeOrchestrator().orchestration_id(self.request.resolved())}_case_one_base_run_v1"
+        write_valid_base_run(run,self.request,legacy_status="not_requested")
+        result=validate_base_run_for_downstream(run,request=self.request.resolved(),orchestration_id=FakeOrchestrator().orchestration_id(self.request.resolved()))
+        self.assertTrue(result.valid,result.to_dict())
+
+    def test_base_validation_rejects_failed_manifest_missing_candidates_and_fingerprint(self):
+        oid=FakeOrchestrator().orchestration_id(self.request.resolved())
+        failed=self.root/"runs"/f"{oid}_case_one_base_run_v1";write_valid_base_run(failed,self.request,legacy_status="failed",manifest_status="failed",include_candidates=False)
+        self.assertFalse(validate_base_run_for_downstream(failed,request=self.request.resolved(),orchestration_id=oid).valid)
+        missing=self.root/"runs"/f"{oid}_case_one_base_run_v2";write_valid_base_run(missing,self.request,include_candidates=False)
+        self.assertEqual(validate_base_run_for_downstream(missing,request=self.request.resolved(),orchestration_id=oid).code,"BASE_RUN_ARTIFACT_MISSING")
+        mismatch=self.root/"runs"/f"{oid}_case_one_base_run_v3";write_valid_base_run(mismatch,self.request,plan_hash="wrong")
+        self.assertEqual(validate_base_run_for_downstream(mismatch,request=self.request.resolved(),orchestration_id=oid).code,"BASE_RUN_FINGERPRINT_MISMATCH")
+
+    def test_failed_base_stage_recovers_existing_output_without_rerun(self):
+        oid=FakeOrchestrator().orchestration_id(self.request.resolved())
+        store_root=self.root/"runs/_orchestration"/oid;store_root.mkdir(parents=True)
+        run=self.root/"runs"/f"{oid}_case_one_base_run_v2";write_valid_base_run(run,self.request,legacy_status="skipped")
+        state={"schema_version":"case_to_atlas_orchestration_v1","orchestration_id":oid,"case_id":"case_one","status":"failed","current_stage":"base_run","error_code":"BASE_RUN_FAILED","error_summary":"base fulltext escalation did not complete","stages":{name:{"status":"pending","attempt":0} for name in STAGES},"safety_baseline":{"review_items":0,"assignments":0,"annotations":0,"gold":0,"metrics":0},"prior_cases":[]}
+        input_hash=FakeOrchestrator()._input_hash("base_run",self.request.resolved(),state)
+        state["stages"]["base_run"].update(status="failed",attempt=3,input_hash=input_hash,previous_input_hash=input_hash,last_status="failed",output_run=str(run),error_code="BASE_RUN_FAILED")
+        (store_root/"orchestration_state.json").write_text(json.dumps(state))
+        (store_root/"orchestration_events.jsonl").write_text(json.dumps({"event":"stage_failed","stage":"base_run"})+"\n")
+        runner=FakeOrchestrator();runner.run(CaseToAtlasRequest(**{**self.request.__dict__,"stop_after":"base_run"}))
+        self.assertEqual(runner.calls,[])
+        self.assertFalse((self.root/"runs"/f"{oid}_case_one_base_run_v4").exists())
+        new_state=json.loads((store_root/"orchestration_state.json").read_text())
+        self.assertEqual(new_state["stages"]["base_run"]["completion_mode"],"recovered_existing_output")
+        events=(store_root/"orchestration_events.jsonl").read_text()
+        self.assertIn("stage_failed",events);self.assertIn("stage_recovered",events);self.assertIn("stage_reused",events)
+
+    def test_force_base_stage_still_reruns(self):
+        oid=FakeOrchestrator().orchestration_id(self.request.resolved())
+        store_root=self.root/"runs/_orchestration"/oid;store_root.mkdir(parents=True)
+        run=self.root/"runs"/f"{oid}_case_one_base_run_v2";write_valid_base_run(run,self.request,legacy_status="skipped")
+        state={"schema_version":"case_to_atlas_orchestration_v1","orchestration_id":oid,"case_id":"case_one","status":"failed","current_stage":"base_run","stages":{name:{"status":"pending","attempt":0} for name in STAGES},"safety_baseline":{"review_items":0,"assignments":0,"annotations":0,"gold":0,"metrics":0},"prior_cases":[]}
+        input_hash=FakeOrchestrator()._input_hash("base_run",self.request.resolved(),state)
+        state["stages"]["base_run"].update(status="failed",attempt=3,input_hash=input_hash,previous_input_hash=input_hash,last_status="failed",output_run=str(run))
+        (store_root/"orchestration_state.json").write_text(json.dumps(state))
+        runner=FakeOrchestrator();runner.run(CaseToAtlasRequest(**{**self.request.__dict__,"force_stages":frozenset({"base_run"}),"stop_after":"base_run"}))
+        self.assertEqual(runner.calls,["base_run"])
 
     def test_sync_failure_does_not_repeat_system_a(self):
         failing=FakeOrchestrator("atlas_sync")

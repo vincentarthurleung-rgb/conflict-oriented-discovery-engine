@@ -4,12 +4,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from code_engine.cli.fulltext_bridge_replay import replay_fulltext_bridge_from_run
 from code_engine.cli.fulltext_reentry_replay import run_replay
 from code_engine.cli.repair_fulltext_candidate_pmcids import repair_fulltext_candidate_pmcids
+from code_engine.fulltext.candidate_bridge import SOURCE_FILES as FULLTEXT_CANDIDATE_SOURCE_FILES
 from code_engine.fulltext.reasoning_trace import (
     CONTEXT_RULE_VERSION,
     EXTRACTOR_CODE_VERSION,
@@ -39,6 +41,27 @@ class OrchestrationError(RuntimeError):
         super().__init__(f"{code}: {summary}")
 
 
+@dataclass
+class BaseRunValidationResult:
+    status: str
+    code: str | None = None
+    summary: str | None = None
+    artifact_count: int = 0
+    validated_at: str | None = None
+    legacy_fulltext_escalation_status: str | None = None
+    manifest_status: str | None = None
+    run_state_final_status: str | None = None
+    candidate_artifacts: list[str] = field(default_factory=list)
+    artifacts: list[str] = field(default_factory=list)
+
+    @property
+    def valid(self) -> bool:
+        return self.status == "valid"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def _hash(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
@@ -51,6 +74,170 @@ def _read(path: Path) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict): raise ValueError(f"{path} must contain an object")
     return value
+
+
+def _read_json_any(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _jsonl_valid(path: Path) -> tuple[bool, int]:
+    count = 0
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            value = json.loads(line)
+            if not isinstance(value, dict):
+                return False, count
+            count += 1
+    return True, count
+
+
+def _invalid_base(code: str, summary: str, *, artifacts: list[str] | None = None, legacy_status: str | None = None,
+                  manifest_status: str | None = None, run_state_status: str | None = None) -> BaseRunValidationResult:
+    return BaseRunValidationResult(status="invalid", code=code, summary=summary, artifact_count=len(artifacts or []),
+                                   validated_at=utcnow(), legacy_fulltext_escalation_status=legacy_status,
+                                   manifest_status=manifest_status, run_state_final_status=run_state_status,
+                                   artifacts=artifacts or [])
+
+
+def validate_base_run_for_downstream(
+    base_run_path: str | Path,
+    *,
+    request: CaseToAtlasRequest | None = None,
+    expected_input_hash: str | None = None,
+    orchestration_id: str | None = None,
+) -> BaseRunValidationResult:
+    """Validate that a base run is complete enough for pmcid_repair and later stages.
+
+    The legacy workflow step named ``fulltext_escalation`` is audit context only.
+    The decision is based on the formal triple manifest/card, parseable artifacts,
+    lineage, and the candidate inputs actually consumed by PMCID repair.
+    """
+    run = Path(base_run_path)
+    if not run.is_dir():
+        return _invalid_base("BASE_RUN_OUTPUT_MISSING", f"base run directory missing: {run}")
+    if any(run.glob("**/*.tmp")):
+        return _invalid_base("BASE_RUN_OUTPUT_STILL_WRITING", f"temporary files remain under {run}")
+    if request:
+        root = request.runs_root.resolve()
+        resolved = run.resolve()
+        if resolved != root and root not in resolved.parents:
+            return _invalid_base("BASE_RUN_OUTPUT_FOREIGN", f"base run outside runs root: {run}")
+        if orchestration_id and not run.name.startswith(f"{orchestration_id}_{request.case_id}_base_run_"):
+            return _invalid_base("BASE_RUN_OUTPUT_FOREIGN", f"base run does not belong to orchestration/case: {run.name}")
+
+    artifacts_dir = run / "artifacts"
+    parsed: list[str] = []
+    try:
+        run_state = _read(run / "run_state.json"); parsed.append("run_state.json")
+        manifest = _read(run / "triple_run_manifest.json"); parsed.append("triple_run_manifest.json")
+        card = _read(run / "triple_card.json"); parsed.append("triple_card.json")
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        return _invalid_base("BASE_RUN_OUTPUT_CORRUPT", str(error), artifacts=parsed)
+
+    legacy_status = str((run_state.get("steps", {}).get("fulltext_escalation") or {}).get("status") or "")
+    manifest_status = str(manifest.get("status") or "")
+    card_status = str(card.get("status") or "")
+    run_state_status = str(run_state.get("final_status") or "")
+    if manifest_status not in {"completed", "completed_with_warnings"} or card_status not in {"completed", "completed_with_warnings"}:
+        return _invalid_base("BASE_RUN_MANIFEST_INCOMPLETE", f"manifest={manifest_status}, card={card_status}",
+                             artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                             run_state_status=run_state_status)
+    if run_state_status not in {"completed", "completed_with_warnings", "partial"}:
+        return _invalid_base("BASE_RUN_MANIFEST_INCOMPLETE", f"run_state final_status={run_state_status}",
+                             artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                             run_state_status=run_state_status)
+    if request:
+        if manifest.get("case_id") and manifest.get("case_id") != request.case_id:
+            return _invalid_base("BASE_RUN_CASE_MISMATCH", f"manifest case_id={manifest.get('case_id')}",
+                                 artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                                 run_state_status=run_state_status)
+        if request.case_id not in run.name:
+            return _invalid_base("BASE_RUN_CASE_MISMATCH", f"run name does not contain case_id={request.case_id}",
+                                 artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                                 run_state_status=run_state_status)
+        profile = _read(request.case_profile_path)
+        if str(run_state.get("query") or "") != str(profile.get("query") or ""):
+            return _invalid_base("BASE_RUN_FINGERPRINT_MISMATCH", "run_state query does not match case profile",
+                                 artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                                 run_state_status=run_state_status)
+        replay = _read(artifacts_dir / "search_plan_replay.json")
+        parsed.append("artifacts/search_plan_replay.json")
+        frozen_hash = replay.get("frozen_plan_hash")
+        if frozen_hash and frozen_hash != _file_hash(request.search_plan_path):
+            return _invalid_base("BASE_RUN_FINGERPRINT_MISMATCH", "search plan hash mismatch",
+                                 artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                                 run_state_status=run_state_status)
+    if expected_input_hash and manifest.get("input_hash") is not None and manifest.get("input_hash") != expected_input_hash:
+        return _invalid_base("BASE_RUN_FINGERPRINT_MISMATCH", "manifest input_hash mismatch",
+                             artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                             run_state_status=run_state_status)
+
+    required_json = (
+        "artifacts/abstract_l1_summary.json",
+        "artifacts/l2_abstract_observations.json",
+        "artifacts/l2_abstract_summary.json",
+    )
+    required_jsonl = ("artifacts/abstract_l1_claims.jsonl",)
+    try:
+        for rel in required_json:
+            path = run / rel
+            if not path.is_file() or path.stat().st_size <= 0:
+                return _invalid_base("BASE_RUN_ARTIFACT_MISSING", rel, artifacts=parsed,
+                                     legacy_status=legacy_status, manifest_status=manifest_status,
+                                     run_state_status=run_state_status)
+            _read_json_any(path); parsed.append(rel)
+        for rel in required_jsonl:
+            path = run / rel
+            if not path.is_file():
+                return _invalid_base("BASE_RUN_ARTIFACT_MISSING", rel, artifacts=parsed,
+                                     legacy_status=legacy_status, manifest_status=manifest_status,
+                                     run_state_status=run_state_status)
+            valid, _ = _jsonl_valid(path)
+            if not valid:
+                return _invalid_base("BASE_RUN_OUTPUT_CORRUPT", rel, artifacts=parsed,
+                                     legacy_status=legacy_status, manifest_status=manifest_status,
+                                     run_state_status=run_state_status)
+            parsed.append(rel)
+    except (OSError, json.JSONDecodeError) as error:
+        return _invalid_base("BASE_RUN_OUTPUT_CORRUPT", str(error), artifacts=parsed,
+                             legacy_status=legacy_status, manifest_status=manifest_status,
+                             run_state_status=run_state_status)
+
+    candidate_artifacts: list[str] = []
+    try:
+        for name in FULLTEXT_CANDIDATE_SOURCE_FILES:
+            path = artifacts_dir / name
+            if path.is_file():
+                valid, _ = _jsonl_valid(path)
+                if not valid:
+                    return _invalid_base("BASE_RUN_OUTPUT_CORRUPT", name, artifacts=parsed,
+                                         legacy_status=legacy_status, manifest_status=manifest_status,
+                                         run_state_status=run_state_status)
+                candidate_artifacts.append(f"artifacts/{name}")
+        plan_path = artifacts_dir / "fulltext_escalation_plan.json"
+        if plan_path.is_file():
+            plan = _read(plan_path)
+            if not isinstance(plan.get("selected", []), list):
+                return _invalid_base("BASE_RUN_OUTPUT_CORRUPT", "fulltext_escalation_plan.selected is not a list",
+                                     artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                                     run_state_status=run_state_status)
+            candidate_artifacts.append("artifacts/fulltext_escalation_plan.json")
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        return _invalid_base("BASE_RUN_OUTPUT_CORRUPT", str(error), artifacts=parsed,
+                             legacy_status=legacy_status, manifest_status=manifest_status,
+                             run_state_status=run_state_status)
+    if not candidate_artifacts:
+        return _invalid_base("BASE_RUN_ARTIFACT_MISSING", "no PMCID repair candidate artifact found",
+                             artifacts=parsed, legacy_status=legacy_status, manifest_status=manifest_status,
+                             run_state_status=run_state_status)
+
+    return BaseRunValidationResult(status="valid", artifact_count=len(parsed) + len(candidate_artifacts),
+                                   validated_at=utcnow(), legacy_fulltext_escalation_status=legacy_status,
+                                   manifest_status=manifest_status, run_state_final_status=run_state_status,
+                                   candidate_artifacts=sorted(set(candidate_artifacts)),
+                                   artifacts=parsed)
 
 
 class CaseToAtlasOrchestrator:
@@ -94,21 +281,26 @@ class CaseToAtlasOrchestrator:
             forced = any(STAGES.index(forced) <= index for forced in request.force_stages)
             input_hash=self._input_hash(name,request,state or {})
             reusable=bool(request.resume and not invalidated and not forced and self._record_valid(name,record,input_hash,request))
+            recoverable=bool(request.resume and not invalidated and not forced and self._record_recoverable(name,record,input_hash,request,oid))
             if index < from_index:
-                action = "reuse" if reusable else "precondition_missing"
+                action = "reuse" if reusable else "recover" if recoverable else "precondition_missing"
                 reason = "before_from_stage"
             elif index > to_index:
                 action = "skip"
                 reason = "after_to_stage"
             else:
-                if not reusable: invalidated=True
-                action = "reuse" if reusable else "run"
-                reason = "valid_completed_stage" if reusable else "forced" if forced else "missing_or_invalid"
+                if not reusable and not recoverable: invalidated=True
+                action = "reuse" if reusable else "recover" if recoverable else "run"
+                reason = "valid_completed_stage" if reusable else "recoverable_existing_output" if recoverable else "forced" if forced else "missing_or_invalid"
             stages.append({"stage":name,"action":action,"reason":reason,"input_hash":input_hash})
+        next_stage = next((x["stage"] for x in stages if x["action"]=="run"), None)
+        base_record=(state or {}).get("stages",{}).get("base_run",{})
         return {"schema_version":"case_to_atlas_plan_v1","orchestration_id":oid,"case_id":request.case_id,
                 "case_profile":str(request.case_profile_path),"frozen_search_plan":str(request.search_plan_path),"dry_run":request.dry_run,
-                "stages":stages,"reusable_stages":[x["stage"] for x in stages if x["action"]=="reuse"],
+                "stages":stages,"reusable_stages":[x["stage"] for x in stages if x["action"] in {"reuse","recover"}],
                 "invalidated_stages":[x["stage"] for x in stages if x["action"]=="run"],
+                "next_stage":next_stage,
+                "base_run_recovery": {"action": next((x["action"] for x in stages if x["stage"]=="base_run"), None), "output_run": base_record.get("output_run")},
                 "abstract_l1_api_expected":any(x["stage"]=="base_run" and x["action"]=="run" for x in stages) and request.api_enabled,
                 "fulltext_l1_api_expected":any(x["stage"]=="fulltext_l1" and x["action"]=="run" for x in stages) and request.api_enabled,
                 "reasoning_api_expected":any(x["stage"]=="fulltext_reasoning_trace" and x["action"]=="run" for x in stages) and request.api_enabled and request.network_enabled,
@@ -144,12 +336,21 @@ class CaseToAtlasOrchestrator:
             record=state["stages"][name];forced=any(STAGES.index(stage)<=index for stage in request.force_stages)
             input_hash=self._input_hash(name,request,state)
             reusable=bool(not invalidated and not forced and self._record_valid(name,record,input_hash,request))
+            recoverable=bool(not invalidated and not forced and self._record_recoverable(name,record,input_hash,request,oid))
             if index < from_index:
+                if recoverable:
+                    self._recover_record(name, record, input_hash, request, oid, state, store)
+                    reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"),mode="recovered_existing_output");continue
                 if not reusable:
                     raise OrchestrationError("FROM_STAGE_PRECONDITION_MISSING", f"{name} is required before {request.from_stage}", stage=name, resume_from=name)
                 reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
             if reusable:
+                if name=="base_run" and record.get("completion_mode")=="recovered_existing_output" and (record.get("error_code") or record.get("error_summary")):
+                    record["error_code"]=None;record["error_summary"]=None;store.write_state(state)
                 reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
+            if recoverable:
+                self._recover_record(name, record, input_hash, request, oid, state, store)
+                reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"),mode="recovered_existing_output");continue
             invalidated=True
             for downstream in STAGES[index+1:]:
                 if state["stages"][downstream].get("status") in {"completed","skipped"}: state["stages"][downstream]["status"]="pending"
@@ -244,9 +445,10 @@ class CaseToAtlasOrchestrator:
         run = Path(record.get("output_run") or "")
         paths: list[Path]
         if stage == "base_run":
-            paths = [run / "run_state.json"] + [
-                run / "artifacts" / name for name in
-                ("fulltext_escalation_candidates.jsonl", "fulltext_discovery_escalation_candidates.jsonl")
+            paths = [run / "run_state.json", run / "triple_run_manifest.json", run / "triple_card.json",
+                     run / "artifacts/abstract_l1_claims.jsonl", run / "artifacts/abstract_l1_summary.json",
+                     run / "artifacts/l2_abstract_observations.json", run / "artifacts/l2_abstract_summary.json"] + [
+                run / "artifacts" / name for name in (*FULLTEXT_CANDIDATE_SOURCE_FILES, "fulltext_escalation_plan.json")
                 if (run / "artifacts" / name).is_file()
             ]
         elif stage == "pmcid_repair":
@@ -283,7 +485,7 @@ class CaseToAtlasOrchestrator:
         if record.get("artifact_hash") != self._artifact_hash(stage, record, request): return False
         try:
             if stage=="base_run":
-                run=Path(record["output_run"]);state=_read(run/"run_state.json");return state.get("steps",{}).get("fulltext_escalation",{}).get("status")=="completed" and any((run/"artifacts"/name).is_file() for name in ("fulltext_escalation_candidates.jsonl","fulltext_discovery_escalation_candidates.jsonl"))
+                return validate_base_run_for_downstream(record["output_run"], request=request, expected_input_hash=input_hash, orchestration_id=self.orchestration_id(request)).valid
             if stage=="pmcid_repair": return Path(record["output_run"],"pmcid_repair_manifest.json").is_file()
             if stage=="fulltext_l1": return _read(Path(record["output_run"])/"fulltext_bridge_replay_manifest.json").get("stage_summary",{}).get("status","").startswith("completed")
             if stage=="fulltext_reasoning_trace":
@@ -301,6 +503,28 @@ class CaseToAtlasOrchestrator:
         except Exception: return False
         return False
 
+    def _record_recoverable(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest, oid: str) -> bool:
+        if stage != "base_run" or record.get("status") != "failed" or not record.get("output_run"):
+            return False
+        if record.get("previous_input_hash") not in {None, input_hash} and record.get("input_hash") != input_hash:
+            return False
+        return validate_base_run_for_downstream(record["output_run"], request=request, expected_input_hash=input_hash, orchestration_id=oid).valid
+
+    def _recover_record(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest, oid: str, state: dict, store: OrchestrationStateStore) -> None:
+        validation = validate_base_run_for_downstream(record["output_run"], request=request, expected_input_hash=input_hash, orchestration_id=oid)
+        if not validation.valid:
+            raise OrchestrationError(validation.code or "BASE_RUN_RECOVERY_FAILED", validation.summary or "base run recovery validation failed", stage=stage, resume_from=stage)
+        record.update(status="completed", input_hash=input_hash, completed_at=utcnow(), completion_mode="recovered_existing_output",
+                      recovery_reason="legacy_fulltext_escalation_completion_check_fixed", validation=validation.to_dict(),
+                      api_calls=0, network_calls=0, final_status="recovered_existing_output", error_code=None, error_summary=None)
+        record["last_status"]="completed"
+        record["artifact_hash"]=self._artifact_hash(stage, record, request)
+        state.update(status="running", current_stage="pmcid_repair", error_code=None, error_summary=None)
+        store.write_state(state)
+        store.append_event("stage_recovered", stage=stage, output_run=record.get("output_run"),
+                           reason="legacy_fulltext_escalation_completion_check_fixed",
+                           validation=validation.to_dict())
+
     def _execute(self, name: str, request: CaseToAtlasRequest, state: dict, record: dict) -> dict[str,Any]:
         profile=_read(request.case_profile_path);plan=_read(request.search_plan_path)
         if name=="base_run":
@@ -309,8 +533,10 @@ class CaseToAtlasOrchestrator:
             output=Path(record["output_run"]);resume=output if (output/"run_state.json").is_file() else None
             client=build_l1_client_from_env_or_config(os.getenv("L1_PROVIDER"),os.getenv("MODEL_NAME")) if request.api_enabled else None
             run_state=run_workflow(query=profile["query"],run_dir=output,until="fulltext_escalation",execute=True,api=request.api_enabled,network=request.network_enabled,max_papers=60,diversify_acquisition=True,paper_year_from=plan.get("paper_year_from"),paper_year_to=plan.get("paper_year_to"),temporal_role=(plan.get("paper_year_filter") or {}).get("temporal_role","discovery"),search_plan_file=request.search_plan_path,fail_if_search_plan_drift=True,resume=resume,allow_uncertain_intake=True,l1_mode="abstract_screening",enable_fulltext_escalation=True,l1_llm_client=client,semantic_llm_client=client,seed_triple=plan.get("seed_triple"),allow_compatible_l1_task_reuse=True)
-            if run_state.steps["fulltext_escalation"].status!="completed": raise ValueError("base fulltext escalation did not complete")
-            return {"api_calls":run_state.api_calls_made,"network_calls":run_state.network_calls_made,"final_status":run_state.final_status}
+            validation=validate_base_run_for_downstream(output, request=request, expected_input_hash=record.get("input_hash"), orchestration_id=self.orchestration_id(request))
+            if not validation.valid:
+                raise OrchestrationError(validation.code or "BASE_RUN_VALIDATION_FAILED", validation.summary or "base run validation failed", stage=name, resume_from=name)
+            return {"api_calls":run_state.api_calls_made,"network_calls":run_state.network_calls_made,"final_status":run_state.final_status,"validation":validation.to_dict()}
         if name=="pmcid_repair":
             result=repair_fulltext_candidate_pmcids(source_run=state["stages"]["base_run"]["output_run"],output_run=record["output_run"],network=request.network_enabled)
             return {"result":result,"network_calls":result.get("authoritative_lookup_attempt_count",0),"cache_hits":self._count_true(Path(record["output_run"])/"artifacts/pmcid_enrichment_audit.jsonl","cache_hit")}
