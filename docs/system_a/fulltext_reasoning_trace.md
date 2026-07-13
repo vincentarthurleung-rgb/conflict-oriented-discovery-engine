@@ -18,7 +18,9 @@ Extraction uses a separate prompt version, `fulltext_reasoning_trace_prompt_v1`,
 
 ## Cache
 
-Reasoning cache keys include paper identity, claim identity hash, passage hashes, prompt version, provider/model, schema version, extractor code version, and retrieval config. A shared content-addressed cache under `data/interim/cache/fulltext_reasoning_trace` enables cross-run reuse. Context consolidation rule changes do not invalidate reasoning extraction.
+Reasoning cache keys include stable paper identity, fulltext/passage content hashes, content-based claim identity hash, prompt version, provider/model, schema version, extractor version, and retrieval config. They exclude run directories, output paths, local claim IDs, local passage IDs, attempts, timestamps, and orchestration IDs. A shared content-addressed cache under `data/interim/cache/fulltext_reasoning_trace` enables cross-run reuse. Context consolidation rule changes do not invalidate reasoning extraction.
+
+The upstream Fulltext L1 stage has its own shared chunk cache. Its key is based on document identity, chunk content hash, target focus, prompt/schema/provider/model, extractor version, chunker version, and chunker scientific config. A forced Fulltext L1 stage can therefore materialize a new run while still making zero provider calls if all chunks hit cache.
 
 ## Artifacts
 
@@ -49,4 +51,4 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
   --offline
 ```
 
-Dry-run is read-only and reports expected reasoning API use, cache hits, and context rebuild status.
+Dry-run is read-only and reports expected reasoning API use, cache hits, context rebuild status, and the stage reuse decision. Repeating an identical completed request should show `fulltext_reasoning_trace=reuse`, `fulltext_context_consolidation=reuse`, and expected reasoning API calls of zero.

@@ -334,6 +334,15 @@ def _claim_identity_hash(parts: dict[str, str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _stable_row_sort_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(row.get("pmid") or row.get("paper_id") or ""),
+        str(row.get("pmcid") or ""),
+        str(row.get("claim_identity_hash") or row.get("claim_id") or row.get("observation_id") or ""),
+        _normalized_evidence_text(row.get("evidence_sentence") or row.get("original_evidence_sentence") or ""),
+    )
+
+
 def _abstract_duplicate_decision(claim: dict[str, Any], observation: dict[str, Any] | None, abstract_rows: list[dict[str, Any]]) -> dict[str, Any]:
     origin = _evidence_origin(claim, observation)
     linked = list(claim.get("linked_abstract_observation_ids") or (observation or {}).get("linked_abstract_observation_ids") or [])
@@ -723,11 +732,11 @@ def reenter_fulltext_l1_claims(
     run = Path(run_dir)
     artifacts = run / "artifacts"
     source_run = Path(source_fulltext_run)
-    claims = _rows(artifacts / "l35_fulltext_l1_claims.jsonl")
-    abstract_retained = [{**row, "evidence_source": row.get("evidence_source") or "abstract", "source_scope": row.get("source_scope") or "abstract"}
-                         for row in _rows(artifacts / "l2_retained_observations.jsonl")]
-    abstract_graph = [{**row, "evidence_source": row.get("evidence_source") or "abstract", "source_scope": row.get("source_scope") or "abstract"}
-                      for row in _rows(artifacts / "l2_graph_observations.jsonl")]
+    claims = sorted(_rows(artifacts / "l35_fulltext_l1_claims.jsonl"), key=_stable_row_sort_key)
+    abstract_retained = sorted([{**row, "evidence_source": row.get("evidence_source") or "abstract", "source_scope": row.get("source_scope") or "abstract"}
+                         for row in _rows(artifacts / "l2_retained_observations.jsonl")], key=_stable_row_sort_key)
+    abstract_graph = sorted([{**row, "evidence_source": row.get("evidence_source") or "abstract", "source_scope": row.get("source_scope") or "abstract"}
+                      for row in _rows(artifacts / "l2_graph_observations.jsonl")], key=_stable_row_sort_key)
     abstract_graph_keys = {_source_key(row) for row in abstract_graph}
     abstract_retained_keys = {_source_key(row) for row in abstract_retained}
 
@@ -820,11 +829,13 @@ def reenter_fulltext_l1_claims(
             "independent_fulltext_body_evidence", "abstract_section_reextraction", "source_requires_review",
         }}
         annotated_observations.append({**row, **lane, "graph_eligibility": bool(lane.get("structural_graph_eligible"))})
-    reentered = [row for row in annotated_observations if row.get("evidence_lane") == "core_seed_relation"]
-    seed_neighborhood = [row for row in annotated_observations if row.get("evidence_lane") == "seed_neighborhood_mechanism"]
-    reviewable = [row for row in annotated_observations if row.get("evidence_lane") == "reviewable_context_relation"]
-    off_seed = [row for row in annotated_observations if row.get("evidence_lane") == "off_seed_relation"]
-    rejected = [row for row in audit if row.get("rejection_reason")]
+    annotated_observations = sorted(annotated_observations, key=_stable_row_sort_key)
+    audit = sorted(audit, key=_stable_row_sort_key)
+    reentered = sorted([row for row in annotated_observations if row.get("evidence_lane") == "core_seed_relation"], key=_stable_row_sort_key)
+    seed_neighborhood = sorted([row for row in annotated_observations if row.get("evidence_lane") == "seed_neighborhood_mechanism"], key=_stable_row_sort_key)
+    reviewable = sorted([row for row in annotated_observations if row.get("evidence_lane") == "reviewable_context_relation"], key=_stable_row_sort_key)
+    off_seed = sorted([row for row in annotated_observations if row.get("evidence_lane") == "off_seed_relation"], key=_stable_row_sort_key)
+    rejected = sorted([row for row in audit if row.get("rejection_reason")], key=_stable_row_sort_key)
 
     abstract_by_id = {str(row.get("observation_id") or row.get("claim_id") or row.get("triple_id") or ""): row for row in abstract_retained}
     for row in audit:
@@ -870,6 +881,8 @@ def reenter_fulltext_l1_claims(
     atomic_write_jsonl(artifacts / "fulltext_seed_neighborhood_observations.jsonl", seed_neighborhood)
     atomic_write_jsonl(artifacts / "fulltext_reviewable_relations.jsonl", reviewable)
     atomic_write_jsonl(artifacts / "fulltext_off_seed_relations.jsonl", off_seed)
+    merged_retained = sorted(merged_retained, key=_stable_row_sort_key)
+    merged_graph = sorted(merged_graph, key=_stable_row_sort_key)
     atomic_write_jsonl(artifacts / "l2_retained_observations.jsonl", merged_retained)
     atomic_write_jsonl(artifacts / "l2_graph_observations.jsonl", merged_graph)
     atomic_write_jsonl(artifacts / "merged_l2_graph_observations.jsonl", merged_graph)

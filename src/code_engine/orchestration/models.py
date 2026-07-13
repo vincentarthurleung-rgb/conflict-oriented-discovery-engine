@@ -79,6 +79,10 @@ class CaseToAtlasResult:
     api_calls: int = 0
     network_calls: int = 0
     cache_hits: int = 0
+    historical_api_calls: int = 0
+    historical_network_calls: int = 0
+    historical_cache_hits: int = 0
+    stage_call_counts: dict[str, Any] = field(default_factory=dict)
     reused_stages: list[str] = field(default_factory=list)
     sync_status: str | None = None
     warnings: list[str] = field(default_factory=list)

@@ -10,6 +10,7 @@ from code_engine.fulltext.reasoning_trace import (
     run_fulltext_context_consolidation_stage,
     run_fulltext_reasoning_trace_stage,
 )
+from code_engine.fulltext.fulltext_l1_extractor import run_fulltext_l1_extraction
 from code_engine.integration.atlas_handoff import build_handoff_manifest
 from code_engine.system_b.adapters.fulltext_reentry_v5 import FulltextReentryV5Adapter
 
@@ -128,6 +129,35 @@ class FulltextReasoningTraceTests(unittest.TestCase):
                 self.assertEqual(first["api_call_count"], 1)
                 self.assertEqual(second["cache_hit_count"], 1)
                 self.assertEqual(second["api_call_count"], 0)
+            finally:
+                os.chdir(old)
+
+    def test_fulltext_l1_shared_cache_hit_across_run_directories(self):
+        class Client:
+            def __init__(self, fail=False):
+                self.calls = 0
+                self.fail = fail
+            def extract_json(self, *args, **kwargs):
+                self.calls += 1
+                if self.fail:
+                    raise RuntimeError("should not call provider")
+                return {"claims":[{"subject":"A","predicate":"activates","object":"B","polarity":"positive","evidence_sentence":"A activates B.","confidence":0.9}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.getcwd()
+            os.chdir(tmp)
+            try:
+                for run in ("run1", "run2"):
+                    artifacts = Path(run) / "artifacts"
+                    write_jsonl(artifacts / "candidates.jsonl", [{"case_id":"case","pmid":"1","pmcid":"PMC1","paper_id":"1","subject":"A","object":"B","conflict_relation":"activates"}])
+                    write_json(artifacts / "fulltext/pmc_oa/PMC1/article_text.json", {"sections":[{"section_title":"Results","text":"A activates B. A activates B again."}]})
+                first_client = Client()
+                first = run_fulltext_l1_extraction(run_dir=Path("run1"), fulltext_candidates_path=Path("run1/artifacts/candidates.jsonl"), parsed_articles_dir=Path("run1/artifacts/fulltext/pmc_oa"), l1_provider="mock", l1_model="m1", api_enabled=True, network_enabled=True, client=first_client)
+                second_client = Client(fail=True)
+                second = run_fulltext_l1_extraction(run_dir=Path("run2"), fulltext_candidates_path=Path("run2/artifacts/candidates.jsonl"), parsed_articles_dir=Path("run2/artifacts/fulltext/pmc_oa"), l1_provider="mock", l1_model="m1", api_enabled=True, network_enabled=True, client=second_client)
+                self.assertEqual(first["summary"]["api_calls_made"], 1)
+                self.assertEqual(second["summary"]["cache_hits"], 1)
+                self.assertEqual(second["summary"]["api_calls_made"], 0)
+                self.assertEqual(second_client.calls, 0)
             finally:
                 os.chdir(old)
 

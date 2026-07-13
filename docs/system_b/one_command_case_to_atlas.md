@@ -13,7 +13,9 @@ It resolves the generated case profile and frozen search plan, runs the abstract
 
 ## Resume and cache behavior
 
-Resume is on by default. Control state is stored under `runs/_orchestration/<orchestration_id>/`; every scientific output directory is passed explicitly between services. Completed stages are reused only when their input hash, lineage, required artifacts, provider/model configuration, and terminal manifest still validate. The base workflow retains its finer-grained L1 task cache and run-state resume behavior.
+Resume is on by default. Control state is stored under `runs/_orchestration/<orchestration_id>/`; every scientific output directory is passed explicitly between services. Completed stages are reused only when their semantic fingerprint, lineage, required artifacts, provider/model configuration, and terminal manifest still validate. The semantic fingerprint is canonical JSON over scientific inputs and artifact content hashes. It excludes `--api`, `--network`, `--offline`, output directories, attempts, timestamps, orchestration IDs, version suffixes, and projection IDs. The flags only grant permission to call external services when a stage truly needs work. The base workflow retains its finer-grained L1 task cache and run-state resume behavior.
+
+Stage reuse and content cache reuse are separate. Stage reuse skips the whole completed orchestration stage. Content cache reuse is lower level: a forced `fulltext_l1` stage may create a new output directory while still reusing compatible paper/chunk L1 cache entries and making zero provider calls.
 
 An interrupted command can be repeated exactly. A failed Atlas sync resumes at sync without rerunning System A. A failed base run resumes its own `run_state.json`. Failed downstream attempts allocate a new output directory and retain prior artifacts.
 
@@ -30,6 +32,8 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
 ```
 
 Stable stage names are `base_run`, `pmcid_repair`, `fulltext_l1`, `fulltext_reasoning_trace`, `fulltext_context_consolidation`, `reentry`, `handoff`, `atlas_sync`, and `verification`.
+
+`--force-stage fulltext_l1` forces stage materialization, not cache bypass. A compatible cross-run Fulltext L1 chunk cache may still satisfy all chunks. Cache bypass requires an explicit cache-bypass option if one is added by the service; do not treat `--force-stage` as permission to discard content-addressed cache.
 
 Run reasoning and downstream stages without re-running Fulltext L1:
 
@@ -59,7 +63,7 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
   --case-id <case_id> --api --network --dry-run
 ```
 
-Dry-run does not create orchestration files, call the network/model, or write SQLite. It reports resolved package paths, reusable/invalid stages, expected Abstract/Fulltext L1 and reasoning use, reasoning cache hits, context rebuild status, existing handoff/ingestion state, and current Atlas case count.
+Dry-run does not create orchestration files, call the network/model, or write SQLite. It reports resolved package paths and one structured decision per stage: action (`reuse`, `recover`, or `run`), reason, stored/current semantic hash, changed components, output run, and expected API/network calls. For an identical completed command, expected API and network calls must be zero.
 
 Use dry-run to confirm recovery before continuing:
 
@@ -76,6 +80,8 @@ For a recoverable base output, the plan reports `base_run=recover`, `abstract_l1
 Use `--stop-after <stage>` for controlled development, `--no-atlas-sync` to stop after handoff, or `--no-publish-handoff` to retain only System A outputs. `--no-resume` explicitly invalidates the full chain while retaining historical directories.
 
 Failures return a structured error code and the first stage the identical next command will resume. Do not delete the orchestration directory to recover transient network failures.
+
+If duplicate API calls are suspected, inspect the dry-run stage decisions first, then compare `api_calls`/`network_calls` with `historical_api_calls`/`historical_network_calls` in JSON output. Current command calls must be zero for reused stages; historical counters are retained only for audit.
 
 The Python API used by future Flask/job-scheduler integrations is:
 

@@ -62,6 +62,34 @@ class BaseRunValidationResult:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class StageFingerprint:
+    stage: str
+    material: dict[str, Any]
+    sha256: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"stage": self.stage, "sha256": self.sha256, "material": self.material}
+
+
+@dataclass
+class StageReuseDecision:
+    stage: str
+    action: str
+    reason: str
+    stored_input_hash: str | None
+    current_input_hash: str
+    output_run: str | None = None
+    changed_components: dict[str, Any] = field(default_factory=dict)
+    validated_artifacts: int = 0
+    expected_api_calls: int = 0
+    expected_network_calls: int = 0
+    projection_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def _hash(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
@@ -280,7 +308,8 @@ class CaseToAtlasOrchestrator:
             record=(state or {}).get("stages",{}).get(name,{})
             forced = any(STAGES.index(forced) <= index for forced in request.force_stages)
             input_hash=self._input_hash(name,request,state or {})
-            reusable=bool(request.resume and not invalidated and not forced and self._record_valid(name,record,input_hash,request))
+            decision = self._reuse_decision(name, record, input_hash, request, forced=forced)
+            reusable=bool(request.resume and not invalidated and not forced and decision.action=="reuse")
             recoverable=bool(request.resume and not invalidated and not forced and self._record_recoverable(name,record,input_hash,request,oid))
             if index < from_index:
                 action = "reuse" if reusable else "recover" if recoverable else "precondition_missing"
@@ -291,8 +320,13 @@ class CaseToAtlasOrchestrator:
             else:
                 if not reusable and not recoverable: invalidated=True
                 action = "reuse" if reusable else "recover" if recoverable else "run"
-                reason = "valid_completed_stage" if reusable else "recoverable_existing_output" if recoverable else "forced" if forced else "missing_or_invalid"
-            stages.append({"stage":name,"action":action,"reason":reason,"input_hash":input_hash})
+                reason = decision.reason if reusable else "recoverable_existing_output" if recoverable else "forced" if forced else decision.reason
+            expected_api = 0 if action in {"reuse", "recover", "skip", "precondition_missing"} else int(name in {"base_run", "fulltext_l1", "fulltext_reasoning_trace"} and request.api_enabled)
+            expected_network = 0 if action in {"reuse", "recover", "skip", "precondition_missing"} else int(name in {"base_run", "pmcid_repair", "fulltext_l1"} and request.network_enabled)
+            item = decision.to_dict()
+            item.update({"action": action, "reason": reason, "input_hash": input_hash,
+                         "expected_api_calls": expected_api, "expected_network_calls": expected_network})
+            stages.append(item)
         next_stage = next((x["stage"] for x in stages if x["action"]=="run"), None)
         base_record=(state or {}).get("stages",{}).get("base_run",{})
         return {"schema_version":"case_to_atlas_plan_v1","orchestration_id":oid,"case_id":request.case_id,
@@ -301,6 +335,8 @@ class CaseToAtlasOrchestrator:
                 "invalidated_stages":[x["stage"] for x in stages if x["action"]=="run"],
                 "next_stage":next_stage,
                 "base_run_recovery": {"action": next((x["action"] for x in stages if x["stage"]=="base_run"), None), "output_run": base_record.get("output_run")},
+                "expected_api_calls":sum(int(x.get("expected_api_calls") or 0) for x in stages),
+                "expected_network_calls":sum(int(x.get("expected_network_calls") or 0) for x in stages),
                 "abstract_l1_api_expected":any(x["stage"]=="base_run" and x["action"]=="run" for x in stages) and request.api_enabled,
                 "fulltext_l1_api_expected":any(x["stage"]=="fulltext_l1" and x["action"]=="run" for x in stages) and request.api_enabled,
                 "reasoning_api_expected":any(x["stage"]=="fulltext_reasoning_trace" and x["action"]=="run" for x in stages) and request.api_enabled and request.network_enabled,
@@ -329,6 +365,7 @@ class CaseToAtlasOrchestrator:
         store.write_request(request.to_dict());store.write_state(state)
         if not existing: store.append_event("planned",orchestration_id=oid,case_id=request.case_id)
         reused=[]; invalidated=not request.resume
+        current_api_calls = current_network_calls = current_cache_hits = 0
         from_index=STAGES.index(request.from_stage) if request.from_stage else 0
         stop_index=STAGES.index(request.to_stage or request.stop_after) if (request.to_stage or request.stop_after) else len(STAGES)-1
         for index,name in enumerate(STAGES):
@@ -345,6 +382,7 @@ class CaseToAtlasOrchestrator:
                     raise OrchestrationError("FROM_STAGE_PRECONDITION_MISSING", f"{name} is required before {request.from_stage}", stage=name, resume_from=name)
                 reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
             if reusable:
+                self._upgrade_reuse_metadata(name, record, input_hash, request, state, store)
                 if name=="base_run" and record.get("completion_mode")=="recovered_existing_output" and (record.get("error_code") or record.get("error_summary")):
                     record["error_code"]=None;record["error_summary"]=None;store.write_state(state)
                 reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
@@ -369,12 +407,17 @@ class CaseToAtlasOrchestrator:
                 output=self._execute(name,request,state,record)
                 record.update(status="completed",completed_at=utcnow(),**output);record["last_status"]="completed"
                 record["artifact_hash"] = self._artifact_hash(name, record, request)
+                record["semantic_input_hash"] = input_hash
+                current_api_calls += int(output.get("api_calls") or 0)
+                current_network_calls += int(output.get("network_calls") or 0)
+                current_cache_hits += int(output.get("cache_hits") or 0)
                 store.append_event("sync_completed" if name=="atlas_sync" else "verification_completed" if name=="verification" else "stage_completed",stage=name,output_run=record.get("output_run"),status=output.get("operation_status","completed"))
                 store.write_state(state)
             except Exception as error:
                 code=getattr(error,"code",ERROR_CODES[name]);record.update(status="failed",failed_at=utcnow(),error_code=code,error_summary=str(error));record["last_status"]="failed";state.update(status="failed",current_stage=name,error_code=code,error_summary=str(error));store.write_state(state);store.append_event("stage_failed",stage=name,error_code=code,error_summary=str(error))
                 raise OrchestrationError(code,str(error),stage=name,resume_from=name) from error
         state.update(status="completed" if stop_index==len(STAGES)-1 else "stopped",current_stage=None,completed_at=utcnow());state["reused_stages"]=reused
+        state["last_command_calls"]={"api_calls":current_api_calls,"network_calls":current_network_calls,"cache_hits":current_cache_hits}
         result=self._result(request,oid,state,reused);store.write_state(state);store.write_result(result.to_dict());return result
 
     def verify(self, request: CaseToAtlasRequest) -> dict[str, Any]:
@@ -395,20 +438,43 @@ class CaseToAtlasOrchestrator:
         return request.runs_root / f"{oid}_{request.case_id}_{stage}_v{attempt}"
 
     def _input_hash(self, stage: str, request: CaseToAtlasRequest, state: dict) -> str:
+        return self._stage_fingerprint(stage, request, state).sha256
+
+    def _stage_fingerprint(self, stage: str, request: CaseToAtlasRequest, state: dict) -> StageFingerprint:
+        provider={"provider":os.getenv("L1_PROVIDER") or "","model":os.getenv("MODEL_NAME") or ""}
+        scientific_config = self._scientific_config()
+        stages=state.get("stages",{})
+        if stage=="base_run": material={"case_id":request.case_id,"case_profile_sha256":_file_hash(request.case_profile_path),"search_plan_sha256":_file_hash(request.search_plan_path),"abstract_l1_config":scientific_config["abstract_l1"],**provider}
+        elif stage=="pmcid_repair": material={"case_id":request.case_id,"base":self._output_identity(stages.get("base_run",{})),"pmcid_repair_schema":"pmcid_repair_v1"}
+        elif stage=="fulltext_l1": material={"case_id":request.case_id,"repair":self._output_identity(stages.get("pmcid_repair",{})),"case_profile_sha256":_file_hash(request.case_profile_path),"fulltext_l1_config":scientific_config["fulltext_l1"],"chunker_config_hash":_hash({"max_sections_per_paper":12,"max_chunks_per_paper":24,"max_chars_per_chunk":6000,"max_total_chunks":200}),**provider}
+        elif stage=="fulltext_reasoning_trace": material={"case_id":request.case_id,"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"reasoning_config":scientific_config.get("fulltext_reasoning_trace","legacy_missing_reasoning_config"),**provider}
+        elif stage=="fulltext_context_consolidation": material={"case_id":request.case_id,"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"reasoning":self._output_identity(stages.get("fulltext_reasoning_trace",{})),"context_rules":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
+        elif stage=="reentry": material={"case_id":request.case_id,"base":self._output_identity(stages.get("base_run",{})),"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"context":self._output_identity(stages.get("fulltext_context_consolidation",{})),"schema":"fulltext_reentry_v5","reentry_config":scientific_config["reentry"]}
+        elif stage=="handoff": material={"case_id":request.case_id,"reentry":self._output_identity(stages.get("reentry",{})),"schema":"atlas_handoff_v1","reasoning_optional":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
+        elif stage=="atlas_sync":
+            handoff=stages.get("handoff",{})
+            manifest=Path(handoff.get("manifest_path") or "")
+            material={"case_id":request.case_id,"handoff_manifest":self._logical_file_identity("atlas_handoff_manifest", manifest),"adapter":ADAPTER_VERSION}
+        else:
+            registry=request.system_b_output_root/"current_projection.json";material={"registry":_file_hash(registry),"handoff":self._output_identity(stages.get("handoff",{})),"baseline":state.get("safety_baseline")}
+        material = {"stage": stage, **material}
+        return StageFingerprint(stage=stage, material=material, sha256=_hash(material))
+
+    def _legacy_input_hash(self, stage: str, request: CaseToAtlasRequest, state: dict) -> str:
         provider={"provider":os.getenv("L1_PROVIDER") or "","model":os.getenv("MODEL_NAME") or ""}
         scientific_config = self._scientific_config()
         stages=state.get("stages",{})
         if stage=="base_run": material={"profile":_file_hash(request.case_profile_path),"plan":_file_hash(request.search_plan_path),"api":request.api_enabled,"network":request.network_enabled,"abstract_l1_config":scientific_config["abstract_l1"],**provider}
-        elif stage=="pmcid_repair": material={"base":self._output_identity(stages.get("base_run",{})),"network":request.network_enabled}
-        elif stage=="fulltext_l1": material={"repair":self._output_identity(stages.get("pmcid_repair",{})),"profile":_file_hash(request.case_profile_path),"api":request.api_enabled,"network":request.network_enabled,"fulltext_l1_config":scientific_config["fulltext_l1"],**provider}
-        elif stage=="fulltext_reasoning_trace": material={"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"api":request.api_enabled,"network":request.network_enabled,"reasoning_config":scientific_config.get("fulltext_reasoning_trace","legacy_missing_reasoning_config"),**provider}
-        elif stage=="fulltext_context_consolidation": material={"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"reasoning":self._output_identity(stages.get("fulltext_reasoning_trace",{})),"context_rules":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
-        elif stage=="reentry": material={"base":self._output_identity(stages.get("base_run",{})),"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"context":self._output_identity(stages.get("fulltext_context_consolidation",{})),"schema":"fulltext_reentry_v5","reentry_config":scientific_config["reentry"]}
-        elif stage=="handoff": material={"reentry":self._output_identity(stages.get("reentry",{})),"schema":"atlas_handoff_v1","reasoning_optional":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
+        elif stage=="pmcid_repair": material={"base":self._legacy_output_identity(stages.get("base_run",{})),"network":request.network_enabled}
+        elif stage=="fulltext_l1": material={"repair":self._legacy_output_identity(stages.get("pmcid_repair",{})),"profile":_file_hash(request.case_profile_path),"api":request.api_enabled,"network":request.network_enabled,"fulltext_l1_config":scientific_config["fulltext_l1"],**provider}
+        elif stage=="fulltext_reasoning_trace": material={"fulltext":self._legacy_output_identity(stages.get("fulltext_l1",{})),"api":request.api_enabled,"network":request.network_enabled,"reasoning_config":scientific_config.get("fulltext_reasoning_trace","legacy_missing_reasoning_config"),**provider}
+        elif stage=="fulltext_context_consolidation": material={"fulltext":self._legacy_output_identity(stages.get("fulltext_l1",{})),"reasoning":self._legacy_output_identity(stages.get("fulltext_reasoning_trace",{})),"context_rules":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
+        elif stage=="reentry": material={"base":self._legacy_output_identity(stages.get("base_run",{})),"fulltext":self._legacy_output_identity(stages.get("fulltext_l1",{})),"context":self._legacy_output_identity(stages.get("fulltext_context_consolidation",{})),"schema":"fulltext_reentry_v5","reentry_config":scientific_config["reentry"]}
+        elif stage=="handoff": material={"reentry":self._legacy_output_identity(stages.get("reentry",{})),"schema":"atlas_handoff_v1","reasoning_optional":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
         elif stage=="atlas_sync":
             manifests=sorted((str(path),_file_hash(path)) for path in request.runs_root.glob("*/artifacts/atlas_handoff_manifest.json"));material={"manifests":manifests,"adapter":ADAPTER_VERSION,"output":str(request.system_b_output_root.resolve()),"database":request.database_url}
         else:
-            registry=request.system_b_output_root/"current_projection.json";material={"registry":_file_hash(registry),"handoff":self._output_identity(stages.get("handoff",{})),"baseline":state.get("safety_baseline")}
+            registry=request.system_b_output_root/"current_projection.json";material={"registry":_file_hash(registry),"handoff":self._legacy_output_identity(stages.get("handoff",{})),"baseline":state.get("safety_baseline")}
         return _hash(material)
 
     def _scientific_config(self) -> dict[str, str]:
@@ -473,21 +539,58 @@ class CaseToAtlasOrchestrator:
                 paths.append(request.system_b_output_root / "missing_projection_manifest.json")
         else:
             return _hash(record.get("verification") or {})
-        return _hash([(str(path), _file_hash(path)) for path in paths])
+        return _hash([self._logical_file_identity(path.name, path) for path in paths])
 
     def _output_identity(self, record: dict) -> dict:
+        path=Path(record.get("output_run") or "")
+        candidates=[
+            ("run_state", path/"run_state.json"),
+            ("pmcid_repair_manifest", path/"pmcid_repair_manifest.json"),
+            ("fulltext_bridge_replay_manifest", path/"fulltext_bridge_replay_manifest.json"),
+            ("fulltext_l1_claims", path/"artifacts/l35_fulltext_l1_claims.jsonl"),
+            ("reasoning_summary", path/"artifacts/fulltext_reasoning_trace_summary.json"),
+            ("reasoning_traces", path/"artifacts/fulltext_reasoning_traces.jsonl"),
+            ("context_summary", path/"artifacts/fulltext_context_consolidation_summary.json"),
+            ("context_rows", path/"artifacts/fulltext_context_consolidations.jsonl"),
+            ("fulltext_reentry_manifest", path/"fulltext_reentry_manifest.json"),
+            ("atlas_handoff_manifest", Path(record.get("manifest_path") or "")),
+        ]
+        return {"artifacts":[self._logical_file_identity(name, item) for name,item in candidates if str(item) not in {".",""} and item.is_file()]}
+
+    def _legacy_output_identity(self, record: dict) -> dict:
         path=Path(record.get("output_run") or "")
         candidates=[path/"run_state.json",path/"pmcid_repair_manifest.json",path/"fulltext_bridge_replay_manifest.json",path/"artifacts/fulltext_reasoning_trace_summary.json",path/"artifacts/fulltext_context_consolidation_summary.json",path/"fulltext_reentry_manifest.json",Path(record.get("manifest_path") or "")]
         return {"path":str(path),"hash":next((_file_hash(item) for item in candidates if str(item) not in {".",""} and item.is_file()),"missing")}
 
+    def _logical_file_identity(self, logical_name: str, path: Path) -> dict[str, Any]:
+        return {"logical_name": logical_name, "sha256": _file_hash(path), "size_bytes": path.stat().st_size if path.is_file() else None}
+
     def _record_valid(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest) -> bool:
-        if record.get("status")!="completed" or record.get("input_hash")!=input_hash: return False
-        if record.get("artifact_hash") != self._artifact_hash(stage, record, request): return False
+        if record.get("status")!="completed": return False
+        state_context = self._state_from_record_context(stage, record, request)
+        legacy_hash = None
+        try:
+            legacy_hash = self._legacy_input_hash(stage, request, state_context)
+        except Exception:
+            pass
+        stored_hashes = {record.get("semantic_input_hash"), record.get("input_hash")}
+        stored_hashes.add(legacy_hash)
+        if stage != "base_run" and not record.get("semantic_input_hash") and self._stage_artifacts_valid(stage, record, request):
+            return True
+        if input_hash not in stored_hashes: return False
+        legacy_match = bool(record.get("input_hash") == legacy_hash and not record.get("semantic_input_hash"))
+        if record.get("artifact_hash") and record.get("artifact_hash") != self._artifact_hash(stage, record, request) and not legacy_match: return False
+        return self._stage_artifacts_valid(stage, record, request)
+
+    def _stage_artifacts_valid(self, stage: str, record: dict, request: CaseToAtlasRequest) -> bool:
         try:
             if stage=="base_run":
-                return validate_base_run_for_downstream(record["output_run"], request=request, expected_input_hash=input_hash, orchestration_id=self.orchestration_id(request)).valid
+                return validate_base_run_for_downstream(record["output_run"], request=request, expected_input_hash=record.get("input_hash"), orchestration_id=self.orchestration_id(request)).valid
             if stage=="pmcid_repair": return Path(record["output_run"],"pmcid_repair_manifest.json").is_file()
-            if stage=="fulltext_l1": return _read(Path(record["output_run"])/"fulltext_bridge_replay_manifest.json").get("stage_summary",{}).get("status","").startswith("completed")
+            if stage=="fulltext_l1":
+                summary=_read(Path(record["output_run"])/"fulltext_bridge_replay_manifest.json").get("stage_summary",{})
+                l1_summary=_read(Path(record["output_run"])/"artifacts/l35_fulltext_l1_summary.json")
+                return str(summary.get("status") or l1_summary.get("fulltext_l1_status") or "").startswith("completed") or str(l1_summary.get("fulltext_l1_status") or "").startswith("completed")
             if stage=="fulltext_reasoning_trace":
                 summary=_read(Path(record["output_run"])/"artifacts/fulltext_reasoning_trace_summary.json")
                 return bool(summary.get("status_accounting_valid", True))
@@ -502,6 +605,54 @@ class CaseToAtlasOrchestrator:
             if stage=="verification": return record.get("verification",{}).get("status")=="passed"
         except Exception: return False
         return False
+
+    def _state_from_record_context(self, stage: str, record: dict, request: CaseToAtlasRequest) -> dict:
+        # Best-effort legacy compatibility for tests that call _record_valid directly.
+        oid = self.orchestration_id(request)
+        state = OrchestrationStateStore(request.runs_root, oid).read_state() or {"stages": {}}
+        state.setdefault("stages", {}).setdefault(stage, record)
+        return state
+
+    def _reuse_decision(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest, *, forced: bool = False) -> StageReuseDecision:
+        stored = record.get("semantic_input_hash") or record.get("input_hash")
+        output_run = record.get("output_run") or record.get("manifest_path")
+        if forced:
+            return StageReuseDecision(stage, "rerun", "forced", stored, input_hash, output_run=output_run,
+                                      changed_components={"force_stage": {"previous": False, "current": True}})
+        if record.get("status") != "completed":
+            return StageReuseDecision(stage, "rerun", "stage_not_completed", stored, input_hash, output_run=output_run)
+        valid_artifacts = self._stage_artifacts_valid(stage, record, request)
+        if not valid_artifacts:
+            return StageReuseDecision(stage, "rerun", "required_artifact_missing_or_invalid", stored, input_hash, output_run=output_run)
+        if stage != "base_run" and not record.get("semantic_input_hash"):
+            return StageReuseDecision(stage, "reuse", "legacy_completed_artifacts_valid_semantic_backfill", stored, input_hash,
+                                      output_run=output_run, validated_artifacts=1, projection_id=record.get("projection_id"))
+        legacy = self._legacy_input_hash(stage, request, OrchestrationStateStore(request.runs_root, self.orchestration_id(request)).read_state() or {"stages": {}})
+        legacy_match = bool(record.get("input_hash") == legacy and not record.get("semantic_input_hash"))
+        if record.get("artifact_hash") and record.get("artifact_hash") != self._artifact_hash(stage, record, request) and not legacy_match:
+            return StageReuseDecision(stage, "rerun", "artifact_hash_changed", stored, input_hash, output_run=output_run,
+                                      changed_components={"artifact_hash": {"previous": record.get("artifact_hash"), "current": self._artifact_hash(stage, record, request)}})
+        if input_hash in {record.get("semantic_input_hash"), record.get("input_hash")}:
+            reason = "semantic_fingerprint_match" if record.get("semantic_input_hash") == input_hash or record.get("input_hash") == input_hash else "legacy_input_hash_match"
+            return StageReuseDecision(stage, "reuse", reason, stored, input_hash, output_run=output_run, validated_artifacts=1,
+                                      projection_id=record.get("projection_id"))
+        if record.get("input_hash") == legacy:
+            return StageReuseDecision(stage, "reuse", "legacy_input_hash_matches_current_semantics", record.get("input_hash"), input_hash,
+                                      output_run=output_run, validated_artifacts=1, projection_id=record.get("projection_id"))
+        return StageReuseDecision(stage, "rerun", "semantic_fingerprint_changed", stored, input_hash, output_run=output_run,
+                                  changed_components={"semantic_input_hash": {"previous": stored, "current": input_hash}})
+
+    def _upgrade_reuse_metadata(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest, state: dict, store: OrchestrationStateStore) -> None:
+        if record.get("semantic_input_hash") == input_hash and record.get("input_hash") == input_hash:
+            return
+        legacy = record.get("input_hash")
+        record["legacy_input_hash"] = legacy
+        record["semantic_input_hash"] = input_hash
+        record["input_hash"] = input_hash
+        record["artifact_hash"] = self._artifact_hash(stage, record, request)
+        store.write_state(state)
+        store.append_event("stage_reuse_metadata_upgraded", stage=stage, legacy_input_hash=legacy,
+                           semantic_input_hash=input_hash, output_run=record.get("output_run"))
 
     def _record_recoverable(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest, oid: str) -> bool:
         if stage != "base_run" or record.get("status") != "failed" or not record.get("output_run"):
@@ -575,4 +726,8 @@ class CaseToAtlasOrchestrator:
 
     def _result(self,request,oid,state,reused):
         s=state["stages"];verification=s["verification"].get("verification",{})
-        return CaseToAtlasResult(orchestration_id=oid,status=state["status"],case_id=request.case_id,base_run=s["base_run"].get("output_run"),pmcid_repair_run=s["pmcid_repair"].get("output_run"),fulltext_run=s["fulltext_l1"].get("output_run"),reentry_run=s["reentry"].get("output_run"),handoff_manifest=s["handoff"].get("manifest_path"),handoff_status=s["handoff"].get("operation_status"),ingestion_id=verification.get("ingestion_id"),prediction_run_id=verification.get("prediction_run_id"),projection_id=verification.get("projection_id") or s["atlas_sync"].get("projection_id"),current_case_count=verification.get("current_case_count",0),claim_count=verification.get("claim_count",s["reentry"].get("claim_count",0)),dossier_count=verification.get("dossier_count",0),context_row_count=verification.get("context_row_count",0),exploratory_triple_count=verification.get("exploratory_triple_count",0),formal_conflict_count=verification.get("formal_conflict_count",0),api_calls=sum(int(s[x].get("api_calls") or 0) for x in STAGES),network_calls=sum(int(s[x].get("network_calls") or 0) for x in STAGES),cache_hits=sum(int(s[x].get("cache_hits") or 0) for x in STAGES),reused_stages=reused,sync_status=s["atlas_sync"].get("operation_status"),warnings=[] if not verification.get("quarantine_count") else [f"quarantine_count={verification['quarantine_count']}"] ,verification=verification)
+        current=state.get("last_command_calls") or {}
+        stage_counts={name:{"api_calls":int(s[name].get("api_calls") or 0),
+                            "network_calls":int(s[name].get("network_calls") or 0),
+                            "cache_hits":int(s[name].get("cache_hits") or 0)} for name in STAGES}
+        return CaseToAtlasResult(orchestration_id=oid,status=state["status"],case_id=request.case_id,base_run=s["base_run"].get("output_run"),pmcid_repair_run=s["pmcid_repair"].get("output_run"),fulltext_run=s["fulltext_l1"].get("output_run"),reentry_run=s["reentry"].get("output_run"),handoff_manifest=s["handoff"].get("manifest_path"),handoff_status=s["handoff"].get("operation_status"),ingestion_id=verification.get("ingestion_id"),prediction_run_id=verification.get("prediction_run_id"),projection_id=verification.get("projection_id") or s["atlas_sync"].get("projection_id"),current_case_count=verification.get("current_case_count",0),claim_count=verification.get("claim_count",s["reentry"].get("claim_count",0)),dossier_count=verification.get("dossier_count",0),context_row_count=verification.get("context_row_count",0),exploratory_triple_count=verification.get("exploratory_triple_count",0),formal_conflict_count=verification.get("formal_conflict_count",0),api_calls=int(current.get("api_calls") or 0),network_calls=int(current.get("network_calls") or 0),cache_hits=int(current.get("cache_hits") or 0),historical_api_calls=sum(v["api_calls"] for v in stage_counts.values()),historical_network_calls=sum(v["network_calls"] for v in stage_counts.values()),historical_cache_hits=sum(v["cache_hits"] for v in stage_counts.values()),stage_call_counts=stage_counts,reused_stages=reused,sync_status=s["atlas_sync"].get("operation_status"),warnings=[] if not verification.get("quarantine_count") else [f"quarantine_count={verification['quarantine_count']}"] ,verification=verification)

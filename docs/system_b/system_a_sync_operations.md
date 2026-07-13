@@ -10,7 +10,9 @@ The manual sync commands below are recovery and developer diagnostics. The one-c
 
 The importer performs discover → ready/manifest validation → path/hash/count verification → v5 adaptation → temporary projection → projection validation → one database transaction → immutable-directory finalize → atomic current-registry switch. A failure before the last step cannot change `current_projection.json`; a rejected source receives a structured report under `quarantine/`.
 
-Ingestion identity is `(source_run_id, manifest_hash, adapter_version)`. The same identity is a no-op. A new adapter version may create a new projection; a new System A run creates new ingestion and prediction provenance without deleting its predecessor. SQLite stores only ingestion and artifact metadata. Evidence and claims stay in versioned files.
+Ingestion identity is `(source_run_id, manifest_hash, adapter_version)`. The same identity is a no-op. Projection identity is content based over the selected source manifest hashes and adapter version; `generated_at`, temporary directories, database row IDs, and execution attempts must not create a new projection. A new adapter version may create a new projection; a new System A run creates new ingestion and prediction provenance without deleting its predecessor. SQLite stores only ingestion and artifact metadata. Evidence and claims stay in versioned files.
+
+The one-command orchestrator treats Atlas sync as a semantic no-op when the current handoff manifest content and adapter version match the current projection. Repeating the same command must not create duplicate source ingestions, duplicate prediction runs, or a new projection directory, and it must preserve all other current cases plus Review Items, assignments, annotations, Gold, and metrics.
 
 ```bash
 # Preview all ready runs
@@ -27,6 +29,8 @@ find system_b_outputs/system_a_sync/quarantine -type f -name '*.json' -print
 ```
 
 Before migration, run `atlas_db_backup`; then `atlas_db_migrate upgrade` (or Alembic under the repository's normal policy) and `atlas_db_check`. Recovery consists of retaining the failed/quarantined source, correcting the source or adapter, and rerunning. Never delete old projections.
+
+When historical duplicate projections exist for the same logical case request, keep them as immutable audit records. The current registry should remain on the latest valid projection unless an operator explicitly performs a scientific rollback.
 
 Batch backfill first freezes references and validation results without copying evidence bodies:
 

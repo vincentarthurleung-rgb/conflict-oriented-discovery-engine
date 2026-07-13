@@ -185,7 +185,6 @@ def classify_section(title: Any) -> str:
 
 def claim_identity_hash(claim: dict[str, Any]) -> str:
     material = {
-        "claim_id": claim.get("claim_id"),
         "paper_id": claim.get("paper_id"),
         "pmid": claim.get("pmid"),
         "pmcid": claim.get("pmcid"),
@@ -268,7 +267,9 @@ def retrieve_claim_centered_passages(
         if total + len(text) > max_chars and chosen:
             break
         seen.add(sent["sentence_id"])
-        passage_id = "pass_" + hashlib.sha1(f"{claim.get('claim_id')}|{sent['sentence_id']}".encode()).hexdigest()[:16]
+        claim_hash = claim_identity_hash(claim)
+        passage_content_hash = _hash({"paper": paper.get("pmcid") or paper.get("pmid") or paper.get("paper_id"), "text": text})
+        passage_id = "pass_" + hashlib.sha1(f"{claim_hash}|{passage_content_hash}".encode()).hexdigest()[:16]
         chosen.append({
             "passage_id": passage_id,
             "claim_id": claim.get("claim_id"),
@@ -280,7 +281,7 @@ def retrieve_claim_centered_passages(
             "sentence_ids": [sent["sentence_id"]],
             "source_spans": [{"sentence_id": sent["sentence_id"], "start": sent["start"], "end": sent["end"]}],
             "text": text,
-            "passage_hash": _hash({"sentence_id": sent["sentence_id"], "text": text}),
+            "passage_hash": passage_content_hash,
         })
         total += len(text)
         if len(chosen) >= max_passages:

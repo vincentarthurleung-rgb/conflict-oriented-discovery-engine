@@ -74,6 +74,26 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
     def test_stage_order_and_second_run_reuses_all(self):
         first=FakeOrchestrator();result=first.run(self.request);self.assertEqual(first.calls,list(STAGES));self.assertEqual(result.status,"completed")
         second=FakeOrchestrator();result=second.run(self.request);self.assertEqual(second.calls,[]);self.assertEqual(result.reused_stages,list(STAGES))
+        self.assertEqual(result.api_calls,0)
+        self.assertEqual(result.network_calls,0)
+        self.assertGreater(result.historical_api_calls,0)
+
+    def test_permission_flags_do_not_change_semantic_fingerprint(self):
+        orch=CaseToAtlasOrchestrator()
+        offline=CaseToAtlasRequest(**{**self.request.__dict__,"api_enabled":False,"network_enabled":False}).resolved()
+        online=CaseToAtlasRequest(**{**self.request.__dict__,"api_enabled":True,"network_enabled":True}).resolved()
+        self.assertEqual(orch._input_hash("base_run",offline,{"stages":{}}),orch._input_hash("base_run",online,{"stages":{}}))
+
+    def test_output_path_attempt_and_timestamp_do_not_change_output_identity(self):
+        orch=CaseToAtlasOrchestrator()
+        one=self.root/"runs/a_fulltext_l1_v1";two=self.root/"runs/b_fulltext_l1_v2"
+        for run in (one,two):
+            (run/"artifacts").mkdir(parents=True)
+            (run/"fulltext_bridge_replay_manifest.json").write_text(json.dumps({"stage_summary":{"status":"completed"}}))
+            (run/"artifacts/l35_fulltext_l1_claims.jsonl").write_text('{"claim_id":"c1"}\n')
+        first=orch._output_identity({"output_run":str(one),"attempt":1,"started_at":"2026-01-01"})
+        second=orch._output_identity({"output_run":str(two),"attempt":2,"started_at":"2026-02-01"})
+        self.assertEqual(first,second)
 
     def test_force_stage_invalidates_downstream_only(self):
         FakeOrchestrator().run(self.request);forced=CaseToAtlasRequest(**{**self.request.__dict__,"force_stages":frozenset({"reentry"})});runner=FakeOrchestrator();runner.run(forced)
@@ -84,7 +104,7 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
         self.assertEqual(runner.calls,list(STAGES))
 
     def test_scientific_prompt_config_change_invalidates_paid_stages(self):
-        first={"abstract_l1":"a","fulltext_l1":"b","reentry":"c"};second={**first,"abstract_l1":"changed"}
+        first={"abstract_l1":"a","fulltext_l1":"b","reentry":"c","fulltext_reasoning_trace":"d","fulltext_context_consolidation":"e"};second={**first,"abstract_l1":"changed"}
         with patch.object(CaseToAtlasOrchestrator,"_scientific_config",return_value=first): FakeOrchestrator().run(self.request)
         runner=FakeOrchestrator()
         with patch.object(CaseToAtlasOrchestrator,"_scientific_config",return_value=second): runner.run(self.request)

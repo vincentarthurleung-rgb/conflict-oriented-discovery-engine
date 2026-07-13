@@ -11,6 +11,9 @@ from code_engine.extraction.l1_response import normalize_l1_json_response
 from code_engine.extraction.client_factory import diagnose_l1_provider
 
 PROMPT_VERSION = "fulltext_conflict_l1_v1"
+OUTPUT_SCHEMA_VERSION = "fulltext_l1_claim_schema_v1"
+EXTRACTOR_VERSION = "fulltext_l1_extractor_v1"
+CHUNKER_VERSION = "fulltext_chunker_v1"
 PREFERRED = {"results", "discussion", "conclusion", "introduction", "abstract", "figure_caption", "table_caption"}
 EXCLUDED = {"references", "bibliography", "acknowledgments", "acknowledgements", "funding", "author contributions"}
 SECTION_WEIGHTS={"results":1.0,"discussion":.85,"abstract":.70,"introduction":.55,"methods":.40,"other":.25}
@@ -58,12 +61,41 @@ SECTION_TYPE: %s
 SECTION_TEXT:
 %s""" % (json.dumps(focus,ensure_ascii=False), section.get("section_title"),section.get("section_type"), chunk)
 
+def _target_focus(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "case_id": candidate.get("case_id"),
+        "relation_family": candidate.get("conflict_relation") or candidate.get("relation_family"),
+        "subject": candidate.get("subject"),
+        "object": candidate.get("object"),
+        "competing_polarities": candidate.get("competing_polarities", ["positive", "negative"]),
+        "abstract_evidence_snippets": candidate.get("abstract_evidence_snippets", []),
+        "context_terms": candidate.get("context_terms", []),
+    }
+
+def fulltext_l1_cache_key(candidate: dict[str, Any], section: dict[str, Any], chunk_hash: str, *,
+                          provider: str, model: str, chunker_config_hash: str) -> str:
+    material = {
+        "document_identity": {"pmcid": candidate.get("pmcid"), "pmid": candidate.get("pmid"), "paper_id": candidate.get("paper_id")},
+        "section_identity": {"section_index": section.get("section_index"), "section_type": section.get("section_type"), "section_title": section.get("section_title")},
+        "chunk_content_sha256": chunk_hash,
+        "target_focus_sha256": hashlib.sha256(json.dumps(_target_focus(candidate), ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "prompt_sha256": hashlib.sha256(PROMPT_VERSION.encode()).hexdigest(),
+        "output_schema_version": OUTPUT_SCHEMA_VERSION,
+        "provider": provider,
+        "model": model,
+        "extractor_version": EXTRACTOR_VERSION,
+        "chunker_version": CHUNKER_VERSION,
+        "chunker_config_hash": chunker_config_hash,
+    }
+    return hashlib.sha256(json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
 def run_fulltext_l1_extraction(*, run_dir: Path, fulltext_candidates_path: Path, parsed_articles_dir: Path,
     l1_provider: str, l1_model: str, api_enabled: bool, network_enabled: bool, max_papers: int=20,
     max_sections_per_paper: int=12, max_chunks_per_paper: int=24, max_chars_per_chunk: int=6000,
     max_total_chunks: int=200, section_policy: str="results_discussion_intro_only", dry_run: bool=False,
     client: Any|None=None, read_timeout_seconds: float=240, max_retries: int=1, reuse_selected_chunks: bool=True) -> dict[str, Any]:
     artifacts=Path(run_dir)/"artifacts"; cache_dir=artifacts/"cache/fulltext_l1"; cache_dir.mkdir(parents=True,exist_ok=True)
+    shared_cache_dir=Path("data/interim/cache/fulltext_l1"); shared_cache_dir.mkdir(parents=True,exist_ok=True)
     candidates=_jsonl(Path(fulltext_candidates_path))[:max_papers];claims=[];chunk_records=[];execution_records=[];planned=[];sections_selected=0;skipped=0;limit_hit=False
     selected_path=artifacts/"l35_fulltext_discovery_selected_chunks.jsonl";cached_chunks=_jsonl(selected_path) if reuse_selected_chunks else []
     if cached_chunks:
@@ -85,21 +117,29 @@ def run_fulltext_l1_extraction(*, run_dir: Path, fulltext_candidates_path: Path,
                     tier=section.get("section_type") or "other";planned.append((paper,section,text,digest,cid));selected.append({"chunk_id":cid,"chunk_hash":digest,"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),"section_title":section.get("section_title"),"section_type":tier,"section_evidence_tier":tier,"section_evidence_weight":SECTION_WEIGHTS.get(tier,.25),"section_index":section.get("section_index"),"chunk_index":chunk_index,"text":text,"source_scope":"full_text","selection_score":paper.get("selection_score",0.0),"selection_reasons":paper.get("selection_reasons",[]),"linked_observation_ids":paper.get("abstract_observation_ids",[]),"linked_weak_candidate_ids":paper.get("conflict_candidate_ids",[])})
         selected_path.write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in selected),encoding="utf-8")
     provider_errors=parse_errors=api_calls=cache_hits=0
+    lineage_records=[]
+    chunker_config_hash=hashlib.sha256(json.dumps({"max_sections_per_paper":max_sections_per_paper,"max_chunks_per_paper":max_chunks_per_paper,"max_chars_per_chunk":max_chars_per_chunk,"max_total_chunks":max_total_chunks,"section_policy":section_policy},sort_keys=True,separators=(",",":")).encode()).hexdigest()
     blocked=not (api_enabled and network_enabled and client is not None)
     provider_diag=diagnose_l1_provider(l1_provider,l1_model,api_enabled=api_enabled,network_enabled=network_enabled)
     if client is not None:provider_diag.update(provider_available=True,provider_error=None)
     for paper,section,text,digest,cid in planned:
-        key_payload="\x1f".join((str(paper.get("pmcid")),str(section["section_index"]),digest,"|".join(map(str,paper.get("conflict_candidate_ids",[]))),l1_provider,l1_model,PROMPT_VERSION))
-        key=hashlib.sha256(key_payload.encode()).hexdigest(); cache_path=cache_dir/f"{key}.json"
-        if cache_path.is_file():
-            raw_claims=json.loads(cache_path.read_text(encoding="utf-8")).get("claims",[]); cache_status="hit"; cache_hits+=1
+        key=fulltext_l1_cache_key(paper, section, digest, provider=l1_provider, model=l1_model, chunker_config_hash=chunker_config_hash)
+        cache_path=cache_dir/f"{key}.json"; shared_cache_path=shared_cache_dir/f"{key}.json"
+        hit_path=next((path for path in (cache_path, shared_cache_path) if path.is_file()), None)
+        if hit_path:
+            cached=json.loads(hit_path.read_text(encoding="utf-8")); raw_claims=cached.get("claims",[]); cache_status="hit"; cache_hits+=1
+            lineage={"cache_status":"hit","cache_key":key,"source_artifact":str(hit_path),"source_run":(cached.get("cache_source") or {}).get("run_dir"),"source_sha256":hashlib.sha256(hit_path.read_bytes()).hexdigest(),"materialization":"reference"}
         elif dry_run or blocked:
             status="planned" if dry_run else "blocked";chunk_records.append({"chunk_id":cid,"chunk_hash":digest,"cache_status":"miss","api_call_made":False,"extraction_status":status})
             execution_records.append({"chunk_id":cid,"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),"provider":l1_provider,"model":l1_model,"api_called":False,"status":"skipped","error":provider_diag.get("provider_error"),"fulltext_l1_attempted":False,"fulltext_l1_status":"skipped","fulltext_l1_error_type":"provider_unavailable" if blocked else None,"fulltext_l1_error_message":provider_diag.get("provider_error"),"claim_count":0,"schema_valid":True,"retry_count":0,"source_scope":"full_text"});continue
         else:
             try:
                 response=client.extract_json(build_prompt(paper,section,text),model=l1_model,temperature=0,top_p=1,timeout=read_timeout_seconds,max_retries=max_retries); api_calls+=1
-                normalized,_=normalize_l1_json_response(response); raw_claims=normalized["claims"]; cache_path.write_text(json.dumps({"claims":raw_claims,"prompt_version":PROMPT_VERSION},ensure_ascii=False,indent=2),encoding="utf-8"); cache_status="miss"
+                normalized,_=normalize_l1_json_response(response); raw_claims=normalized["claims"]
+                payload={"claims":raw_claims,"prompt_version":PROMPT_VERSION,"output_schema_version":OUTPUT_SCHEMA_VERSION,"cache_source":{"run_dir":str(Path(run_dir)),"cache_key":key,"chunk_id":cid,"chunk_sha256":digest}}
+                cache_path.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+                shared_cache_path.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+                cache_status="miss"; lineage={"cache_status":"miss","cache_key":key,"source_artifact":str(cache_path),"source_run":str(Path(run_dir)),"source_sha256":hashlib.sha256(cache_path.read_bytes()).hexdigest(),"materialization":"new"}
             except Exception as exc:
                 error_type="parse_error" if "json" in str(exc).casefold() or "claims" in str(exc).casefold() else "provider_error"
                 parse_errors += error_type=="parse_error"; provider_errors += error_type=="provider_error"
@@ -107,10 +147,11 @@ def run_fulltext_l1_extraction(*, run_dir: Path, fulltext_candidates_path: Path,
                 execution_records.append({"chunk_id":cid,"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),"provider":l1_provider,"model":l1_model,"api_called":True,"status":"failed","error":message,"fulltext_l1_attempted":True,"fulltext_l1_status":"failed","fulltext_l1_error_type":error_type,"fulltext_l1_error_message":message,"claim_count":0,"schema_valid":error_type!="parse_error","retry_count":max_retries,"source_scope":"full_text"});continue
         for index,raw in enumerate(raw_claims):
             tier=section.get("section_type") or "other";claims.append({"claim_id":raw.get("claim_id") or f"ft_{digest[:12]}_{index}","source_scope":"full_text","paper_id":paper.get("paper_id"),"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"section_title":section.get("section_title"),"section_type":tier,"section_evidence_tier":tier,"section_evidence_weight":SECTION_WEIGHTS.get(tier,.25),"chunk_id":cid,"chunk_hash":digest,"linked_abstract_observation_ids":paper.get("abstract_observation_ids",[]),"linked_conflict_candidate_ids":paper.get("conflict_candidate_ids",[]),"relation_family":raw.get("relation_family") or paper.get("conflict_relation"),"subject":raw.get("subject"),"predicate":raw.get("predicate"),"object":raw.get("object"),"polarity":raw.get("polarity","unclear"),"direction":raw.get("direction") or raw.get("polarity","unclear"),"context":raw.get("context",{}),"context_terms":raw.get("context_terms",[]),"confidence":raw.get("confidence"),"extraction_warnings":raw.get("extraction_warnings",[]),"evidence_sentence":raw.get("evidence_sentence",""),"evidence_char_start":raw.get("evidence_char_start"),"evidence_char_end":raw.get("evidence_char_end"),"l1_provider":l1_provider,"l1_model":l1_model,"extraction_status":"success"})
-        chunk_records.append({"chunk_id":cid,"chunk_hash":digest,"cache_status":cache_status,"api_call_made":cache_status=="miss","extraction_status":"success" if raw_claims else "no_relevant_claim"})
+        lineage_records.append({"chunk_id":cid,"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),**lineage})
+        chunk_records.append({"chunk_id":cid,"chunk_hash":digest,"cache_status":cache_status,"cache_key":key,"cache_lineage":lineage,"api_call_made":cache_status=="miss","extraction_status":"success" if raw_claims else "no_relevant_claim"})
         execution_records.append({"chunk_id":cid,"pmid":paper.get("pmid"),"pmcid":paper.get("pmcid"),"title":paper.get("title"),"provider":l1_provider,"model":l1_model,"api_called":cache_status=="miss","status":"cache_hit" if cache_status=="hit" else "completed","error":None,"fulltext_l1_attempted":True,"fulltext_l1_status":"success","fulltext_l1_error_type":None,"fulltext_l1_error_message":None,"claim_count":len(raw_claims),"schema_valid":True,"retry_count":0,"source_scope":"full_text"})
     attempted=sum(x["fulltext_l1_attempted"] for x in execution_records);success=sum(x["fulltext_l1_status"]=="success" for x in execution_records);failed=sum(x["fulltext_l1_status"]=="failed" for x in execution_records);skipped_count=sum(x["fulltext_l1_status"]=="skipped" for x in execution_records)
     status="skipped_provider_unavailable" if planned and blocked and not dry_run else "skipped" if not planned else "failed" if attempted and failed==attempted else "partially_completed" if failed else "completed_with_claims" if claims else "completed_no_claims"
-    summary={"fulltext_l1_status":status,"candidate_paper_count":len(candidates),"oa_available_count":len({p.get('pmcid') for p,_,_,_,_ in planned}),"papers_processed":len({p.get('paper_id') for p,_,_,_,_ in planned}),"sections_selected":sections_selected,"selected_chunk_count":len(planned),"chunks_planned":len(planned),"chunks_processed":sum(x["extraction_status"] not in {"blocked","planned"} for x in chunk_records),"chunks_skipped":skipped,"api_calls_made":api_calls,"cache_hits":cache_hits,"provider_errors":provider_errors,"parse_errors":parse_errors,"fulltext_claim_count":len(claims),"fulltext_l1_claim_count":len(claims),"fulltext_l1_attempted_count":attempted,"fulltext_l1_success_count":success,"fulltext_l1_failed_count":failed,"fulltext_l1_skipped_count":skipped_count,"fulltext_l1_provider":l1_provider,"fulltext_l1_model":l1_model,**{k:v for k,v in provider_diag.items() if k not in {"scope","provider","model"}},"cost_estimate":None,"limit_hit":limit_hit,"limit_type":"max_total_or_per_paper_chunks" if limit_hit else None,"skipped_remaining_chunks":skipped,"prompt_version":PROMPT_VERSION}
-    (artifacts/"l35_fulltext_l1_claims.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in claims),encoding="utf-8"); (artifacts/"l35_fulltext_l1_chunks.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in chunk_records),encoding="utf-8");(artifacts/"l35_fulltext_l1_execution_records.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in execution_records),encoding="utf-8"); (artifacts/"l35_fulltext_l1_summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    summary={"fulltext_l1_status":status,"candidate_paper_count":len(candidates),"oa_available_count":len({p.get('pmcid') for p,_,_,_,_ in planned}),"papers_processed":len({p.get('paper_id') for p,_,_,_,_ in planned}),"fully_reused_papers":sum(all(c.get("cache_status")=="hit" for c in chunk_records if str(c.get("chunk_id","")).startswith(str(p.get("pmcid"))+"_")) for p in candidates),"partially_reused_papers":0,"new_papers":sum(any(c.get("cache_status")=="miss" for c in chunk_records if str(c.get("chunk_id","")).startswith(str(p.get("pmcid"))+"_")) for p in candidates),"sections_selected":sections_selected,"selected_chunk_count":len(planned),"chunks_planned":len(planned),"reused_chunks":cache_hits,"processed_chunks":sum(x["extraction_status"] not in {"blocked","planned"} for x in chunk_records),"chunks_processed":sum(x["extraction_status"] not in {"blocked","planned"} for x in chunk_records),"chunks_skipped":skipped,"api_calls_made":api_calls,"cache_hits":cache_hits,"provider_errors":provider_errors,"parse_errors":parse_errors,"fulltext_claim_count":len(claims),"fulltext_l1_claim_count":len(claims),"fulltext_l1_attempted_count":attempted,"fulltext_l1_success_count":success,"fulltext_l1_failed_count":failed,"fulltext_l1_skipped_count":skipped_count,"fulltext_l1_provider":l1_provider,"fulltext_l1_model":l1_model,**{k:v for k,v in provider_diag.items() if k not in {"scope","provider","model"}},"cost_estimate":None,"limit_hit":limit_hit,"limit_type":"max_total_or_per_paper_chunks" if limit_hit else None,"skipped_remaining_chunks":skipped,"prompt_version":PROMPT_VERSION,"output_schema_version":OUTPUT_SCHEMA_VERSION,"extractor_version":EXTRACTOR_VERSION,"chunker_version":CHUNKER_VERSION,"chunker_config_hash":chunker_config_hash}
+    (artifacts/"l35_fulltext_l1_claims.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in claims),encoding="utf-8"); (artifacts/"l35_fulltext_l1_chunks.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in chunk_records),encoding="utf-8");(artifacts/"l35_fulltext_l1_execution_records.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in execution_records),encoding="utf-8");(artifacts/"l35_fulltext_l1_cache_lineage.jsonl").write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in lineage_records),encoding="utf-8"); (artifacts/"l35_fulltext_l1_summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return {"summary":summary,"claims":claims,"chunks":chunk_records}
