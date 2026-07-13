@@ -18,7 +18,7 @@ RELATION_LABELS={
     "regulates":"调节","modulates":"调节","affects":"影响",
     "associated_with":"相关","correlates_with":"相关",
 }
-CONTEXT_FIELDS=("species","cell_type","tissue","disease_or_cancer_type","treatment","dose","time","genotype","localization")
+CONTEXT_FIELDS=("species","cell_type","tissue","disease_or_cancer_type","treatment","dose","time","duration","genotype","localization","intervention_type","intervention_target","control_group","model_system","assay_method","measured_endpoint","validation_design","reasoning_trace_status")
 
 def _norm(value):
     return str(value or "").strip().casefold()
@@ -90,7 +90,7 @@ class DossierProjection:
         conflicts=self._conflicts_for(triple)
         review=self.review_target(did)
         paths=self.paths(did,{"limit":["8"]})["items"]
-        return {**self._summary_for(triple),"dossier_id":did,"summary":self._coverage_summary(triple,context,conflicts,review),"evidence_groups":evidence,"context_summary":context["summary"],"conflict_summary":self._conflict_summary(conflicts),"review_summary":self._review_summary(review),"related_paths":paths,"badges":self._badges(triple,conflicts,review)}
+        return {**self._summary_for(triple),"dossier_id":did,"summary":self._coverage_summary(triple,context,conflicts,review),"evidence_groups":evidence,"reasoning_traces":self.reasoning(did)["items"],"context_summary":context["summary"],"conflict_summary":self._conflict_summary(conflicts),"review_summary":self._review_summary(review),"related_paths":paths,"badges":self._badges(triple,conflicts,review)}
 
     def evidence(self,dossier_id):
         triple=self.by_id.get(self.resolve(dossier_id) or "")
@@ -126,6 +126,21 @@ class DossierProjection:
             rows.append(row)
         differences={field:sorted({r[field] for r in rows}) for field in (*CONTEXT_FIELDS,"direction","source_scope","section_title","evidence_class") if len({r[field] for r in rows})>1}
         return {"dossier_id":dossier_id_for(triple),"columns":["paper_title","pmid","pmcid","case_id","source_scope","section_title",*CONTEXT_FIELDS,"direction","evidence_class","classification_reason"],"items":rows,"total":len(rows),"summary":{"missing_value_label":MISSING,"differing_fields":differences,"row_count":len(rows)}}
+
+    def reasoning(self,dossier_id):
+        triple=self.by_id.get(self.resolve(dossier_id) or "")
+        if not triple:return None
+        items=[];seen=set()
+        for e in self.api.evidence_by_triple.get(triple.get("triple_id"),[]):
+            trace=e.get("reasoning_trace") if isinstance(e.get("reasoning_trace"),dict) else None
+            if not trace:
+                continue
+            rid=trace.get("reasoning_trace_id") or e.get("claim_id")
+            if rid in seen:
+                continue
+            seen.add(rid)
+            items.append({"reasoning_trace_id":rid,"claim_id":trace.get("claim_id"),"trace_status":trace.get("trace_status"),"claim_identity_hash":trace.get("claim_identity_hash"),"source_scope":trace.get("source_scope"),"pmid":trace.get("pmid"),"pmcid":trace.get("pmcid"),"strength_profile":trace.get("strength_profile") or {},"strength_level":trace.get("strength_level"),"steps":trace.get("reasoning_steps") or [],"author_conclusion":trace.get("author_conclusion") or {},"missing_links":trace.get("missing_links") or []})
+        return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"missing_message":"该版本未生成推理链" if not items else None}
 
     def audit(self):
         by_semantic={}
@@ -236,4 +251,4 @@ class DossierProjection:
         for conflict in self._conflicts_for(triple):
             if conflict.get("record_type")=="non_comparable_direction_pair":
                 evidence_class="opposing_or_differing";reason="conditions_differ_non_comparable_direction_pair";break
-        return {"direction":direction,"source_scope":e.get("source_scope"),"section":e.get("section_title"),"context":e.get("context") if isinstance(e.get("context"),dict) else {},"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"evidence_sentence":sentence,"evidence_class":evidence_class,"classification_reason":reason,"extracted":{"subject":triple.get("subject_display_label"),"relation":triple.get("relation_normalized"),"object":triple.get("object_display_label")},"case_id":e.get("case_id"),"source_file":e.get("source_file"),"source_line":e.get("source_line")}
+        return {"direction":direction,"source_scope":e.get("source_scope"),"section":e.get("section_title"),"context":e.get("context") if isinstance(e.get("context"),dict) else {},"reasoning_trace_status":(e.get("reasoning_trace") or {}).get("trace_status") if isinstance(e.get("reasoning_trace"),dict) else None,"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"evidence_sentence":sentence,"evidence_class":evidence_class,"classification_reason":reason,"extracted":{"subject":triple.get("subject_display_label"),"relation":triple.get("relation_normalized"),"object":triple.get("object_display_label")},"case_id":e.get("case_id"),"source_file":e.get("source_file"),"source_line":e.get("source_line")}

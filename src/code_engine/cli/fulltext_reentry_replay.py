@@ -24,6 +24,12 @@ FULLTEXT_REUSED_ARTIFACTS = (
     "l35_fulltext_discovery_execution_records.jsonl",
     "fulltext_candidate_bridge_audit.jsonl",
     "pmcid_integrity_audit.jsonl",
+    "fulltext_claim_passage_index.jsonl",
+    "fulltext_reasoning_traces.jsonl",
+    "fulltext_reasoning_trace_summary.json",
+    "fulltext_reasoning_trace_warnings.jsonl",
+    "fulltext_context_consolidations.jsonl",
+    "fulltext_context_consolidation_summary.json",
 )
 
 

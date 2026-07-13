@@ -164,6 +164,8 @@ class ExplorerAPI:
                 value=self.dossiers.evidence(tail.removesuffix("/evidence"))
             elif tail.endswith("/context-matrix"):
                 value=self.dossiers.context_matrix(tail.removesuffix("/context-matrix"))
+            elif tail.endswith("/reasoning"):
+                value=self.dossiers.reasoning(tail.removesuffix("/reasoning"))
             elif tail.endswith("/paths"):
                 value=self.dossiers.paths(tail.removesuffix("/paths"),params)
             elif tail.endswith("/review-target"):

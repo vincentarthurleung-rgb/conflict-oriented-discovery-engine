@@ -5,6 +5,12 @@ fs.mkdirSync('test-results/screenshots', { recursive: true });
 
 const password = 'correct horse battery staple';
 
+async function selectOptionContaining(page, selector, text) {
+  const option = page.locator(`${selector} option`).filter({ hasText: text }).first();
+  await expect(option).toHaveCount(1);
+  await page.locator(selector).selectOption(await option.getAttribute('value'));
+}
+
 async function login(page, username, displayName) {
   await page.goto('/login');
   await page.getByLabel('Username').fill(username);
@@ -196,8 +202,11 @@ test('login, discover, role gates, and 200 percent zoom remain usable', async ({
   await ownerPage.screenshot({ path: 'test-results/screenshots/discover-1366.png' });
   expect((await ownerPage.goto('/console')).status()).toBe(403);
   await ownerPage.goto('/graph');
+  await expect(ownerPage.locator('#graph-case-overview')).toContainText('研究问题概览');
   await ownerPage.evaluate(() => { document.body.style.zoom = '200%'; });
-  await expect(ownerPage.getByRole('heading', { name: '研究问题概览' })).toBeVisible();
+  await expect(ownerPage.getByRole('heading', { name: '全局证据地图' })).toBeVisible();
+  await ownerPage.locator('#graph-case-overview').scrollIntoViewIfNeeded();
+  await expect(ownerPage.locator('#graph-case-overview')).toBeVisible();
   const overflow = await ownerPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await ownerPage.screenshot({ path: 'test-results/screenshots/graph-overview-zoom-200.png', fullPage: true });
@@ -214,8 +223,10 @@ test('login, discover, role gates, and 200 percent zoom remain usable', async ({
   const developerPage = await developerContext.newPage();
   await login(developerPage, 'adjudicator', 'Adjudicator');
   expect((await developerPage.goto('/console')).status()).toBe(200);
-  await expect(developerPage.getByRole('heading', { name: 'Developer Console' })).toBeVisible();
-  await expect(developerPage.locator('body')).toContainText('source_file');
+  await expect(developerPage.getByRole('heading', { name: '开发者工具' })).toBeVisible();
+  await expect(developerPage.locator('body')).toContainText('triple_id');
+  await expect(developerPage.locator('body')).toContainText('entity_id');
+  await expect(developerPage.locator('body')).toContainText('display_priority_score');
   await developerContext.close();
 });
 
@@ -247,7 +258,8 @@ test('owner completes access management and Pilot creation in the temporary data
   row = page.getByRole('row').filter({ hasText: 'browser-managed' });
   page.once('dialog', dialog => dialog.accept());
   await row.getByRole('button', { name: 'Enable' }).click();
-  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('enabled');
+  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('pending_first_login');
+  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' }).getByRole('button', { name: 'Disable' })).toBeVisible();
   row = page.getByRole('row').filter({ hasText: 'browser-managed' });
   page.once('dialog', dialog => dialog.accept());
   await row.getByRole('button', { name: 'Revoke sessions' }).click();
@@ -267,9 +279,9 @@ test('owner completes access management and Pilot creation in the temporary data
 
   await page.goto('/owner/projects');
   await page.locator('#pilot-name').fill('Browser Created Pilot');
-  await page.locator('#pilot-primary').selectOption({ label: /primary/ });
-  await page.locator('#pilot-secondary').selectOption({ label: /secondary/ });
-  await page.locator('#pilot-adjudicator').selectOption({ label: /adjudicator/ });
+  await selectOptionContaining(page, '#pilot-primary', 'primary');
+  await selectOptionContaining(page, '#pilot-secondary', 'secondary');
+  await selectOptionContaining(page, '#pilot-adjudicator', 'adjudicator');
   await page.locator('#pilot-batch').fill('1');
   await page.getByRole('button', { name: 'Preview assignments' }).click();
   await expect(page.locator('#pilot-preview')).toContainText('Preview');

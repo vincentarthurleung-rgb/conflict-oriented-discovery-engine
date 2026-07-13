@@ -60,7 +60,7 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
 
     def test_force_stage_invalidates_downstream_only(self):
         FakeOrchestrator().run(self.request);forced=CaseToAtlasRequest(**{**self.request.__dict__,"force_stages":frozenset({"reentry"})});runner=FakeOrchestrator();runner.run(forced)
-        self.assertEqual(runner.calls,list(STAGES[3:]))
+        self.assertEqual(runner.calls,list(STAGES[STAGES.index("reentry"):]))
 
     def test_search_plan_change_invalidates_everything(self):
         FakeOrchestrator().run(self.request);payload=json.loads(self.plan.read_text());payload["paper_year_to"]=2021;self.plan.write_text(json.dumps(payload));runner=FakeOrchestrator();runner.run(self.request)

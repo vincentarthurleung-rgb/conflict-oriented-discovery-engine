@@ -9,7 +9,7 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
   --network
 ```
 
-It resolves the generated case profile and frozen search plan, runs the abstract base pipeline through candidate selection, performs authoritative PMID→PMCID repair, retrieves PMC OA fulltext, runs Fulltext L1, performs v5 re-entry, publishes `atlas_handoff_v1`, globally synchronizes all current cases, refreshes Atlas, verifies evaluation-state safety, and confirms a second sync is a no-op.
+It resolves the generated case profile and frozen search plan, runs the abstract base pipeline through candidate selection, performs authoritative PMID→PMCID repair, retrieves PMC OA fulltext, runs Fulltext L1, extracts fulltext claim-centered reasoning traces, consolidates experimental context, performs v5 re-entry, publishes `atlas_handoff_v1`, globally synchronizes all current cases, refreshes Atlas, verifies evaluation-state safety, and confirms a second sync is a no-op.
 
 ## Resume and cache behavior
 
@@ -25,7 +25,28 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
   --force-stage fulltext_l1 --force-stage reentry
 ```
 
-Stable stage names are `base_run`, `pmcid_repair`, `fulltext_l1`, `reentry`, `handoff`, `atlas_sync`, and `verification`.
+Stable stage names are `base_run`, `pmcid_repair`, `fulltext_l1`, `fulltext_reasoning_trace`, `fulltext_context_consolidation`, `reentry`, `handoff`, `atlas_sync`, and `verification`.
+
+Run reasoning and downstream stages without re-running Fulltext L1:
+
+```bash
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
+  --case-id <case_id> \
+  --from-stage fulltext_reasoning_trace \
+  --to-stage atlas_sync \
+  --api \
+  --network
+```
+
+Rebuild only consolidated context and downstream Atlas outputs offline:
+
+```bash
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
+  --case-id <case_id> \
+  --from-stage fulltext_context_consolidation \
+  --to-stage atlas_sync \
+  --offline
+```
 
 ## Read-only planning
 
@@ -34,7 +55,7 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
   --case-id <case_id> --api --network --dry-run
 ```
 
-Dry-run does not create orchestration files, call the network/model, or write SQLite. It reports resolved package paths, reusable/invalid stages, expected Abstract/Fulltext L1 use, existing handoff/ingestion state, and current Atlas case count.
+Dry-run does not create orchestration files, call the network/model, or write SQLite. It reports resolved package paths, reusable/invalid stages, expected Abstract/Fulltext L1 and reasoning use, reasoning cache hits, context rebuild status, existing handoff/ingestion state, and current Atlas case count.
 
 Use `--stop-after <stage>` for controlled development, `--no-atlas-sync` to stop after handoff, or `--no-publish-handoff` to retain only System A outputs. `--no-resume` explicitly invalidates the full chain while retaining historical directories.
 

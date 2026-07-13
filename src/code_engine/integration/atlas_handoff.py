@@ -28,6 +28,11 @@ OPTIONAL_ARTIFACTS = {
     "paper_manifest": "artifacts/run_paper_manifest.jsonl",
     "reentry_audit": "artifacts/fulltext_reentry_audit.jsonl",
     "conflict_confirmations": "artifacts/l35_fulltext_conflict_confirmations.jsonl",
+    "fulltext_claim_passage_index": "artifacts/fulltext_claim_passage_index.jsonl",
+    "fulltext_reasoning_traces": "artifacts/fulltext_reasoning_traces.jsonl",
+    "fulltext_reasoning_trace_summary": "artifacts/fulltext_reasoning_trace_summary.json",
+    "fulltext_context_consolidations": "artifacts/fulltext_context_consolidations.jsonl",
+    "fulltext_context_consolidation_summary": "artifacts/fulltext_context_consolidation_summary.json",
 }
 
 
@@ -233,6 +238,13 @@ def build_handoff_manifest(
             "exploratory_graph_eligible_count": exploratory,
             "conflict_eligible_count": conflict,
         },
+        "available_capabilities": [
+            "fulltext_claims",
+            *(
+                ["reasoning_traces", "experimental_context", "dossier_reasoning_view"]
+                if "fulltext_reasoning_traces" in artifact_specs else []
+            ),
+        ],
         "system_a_git_commit": _git_commit(),
         "configuration_hash": hashlib.sha256(canonical_json(configuration_material)).hexdigest(),
         "generated_at": completed_at or datetime.now(timezone.utc).isoformat(),

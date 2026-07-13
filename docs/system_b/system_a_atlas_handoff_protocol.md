@@ -12,7 +12,17 @@ The lower-level publisher described below is normally invoked by this orchestrat
 
 A completed run publishes `artifacts/atlas_handoff_manifest.json` first and `artifacts/ATLAS_READY` last. Both are written through a temporary file, fsynced, and switched with `os.replace`. The marker contains the schema version and exact manifest SHA-256. Repeating publication of identical bytes is a no-op.
 
-The manifest identifies the case, source run, prediction/profile/adapter versions, relative lineage, git/configuration provenance, timestamps, lane counts, and each artifact's relative path, SHA-256, byte size, JSONL record count, and required flag. Absolute paths, backslashes, `..`, paths outside the allowed run root, malformed JSON/JSONL, hash mismatch, unknown schema, incomplete status, and lane-accounting mismatch are rejected. Optional missing artifacts are reported; required missing artifacts block publication.
+The manifest identifies the case, source run, prediction/profile/adapter versions, relative lineage, git/configuration provenance, timestamps, lane counts, available capabilities, and each artifact's relative path, SHA-256, byte size, JSONL record count, and required flag. Absolute paths, backslashes, `..`, paths outside the allowed run root, malformed JSON/JSONL, hash mismatch, unknown schema, incomplete status, and lane-accounting mismatch are rejected. Optional missing artifacts are reported; required missing artifacts block publication.
+
+Optional fulltext reasoning artifacts may be present:
+
+- `fulltext_claim_passage_index`
+- `fulltext_reasoning_traces`
+- `fulltext_reasoning_trace_summary`
+- `fulltext_context_consolidations`
+- `fulltext_context_consolidation_summary`
+
+When present, capabilities include `reasoning_traces`, `experimental_context`, and `dossier_reasoning_view`. Historical handoffs without these artifacts remain valid.
 
 The v5 invariant is:
 

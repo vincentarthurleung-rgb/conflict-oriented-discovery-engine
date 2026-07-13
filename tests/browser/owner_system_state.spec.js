@@ -7,8 +7,15 @@ async function login(page) {
   await page.goto('/login');
   await page.getByLabel('Username').fill(ownerUser);
   await page.getByLabel('Password').fill(ownerPassword);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await Promise.all([
+    page.waitForURL(url => url.pathname !== '/login', { timeout: 10000 }),
+    page.getByRole('button', { name: 'Sign in' }).click(),
+  ]);
   await expect(page.locator('#current-user')).toContainText('Owner');
+  await expect.poll(async () => page.evaluate(async () => {
+    const response = await fetch('/api/session', { credentials: 'same-origin' });
+    return response.status;
+  })).toBe(200);
 }
 
 test('owner can inspect system state without placeholder zeroes', async ({ page }) => {

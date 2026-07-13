@@ -23,6 +23,13 @@ CONTEXT_ALIASES = {
     "localization": ("localization",),
     "assay_method": ("assay_method", "assay_or_readout", "assay"),
     "outcome_definition": ("outcome_definition", "outcome"),
+    "measured_endpoint": ("measured_endpoint", "outcome_definition", "outcome"),
+    "intervention_type": ("intervention_type", "treatment", "intervention"),
+    "intervention_target": ("intervention_target",),
+    "control_group": ("control_group",),
+    "model_system": ("model_system",),
+    "validation_design": ("validation_design",),
+    "reasoning_trace_status": ("reasoning_trace_status", "trace_status"),
     "disease_stage": ("disease_stage", "stage"),
 }
 FORBIDDEN_GRAPH_RELATIONS = {"expression_state", "association", "comparison", "no_effect"}
@@ -69,6 +76,41 @@ def _context(row: dict) -> dict[str, Any]:
     return result
 
 
+def _optional_jsonl(validated: dict[str, Any], logical_name: str) -> list[dict[str, Any]]:
+    manifest = validated["manifest"]
+    spec = manifest.get("artifacts", {}).get(logical_name)
+    if not spec:
+        return []
+    path = resolve_artifact(Path(validated["run_dir"]), spec["relative_path"])
+    rows = []
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            value = json.loads(line)
+            if isinstance(value, dict):
+                rows.append(value)
+    return rows
+
+
+def _first_context_value(values: Any) -> Any:
+    if isinstance(values, list):
+        return values[0] if values else None
+    return values
+
+
+def _reasoning_context_for(claim_id: Any, consolidations: dict[str, dict[str, Any]], traces: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    cons = consolidations.get(str(claim_id)) or {}
+    trace = traces.get(str(claim_id)) or {}
+    consolidated = cons.get("consolidated_context") if isinstance(cons.get("consolidated_context"), dict) else {}
+    row = {key: _first_context_value(value) for key, value in consolidated.items()}
+    row["reasoning_trace_status"] = trace.get("trace_status") or cons.get("trace_status")
+    row["reasoning_trace_id"] = trace.get("reasoning_trace_id") or cons.get("reasoning_trace_id")
+    row["reasoning_strength_profile"] = trace.get("strength_profile") or cons.get("strength_profile") or {}
+    row["field_provenance"] = cons.get("field_provenance") or {}
+    return {key: value for key, value in row.items() if value not in (None, "", [], {})}
+
+
 def _provenance(row: dict, *, case_id: str, source_run_id: str, logical_name: str, artifact_hash: str, index: int) -> dict:
     return {
         "case_id": case_id,
@@ -109,6 +151,8 @@ class FulltextReentryV5Adapter:
         run = Path(validated["run_dir"])
         case_id = manifest["case_id"]
         source_run_id = manifest["source_run_id"]
+        reasoning_traces = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_reasoning_traces")}
+        consolidations = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_context_consolidations")}
         records = []
         for lane, relative in LANE_FILES.items():
             spec = manifest["artifacts"][f"lane_{lane}"]
@@ -136,6 +180,8 @@ class FulltextReentryV5Adapter:
             triple_shape = {"subject_id": subject_id or str(row.get("subject") or ""), "relation_normalized": relation or "", "object_id": object_id or str(row.get("object") or ""), "direction": row.get("direction")}
             dossier_id = dossier_id_for(triple_shape)
             provenance = _provenance(row, case_id=case_id, source_run_id=source_run_id, logical_name=logical_name, artifact_hash=artifact_hash, index=index)
+            reasoning_context = _reasoning_context_for(row.get("claim_id"), consolidations, reasoning_traces)
+            combined_context = {**_context(row), **reasoning_context}
             evidence = {
                 **provenance,
                 "dossier_id": dossier_id,
@@ -160,7 +206,8 @@ class FulltextReentryV5Adapter:
                 "subject": subject,
                 "relation": relation,
                 "object": obj,
-                "context": _context(row),
+                "context": combined_context,
+                "reasoning_trace": reasoning_traces.get(str(row.get("claim_id"))),
                 "source_scope": row.get("source_scope"),
                 "direction": row.get("direction"),
             }
@@ -182,8 +229,7 @@ class FulltextReentryV5Adapter:
             group["evidence_count"] += 1
             group["fulltext_evidence_count"] += 1
             group["display_priority_score_v2"] = group["evidence_count"]
-
-            context = {**provenance, "dossier_id": dossier_id, "evidence_lane": row.get("evidence_lane"), **_context(row)}
+            context = {**provenance, "dossier_id": dossier_id, "evidence_lane": row.get("evidence_lane"), **combined_context}
             context_rows.append(context)
             source_key_material = [prediction_run_id, case_id, artifact_hash, row.get("claim_id") or provenance["source_record_hash"]]
             claim_key = _canonical_hash(source_key_material + ["claim_review_v1", "1"])
@@ -191,9 +237,11 @@ class FulltextReentryV5Adapter:
             context_key = _canonical_hash(source_key_material + ["context_attribution_v1", "1"])
             context_candidates.append({"source_key": context_key, "schema_id": "context_attribution_v1", "schema_version": "1", "prediction_run_id": prediction_run_id, "case_id": case_id, "dossier_id": dossier_id, "claim_id": row.get("claim_id"), "source_artifact_hash": artifact_hash, "payload": context})
             if _graph_eligible(row):
-                graph_records.append({**evidence, "subject_id": subject_id, "subject_entity_type": subject_type, "object_id": object_id, "object_entity_type": object_type, "prediction_run_id": prediction_run_id, "edge_scope": "formal" if row.get("conflict_eligible") is True else "exploratory"})
+                graph_evidence = {key: value for key, value in evidence.items() if key != "reasoning_trace"}
+                graph_records.append({**graph_evidence, "subject_id": subject_id, "subject_entity_type": subject_type, "object_id": object_id, "object_entity_type": object_type, "prediction_run_id": prediction_run_id, "edge_scope": "formal" if row.get("conflict_eligible") is True else "exploratory"})
             if row.get("conflict_eligible") is True:
-                conflict_predictions.append({**evidence, "prediction_run_id": prediction_run_id, "edge_scope": "formal"})
+                conflict_evidence = {key: value for key, value in evidence.items() if key != "reasoning_trace"}
+                conflict_predictions.append({**conflict_evidence, "prediction_run_id": prediction_run_id, "edge_scope": "formal"})
 
         exploratory, display = self._display_projection(graph_records, prediction_run_id)
         dossier_index = {"items": sorted(dossier_groups.values(), key=lambda row: row["triple_id"]), "dossier_count": len(dossier_groups)}
@@ -233,6 +281,6 @@ class FulltextReentryV5Adapter:
             exploratory.append({**triple, "supporting_evidence_count": len(evidence), "case_coverage": len(triple["case_ids"])})
             for row in evidence:
                 evidence_links.append({**row, "triple_id": triple_id})
-                contexts.append({"triple_id": triple_id, "case_id": row["case_id"], "pmid": row.get("pmid"), "pmcid": row.get("pmcid"), "paper_title": row.get("paper_title"), "evidence_sentence": row.get("evidence_sentence"), **row.get("context", {})})
+                contexts.append({"triple_id": triple_id, "case_id": row["case_id"], "pmid": row.get("pmid"), "pmcid": row.get("pmcid"), "paper_title": row.get("paper_title"), "evidence_sentence": row.get("evidence_sentence"), **row.get("context", {}), **_reasoning_context_for(row.get("claim_id"), {}, {str(row.get("claim_id")): row.get("reasoning_trace") or {}})})
         case_focused = [{"case_id": case_id, "triple_id": triple["triple_id"]} for triple in triples for case_id in triple["case_ids"]]
         return exploratory, {"display_entities_v2": sorted(entities.values(), key=lambda row: row["entity_id"]), "display_triples_v2": triples, "display_chains_v2": [], "case_focused_triples": case_focused, "case_focused_chains": [], "triple_evidence_links": evidence_links, "triple_contexts": contexts, "validator_annotations": [], "conflict_lens_records": []}

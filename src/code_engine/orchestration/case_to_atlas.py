@@ -10,6 +10,14 @@ from typing import Any
 from code_engine.cli.fulltext_bridge_replay import replay_fulltext_bridge_from_run
 from code_engine.cli.fulltext_reentry_replay import run_replay
 from code_engine.cli.repair_fulltext_candidate_pmcids import repair_fulltext_candidate_pmcids
+from code_engine.fulltext.reasoning_trace import (
+    CONTEXT_RULE_VERSION,
+    EXTRACTOR_CODE_VERSION,
+    PROMPT_VERSION,
+    RETRIEVAL_CONFIG_VERSION,
+    run_fulltext_context_consolidation_stage,
+    run_fulltext_reasoning_trace_stage,
+)
 from code_engine.integration.atlas_handoff import publish_atlas_handoff, sha256_file, validate_handoff
 from code_engine.orchestration.models import STAGES, CaseToAtlasRequest, CaseToAtlasResult
 from code_engine.orchestration.state_store import OrchestrationStateStore, canonical_bytes, utcnow
@@ -20,6 +28,7 @@ from code_engine.system_b.system_a_sync import sync_system_a
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 ERROR_CODES = {"base_run":"BASE_RUN_FAILED", "pmcid_repair":"PMCID_REPAIR_FAILED", "fulltext_l1":"FULLTEXT_L1_FAILED",
+               "fulltext_reasoning_trace":"FULLTEXT_REASONING_TRACE_FAILED", "fulltext_context_consolidation":"FULLTEXT_CONTEXT_CONSOLIDATION_FAILED",
                "reentry":"REENTRY_FAILED", "handoff":"HANDOFF_VALIDATION_FAILED", "atlas_sync":"ATLAS_SYNC_FAILED",
                "verification":"PROJECTION_VERIFICATION_FAILED"}
 
@@ -52,6 +61,10 @@ class CaseToAtlasOrchestrator:
         invalid = sorted(set(resolved.force_stages) - set(STAGES))
         if invalid: raise OrchestrationError("INVALID_FORCE_STAGE", ", ".join(invalid))
         if resolved.stop_after and resolved.stop_after not in STAGES: raise OrchestrationError("INVALID_STOP_STAGE", resolved.stop_after)
+        if resolved.from_stage and resolved.from_stage not in STAGES: raise OrchestrationError("INVALID_FROM_STAGE", resolved.from_stage)
+        if resolved.to_stage and resolved.to_stage not in STAGES: raise OrchestrationError("INVALID_TO_STAGE", resolved.to_stage)
+        if resolved.from_stage and resolved.to_stage and STAGES.index(resolved.from_stage) > STAGES.index(resolved.to_stage):
+            raise OrchestrationError("INVALID_STAGE_RANGE", f"{resolved.from_stage}>{resolved.to_stage}")
         if not resolved.case_profile_path.is_file() or not resolved.search_plan_path.is_file():
             raise OrchestrationError("CASE_PACKAGE_MISSING", f"expected {resolved.case_profile_path} and {resolved.search_plan_path}")
         try:
@@ -75,20 +88,32 @@ class CaseToAtlasOrchestrator:
         current_cases = []
         try: current_cases = sorted(x["case_id"] for x in current_projection(request.system_b_output_root)[2].get("source_manifests", []))
         except (OSError, ValueError, KeyError, json.JSONDecodeError): pass
-        stages=[]; invalidated=False
+        stages=[]; invalidated=False; from_index=STAGES.index(request.from_stage) if request.from_stage else 0; to_index=STAGES.index(request.to_stage or request.stop_after) if (request.to_stage or request.stop_after) else len(STAGES)-1
         for index, name in enumerate(STAGES):
             record=(state or {}).get("stages",{}).get(name,{})
             forced = any(STAGES.index(forced) <= index for forced in request.force_stages)
             input_hash=self._input_hash(name,request,state or {})
             reusable=bool(request.resume and not invalidated and not forced and self._record_valid(name,record,input_hash,request))
-            if not reusable: invalidated=True
-            stages.append({"stage":name,"action":"reuse" if reusable else "run","reason":"valid_completed_stage" if reusable else "forced" if forced else "missing_or_invalid","input_hash":input_hash})
+            if index < from_index:
+                action = "reuse" if reusable else "precondition_missing"
+                reason = "before_from_stage"
+            elif index > to_index:
+                action = "skip"
+                reason = "after_to_stage"
+            else:
+                if not reusable: invalidated=True
+                action = "reuse" if reusable else "run"
+                reason = "valid_completed_stage" if reusable else "forced" if forced else "missing_or_invalid"
+            stages.append({"stage":name,"action":action,"reason":reason,"input_hash":input_hash})
         return {"schema_version":"case_to_atlas_plan_v1","orchestration_id":oid,"case_id":request.case_id,
                 "case_profile":str(request.case_profile_path),"frozen_search_plan":str(request.search_plan_path),"dry_run":request.dry_run,
                 "stages":stages,"reusable_stages":[x["stage"] for x in stages if x["action"]=="reuse"],
                 "invalidated_stages":[x["stage"] for x in stages if x["action"]=="run"],
                 "abstract_l1_api_expected":any(x["stage"]=="base_run" and x["action"]=="run" for x in stages) and request.api_enabled,
                 "fulltext_l1_api_expected":any(x["stage"]=="fulltext_l1" and x["action"]=="run" for x in stages) and request.api_enabled,
+                "reasoning_api_expected":any(x["stage"]=="fulltext_reasoning_trace" and x["action"]=="run" for x in stages) and request.api_enabled and request.network_enabled,
+                "reasoning_cache_hits":(state or {}).get("stages",{}).get("fulltext_reasoning_trace",{}).get("cache_hits",0),
+                "context_consolidation_rebuild_expected":any(x["stage"]=="fulltext_context_consolidation" and x["action"]=="run" for x in stages),
                 "handoff_exists":bool((state or {}).get("stages",{}).get("handoff",{}).get("status")=="completed"),
                 "ingestion_exists":bool((state or {}).get("stages",{}).get("atlas_sync",{}).get("status")=="completed"),
                 "current_projection_case_count":len(current_cases),"current_projection_cases":current_cases,
@@ -103,7 +128,7 @@ class CaseToAtlasOrchestrator:
             planned=self.plan(request)
             return CaseToAtlasResult(orchestration_id=planned["orchestration_id"],status="dry_run",case_id=request.case_id,reused_stages=planned["reusable_stages"],verification=planned)
         oid=self.orchestration_id(request);store=OrchestrationStateStore(request.runs_root,oid);existing=store.read_state()
-        if existing: state=existing
+        if existing: state=self._migrate_state(existing)
         else: state=self._new_state(oid,request)
         if not state.get("safety_baseline"): state["safety_baseline"]=evaluation_counts(request.database_url)
         if not state.get("prior_cases"):
@@ -112,12 +137,17 @@ class CaseToAtlasOrchestrator:
         store.write_request(request.to_dict());store.write_state(state)
         if not existing: store.append_event("planned",orchestration_id=oid,case_id=request.case_id)
         reused=[]; invalidated=not request.resume
-        stop_index=STAGES.index(request.stop_after) if request.stop_after else len(STAGES)-1
+        from_index=STAGES.index(request.from_stage) if request.from_stage else 0
+        stop_index=STAGES.index(request.to_stage or request.stop_after) if (request.to_stage or request.stop_after) else len(STAGES)-1
         for index,name in enumerate(STAGES):
             if index>stop_index: break
             record=state["stages"][name];forced=any(STAGES.index(stage)<=index for stage in request.force_stages)
             input_hash=self._input_hash(name,request,state)
             reusable=bool(not invalidated and not forced and self._record_valid(name,record,input_hash,request))
+            if index < from_index:
+                if not reusable:
+                    raise OrchestrationError("FROM_STAGE_PRECONDITION_MISSING", f"{name} is required before {request.from_stage}", stage=name, resume_from=name)
+                reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
             if reusable:
                 reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
             invalidated=True
@@ -131,6 +161,8 @@ class CaseToAtlasOrchestrator:
             if name in {"base_run","pmcid_repair","fulltext_l1","reentry"}:
                 if not record.get("output_run") or record.get("previous_input_hash") not in {None,input_hash} or record.get("last_status")=="completed" or (record.get("last_status")=="failed" and name!="base_run"):
                     record["output_run"]=str(self._output_path(request,oid,name,record["attempt"]))
+            elif name in {"fulltext_reasoning_trace","fulltext_context_consolidation"}:
+                record["output_run"]=state["stages"]["fulltext_l1"].get("output_run")
             record["previous_input_hash"]=input_hash;state.update(status="running",current_stage=name);store.write_state(state);store.append_event("stage_started",stage=name,attempt=record["attempt"],output_run=record.get("output_run"))
             try:
                 output=self._execute(name,request,state,record)
@@ -152,6 +184,12 @@ class CaseToAtlasOrchestrator:
     def _new_state(self, oid: str, request: CaseToAtlasRequest) -> dict:
         return {"schema_version":"case_to_atlas_orchestration_v1","orchestration_id":oid,"case_id":request.case_id,"status":"planned","current_stage":None,"created_at":utcnow(),"stages":{name:{"status":"pending","attempt":0} for name in STAGES},"safety_baseline":evaluation_counts(request.database_url),"prior_cases":[]}
 
+    def _migrate_state(self, state: dict) -> dict:
+        stages = state.setdefault("stages", {})
+        for name in STAGES:
+            stages.setdefault(name, {"status": "pending", "attempt": 0})
+        return state
+
     def _output_path(self, request: CaseToAtlasRequest, oid: str, stage: str, attempt: int) -> Path:
         return request.runs_root / f"{oid}_{request.case_id}_{stage}_v{attempt}"
 
@@ -162,8 +200,10 @@ class CaseToAtlasOrchestrator:
         if stage=="base_run": material={"profile":_file_hash(request.case_profile_path),"plan":_file_hash(request.search_plan_path),"api":request.api_enabled,"network":request.network_enabled,"abstract_l1_config":scientific_config["abstract_l1"],**provider}
         elif stage=="pmcid_repair": material={"base":self._output_identity(stages.get("base_run",{})),"network":request.network_enabled}
         elif stage=="fulltext_l1": material={"repair":self._output_identity(stages.get("pmcid_repair",{})),"profile":_file_hash(request.case_profile_path),"api":request.api_enabled,"network":request.network_enabled,"fulltext_l1_config":scientific_config["fulltext_l1"],**provider}
-        elif stage=="reentry": material={"base":self._output_identity(stages.get("base_run",{})),"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"schema":"fulltext_reentry_v5","reentry_config":scientific_config["reentry"]}
-        elif stage=="handoff": material={"reentry":self._output_identity(stages.get("reentry",{})),"schema":"atlas_handoff_v1"}
+        elif stage=="fulltext_reasoning_trace": material={"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"api":request.api_enabled,"network":request.network_enabled,"reasoning_config":scientific_config.get("fulltext_reasoning_trace","legacy_missing_reasoning_config"),**provider}
+        elif stage=="fulltext_context_consolidation": material={"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"reasoning":self._output_identity(stages.get("fulltext_reasoning_trace",{})),"context_rules":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
+        elif stage=="reentry": material={"base":self._output_identity(stages.get("base_run",{})),"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"context":self._output_identity(stages.get("fulltext_context_consolidation",{})),"schema":"fulltext_reentry_v5","reentry_config":scientific_config["reentry"]}
+        elif stage=="handoff": material={"reentry":self._output_identity(stages.get("reentry",{})),"schema":"atlas_handoff_v1","reasoning_optional":scientific_config.get("fulltext_context_consolidation","legacy_missing_context_config")}
         elif stage=="atlas_sync":
             manifests=sorted((str(path),_file_hash(path)) for path in request.runs_root.glob("*/artifacts/atlas_handoff_manifest.json"));material={"manifests":manifests,"adapter":ADAPTER_VERSION,"output":str(request.system_b_output_root.resolve()),"database":request.database_url}
         else:
@@ -188,6 +228,16 @@ class CaseToAtlasOrchestrator:
                 "reentry": _file_hash(REPOSITORY_ROOT / "src/code_engine/fulltext/reentry.py"),
                 "adapter": _file_hash(REPOSITORY_ROOT / "src/code_engine/system_b/adapters/fulltext_reentry_v5.py"),
             }),
+            "fulltext_reasoning_trace": _hash({
+                "prompt_version": PROMPT_VERSION,
+                "retrieval_config_version": RETRIEVAL_CONFIG_VERSION,
+                "extractor_code_version": EXTRACTOR_CODE_VERSION,
+                "module": _file_hash(REPOSITORY_ROOT / "src/code_engine/fulltext/reasoning_trace.py"),
+            }),
+            "fulltext_context_consolidation": _hash({
+                "context_rule_version": CONTEXT_RULE_VERSION,
+                "module": _file_hash(REPOSITORY_ROOT / "src/code_engine/fulltext/reasoning_trace.py"),
+            }),
         }
 
     def _artifact_hash(self, stage: str, record: dict, request: CaseToAtlasRequest) -> str:
@@ -203,6 +253,10 @@ class CaseToAtlasOrchestrator:
             paths = [run / "pmcid_repair_manifest.json", run / "artifacts/pmcid_enrichment_audit.jsonl"]
         elif stage == "fulltext_l1":
             paths = [run / "fulltext_bridge_replay_manifest.json", run / "artifacts/l35_fulltext_l1_claims.jsonl", run / "artifacts/l35_fulltext_l1_summary.json"]
+        elif stage == "fulltext_reasoning_trace":
+            paths = [run / "artifacts/fulltext_claim_passage_index.jsonl", run / "artifacts/fulltext_reasoning_traces.jsonl", run / "artifacts/fulltext_reasoning_trace_summary.json"]
+        elif stage == "fulltext_context_consolidation":
+            paths = [run / "artifacts/fulltext_context_consolidations.jsonl", run / "artifacts/fulltext_context_consolidation_summary.json"]
         elif stage == "reentry":
             paths = [run / "fulltext_reentry_manifest.json"]
         elif stage == "handoff":
@@ -221,7 +275,7 @@ class CaseToAtlasOrchestrator:
 
     def _output_identity(self, record: dict) -> dict:
         path=Path(record.get("output_run") or "")
-        candidates=[path/"run_state.json",path/"pmcid_repair_manifest.json",path/"fulltext_bridge_replay_manifest.json",path/"fulltext_reentry_manifest.json",Path(record.get("manifest_path") or "")]
+        candidates=[path/"run_state.json",path/"pmcid_repair_manifest.json",path/"fulltext_bridge_replay_manifest.json",path/"artifacts/fulltext_reasoning_trace_summary.json",path/"artifacts/fulltext_context_consolidation_summary.json",path/"fulltext_reentry_manifest.json",Path(record.get("manifest_path") or "")]
         return {"path":str(path),"hash":next((_file_hash(item) for item in candidates if str(item) not in {".",""} and item.is_file()),"missing")}
 
     def _record_valid(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest) -> bool:
@@ -232,6 +286,12 @@ class CaseToAtlasOrchestrator:
                 run=Path(record["output_run"]);state=_read(run/"run_state.json");return state.get("steps",{}).get("fulltext_escalation",{}).get("status")=="completed" and any((run/"artifacts"/name).is_file() for name in ("fulltext_escalation_candidates.jsonl","fulltext_discovery_escalation_candidates.jsonl"))
             if stage=="pmcid_repair": return Path(record["output_run"],"pmcid_repair_manifest.json").is_file()
             if stage=="fulltext_l1": return _read(Path(record["output_run"])/"fulltext_bridge_replay_manifest.json").get("stage_summary",{}).get("status","").startswith("completed")
+            if stage=="fulltext_reasoning_trace":
+                summary=_read(Path(record["output_run"])/"artifacts/fulltext_reasoning_trace_summary.json")
+                return bool(summary.get("status_accounting_valid", True))
+            if stage=="fulltext_context_consolidation":
+                summary=_read(Path(record["output_run"])/"artifacts/fulltext_context_consolidation_summary.json")
+                return "consolidation_count" in summary
             if stage=="reentry": return _read(Path(record["output_run"])/"fulltext_reentry_manifest.json").get("status")=="completed"
             if stage=="handoff": validate_handoff(record["manifest_path"],runs_root=request.runs_root);return True
             if stage=="atlas_sync":
@@ -258,6 +318,13 @@ class CaseToAtlasOrchestrator:
             policy=profile.get("fulltext_policy") or {}
             result=replay_fulltext_bridge_from_run(case_id=request.case_id,source_run=state["stages"]["pmcid_repair"]["output_run"],output_run=record["output_run"],network=request.network_enabled,api=request.api_enabled,max_papers=int(policy.get("max_papers") or 20))
             summary=result.get("stage_summary",{});return {"result":result,"api_calls":summary.get("fulltext_l1_api_calls",0),"network_calls":result.get("retrieval_attempt_count",0),"cache_hits":summary.get("fulltext_l1_cache_hit_count",0)}
+        if name=="fulltext_reasoning_trace":
+            summary=run_fulltext_reasoning_trace_stage(record["output_run"],case_id=request.case_id,api_enabled=request.api_enabled,network_enabled=request.network_enabled,dry_run=False,force=name in request.force_stages)
+            if not summary.get("status_accounting_valid", True): raise ValueError("reasoning trace status accounting failed")
+            return {"summary":summary,"api_calls":summary.get("api_call_count",0),"cache_hits":summary.get("cache_hit_count",0)}
+        if name=="fulltext_context_consolidation":
+            summary=run_fulltext_context_consolidation_stage(record["output_run"],case_id=request.case_id)
+            return {"summary":summary,"api_calls":0,"cache_hits":0}
         if name=="reentry":
             result=run_replay(case_id=request.case_id,base_run=Path(state["stages"]["base_run"]["output_run"]),fulltext_run=Path(state["stages"]["fulltext_l1"]["output_run"]),output_root=request.runs_root,output_suffix="case_to_atlas_v5",output_run=Path(record["output_run"]),network=False,api=False,publish_atlas=False)
             return {"result":result,"claim_count":result.get("input_fulltext_claim_count",0)}

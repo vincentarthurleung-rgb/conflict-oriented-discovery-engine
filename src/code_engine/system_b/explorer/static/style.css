@@ -57,6 +57,8 @@ h4{margin:16px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06e
 .card.clickable:hover{border-color:#8bbfbb;box-shadow:var(--shadow);transform:translateY(-1px)}
 .metric strong{display:block;font-size:26px;color:var(--teal)}
 .metric-card,.card.metric{min-height:86px;padding:18px 20px}
+a.card.metric{color:inherit;text-decoration:none}
+a.card.metric:hover,a.card.metric:focus-visible{border-color:#8bbfbb;box-shadow:var(--shadow)}
 .muted,.meta{color:var(--muted);font-size:12px}
 .badge{display:inline-block;padding:3px 7px;border-radius:20px;background:var(--cyan);color:#265f60;font-size:11px;margin:2px}
 button.badge{border:0;cursor:pointer;font-family:inherit}

@@ -5,7 +5,17 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-STAGES = ("base_run", "pmcid_repair", "fulltext_l1", "reentry", "handoff", "atlas_sync", "verification")
+STAGES = (
+    "base_run",
+    "pmcid_repair",
+    "fulltext_l1",
+    "fulltext_reasoning_trace",
+    "fulltext_context_consolidation",
+    "reentry",
+    "handoff",
+    "atlas_sync",
+    "verification",
+)
 
 
 @dataclass(frozen=True)
@@ -21,6 +31,8 @@ class CaseToAtlasRequest:
     api_enabled: bool = False
     resume: bool = True
     force_stages: frozenset[str] = frozenset()
+    from_stage: str | None = None
+    to_stage: str | None = None
     stop_after: str | None = None
     publish_handoff: bool = True
     atlas_sync: bool = True
