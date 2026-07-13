@@ -13,6 +13,19 @@ from code_engine.system_b.annotation_schemas import schema_for_item_type
 from code_engine.system_b.annotation_schemas.render_projection import form_projection
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
+CASE_CATALOG = {
+    "emt_metastasis_drug_resistance_discovery_v1": ("EMT、转移与耐药", "上皮—间质转化如何影响肿瘤转移与药物耐受？", "emt"),
+    "ferroptosis_cancer_therapy_response_discovery_v1": ("铁死亡与治疗反应", "铁死亡机制如何改变肿瘤治疗反应？", "ferroptosis"),
+    "hif1a_hypoxia_cancer_response_discovery_v1": ("HIF-1α、缺氧与肿瘤反应", "缺氧与 HIF-1α 信号如何影响肿瘤反应？", "hif1a"),
+    "il6_stat3_cancer_response_discovery_v1": ("IL-6 / STAT3 与肿瘤反应", "IL-6–STAT3 信号如何影响肿瘤反应？", "il6-stat3"),
+    "nfkb_inflammation_cancer_response_discovery_v1": ("NF-κB、炎症与肿瘤", "NF-κB 介导的炎症如何影响肿瘤反应？", "nfkb"),
+    "pdl1_immune_checkpoint_cancer_response_discovery_v1": ("PD-L1 与免疫检查点", "PD-L1 相关机制如何影响肿瘤免疫反应？", "pdl1"),
+    "pi3k_akt_mtor_cancer_resistance_discovery_v1": ("PI3K–AKT–mTOR 与耐药", "PI3K–AKT–mTOR 通路如何参与肿瘤耐药？", "pi3k-akt-mtor"),
+    "ros_oxidative_stress_cancer_response_discovery_v1": ("ROS、氧化应激与肿瘤反应", "活性氧与氧化应激如何改变肿瘤反应？", "ros"),
+    "senescence_sasp_cancer_therapy_response_discovery_v1": ("细胞衰老、SASP 与治疗反应", "细胞衰老与 SASP 如何影响肿瘤治疗反应？", "senescence-sasp"),
+    "tp53_apoptosis_cancer_therapy_response_discovery_v1": ("TP53、凋亡与治疗反应", "TP53 与凋亡机制如何影响肿瘤治疗反应？", "tp53"),
+    "wnt_beta_catenin_cancer_stemness_immunity_discovery_v1": ("Wnt / β-catenin、干性与免疫", "Wnt / β-catenin 信号如何连接肿瘤干性与免疫反应？", "wnt-beta-catenin"),
+}
 LAYER_MAP = {
     "fulltext_l1_claim": "Fulltext Claims",
     "fulltext_reviewable_observation": "Fulltext Reviewable Observations",
@@ -76,6 +89,7 @@ class ExplorerAPI:
         self.annotation_status=self._annotation_status()
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])})
         self.graph=GraphProjection(self);self.dossiers=DossierProjection(self)
+        self.projection_manifest=_json(self.root/"projection_manifest.json")
 
     def _root_from_registry(self,configured):
         registry=_json(configured/"current_projection.json");relative=registry.get("projection_relative_path")
@@ -499,12 +513,40 @@ class ExplorerAPI:
 
     def _case_summary(self,case):
         triples=[x for x in self.case_triples if x["case_id"]==case]; chains=[x for x in self.case_chains if x["case_id"]==case]
-        return {"case_id":case,"display_triples_count":len(triples),"display_chains_count":len(chains),"fulltext_evidence_count":sum(x.get("case_fulltext_evidence_count",0) for x in triples),"non_comparable_records":sum(x.get("case_id")==case and x.get("record_type")=="non_comparable_direction_pair" for x in self.conflicts),"weak_candidates":sum(x.get("case_id")==case and x.get("record_type")=="weak_candidate" for x in self.conflicts),"review_queue_items":sum(x.get("case_id")==case for x in self.review)}
+        evidence=[x for rows in self.evidence_by_triple.values() for x in rows if x.get("case_id")==case]
+        contexts=[x for rows in self.context_by_triple.values() for x in rows if x.get("case_id")==case]
+        traces=[x.get("reasoning_trace") for x in evidence if isinstance(x.get("reasoning_trace"),dict)]
+        conflicts=[x for x in self.conflicts if x.get("case_id")==case]
+        annotations=sum(1 for x in self.review if x.get("case_id")==case and self.annotations.get(x.get("review_item_id")))
+        review_total=sum(x.get("case_id")==case for x in self.review)
+        title,question,short_name=CASE_CATALOG.get(case,(case.replace("_"," ").title(),"查看该研究问题下的机制证据。",case))
+        return {
+            "case_id":case,"short_name":short_name,"display_name":title,"research_question":question,
+            "display_triples_count":len(triples),"display_chains_count":len(chains),
+            "evidence_count":len(evidence),"fulltext_evidence_count":sum("full" in str(x.get("source_scope","")).casefold() for x in evidence),
+            "paper_count":len({x.get("pmid") or x.get("pmcid") or x.get("paper_title") for x in evidence if x.get("pmid") or x.get("pmcid") or x.get("paper_title")}),
+            "non_comparable_records":sum(x.get("record_type")=="non_comparable_direction_pair" for x in conflicts),
+            "weak_candidates":sum(x.get("record_type")=="weak_candidate" for x in conflicts),
+            "formal_conflict_count":sum(x.get("record_type")=="formal_hypothesis" for x in conflicts),
+            "review_queue_items":review_total,"reviewed_items":annotations,
+            "review_progress":round(annotations/review_total,4) if review_total else None,
+            "capabilities":{
+                "fulltext": "available" if evidence and any("full" in str(x.get("source_scope","")).casefold() for x in evidence) else "unavailable",
+                "reasoning": "available" if traces and all(x.get("trace_status") not in {None,"","invalid"} for x in traces) else "partial" if traces else "unavailable",
+                "context": "available" if contexts else "unavailable",
+                "reentry": "available" if evidence else "legacy_unknown",
+            },
+            "last_synced_at":self.projection_manifest.get("generated_at"),
+        }
 
     def _case(self,case):
         triples=sorted((x for x in self.case_triples if x["case_id"]==case),key=lambda x:x.get("case_display_rank",999)); chains=sorted((x for x in self.case_chains if x["case_id"]==case),key=lambda x:x.get("case_display_rank",999))
         entity_ids={tid for x in triples[:50] for tid in (self.triple_by_id.get(x["triple_id"],{}).get("subject_id"),self.triple_by_id.get(x["triple_id"],{}).get("object_id")) if tid}
-        return {**self._case_summary(case),"triples":triples[:150],"chains":chains[:300],"top_entities":sorted((self.entity_by_id[x] for x in entity_ids if x in self.entity_by_id),key=lambda x:-x.get("display_priority_score",0))[:20],"conflicts":[x for x in self.conflicts if x.get("case_id")==case],"review_progress":self.annotation_status}
+        dossiers=self.dossiers.list({"case_id":[case],"limit":["10"],"sort":["evidence"]})["items"]
+        contexts=[x for rows in self.context_by_triple.values() for x in rows if x.get("case_id")==case]
+        context_fields=("species","cell_type","tissue","treatment","dose","duration","assay_method")
+        common_context={field:Counter(str(x.get(field)) for x in contexts if x.get(field)).most_common(3) for field in context_fields}
+        return {**self._case_summary(case),"triples":triples[:150],"chains":chains[:300],"key_dossiers":dossiers,"common_context":common_context,"top_entities":sorted((self.entity_by_id[x] for x in entity_ids if x in self.entity_by_id),key=lambda x:-x.get("display_priority_score",0))[:20],"conflicts":[x for x in self.conflicts if x.get("case_id")==case]}
 
     def _entity(self,eid):
         entity=self.entity_by_id.get(eid)

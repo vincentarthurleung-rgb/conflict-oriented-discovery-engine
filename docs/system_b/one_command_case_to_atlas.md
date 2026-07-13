@@ -17,6 +17,8 @@ Resume is on by default. Control state is stored under `runs/_orchestration/<orc
 
 Stage reuse and content cache reuse are separate. Stage reuse skips the whole completed orchestration stage. Content cache reuse is lower level: a forced `fulltext_l1` stage may create a new output directory while still reusing compatible paper/chunk L1 cache entries and making zero provider calls.
 
+Reuse, recover, and no-op decisions are terminal execution actions. The real execution path consumes the same stage plan as dry-run; if the plan says `reuse`, `recover`, or `no_op`, the stage runner is not called, attempt is not incremented, `stage_started` is not written, and no output directory is allocated.
+
 An interrupted command can be repeated exactly. A failed Atlas sync resumes at sync without rerunning System A. A failed base run resumes its own `run_state.json`. Failed downstream attempts allocate a new output directory and retain prior artifacts.
 
 `base_run` is the abstract acquisition/L1/L2 and candidate-selection boundary for this one-command DAG. It is not equivalent to the legacy internal `fulltext_escalation` workflow step. In the current DAG, PMC repair, fulltext retrieval/L1, reasoning traces, and context consolidation run as independent downstream stages. A legacy `fulltext_escalation=skipped` or `not_requested` status can be valid when the formal base manifest/card completed and the PMCID-repair candidate artifacts exist.
@@ -34,6 +36,17 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
 Stable stage names are `base_run`, `pmcid_repair`, `fulltext_l1`, `fulltext_reasoning_trace`, `fulltext_context_consolidation`, `reentry`, `handoff`, `atlas_sync`, and `verification`.
 
 `--force-stage fulltext_l1` forces stage materialization, not cache bypass. A compatible cross-run Fulltext L1 chunk cache may still satisfy all chunks. Cache bypass requires an explicit cache-bypass option if one is added by the service; do not treat `--force-stage` as permission to discard content-addressed cache.
+
+For idempotency and cost-safety acceptance, use fail-closed reuse-only mode:
+
+```bash
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
+  --case-id <case_id> \
+  --reuse-only \
+  --json
+```
+
+`--reuse-only` allows local artifact validation, semantic hash checks, reuse metadata upgrades, and required state reconciliation. It forbids new scientific stage execution, new run directory allocation, API calls, and network calls. If any stage cannot be reused, the command fails instead of rerunning. `--reuse-only` takes precedence over `--api` and `--network`, and it cannot be combined with `--force-stage`.
 
 Run reasoning and downstream stages without re-running Fulltext L1:
 
@@ -82,6 +95,8 @@ Use `--stop-after <stage>` for controlled development, `--no-atlas-sync` to stop
 Failures return a structured error code and the first stage the identical next command will resume. Do not delete the orchestration directory to recover transient network failures.
 
 If duplicate API calls are suspected, inspect the dry-run stage decisions first, then compare `api_calls`/`network_calls` with `historical_api_calls`/`historical_network_calls` in JSON output. Current command calls must be zero for reused stages; historical counters are retained only for audit.
+
+If a previous bug left an interrupted fall-through output, keep that output on disk. The orchestrator can reconcile state by marking the interrupted output as abandoned, restoring the latest validated current output, and appending reconciliation events. Do not validate idempotency with real API keys; use `--reuse-only` first.
 
 The Python API used by future Flask/job-scheduler integrations is:
 

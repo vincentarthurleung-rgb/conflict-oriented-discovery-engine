@@ -10,6 +10,7 @@ from typing import Any
 from code_engine.extraction.l1_response import normalize_l1_json_response
 from code_engine.extraction.client_factory import diagnose_l1_provider
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PROMPT_VERSION = "fulltext_conflict_l1_v1"
 OUTPUT_SCHEMA_VERSION = "fulltext_l1_claim_schema_v1"
 EXTRACTOR_VERSION = "fulltext_l1_extractor_v1"
@@ -89,13 +90,22 @@ def fulltext_l1_cache_key(candidate: dict[str, Any], section: dict[str, Any], ch
     }
     return hashlib.sha256(json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
+def _shared_cache_enabled_for_run(run_dir: Path) -> bool:
+    resolved = Path(run_dir).resolve()
+    repo = REPOSITORY_ROOT.resolve()
+    if resolved == repo or repo in resolved.parents:
+        return True
+    return Path.cwd().resolve() != repo
+
 def run_fulltext_l1_extraction(*, run_dir: Path, fulltext_candidates_path: Path, parsed_articles_dir: Path,
     l1_provider: str, l1_model: str, api_enabled: bool, network_enabled: bool, max_papers: int=20,
     max_sections_per_paper: int=12, max_chunks_per_paper: int=24, max_chars_per_chunk: int=6000,
     max_total_chunks: int=200, section_policy: str="results_discussion_intro_only", dry_run: bool=False,
     client: Any|None=None, read_timeout_seconds: float=240, max_retries: int=1, reuse_selected_chunks: bool=True) -> dict[str, Any]:
     artifacts=Path(run_dir)/"artifacts"; cache_dir=artifacts/"cache/fulltext_l1"; cache_dir.mkdir(parents=True,exist_ok=True)
-    shared_cache_dir=Path("data/interim/cache/fulltext_l1"); shared_cache_dir.mkdir(parents=True,exist_ok=True)
+    shared_cache_enabled=_shared_cache_enabled_for_run(Path(run_dir))
+    shared_cache_dir=Path("data/interim/cache/fulltext_l1")
+    if shared_cache_enabled: shared_cache_dir.mkdir(parents=True,exist_ok=True)
     candidates=_jsonl(Path(fulltext_candidates_path))[:max_papers];claims=[];chunk_records=[];execution_records=[];planned=[];sections_selected=0;skipped=0;limit_hit=False
     selected_path=artifacts/"l35_fulltext_discovery_selected_chunks.jsonl";cached_chunks=_jsonl(selected_path) if reuse_selected_chunks else []
     if cached_chunks:
@@ -125,7 +135,8 @@ def run_fulltext_l1_extraction(*, run_dir: Path, fulltext_candidates_path: Path,
     for paper,section,text,digest,cid in planned:
         key=fulltext_l1_cache_key(paper, section, digest, provider=l1_provider, model=l1_model, chunker_config_hash=chunker_config_hash)
         cache_path=cache_dir/f"{key}.json"; shared_cache_path=shared_cache_dir/f"{key}.json"
-        hit_path=next((path for path in (cache_path, shared_cache_path) if path.is_file()), None)
+        hit_candidates=(cache_path, shared_cache_path) if shared_cache_enabled else (cache_path,)
+        hit_path=next((path for path in hit_candidates if path.is_file()), None)
         if hit_path:
             cached=json.loads(hit_path.read_text(encoding="utf-8")); raw_claims=cached.get("claims",[]); cache_status="hit"; cache_hits+=1
             lineage={"cache_status":"hit","cache_key":key,"source_artifact":str(hit_path),"source_run":(cached.get("cache_source") or {}).get("run_dir"),"source_sha256":hashlib.sha256(hit_path.read_bytes()).hexdigest(),"materialization":"reference"}
@@ -138,7 +149,8 @@ def run_fulltext_l1_extraction(*, run_dir: Path, fulltext_candidates_path: Path,
                 normalized,_=normalize_l1_json_response(response); raw_claims=normalized["claims"]
                 payload={"claims":raw_claims,"prompt_version":PROMPT_VERSION,"output_schema_version":OUTPUT_SCHEMA_VERSION,"cache_source":{"run_dir":str(Path(run_dir)),"cache_key":key,"chunk_id":cid,"chunk_sha256":digest}}
                 cache_path.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
-                shared_cache_path.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+                if shared_cache_enabled:
+                    shared_cache_path.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
                 cache_status="miss"; lineage={"cache_status":"miss","cache_key":key,"source_artifact":str(cache_path),"source_run":str(Path(run_dir)),"source_sha256":hashlib.sha256(cache_path.read_bytes()).hexdigest(),"materialization":"new"}
             except Exception as exc:
                 error_type="parse_error" if "json" in str(exc).casefold() or "claims" in str(exc).casefold() else "provider_error"

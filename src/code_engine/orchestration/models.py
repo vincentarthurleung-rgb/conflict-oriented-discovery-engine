@@ -37,6 +37,7 @@ class CaseToAtlasRequest:
     publish_handoff: bool = True
     atlas_sync: bool = True
     dry_run: bool = False
+    reuse_only: bool = False
 
     def resolved(self) -> "CaseToAtlasRequest":
         package = Path("configs/generated_cases") / self.case_id
@@ -87,6 +88,10 @@ class CaseToAtlasResult:
     sync_status: str | None = None
     warnings: list[str] = field(default_factory=list)
     verification: dict[str, Any] = field(default_factory=dict)
+    execution_policy: dict[str, Any] = field(default_factory=dict)
+    reconciled_state: bool = False
+    abandoned_outputs: list[str] = field(default_factory=list)
+    stage_execution: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -77,6 +77,35 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
         self.assertEqual(result.api_calls,0)
         self.assertEqual(result.network_calls,0)
         self.assertGreater(result.historical_api_calls,0)
+        self.assertTrue(all(row["runner_called"] is False for row in result.stage_execution.values()))
+
+    def test_reuse_only_reuse_is_terminal_no_attempt_or_stage_started(self):
+        FakeOrchestrator().run(self.request)
+        oid=FakeOrchestrator().orchestration_id(self.request.resolved());root=self.root/"runs/_orchestration"/oid
+        before_state=json.loads((root/"orchestration_state.json").read_text())
+        before_attempts={name:row.get("attempt") for name,row in before_state["stages"].items()}
+        before_events=(root/"orchestration_events.jsonl").read_text()
+        runner=FakeOrchestrator()
+        result=runner.run(CaseToAtlasRequest(**{**self.request.__dict__,"reuse_only":True,"api_enabled":True,"network_enabled":True}))
+        after_state=json.loads((root/"orchestration_state.json").read_text())
+        after_events=(root/"orchestration_events.jsonl").read_text()
+        self.assertEqual(runner.calls,[])
+        self.assertEqual({name:row.get("attempt") for name,row in after_state["stages"].items()}, before_attempts)
+        self.assertNotIn('"stage_started"', after_events[len(before_events):])
+        self.assertEqual(result.api_calls,0)
+        self.assertEqual(result.network_calls,0)
+
+    def test_reuse_only_missing_stage_fails_closed(self):
+        runner=FakeOrchestrator()
+        with self.assertRaises(OrchestrationError) as caught:
+            runner.run(CaseToAtlasRequest(**{**self.request.__dict__,"reuse_only":True,"api_enabled":True,"network_enabled":True}))
+        self.assertEqual(caught.exception.code,"REUSE_ONLY_STAGE_INVALID")
+        self.assertEqual(runner.calls,[])
+
+    def test_reuse_only_force_stage_conflict(self):
+        with self.assertRaises(OrchestrationError) as caught:
+            FakeOrchestrator().run(CaseToAtlasRequest(**{**self.request.__dict__,"reuse_only":True,"force_stages":frozenset({"fulltext_l1"})}))
+        self.assertEqual(caught.exception.code,"REUSE_ONLY_FORCE_STAGE_CONFLICT")
 
     def test_permission_flags_do_not_change_semantic_fingerprint(self):
         orch=CaseToAtlasOrchestrator()
@@ -156,6 +185,39 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
         self.assertEqual(new_state["stages"]["base_run"]["completion_mode"],"recovered_existing_output")
         events=(store_root/"orchestration_events.jsonl").read_text()
         self.assertIn("stage_failed",events);self.assertIn("stage_recovered",events);self.assertIn("stage_reused",events)
+
+    def test_reconciles_interrupted_base_run_v4_without_runner_or_v5(self):
+        oid=FakeOrchestrator().orchestration_id(self.request.resolved())
+        store_root=self.root/"runs/_orchestration"/oid;store_root.mkdir(parents=True)
+        valid=self.root/"runs"/f"{oid}_case_one_base_run_v2";write_valid_base_run(valid,self.request,legacy_status="skipped")
+        interrupted=self.root/"runs"/f"{oid}_case_one_base_run_v4";(interrupted/"artifacts").mkdir(parents=True)
+        (interrupted/"run_state.json").write_text(json.dumps({"query":"A affects B","final_status":"running","steps":{"abstract_l1":{"status":"running"}}}))
+        state={"schema_version":"case_to_atlas_orchestration_v1","orchestration_id":oid,"case_id":"case_one","status":"running","current_stage":"base_run","completed_at":"2026-01-01T00:00:00+00:00","stages":{name:{"status":"pending","attempt":0} for name in STAGES},"safety_baseline":{"review_items":0,"assignments":0,"annotations":0,"gold":0,"metrics":0},"prior_cases":[]}
+        input_hash=FakeOrchestrator()._input_hash("base_run",self.request.resolved(),state)
+        state["stages"]["base_run"].update(status="running",attempt=4,input_hash=input_hash,previous_input_hash=input_hash,last_status="completed",output_run=str(interrupted),completed_at="2026-01-01T00:00:00+00:00",completion_mode="recovered_existing_output")
+        (store_root/"orchestration_state.json").write_text(json.dumps(state))
+        (store_root/"orchestration_events.jsonl").write_text(json.dumps({"event":"stage_started","stage":"base_run","attempt":4,"output_run":str(interrupted)})+"\n")
+        runner=ArtifactOrchestrator()
+        result=runner.run(CaseToAtlasRequest(**{**self.request.__dict__,"reuse_only":True,"stop_after":"base_run"}))
+        self.assertEqual(runner.calls,[])
+        new_state=json.loads((store_root/"orchestration_state.json").read_text())
+        self.assertEqual(new_state["stages"]["base_run"]["status"],"completed")
+        self.assertEqual(new_state["stages"]["base_run"]["output_run"],str(valid))
+        self.assertTrue((interrupted/"run_state.json").is_file())
+        self.assertFalse((self.root/"runs"/f"{oid}_case_one_base_run_v5").exists())
+        self.assertIn(str(interrupted),result.abandoned_outputs)
+        events=(store_root/"orchestration_events.jsonl").read_text()
+        self.assertIn("reuse_fallthrough_output_abandoned",events)
+
+    def test_invalid_mixed_state_fails_closed(self):
+        oid=FakeOrchestrator().orchestration_id(self.request.resolved())
+        store_root=self.root/"runs/_orchestration"/oid;store_root.mkdir(parents=True)
+        state={"schema_version":"case_to_atlas_orchestration_v1","orchestration_id":oid,"case_id":"case_one","status":"running","current_stage":"pmcid_repair","stages":{name:{"status":"pending","attempt":0} for name in STAGES},"safety_baseline":{"review_items":0,"assignments":0,"annotations":0,"gold":0,"metrics":0},"prior_cases":[]}
+        state["stages"]["pmcid_repair"].update(status="running",attempt=2,completion_mode="recovered_existing_output",completed_at="2026-01-01T00:00:00+00:00")
+        (store_root/"orchestration_state.json").write_text(json.dumps(state))
+        with self.assertRaises(OrchestrationError) as caught:
+            FakeOrchestrator().run(CaseToAtlasRequest(**{**self.request.__dict__,"reuse_only":True}))
+        self.assertEqual(caught.exception.code,"ORCHESTRATION_STATE_INVARIANT_VIOLATION")
 
     def test_force_base_stage_still_reruns(self):
         oid=FakeOrchestrator().orchestration_id(self.request.resolved())

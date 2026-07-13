@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -33,6 +34,7 @@ ERROR_CODES = {"base_run":"BASE_RUN_FAILED", "pmcid_repair":"PMCID_REPAIR_FAILED
                "fulltext_reasoning_trace":"FULLTEXT_REASONING_TRACE_FAILED", "fulltext_context_consolidation":"FULLTEXT_CONTEXT_CONSOLIDATION_FAILED",
                "reentry":"REENTRY_FAILED", "handoff":"HANDOFF_VALIDATION_FAILED", "atlas_sync":"ATLAS_SYNC_FAILED",
                "verification":"PROJECTION_VERIFICATION_FAILED"}
+SEMANTIC_FINGERPRINT_SCHEMA = "stage_semantic_v2"
 
 
 class OrchestrationError(RuntimeError):
@@ -88,6 +90,16 @@ class StageReuseDecision:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class ExecutionPolicy:
+    allow_api: bool
+    allow_network: bool
+    reuse_only: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"reuse_only": self.reuse_only, "api_allowed": self.allow_api, "network_allowed": self.allow_network}
 
 
 def _hash(value: Any) -> str:
@@ -273,6 +285,8 @@ class CaseToAtlasOrchestrator:
         from code_engine.validation.external_api_smoke import load_dotenv
         load_dotenv()
         resolved = request.resolved()
+        if resolved.reuse_only and resolved.force_stages:
+            raise OrchestrationError("REUSE_ONLY_FORCE_STAGE_CONFLICT", "--reuse-only cannot be combined with --force-stage")
         invalid = sorted(set(resolved.force_stages) - set(STAGES))
         if invalid: raise OrchestrationError("INVALID_FORCE_STAGE", ", ".join(invalid))
         if resolved.stop_after and resolved.stop_after not in STAGES: raise OrchestrationError("INVALID_STOP_STAGE", resolved.stop_after)
@@ -299,34 +313,12 @@ class CaseToAtlasOrchestrator:
     def plan(self, request: CaseToAtlasRequest) -> dict[str, Any]:
         request = self._resolve(request); oid = self.orchestration_id(request); store = OrchestrationStateStore(request.runs_root, oid)
         state = store.read_state() if request.resume else None
-        plan = _read(request.search_plan_path)
+        reconciliation = self._reconcile_state(request, state, store, dry_run=True) if state else {"reconciled": False, "abandoned_outputs": []}
+        state = reconciliation.get("state") or state
         current_cases = []
         try: current_cases = sorted(x["case_id"] for x in current_projection(request.system_b_output_root)[2].get("source_manifests", []))
         except (OSError, ValueError, KeyError, json.JSONDecodeError): pass
-        stages=[]; invalidated=False; from_index=STAGES.index(request.from_stage) if request.from_stage else 0; to_index=STAGES.index(request.to_stage or request.stop_after) if (request.to_stage or request.stop_after) else len(STAGES)-1
-        for index, name in enumerate(STAGES):
-            record=(state or {}).get("stages",{}).get(name,{})
-            forced = any(STAGES.index(forced) <= index for forced in request.force_stages)
-            input_hash=self._input_hash(name,request,state or {})
-            decision = self._reuse_decision(name, record, input_hash, request, forced=forced)
-            reusable=bool(request.resume and not invalidated and not forced and decision.action=="reuse")
-            recoverable=bool(request.resume and not invalidated and not forced and self._record_recoverable(name,record,input_hash,request,oid))
-            if index < from_index:
-                action = "reuse" if reusable else "recover" if recoverable else "precondition_missing"
-                reason = "before_from_stage"
-            elif index > to_index:
-                action = "skip"
-                reason = "after_to_stage"
-            else:
-                if not reusable and not recoverable: invalidated=True
-                action = "reuse" if reusable else "recover" if recoverable else "run"
-                reason = decision.reason if reusable else "recoverable_existing_output" if recoverable else "forced" if forced else decision.reason
-            expected_api = 0 if action in {"reuse", "recover", "skip", "precondition_missing"} else int(name in {"base_run", "fulltext_l1", "fulltext_reasoning_trace"} and request.api_enabled)
-            expected_network = 0 if action in {"reuse", "recover", "skip", "precondition_missing"} else int(name in {"base_run", "pmcid_repair", "fulltext_l1"} and request.network_enabled)
-            item = decision.to_dict()
-            item.update({"action": action, "reason": reason, "input_hash": input_hash,
-                         "expected_api_calls": expected_api, "expected_network_calls": expected_network})
-            stages.append(item)
+        stages = self._build_stage_plan(request, state or {}, oid)
         next_stage = next((x["stage"] for x in stages if x["action"]=="run"), None)
         base_record=(state or {}).get("stages",{}).get("base_run",{})
         return {"schema_version":"case_to_atlas_plan_v1","orchestration_id":oid,"case_id":request.case_id,
@@ -334,6 +326,9 @@ class CaseToAtlasOrchestrator:
                 "stages":stages,"reusable_stages":[x["stage"] for x in stages if x["action"] in {"reuse","recover"}],
                 "invalidated_stages":[x["stage"] for x in stages if x["action"]=="run"],
                 "next_stage":next_stage,
+                "execution_policy": self._execution_policy(request).to_dict(),
+                "reconciled_state": bool(reconciliation.get("reconciled")),
+                "abandoned_outputs": reconciliation.get("abandoned_outputs", []),
                 "base_run_recovery": {"action": next((x["action"] for x in stages if x["stage"]=="base_run"), None), "output_run": base_record.get("output_run")},
                 "expected_api_calls":sum(int(x.get("expected_api_calls") or 0) for x in stages),
                 "expected_network_calls":sum(int(x.get("expected_network_calls") or 0) for x in stages),
@@ -354,42 +349,41 @@ class CaseToAtlasOrchestrator:
         request=self._resolve(request)
         if request.dry_run:
             planned=self.plan(request)
-            return CaseToAtlasResult(orchestration_id=planned["orchestration_id"],status="dry_run",case_id=request.case_id,reused_stages=planned["reusable_stages"],verification=planned)
+            return CaseToAtlasResult(orchestration_id=planned["orchestration_id"],status="dry_run",case_id=request.case_id,reused_stages=planned["reusable_stages"],verification=planned,execution_policy=planned["execution_policy"],reconciled_state=planned.get("reconciled_state",False),abandoned_outputs=planned.get("abandoned_outputs",[]))
         oid=self.orchestration_id(request);store=OrchestrationStateStore(request.runs_root,oid);existing=store.read_state()
         if existing: state=self._migrate_state(existing)
         else: state=self._new_state(oid,request)
+        reconciliation = self._reconcile_state(request, state, store, dry_run=False) if existing else {"reconciled": False, "abandoned_outputs": []}
+        state = reconciliation.get("state") or state
+        self._validate_state_invariants(state)
         if not state.get("safety_baseline"): state["safety_baseline"]=evaluation_counts(request.database_url)
         if not state.get("prior_cases"):
             try: state["prior_cases"]=sorted(x["case_id"] for x in current_projection(request.system_b_output_root)[2].get("source_manifests",[]))
             except Exception: state["prior_cases"]=[]
         store.write_request(request.to_dict());store.write_state(state)
         if not existing: store.append_event("planned",orchestration_id=oid,case_id=request.case_id)
-        reused=[]; invalidated=not request.resume
+        stage_plan = self._build_stage_plan(request, state, oid)
+        if request.reuse_only:
+            run_stage = next((item for item in stage_plan if item["action"] == "run"), None)
+            if run_stage:
+                raise OrchestrationError("REUSE_ONLY_STAGE_INVALID", f"{run_stage['stage']} cannot be reused: {run_stage.get('reason')}", stage=run_stage["stage"], resume_from=run_stage["stage"])
+        reused=[]; stage_execution={}
         current_api_calls = current_network_calls = current_cache_hits = 0
         from_index=STAGES.index(request.from_stage) if request.from_stage else 0
         stop_index=STAGES.index(request.to_stage or request.stop_after) if (request.to_stage or request.stop_after) else len(STAGES)-1
         for index,name in enumerate(STAGES):
             if index>stop_index: break
-            record=state["stages"][name];forced=any(STAGES.index(stage)<=index for stage in request.force_stages)
-            input_hash=self._input_hash(name,request,state)
-            reusable=bool(not invalidated and not forced and self._record_valid(name,record,input_hash,request))
-            recoverable=bool(not invalidated and not forced and self._record_recoverable(name,record,input_hash,request,oid))
+            record=state["stages"][name]
+            item=stage_plan[index]
+            input_hash=item["input_hash"]
             if index < from_index:
-                if recoverable:
-                    self._recover_record(name, record, input_hash, request, oid, state, store)
-                    reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"),mode="recovered_existing_output");continue
-                if not reusable:
+                if item["action"] not in {"reuse","recover"}:
                     raise OrchestrationError("FROM_STAGE_PRECONDITION_MISSING", f"{name} is required before {request.from_stage}", stage=name, resume_from=name)
-                reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
-            if reusable:
-                self._upgrade_reuse_metadata(name, record, input_hash, request, state, store)
-                if name=="base_run" and record.get("completion_mode")=="recovered_existing_output" and (record.get("error_code") or record.get("error_summary")):
-                    record["error_code"]=None;record["error_summary"]=None;store.write_state(state)
-                reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"));continue
-            if recoverable:
-                self._recover_record(name, record, input_hash, request, oid, state, store)
-                reused.append(name);store.append_event("stage_reused",stage=name,output_run=record.get("output_run"),mode="recovered_existing_output");continue
-            invalidated=True
+            if item["action"] in {"reuse","recover","no_op","skip"}:
+                self._apply_existing_stage_action(name, item, record, input_hash, request, oid, state, store)
+                reused.append(name);stage_execution[name]={"action":item["action"],"output_run":record.get("output_run") or record.get("manifest_path"),"runner_called":False}
+                continue
+            input_hash=self._input_hash(name,request,state)
             for downstream in STAGES[index+1:]:
                 if state["stages"][downstream].get("status") in {"completed","skipped"}: state["stages"][downstream]["status"]="pending"
             if name=="handoff" and not request.publish_handoff:
@@ -404,10 +398,12 @@ class CaseToAtlasOrchestrator:
                 record["output_run"]=state["stages"]["fulltext_l1"].get("output_run")
             record["previous_input_hash"]=input_hash;state.update(status="running",current_stage=name);store.write_state(state);store.append_event("stage_started",stage=name,attempt=record["attempt"],output_run=record.get("output_run"))
             try:
+                stage_execution[name]={"action":"run","output_run":record.get("output_run"),"runner_called":True}
                 output=self._execute(name,request,state,record)
                 record.update(status="completed",completed_at=utcnow(),**output);record["last_status"]="completed"
                 record["artifact_hash"] = self._artifact_hash(name, record, request)
                 record["semantic_input_hash"] = input_hash
+                record["semantic_fingerprint_schema"] = SEMANTIC_FINGERPRINT_SCHEMA
                 current_api_calls += int(output.get("api_calls") or 0)
                 current_network_calls += int(output.get("network_calls") or 0)
                 current_cache_hits += int(output.get("cache_hits") or 0)
@@ -416,8 +412,10 @@ class CaseToAtlasOrchestrator:
             except Exception as error:
                 code=getattr(error,"code",ERROR_CODES[name]);record.update(status="failed",failed_at=utcnow(),error_code=code,error_summary=str(error));record["last_status"]="failed";state.update(status="failed",current_stage=name,error_code=code,error_summary=str(error));store.write_state(state);store.append_event("stage_failed",stage=name,error_code=code,error_summary=str(error))
                 raise OrchestrationError(code,str(error),stage=name,resume_from=name) from error
-        state.update(status="completed" if stop_index==len(STAGES)-1 else "stopped",current_stage=None,completed_at=utcnow());state["reused_stages"]=reused
+        state.update(status="completed" if stop_index==len(STAGES)-1 else "stopped",current_stage=None,completed_at=utcnow(),error_code=None,error_summary=None);state["reused_stages"]=reused
         state["last_command_calls"]={"api_calls":current_api_calls,"network_calls":current_network_calls,"cache_hits":current_cache_hits}
+        state["last_stage_execution"]=stage_execution
+        state["last_reconciliation"]={"reconciled":bool(reconciliation.get("reconciled")),"abandoned_outputs":reconciliation.get("abandoned_outputs",[])}
         result=self._result(request,oid,state,reused);store.write_state(state);store.write_result(result.to_dict());return result
 
     def verify(self, request: CaseToAtlasRequest) -> dict[str, Any]:
@@ -433,6 +431,135 @@ class CaseToAtlasOrchestrator:
         for name in STAGES:
             stages.setdefault(name, {"status": "pending", "attempt": 0})
         return state
+
+    def _execution_policy(self, request: CaseToAtlasRequest) -> ExecutionPolicy:
+        return ExecutionPolicy(allow_api=bool(request.api_enabled and not request.reuse_only),
+                               allow_network=bool(request.network_enabled and not request.reuse_only),
+                               reuse_only=bool(request.reuse_only))
+
+    def _build_stage_plan(self, request: CaseToAtlasRequest, state: dict, oid: str) -> list[dict[str, Any]]:
+        stages=[]; invalidated=not request.resume
+        from_index=STAGES.index(request.from_stage) if request.from_stage else 0
+        to_index=STAGES.index(request.to_stage or request.stop_after) if (request.to_stage or request.stop_after) else len(STAGES)-1
+        for index, name in enumerate(STAGES):
+            record=(state or {}).get("stages",{}).get(name,{})
+            forced = any(STAGES.index(forced) <= index for forced in request.force_stages)
+            input_hash=self._input_hash(name,request,state or {})
+            decision = self._reuse_decision(name, record, input_hash, request, forced=forced)
+            reusable=bool(request.resume and not invalidated and not forced and self._record_valid(name,record,input_hash,request))
+            recoverable=bool(request.resume and not invalidated and not forced and self._record_recoverable(name,record,input_hash,request,oid))
+            if index < from_index:
+                action = "reuse" if reusable else "recover" if recoverable else "precondition_missing"
+                reason = "before_from_stage"
+            elif index > to_index:
+                action = "skip"
+                reason = "after_to_stage"
+            else:
+                if not reusable and not recoverable:
+                    invalidated=True
+                action = "reuse" if reusable else "recover" if recoverable else "run"
+                reason = decision.reason if reusable else "recoverable_existing_output" if recoverable else "forced" if forced else decision.reason
+            expected_api = 0 if action in {"reuse", "recover", "skip", "precondition_missing", "no_op"} else int(name in {"base_run", "fulltext_l1", "fulltext_reasoning_trace"} and request.api_enabled)
+            expected_network = 0 if action in {"reuse", "recover", "skip", "precondition_missing", "no_op"} else int(name in {"base_run", "pmcid_repair", "fulltext_l1"} and request.network_enabled)
+            item = decision.to_dict()
+            item.update({"action": action, "reason": reason, "input_hash": input_hash,
+                         "expected_api_calls": expected_api, "expected_network_calls": expected_network})
+            stages.append(item)
+        return stages
+
+    def _validate_state_invariants(self, state: dict) -> None:
+        for stage, record in (state.get("stages") or {}).items():
+            if record.get("status") == "running" and record.get("completion_mode") in {"recovered_existing_output", "reused_existing_output"}:
+                raise OrchestrationError("ORCHESTRATION_STATE_INVARIANT_VIOLATION",
+                                         f"{stage} is running with completion_mode={record.get('completion_mode')}",
+                                         stage=stage, resume_from=stage)
+            if record.get("status") == "running" and record.get("completed_at"):
+                raise OrchestrationError("ORCHESTRATION_STATE_INVARIANT_VIOLATION",
+                                         f"{stage} is running with completed_at={record.get('completed_at')}",
+                                         stage=stage, resume_from=stage)
+
+    def _reconcile_state(self, request: CaseToAtlasRequest, state: dict | None, store: OrchestrationStateStore, *, dry_run: bool) -> dict[str, Any]:
+        if not state:
+            return {"state": state, "reconciled": False, "abandoned_outputs": []}
+        working = deepcopy(state)
+        stages = working.setdefault("stages", {})
+        base = stages.get("base_run", {})
+        abandoned: list[str] = []
+        reconciled = False
+        if base.get("status") == "running" and base.get("output_run"):
+            current_output = Path(base["output_run"])
+            current_validation = validate_base_run_for_downstream(current_output, request=request, expected_input_hash=base.get("input_hash"), orchestration_id=self.orchestration_id(request))
+            mixed_completion = bool(base.get("completion_mode") in {"recovered_existing_output", "reused_existing_output"} or base.get("completed_at"))
+            if mixed_completion and not current_validation.valid:
+                candidate = self._latest_valid_base_run(request, exclude={str(current_output)})
+                if candidate is None:
+                    return {"state": working, "reconciled": False, "abandoned_outputs": []}
+                validation = validate_base_run_for_downstream(candidate, request=request, expected_input_hash=None, orchestration_id=self.orchestration_id(request))
+                item = {"attempt": base.get("attempt"), "output_run": str(current_output), "reason": "reuse_fallthrough_control_flow_bug", "status": "interrupted"}
+                attempts = list(base.get("abandoned_attempts") or [])
+                if not any(x.get("output_run") == item["output_run"] for x in attempts):
+                    attempts.append(item)
+                base.update(status="completed", output_run=str(candidate), completion_mode="recovered_existing_output",
+                            recovery_reason="reuse_fallthrough_control_flow_bug_reconciled", validation=validation.to_dict(),
+                            error_code=None, error_summary=None, final_status="recovered_existing_output",
+                            abandoned_attempts=attempts, semantic_input_hash=self._input_hash("base_run", request, working),
+                            semantic_fingerprint_schema=SEMANTIC_FINGERPRINT_SCHEMA)
+                base["last_status"]="completed"
+                base["artifact_hash"]=self._artifact_hash("base_run", base, request)
+                base.pop("started_at", None)
+                abandoned.append(str(current_output))
+                reconciled = True
+        for name in STAGES:
+            record = stages.get(name, {})
+            if record.get("status") == "pending" and record.get("last_status") == "completed" and self._stage_artifacts_valid(name, record, request):
+                record["status"] = "completed"
+                record["semantic_input_hash"] = self._input_hash(name, request, working)
+                record["semantic_fingerprint_schema"] = SEMANTIC_FINGERPRINT_SCHEMA
+                record["artifact_hash"] = self._artifact_hash(name, record, request)
+                record["error_code"] = None
+                record["error_summary"] = None
+                reconciled = True
+        if reconciled:
+            working.update(status="completed", current_stage=None, error_code=None, error_summary=None)
+            if not dry_run:
+                store.write_state(working)
+                for output in abandoned:
+                    store.append_event("stage_interrupted_reconciled", stage="base_run", output_run=output,
+                                       reason="reuse_fallthrough_control_flow_bug")
+                    store.append_event("reuse_fallthrough_output_abandoned", stage="base_run", output_run=output)
+                store.append_event("orchestration_state_reconciled", reason="reuse_fallthrough_control_flow_bug",
+                                   abandoned_outputs=abandoned)
+        return {"state": working, "reconciled": reconciled, "abandoned_outputs": abandoned}
+
+    def _latest_valid_base_run(self, request: CaseToAtlasRequest, *, exclude: set[str]) -> Path | None:
+        oid = self.orchestration_id(request)
+        candidates = sorted(request.runs_root.glob(f"{oid}_{request.case_id}_base_run_v*"), key=lambda p: p.name, reverse=True)
+        for candidate in candidates:
+            if str(candidate) in exclude or str(candidate.resolve()) in exclude:
+                continue
+            if validate_base_run_for_downstream(candidate, request=request, expected_input_hash=None, orchestration_id=oid).valid:
+                return candidate
+        return None
+
+    def _apply_existing_stage_action(self, stage: str, item: dict[str, Any], record: dict, input_hash: str, request: CaseToAtlasRequest, oid: str, state: dict, store: OrchestrationStateStore) -> None:
+        before_attempt = record.get("attempt")
+        before_output = record.get("output_run")
+        if item["action"] == "recover":
+            self._recover_record(stage, record, input_hash, request, oid, state, store)
+            store.append_event("stage_reused", stage=stage, output_run=record.get("output_run"), mode="recovered_existing_output")
+        elif item["action"] in {"reuse", "no_op", "skip"}:
+            if item["action"] != "skip":
+                self._upgrade_reuse_metadata(stage, record, input_hash, request, state, store)
+                record["status"] = "completed"
+                record["last_status"] = "completed"
+                record["error_code"] = None
+                record["error_summary"] = None
+                store.write_state(state)
+                store.append_event("stage_reused", stage=stage, output_run=record.get("output_run"), action=item["action"], reason=item.get("reason"))
+        if record.get("attempt") != before_attempt:
+            raise OrchestrationError("ORCHESTRATION_STATE_INVARIANT_VIOLATION", f"{stage} reuse changed attempt", stage=stage, resume_from=stage)
+        if before_output is not None and record.get("output_run") != before_output:
+            raise OrchestrationError("ORCHESTRATION_STATE_INVARIANT_VIOLATION", f"{stage} reuse changed output_run", stage=stage, resume_from=stage)
 
     def _output_path(self, request: CaseToAtlasRequest, oid: str, stage: str, attempt: int) -> Path:
         return request.runs_root / f"{oid}_{request.case_id}_{stage}_v{attempt}"
@@ -488,7 +615,12 @@ class CaseToAtlasOrchestrator:
                 "prompt_version": __import__(
                     "code_engine.fulltext.fulltext_l1_extractor", fromlist=["PROMPT_VERSION"]
                 ).PROMPT_VERSION,
-                "extractor": _file_hash(REPOSITORY_ROOT / "src/code_engine/fulltext/fulltext_l1_extractor.py"),
+                "extractor_version": __import__(
+                    "code_engine.fulltext.fulltext_l1_extractor", fromlist=["EXTRACTOR_VERSION"]
+                ).EXTRACTOR_VERSION,
+                "chunker_version": __import__(
+                    "code_engine.fulltext.fulltext_l1_extractor", fromlist=["CHUNKER_VERSION"]
+                ).CHUNKER_VERSION,
                 "response_schema": _file_hash(REPOSITORY_ROOT / "configs/prompts/l1/output_schema_v2.json"),
             }),
             "reentry": _hash({
@@ -575,7 +707,7 @@ class CaseToAtlasOrchestrator:
             pass
         stored_hashes = {record.get("semantic_input_hash"), record.get("input_hash")}
         stored_hashes.add(legacy_hash)
-        if stage != "base_run" and not record.get("semantic_input_hash") and self._stage_artifacts_valid(stage, record, request):
+        if stage != "base_run" and record.get("semantic_fingerprint_schema") != SEMANTIC_FINGERPRINT_SCHEMA and self._stage_artifacts_valid(stage, record, request):
             return True
         if input_hash not in stored_hashes: return False
         legacy_match = bool(record.get("input_hash") == legacy_hash and not record.get("semantic_input_hash"))
@@ -624,8 +756,8 @@ class CaseToAtlasOrchestrator:
         valid_artifacts = self._stage_artifacts_valid(stage, record, request)
         if not valid_artifacts:
             return StageReuseDecision(stage, "rerun", "required_artifact_missing_or_invalid", stored, input_hash, output_run=output_run)
-        if stage != "base_run" and not record.get("semantic_input_hash"):
-            return StageReuseDecision(stage, "reuse", "legacy_completed_artifacts_valid_semantic_backfill", stored, input_hash,
+        if stage != "base_run" and record.get("semantic_fingerprint_schema") != SEMANTIC_FINGERPRINT_SCHEMA:
+            return StageReuseDecision(stage, "reuse", "completed_artifacts_valid_semantic_schema_backfill", stored, input_hash,
                                       output_run=output_run, validated_artifacts=1, projection_id=record.get("projection_id"))
         legacy = self._legacy_input_hash(stage, request, OrchestrationStateStore(request.runs_root, self.orchestration_id(request)).read_state() or {"stages": {}})
         legacy_match = bool(record.get("input_hash") == legacy and not record.get("semantic_input_hash"))
@@ -648,6 +780,7 @@ class CaseToAtlasOrchestrator:
         legacy = record.get("input_hash")
         record["legacy_input_hash"] = legacy
         record["semantic_input_hash"] = input_hash
+        record["semantic_fingerprint_schema"] = SEMANTIC_FINGERPRINT_SCHEMA
         record["input_hash"] = input_hash
         record["artifact_hash"] = self._artifact_hash(stage, record, request)
         store.write_state(state)
@@ -670,13 +803,15 @@ class CaseToAtlasOrchestrator:
                       api_calls=0, network_calls=0, final_status="recovered_existing_output", error_code=None, error_summary=None)
         record["last_status"]="completed"
         record["artifact_hash"]=self._artifact_hash(stage, record, request)
-        state.update(status="running", current_stage="pmcid_repair", error_code=None, error_summary=None)
+        state.update(error_code=None, error_summary=None)
         store.write_state(state)
         store.append_event("stage_recovered", stage=stage, output_run=record.get("output_run"),
                            reason="legacy_fulltext_escalation_completion_check_fixed",
                            validation=validation.to_dict())
 
     def _execute(self, name: str, request: CaseToAtlasRequest, state: dict, record: dict) -> dict[str,Any]:
+        if request.reuse_only:
+            raise OrchestrationError("REUSE_ONLY_STAGE_INVALID", f"reuse-only forbids executing {name}", stage=name, resume_from=name)
         profile=_read(request.case_profile_path);plan=_read(request.search_plan_path)
         if name=="base_run":
             from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
@@ -730,4 +865,5 @@ class CaseToAtlasOrchestrator:
         stage_counts={name:{"api_calls":int(s[name].get("api_calls") or 0),
                             "network_calls":int(s[name].get("network_calls") or 0),
                             "cache_hits":int(s[name].get("cache_hits") or 0)} for name in STAGES}
-        return CaseToAtlasResult(orchestration_id=oid,status=state["status"],case_id=request.case_id,base_run=s["base_run"].get("output_run"),pmcid_repair_run=s["pmcid_repair"].get("output_run"),fulltext_run=s["fulltext_l1"].get("output_run"),reentry_run=s["reentry"].get("output_run"),handoff_manifest=s["handoff"].get("manifest_path"),handoff_status=s["handoff"].get("operation_status"),ingestion_id=verification.get("ingestion_id"),prediction_run_id=verification.get("prediction_run_id"),projection_id=verification.get("projection_id") or s["atlas_sync"].get("projection_id"),current_case_count=verification.get("current_case_count",0),claim_count=verification.get("claim_count",s["reentry"].get("claim_count",0)),dossier_count=verification.get("dossier_count",0),context_row_count=verification.get("context_row_count",0),exploratory_triple_count=verification.get("exploratory_triple_count",0),formal_conflict_count=verification.get("formal_conflict_count",0),api_calls=int(current.get("api_calls") or 0),network_calls=int(current.get("network_calls") or 0),cache_hits=int(current.get("cache_hits") or 0),historical_api_calls=sum(v["api_calls"] for v in stage_counts.values()),historical_network_calls=sum(v["network_calls"] for v in stage_counts.values()),historical_cache_hits=sum(v["cache_hits"] for v in stage_counts.values()),stage_call_counts=stage_counts,reused_stages=reused,sync_status=s["atlas_sync"].get("operation_status"),warnings=[] if not verification.get("quarantine_count") else [f"quarantine_count={verification['quarantine_count']}"] ,verification=verification)
+        reconciliation=state.get("last_reconciliation") or {}
+        return CaseToAtlasResult(orchestration_id=oid,status=state["status"],case_id=request.case_id,base_run=s["base_run"].get("output_run"),pmcid_repair_run=s["pmcid_repair"].get("output_run"),fulltext_run=s["fulltext_l1"].get("output_run"),reentry_run=s["reentry"].get("output_run"),handoff_manifest=s["handoff"].get("manifest_path"),handoff_status=s["handoff"].get("operation_status"),ingestion_id=verification.get("ingestion_id"),prediction_run_id=verification.get("prediction_run_id"),projection_id=verification.get("projection_id") or s["atlas_sync"].get("projection_id"),current_case_count=verification.get("current_case_count",0),claim_count=verification.get("claim_count",s["reentry"].get("claim_count",0)),dossier_count=verification.get("dossier_count",0),context_row_count=verification.get("context_row_count",0),exploratory_triple_count=verification.get("exploratory_triple_count",0),formal_conflict_count=verification.get("formal_conflict_count",0),api_calls=int(current.get("api_calls") or 0),network_calls=int(current.get("network_calls") or 0),cache_hits=int(current.get("cache_hits") or 0),historical_api_calls=sum(v["api_calls"] for v in stage_counts.values()),historical_network_calls=sum(v["network_calls"] for v in stage_counts.values()),historical_cache_hits=sum(v["cache_hits"] for v in stage_counts.values()),stage_call_counts=stage_counts,reused_stages=reused,sync_status=s["atlas_sync"].get("operation_status"),warnings=[] if not verification.get("quarantine_count") else [f"quarantine_count={verification['quarantine_count']}"] ,verification=verification,execution_policy=self._execution_policy(request).to_dict(),reconciled_state=bool(reconciliation.get("reconciled")),abandoned_outputs=list(reconciliation.get("abandoned_outputs") or []),stage_execution=state.get("last_stage_execution") or {})

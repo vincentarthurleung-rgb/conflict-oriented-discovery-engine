@@ -15,8 +15,11 @@
   --space-3:12px;
   --space-4:16px;
   --space-5:24px;
+  --space-6:32px;
+  --space-7:48px;
   --radius-sm:6px;
   --radius:8px;
+  --radius-lg:14px;
   --shadow-sm:0 1px 2px rgba(18,35,38,.08);
   --shadow:0 8px 24px rgba(18,35,38,.12);
   --focus-ring:0 0 0 3px rgba(23,107,109,.28);

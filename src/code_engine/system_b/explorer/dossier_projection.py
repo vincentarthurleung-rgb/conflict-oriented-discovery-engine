@@ -117,15 +117,42 @@ class DossierProjection:
         for e in self.api.evidence_by_triple.get(triple.get("triple_id"),[]):
             c=by_key.get((e.get("pmid"),e.get("pmcid"),e.get("evidence_sentence"))) or {}
             context=e.get("context") if isinstance(e.get("context"),dict) else {}
-            merged={**c,**context}
+            # Keep every observed layer.  A consolidated value is a view over
+            # provenance, never a destructive replacement for the source row.
+            merged={}
+            provenance={}
+            source_values={}
+            for field in CONTEXT_FIELDS:
+                values=[]
+                if c.get(field) not in (None,""):
+                    values.append({"source_layer":"claim-derived","value":c.get(field)})
+                if context.get(field) not in (None,""):
+                    layer="reasoning-derived" if field.startswith("reasoning_") else "consolidated"
+                    values.append({"source_layer":layer,"value":context.get(field)})
+                unique=[]
+                for value in values:
+                    if value not in unique:unique.append(value)
+                source_values[field]=unique
+                if not unique:
+                    merged[field]=MISSING;provenance[field]="missing"
+                elif len({str(x["value"]) for x in unique})>1:
+                    merged[field]="冲突值";provenance[field]="conflicting"
+                else:
+                    merged[field]=unique[-1]["value"];provenance[field]=unique[-1]["source_layer"]
             row={"paper_title":e.get("paper_title") or c.get("paper_title") or MISSING,"pmid":e.get("pmid") or c.get("pmid") or MISSING,"pmcid":e.get("pmcid") or c.get("pmcid") or MISSING,"case_id":e.get("case_id") or c.get("case_id") or MISSING,"direction":e.get("direction") or c.get("direction") or triple.get("direction") or MISSING,"source_scope":e.get("source_scope") or MISSING,"section_title":e.get("section_title") or c.get("section_title") or MISSING}
             for field in CONTEXT_FIELDS:row[field]=merged.get(field) or MISSING
+            row["context_provenance"]=provenance;row["context_source_values"]=source_values
             erow=self._evidence_row(e,triple)
             row["evidence_class"]=erow["evidence_class"]
             row["classification_reason"]=erow["classification_reason"]
             rows.append(row)
         differences={field:sorted({r[field] for r in rows}) for field in (*CONTEXT_FIELDS,"direction","source_scope","section_title","evidence_class") if len({r[field] for r in rows})>1}
-        return {"dossier_id":dossier_id_for(triple),"columns":["paper_title","pmid","pmcid","case_id","source_scope","section_title",*CONTEXT_FIELDS,"direction","evidence_class","classification_reason"],"items":rows,"total":len(rows),"summary":{"missing_value_label":MISSING,"differing_fields":differences,"row_count":len(rows)}}
+        simple_candidates=("species","cell_type","tissue","treatment","dose","duration","assay_method","direction")
+        informative=[field for field in simple_candidates if any(r.get(field) not in (None,"",MISSING) for r in rows)]
+        differing=[field for field in informative if field in differences]
+        simple_columns=["paper_title",*(differing or informative[:4]),"direction"]
+        simple_columns=list(dict.fromkeys(simple_columns))
+        return {"dossier_id":dossier_id_for(triple),"columns":["paper_title","pmid","pmcid","case_id","source_scope","section_title",*CONTEXT_FIELDS,"direction","evidence_class","classification_reason"],"simple_columns":simple_columns,"items":rows,"total":len(rows),"summary":{"missing_value_label":MISSING,"differing_fields":differences,"row_count":len(rows),"provenance_layers":["claim-derived","reasoning-derived","metadata-derived","consolidated","conflicting","missing"]}}
 
     def reasoning(self,dossier_id):
         triple=self.by_id.get(self.resolve(dossier_id) or "")
@@ -140,7 +167,7 @@ class DossierProjection:
                 continue
             seen.add(rid)
             items.append({"reasoning_trace_id":rid,"claim_id":trace.get("claim_id"),"trace_status":trace.get("trace_status"),"claim_identity_hash":trace.get("claim_identity_hash"),"source_scope":trace.get("source_scope"),"pmid":trace.get("pmid"),"pmcid":trace.get("pmcid"),"strength_profile":trace.get("strength_profile") or {},"strength_level":trace.get("strength_level"),"steps":trace.get("reasoning_steps") or [],"author_conclusion":trace.get("author_conclusion") or {},"missing_links":trace.get("missing_links") or []})
-        return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"missing_message":"该版本未生成推理链" if not items else None}
+        return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"status":"available" if items else "unavailable","missing_message":"该运行未生成全文推理证据链。" if not items else None}
 
     def audit(self):
         by_semantic={}

@@ -13,13 +13,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser=argparse.ArgumentParser(description="Run or resume one case from frozen package through Atlas verification")
     parser.add_argument("--case-id",required=True);parser.add_argument("--case-profile",type=Path);parser.add_argument("--search-plan-file",type=Path)
     parser.add_argument("--runs-root",type=Path,default=Path("runs"));parser.add_argument("--database-url",default="sqlite:///data/code_atlas.db");parser.add_argument("--system-b-output-root",type=Path,default=Path("system_b_outputs/system_a_sync"));parser.add_argument("--external-data-root",type=Path,default=Path("data/external"))
-    parser.add_argument("--api",action=argparse.BooleanOptionalAction,default=False);parser.add_argument("--network",action=argparse.BooleanOptionalAction,default=False);parser.add_argument("--offline",action="store_true");parser.add_argument("--dry-run",action="store_true");parser.add_argument("--resume",action=argparse.BooleanOptionalAction,default=True)
+    parser.add_argument("--api",action=argparse.BooleanOptionalAction,default=False);parser.add_argument("--network",action=argparse.BooleanOptionalAction,default=False);parser.add_argument("--offline",action="store_true");parser.add_argument("--dry-run",action="store_true");parser.add_argument("--reuse-only",action="store_true");parser.add_argument("--resume",action=argparse.BooleanOptionalAction,default=True)
     parser.add_argument("--force-stage",action="append",choices=STAGES,default=[]);parser.add_argument("--from-stage",choices=STAGES);parser.add_argument("--to-stage",choices=STAGES);parser.add_argument("--stop-after",choices=STAGES);parser.add_argument("--no-atlas-sync",action="store_true");parser.add_argument("--no-publish-handoff",action="store_true");parser.add_argument("--json",action="store_true",dest="json_output")
     return parser
 
 
 def _request(args) -> CaseToAtlasRequest:
-    return CaseToAtlasRequest(case_id=args.case_id,case_profile_path=args.case_profile,search_plan_path=args.search_plan_file,runs_root=args.runs_root,system_b_output_root=args.system_b_output_root,database_url=args.database_url,external_data_root=args.external_data_root,network_enabled=False if args.offline else args.network,api_enabled=False if args.offline else args.api,resume=args.resume,force_stages=frozenset(args.force_stage),from_stage=args.from_stage,to_stage=args.to_stage,stop_after=args.stop_after,publish_handoff=not args.no_publish_handoff,atlas_sync=not args.no_atlas_sync,dry_run=args.dry_run)
+    deny_external = args.offline or args.reuse_only
+    return CaseToAtlasRequest(case_id=args.case_id,case_profile_path=args.case_profile,search_plan_path=args.search_plan_file,runs_root=args.runs_root,system_b_output_root=args.system_b_output_root,database_url=args.database_url,external_data_root=args.external_data_root,network_enabled=False if deny_external else args.network,api_enabled=False if deny_external else args.api,resume=args.resume,force_stages=frozenset(args.force_stage),from_stage=args.from_stage,to_stage=args.to_stage,stop_after=args.stop_after,publish_handoff=not args.no_publish_handoff,atlas_sync=not args.no_atlas_sync,dry_run=args.dry_run,reuse_only=args.reuse_only)
 
 
 def main(argv=None) -> int:
@@ -42,6 +43,7 @@ def main(argv=None) -> int:
         print("CASE_TO_ATLAS_COMPLETED" if result.status=="completed" else "CASE_TO_ATLAS_STOPPED")
         for key in ("case_id","base_run","pmcid_repair_run","fulltext_run","reentry_run","handoff_status","sync_status","projection_id","current_case_count","claim_count","dossier_count","context_row_count","exploratory_triple_count","formal_conflict_count","api_calls","network_calls","cache_hits","historical_api_calls","historical_network_calls","historical_cache_hits"):
             print(f"{key}: {getattr(result,key)}")
+        if result.reconciled_state: print("reconciled_state: true")
         print("reused_stages: "+json.dumps(result.reused_stages,ensure_ascii=False))
     return 0
 
