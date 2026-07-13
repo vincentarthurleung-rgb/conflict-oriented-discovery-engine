@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from code_engine.integration.atlas_handoff import validate_handoff
+from code_engine.integration.atlas_handoff import sha256_file, validate_handoff
 from code_engine.system_b.adapters import ADAPTER_VERSION
 from code_engine.system_b.persistence.database import create_atlas_engine, session_factory
 from code_engine.system_b.persistence.models import Annotation, Assignment, GoldRecord, MetricRun, PredictionRun, ReviewItem, SourceIngestion
@@ -35,7 +35,11 @@ def current_projection(output_root: Path) -> tuple[dict, Path, dict]:
     if relative.is_absolute() or ".." in relative.parts: raise ValueError("unsafe current projection path")
     root = (output_root / relative).resolve()
     if output_root.resolve() not in root.parents: raise ValueError("current projection escapes output root")
-    manifest = json.loads((root / "projection_manifest.json").read_text(encoding="utf-8"))
+    manifest_path = root / "projection_manifest.json"
+    expected_hash = registry.get("projection_manifest_sha256")
+    if not expected_hash or sha256_file(manifest_path) != expected_hash:
+        raise ValueError("current projection manifest hash mismatch")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     return registry, root, manifest
 
 

@@ -23,6 +23,17 @@ class FakeOrchestrator(CaseToAtlasOrchestrator):
         return {"api_calls":1 if name in {"base_run","fulltext_l1"} else 0,"network_calls":1 if name in {"base_run","pmcid_repair","fulltext_l1"} else 0}
 
 
+class ArtifactOrchestrator(CaseToAtlasOrchestrator):
+    def __init__(self): self.calls=[]
+    def _execute(self,name,request,state,record):
+        self.calls.append(name)
+        if name != "base_run": raise AssertionError(name)
+        run=Path(record["output_run"]);artifacts=run/"artifacts";artifacts.mkdir(parents=True)
+        (run/"run_state.json").write_text(json.dumps({"steps":{"fulltext_escalation":{"status":"completed"}}}))
+        (artifacts/"fulltext_escalation_candidates.jsonl").write_text('{"pmid":"1"}\n')
+        return {"api_calls":0,"network_calls":0}
+
+
 class CaseToAtlasOrchestrationTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);package=self.root/"configs/generated_cases/case_one";package.mkdir(parents=True)
@@ -54,6 +65,22 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
     def test_search_plan_change_invalidates_everything(self):
         FakeOrchestrator().run(self.request);payload=json.loads(self.plan.read_text());payload["paper_year_to"]=2021;self.plan.write_text(json.dumps(payload));runner=FakeOrchestrator();runner.run(self.request)
         self.assertEqual(runner.calls,list(STAGES))
+
+    def test_scientific_prompt_config_change_invalidates_paid_stages(self):
+        first={"abstract_l1":"a","fulltext_l1":"b","reentry":"c"};second={**first,"abstract_l1":"changed"}
+        with patch.object(CaseToAtlasOrchestrator,"_scientific_config",return_value=first): FakeOrchestrator().run(self.request)
+        runner=FakeOrchestrator()
+        with patch.object(CaseToAtlasOrchestrator,"_scientific_config",return_value=second): runner.run(self.request)
+        self.assertEqual(runner.calls,list(STAGES))
+
+    def test_modified_completed_artifact_is_not_reused(self):
+        request=CaseToAtlasRequest(**{**self.request.__dict__,"stop_after":"base_run"})
+        first=ArtifactOrchestrator();first.run(request)
+        oid=first.orchestration_id(request.resolved());state=json.loads((self.root/"runs/_orchestration"/oid/"orchestration_state.json").read_text())
+        run=Path(state["stages"]["base_run"]["output_run"])
+        (run/"artifacts/fulltext_escalation_candidates.jsonl").write_text('{"pmid":"tampered"}\n')
+        resumed=ArtifactOrchestrator();resumed.run(request)
+        self.assertEqual(resumed.calls,["base_run"])
 
     def test_sync_failure_does_not_repeat_system_a(self):
         failing=FakeOrchestrator("atlas_sync")

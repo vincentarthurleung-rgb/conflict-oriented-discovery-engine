@@ -18,8 +18,11 @@ PRIMARY_ENDPOINTS = ("conflict_macro_f1", "context_recall_at_3", "novel_future_s
 
 def seed_metric_definitions(session: Session) -> int:
     inserted = 0
+    pending_ids = {
+        item.metric_id for item in session.new if isinstance(item, MetricDefinition)
+    }
     for spec in registry_payload():
-        if session.get(MetricDefinition, spec["metric_id"]):
+        if spec["metric_id"] in pending_ids or session.get(MetricDefinition, spec["metric_id"]):
             continue
         session.add(MetricDefinition(
             metric_id=spec["metric_id"],
@@ -32,6 +35,7 @@ def seed_metric_definitions(session: Session) -> int:
             higher_is_better=spec["higher_is_better"],
             required_inputs_json=json.dumps(spec["required_inputs"]),
         ))
+        pending_ids.add(spec["metric_id"])
         inserted += 1
     return inserted
 
@@ -72,12 +76,12 @@ def _git_commit() -> str:
 def run_evaluation(session: Session, *, owner: dict, project_id: str, gold_version: int, predictions: dict[str, str] | None = None, seed: int = 13) -> dict:
     if owner.get("role") != "owner":
         raise PermissionError("owner_required")
-    seed_metric_definitions(session)
     project = session.get(EvaluationProject, project_id)
     if not project or project.namespace != "production":
         raise ValueError("project_namespace_not_production")
     if predictions is None:
         raise ValueError("prediction_adapter_not_configured")
+    seed_metric_definitions(session)
     protocol = session.execute(select(EvaluationProtocol).where(EvaluationProtocol.project_id == project_id, EvaluationProtocol.frozen == True).order_by(EvaluationProtocol.version.desc())).scalar_one_or_none()  # noqa: E712
     config = {"gold_dataset_version": gold_version, "seed": seed}
     run = MetricRun(

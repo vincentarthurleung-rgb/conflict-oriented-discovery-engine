@@ -328,8 +328,10 @@ select,button,input{font-family:inherit}
 .graph-status{grid-column:1/-1;color:var(--muted);font-size:12px}
 .graph-edge{cursor:pointer}
 .graph-edge line{stroke:#6f9a9d;stroke-linecap:round;opacity:.72}
+.graph-edge .edge-hit-target{stroke:transparent;stroke-width:18;opacity:1;pointer-events:stroke}
+.graph-edge .edge-visible{pointer-events:none}
 .graph-edge text{font-size:10px;fill:#39575b;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round}
-.graph-edge.selected line{stroke:#c95f2d;opacity:1}
+.graph-edge.selected .edge-visible{stroke:#c95f2d;opacity:1}
 .graph-node{cursor:pointer}
 .graph-node circle,.graph-node rect,.graph-node polygon,.graph-node ellipse{fill:#e8f5f3;stroke:#176b6d;stroke-width:1.5}
 .graph-node text{font-size:11px;text-anchor:middle;fill:#12393e;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round}
@@ -369,6 +371,7 @@ select,button,input{font-family:inherit}
 .graph-edge:hover .edge-label,.graph-edge:focus .edge-label,.graph-edge.selected .edge-label{opacity:1}
 .graph-node:focus,.graph-edge:focus{outline:none}
 .graph-node:focus circle,.graph-node:focus rect,.graph-node:focus polygon,.graph-node:focus ellipse{stroke:#c95f2d;stroke-width:3}
+.graph-edge:focus .edge-visible{stroke:#c95f2d;opacity:1}
 .graph-text-results{display:grid;gap:4px;padding-top:8px}
 .graph-text-results h3{font-size:12px;margin:8px 0 2px}
 .graph-text-row{width:100%;display:flex;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:5px;padding:7px 9px;color:var(--ink);cursor:pointer}

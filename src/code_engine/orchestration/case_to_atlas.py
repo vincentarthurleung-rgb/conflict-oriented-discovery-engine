@@ -17,6 +17,8 @@ from code_engine.orchestration.verification import current_projection, evaluatio
 from code_engine.system_b.adapters import ADAPTER_VERSION
 from code_engine.system_b.system_a_sync import sync_system_a
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
 ERROR_CODES = {"base_run":"BASE_RUN_FAILED", "pmcid_repair":"PMCID_REPAIR_FAILED", "fulltext_l1":"FULLTEXT_L1_FAILED",
                "reentry":"REENTRY_FAILED", "handoff":"HANDOFF_VALIDATION_FAILED", "atlas_sync":"ATLAS_SYNC_FAILED",
                "verification":"PROJECTION_VERIFICATION_FAILED"}
@@ -133,6 +135,7 @@ class CaseToAtlasOrchestrator:
             try:
                 output=self._execute(name,request,state,record)
                 record.update(status="completed",completed_at=utcnow(),**output);record["last_status"]="completed"
+                record["artifact_hash"] = self._artifact_hash(name, record, request)
                 store.append_event("sync_completed" if name=="atlas_sync" else "verification_completed" if name=="verification" else "stage_completed",stage=name,output_run=record.get("output_run"),status=output.get("operation_status","completed"))
                 store.write_state(state)
             except Exception as error:
@@ -154,17 +157,67 @@ class CaseToAtlasOrchestrator:
 
     def _input_hash(self, stage: str, request: CaseToAtlasRequest, state: dict) -> str:
         provider={"provider":os.getenv("L1_PROVIDER") or "","model":os.getenv("MODEL_NAME") or ""}
+        scientific_config = self._scientific_config()
         stages=state.get("stages",{})
-        if stage=="base_run": material={"profile":_file_hash(request.case_profile_path),"plan":_file_hash(request.search_plan_path),"api":request.api_enabled,"network":request.network_enabled,**provider}
+        if stage=="base_run": material={"profile":_file_hash(request.case_profile_path),"plan":_file_hash(request.search_plan_path),"api":request.api_enabled,"network":request.network_enabled,"abstract_l1_config":scientific_config["abstract_l1"],**provider}
         elif stage=="pmcid_repair": material={"base":self._output_identity(stages.get("base_run",{})),"network":request.network_enabled}
-        elif stage=="fulltext_l1": material={"repair":self._output_identity(stages.get("pmcid_repair",{})),"profile":_file_hash(request.case_profile_path),"api":request.api_enabled,"network":request.network_enabled,**provider}
-        elif stage=="reentry": material={"base":self._output_identity(stages.get("base_run",{})),"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"schema":"fulltext_reentry_v5"}
+        elif stage=="fulltext_l1": material={"repair":self._output_identity(stages.get("pmcid_repair",{})),"profile":_file_hash(request.case_profile_path),"api":request.api_enabled,"network":request.network_enabled,"fulltext_l1_config":scientific_config["fulltext_l1"],**provider}
+        elif stage=="reentry": material={"base":self._output_identity(stages.get("base_run",{})),"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"schema":"fulltext_reentry_v5","reentry_config":scientific_config["reentry"]}
         elif stage=="handoff": material={"reentry":self._output_identity(stages.get("reentry",{})),"schema":"atlas_handoff_v1"}
         elif stage=="atlas_sync":
             manifests=sorted((str(path),_file_hash(path)) for path in request.runs_root.glob("*/artifacts/atlas_handoff_manifest.json"));material={"manifests":manifests,"adapter":ADAPTER_VERSION,"output":str(request.system_b_output_root.resolve()),"database":request.database_url}
         else:
             registry=request.system_b_output_root/"current_projection.json";material={"registry":_file_hash(registry),"handoff":self._output_identity(stages.get("handoff",{})),"baseline":state.get("safety_baseline")}
         return _hash(material)
+
+    def _scientific_config(self) -> dict[str, str]:
+        """Fingerprint prompt/schema/code inputs that control paid scientific stages."""
+        prompt_root = REPOSITORY_ROOT / "configs" / "prompts" / "l1"
+        prompt_files = sorted(path for path in prompt_root.rglob("*") if path.is_file())
+        prompt_hashes = [(str(path.relative_to(REPOSITORY_ROOT)), _file_hash(path)) for path in prompt_files]
+        return {
+            "abstract_l1": _hash({"prompt_files": prompt_hashes}),
+            "fulltext_l1": _hash({
+                "prompt_version": __import__(
+                    "code_engine.fulltext.fulltext_l1_extractor", fromlist=["PROMPT_VERSION"]
+                ).PROMPT_VERSION,
+                "extractor": _file_hash(REPOSITORY_ROOT / "src/code_engine/fulltext/fulltext_l1_extractor.py"),
+                "response_schema": _file_hash(REPOSITORY_ROOT / "configs/prompts/l1/output_schema_v2.json"),
+            }),
+            "reentry": _hash({
+                "reentry": _file_hash(REPOSITORY_ROOT / "src/code_engine/fulltext/reentry.py"),
+                "adapter": _file_hash(REPOSITORY_ROOT / "src/code_engine/system_b/adapters/fulltext_reentry_v5.py"),
+            }),
+        }
+
+    def _artifact_hash(self, stage: str, record: dict, request: CaseToAtlasRequest) -> str:
+        run = Path(record.get("output_run") or "")
+        paths: list[Path]
+        if stage == "base_run":
+            paths = [run / "run_state.json"] + [
+                run / "artifacts" / name for name in
+                ("fulltext_escalation_candidates.jsonl", "fulltext_discovery_escalation_candidates.jsonl")
+                if (run / "artifacts" / name).is_file()
+            ]
+        elif stage == "pmcid_repair":
+            paths = [run / "pmcid_repair_manifest.json", run / "artifacts/pmcid_enrichment_audit.jsonl"]
+        elif stage == "fulltext_l1":
+            paths = [run / "fulltext_bridge_replay_manifest.json", run / "artifacts/l35_fulltext_l1_claims.jsonl", run / "artifacts/l35_fulltext_l1_summary.json"]
+        elif stage == "reentry":
+            paths = [run / "fulltext_reentry_manifest.json"]
+        elif stage == "handoff":
+            paths = [Path(record.get("manifest_path") or ""), Path(record.get("manifest_path") or "").with_name("ATLAS_READY")]
+        elif stage == "atlas_sync":
+            registry = request.system_b_output_root / "current_projection.json"
+            paths = [registry]
+            try:
+                _, projection_root, _ = current_projection(request.system_b_output_root)
+                paths.append(projection_root / "projection_manifest.json")
+            except Exception:
+                paths.append(request.system_b_output_root / "missing_projection_manifest.json")
+        else:
+            return _hash(record.get("verification") or {})
+        return _hash([(str(path), _file_hash(path)) for path in paths])
 
     def _output_identity(self, record: dict) -> dict:
         path=Path(record.get("output_run") or "")
@@ -173,6 +226,7 @@ class CaseToAtlasOrchestrator:
 
     def _record_valid(self, stage: str, record: dict, input_hash: str, request: CaseToAtlasRequest) -> bool:
         if record.get("status")!="completed" or record.get("input_hash")!=input_hash: return False
+        if record.get("artifact_hash") != self._artifact_hash(stage, record, request): return False
         try:
             if stage=="base_run":
                 run=Path(record["output_run"]);state=_read(run/"run_state.json");return state.get("steps",{}).get("fulltext_escalation",{}).get("status")=="completed" and any((run/"artifacts"/name).is_file() for name in ("fulltext_escalation_candidates.jsonl","fulltext_discovery_escalation_candidates.jsonl"))
@@ -180,7 +234,9 @@ class CaseToAtlasOrchestrator:
             if stage=="fulltext_l1": return _read(Path(record["output_run"])/"fulltext_bridge_replay_manifest.json").get("stage_summary",{}).get("status","").startswith("completed")
             if stage=="reentry": return _read(Path(record["output_run"])/"fulltext_reentry_manifest.json").get("status")=="completed"
             if stage=="handoff": validate_handoff(record["manifest_path"],runs_root=request.runs_root);return True
-            if stage=="atlas_sync": return record.get("operation_status") in {"completed","no_op"} and (request.system_b_output_root/"current_projection.json").is_file()
+            if stage=="atlas_sync":
+                current_projection(request.system_b_output_root)
+                return record.get("operation_status") in {"completed","no_op"}
             if stage=="verification": return record.get("verification",{}).get("status")=="passed"
         except Exception: return False
         return False

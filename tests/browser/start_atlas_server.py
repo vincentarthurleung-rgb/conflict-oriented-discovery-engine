@@ -41,8 +41,8 @@ def main() -> None:
             primary_reviewer_user_id=primary.user_id,
             secondary_reviewer_user_id=secondary.user_id,
             adjudicator_user_id=adjudicator.user_id,
-            batch_size=2,
-            item_ids=[item1.review_item_id, item2.review_item_id],
+            batch_size=1,
+            item_ids=[item1.review_item_id],
         )
     app = create_app(root, None, require_auth=True, secret_key="browser-test-secret", allow_registration=True, database_url=url, require_database=True, testing=False)
     app.run(host="127.0.0.1", port=int(os.environ.get("ATLAS_E2E_PORT", "18765")), debug=False, use_reloader=False)
