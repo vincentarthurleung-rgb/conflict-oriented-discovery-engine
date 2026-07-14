@@ -95,7 +95,12 @@ def _optional_jsonl(validated: dict[str, Any], logical_name: str) -> list[dict[s
 
 def _first_context_value(values: Any) -> Any:
     if isinstance(values, list):
-        return values[0] if values else None
+        if not values:
+            return None
+        first = values[0]
+        return first.get("value") if isinstance(first, dict) and "value" in first else first
+    if isinstance(values, dict) and "value" in values:
+        return values.get("value")
     return values
 
 
@@ -108,6 +113,7 @@ def _reasoning_context_for(claim_id: Any, consolidations: dict[str, dict[str, An
     row["reasoning_trace_id"] = trace.get("reasoning_trace_id") or cons.get("reasoning_trace_id")
     row["reasoning_strength_profile"] = trace.get("strength_profile") or cons.get("strength_profile") or {}
     row["field_provenance"] = cons.get("field_provenance") or {}
+    row["linked_chain_ids"] = cons.get("linked_chain_ids") or []
     return {key: value for key, value in row.items() if value not in (None, "", [], {})}
 
 
@@ -153,6 +159,10 @@ class FulltextReentryV5Adapter:
         source_run_id = manifest["source_run_id"]
         reasoning_traces = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_reasoning_traces")}
         consolidations = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_context_consolidations")}
+        chains = {str(row.get("chain_id")): row for row in _optional_jsonl(validated, "experimental_evidence_chains")}
+        links_by_claim: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for link in _optional_jsonl(validated, "claim_evidence_links"):
+            links_by_claim[str(link.get("claim_id"))].append(link)
         records = []
         for lane, relative in LANE_FILES.items():
             spec = manifest["artifacts"][f"lane_{lane}"]
@@ -181,6 +191,12 @@ class FulltextReentryV5Adapter:
             dossier_id = dossier_id_for(triple_shape)
             provenance = _provenance(row, case_id=case_id, source_run_id=source_run_id, logical_name=logical_name, artifact_hash=artifact_hash, index=index)
             reasoning_context = _reasoning_context_for(row.get("claim_id"), consolidations, reasoning_traces)
+            linked_links = links_by_claim.get(str(row.get("claim_id")), [])
+            linked_chains = []
+            for link in linked_links:
+                chain = chains.get(str(link.get("chain_id")))
+                if chain:
+                    linked_chains.append({"link": link, "chain": chain})
             combined_context = {**_context(row), **reasoning_context}
             evidence = {
                 **provenance,
@@ -208,6 +224,9 @@ class FulltextReentryV5Adapter:
                 "object": obj,
                 "context": combined_context,
                 "reasoning_trace": reasoning_traces.get(str(row.get("claim_id"))),
+                "evidence_chains": linked_chains,
+                "evidence_chain_status": "available" if linked_chains else "unavailable",
+                "evidence_chain_missing_message": None if linked_chains else "Experimental evidence chain not available for this historical run.",
                 "source_scope": row.get("source_scope"),
                 "direction": row.get("direction"),
             }
@@ -281,6 +300,6 @@ class FulltextReentryV5Adapter:
             exploratory.append({**triple, "supporting_evidence_count": len(evidence), "case_coverage": len(triple["case_ids"])})
             for row in evidence:
                 evidence_links.append({**row, "triple_id": triple_id})
-                contexts.append({"triple_id": triple_id, "case_id": row["case_id"], "pmid": row.get("pmid"), "pmcid": row.get("pmcid"), "paper_title": row.get("paper_title"), "evidence_sentence": row.get("evidence_sentence"), **row.get("context", {}), **_reasoning_context_for(row.get("claim_id"), {}, {str(row.get("claim_id")): row.get("reasoning_trace") or {}})})
+                contexts.append({"triple_id": triple_id, "case_id": row["case_id"], "pmid": row.get("pmid"), "pmcid": row.get("pmcid"), "paper_title": row.get("paper_title"), "evidence_sentence": row.get("evidence_sentence"), **row.get("context", {}), **_reasoning_context_for(row.get("claim_id"), {}, {str(row.get("claim_id")): row.get("reasoning_trace") or {}}), "evidence_chains": row.get("evidence_chains") or []})
         case_focused = [{"case_id": case_id, "triple_id": triple["triple_id"]} for triple in triples for case_id in triple["case_ids"]]
         return exploratory, {"display_entities_v2": sorted(entities.values(), key=lambda row: row["entity_id"]), "display_triples_v2": triples, "display_chains_v2": [], "case_focused_triples": case_focused, "case_focused_chains": [], "triple_evidence_links": evidence_links, "triple_contexts": contexts, "validator_annotations": [], "conflict_lens_records": []}

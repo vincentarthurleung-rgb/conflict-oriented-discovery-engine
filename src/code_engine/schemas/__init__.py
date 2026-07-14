@@ -5,6 +5,12 @@ from code_engine.schemas.contexts import ContextAttribution, ContextMention
 from code_engine.schemas.documents import ManifestAudit, ManifestPaperEntry, PaperDocument, PayloadAudit
 from code_engine.schemas.entities import NormalizedEntity
 from code_engine.schemas.evidence import EvidenceRecord, build_minimal_evidence_record
+from code_engine.schemas.evidence_chain import (
+    ClaimEvidenceLink,
+    ConsolidatedContextValue,
+    ExperimentalEvidenceChain,
+    validate_claim_evidence_references,
+)
 from code_engine.schemas.hypotheses import CandidateHypothesis
 from code_engine.schemas.l1_extraction import L1ExtractedClaim
 from code_engine.schemas.hypothesis_hyperedge import HypothesisHyperedge
@@ -29,4 +35,6 @@ __all__ = [
     "ValidationExecutionResult", "AggregatedValidationResult", "ValidatorCapability", "ValidatorRoute",
     "EvidenceRecord", "build_minimal_evidence_record", "MechanismEdge",
     "HypothesisHyperedge", "ReasoningRecord", "L1ExtractedClaim",
+    "ExperimentalEvidenceChain", "ClaimEvidenceLink", "ConsolidatedContextValue",
+    "validate_claim_evidence_references",
 ]

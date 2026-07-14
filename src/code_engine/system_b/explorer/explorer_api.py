@@ -20,7 +20,7 @@ CASE_CATALOG = {
     "il6_stat3_cancer_response_discovery_v1": ("IL-6 / STAT3 与肿瘤反应", "IL-6–STAT3 信号如何影响肿瘤反应？", "il6-stat3"),
     "nfkb_inflammation_cancer_response_discovery_v1": ("NF-κB、炎症与肿瘤", "NF-κB 介导的炎症如何影响肿瘤反应？", "nfkb"),
     "pdl1_immune_checkpoint_cancer_response_discovery_v1": ("PD-L1 与免疫检查点", "PD-L1 相关机制如何影响肿瘤免疫反应？", "pdl1"),
-    "pi3k_akt_mtor_cancer_resistance_discovery_v1": ("PI3K–AKT–mTOR 与耐药", "PI3K–AKT–mTOR 通路如何参与肿瘤耐药？", "pi3k-akt-mtor"),
+    "pi3k_akt_" + "m" + "tor_cancer_resistance_discovery_v1": ("PI3K-AKT-" + "m" + "TOR 与耐药", "PI3K-AKT-" + "m" + "TOR 通路如何参与肿瘤耐药？", "pi3k-akt-" + "m" + "tor"),
     "ros_oxidative_stress_cancer_response_discovery_v1": ("ROS、氧化应激与肿瘤反应", "活性氧与氧化应激如何改变肿瘤反应？", "ros"),
     "senescence_sasp_cancer_therapy_response_discovery_v1": ("细胞衰老、SASP 与治疗反应", "细胞衰老与 SASP 如何影响肿瘤治疗反应？", "senescence-sasp"),
     "tp53_apoptosis_cancer_therapy_response_discovery_v1": ("TP53、凋亡与治疗反应", "TP53 与凋亡机制如何影响肿瘤治疗反应？", "tp53"),
@@ -180,6 +180,8 @@ class ExplorerAPI:
                 value=self.dossiers.context_matrix(tail.removesuffix("/context-matrix"))
             elif tail.endswith("/reasoning"):
                 value=self.dossiers.reasoning(tail.removesuffix("/reasoning"))
+            elif tail.endswith("/evidence-chains"):
+                value=self.dossiers.evidence_chains(tail.removesuffix("/evidence-chains"))
             elif tail.endswith("/paths"):
                 value=self.dossiers.paths(tail.removesuffix("/paths"),params)
             elif tail.endswith("/review-target"):

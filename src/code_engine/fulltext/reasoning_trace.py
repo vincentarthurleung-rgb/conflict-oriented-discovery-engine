@@ -14,12 +14,30 @@ from pathlib import Path
 from typing import Any, Callable
 
 from code_engine.integration.atlas_handoff import canonical_json, sha256_file
+from code_engine.schemas.evidence_chain import (
+    AuthorInterpretation,
+    CausalDesign,
+    ClaimEvidenceLink,
+    Comparator,
+    ConsolidatedContextValue,
+    EvidenceAnchor,
+    ExperimentalEvidenceChain,
+    ExperimentalSystem,
+    Intervention,
+    Measurement,
+    ObservedResult,
+    validate_claim_evidence_references,
+)
 
 SCHEMA_VERSION = "fulltext_reasoning_trace_v1"
 CONSOLIDATION_SCHEMA_VERSION = "fulltext_context_consolidation_v1"
+EVIDENCE_CHAIN_SCHEMA_VERSION = "experimental_evidence_chain_v1"
+CLAIM_EVIDENCE_LINK_SCHEMA_VERSION = "claim_evidence_link_v1"
 PROMPT_VERSION = "fulltext_reasoning_trace_prompt_v1"
 EXTRACTOR_CODE_VERSION = "fulltext_reasoning_trace_extractor_v1"
 CONTEXT_RULE_VERSION = "fulltext_context_consolidation_rules_v1"
+EVIDENCE_CHAIN_EXTRACTOR_VERSION = "experimental_evidence_chain_from_trace_v1"
+CLAIM_EVIDENCE_LINKER_VERSION = "claim_evidence_linker_v1"
 RETRIEVAL_CONFIG_VERSION = "claim_centered_passage_retrieval_v1"
 
 TRACE_STATUSES = {
@@ -448,6 +466,175 @@ def strength_level(profile: dict[str, bool]) -> str:
     return "author_conclusion_only"
 
 
+def _first_text_for_roles(trace: dict[str, Any], roles: set[str]) -> str | None:
+    for step in trace.get("reasoning_steps") or []:
+        if step.get("role") in roles and step.get("reported_text"):
+            return str(step.get("reported_text"))
+    return None
+
+
+def _anchors_for_trace(trace: dict[str, Any]) -> list[EvidenceAnchor]:
+    anchors: list[EvidenceAnchor] = []
+    seen: set[str] = set()
+    for step in trace.get("reasoning_steps") or []:
+        for sid in step.get("sentence_ids") or []:
+            key = str(sid)
+            if key in seen:
+                continue
+            seen.add(key)
+            anchors.append(EvidenceAnchor(
+                anchor_id="anc_" + _hash({"trace": trace.get("reasoning_trace_id"), "sentence_id": key})[:16],
+                section=step.get("section_title") or step.get("section_type"),
+                sentence_id=key,
+                sentence_text=step.get("reported_text"),
+            ))
+    return anchors
+
+
+def _direction_from_text(text: str | None) -> str:
+    norm = _norm(text or "")
+    if any(x in norm for x in ("increase", "increased", "higher", "upregulated", "enhanced", "activated")):
+        return "increase"
+    if any(x in norm for x in ("decrease", "decreased", "lower", "reduced", "suppressed", "inhibited", "abolished")):
+        return "decrease"
+    if any(x in norm for x in ("no change", "no difference", "not significant")):
+        return "no_change"
+    return "unknown"
+
+
+def _causal_design(trace: dict[str, Any]) -> CausalDesign:
+    roles = {str(step.get("role")) for step in trace.get("reasoning_steps") or []}
+    basis: list[str] = []
+    if "rescue_experiment" in roles:
+        basis.append("rescue_experiment step reported")
+        return CausalDesign(evidence_type="rescue", causal_strength="rescue_support", classification_basis=basis)
+    if roles & {"blocking_experiment", "loss_of_function"}:
+        basis.append("blocking/loss-of-function step reported")
+        evidence_type = "pharmacological_blockade" if "blocking_experiment" in roles else "knockdown"
+        return CausalDesign(evidence_type=evidence_type, causal_strength="necessity_support", classification_basis=basis)
+    if "gain_of_function" in roles:
+        basis.append("gain-of-function step reported")
+        return CausalDesign(evidence_type="overexpression", causal_strength="sufficiency_support", classification_basis=basis)
+    if "dose_response" in roles:
+        basis.append("dose-response step reported")
+        return CausalDesign(evidence_type="dose_response", causal_strength="mechanistic_support", classification_basis=basis)
+    if "experimental_intervention" in roles:
+        basis.append("intervention step precedes reported observation")
+        return CausalDesign(evidence_type="intervention", causal_strength="intervention_support", classification_basis=basis)
+    if roles & {"observation", "functional_result", "measurement"}:
+        basis.append("measurement/observation without perturbation design")
+        return CausalDesign(evidence_type="association", causal_strength="association", classification_basis=basis)
+    return CausalDesign(evidence_type="other", causal_strength="unclear", classification_basis=["insufficient structured experimental design"])
+
+
+def _context_first(context: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        values = _normalize_list(context.get(key))
+        if values:
+            return str(values[0])
+    return None
+
+
+def evidence_chains_from_traces(traces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    chains: list[dict[str, Any]] = []
+    for trace in traces:
+        if trace.get("source_scope") != "fulltext" or not trace.get("reasoning_steps"):
+            continue
+        context = trace.get("experimental_context") if isinstance(trace.get("experimental_context"), dict) else {}
+        intervention_text = _first_text_for_roles(trace, {"experimental_intervention", "loss_of_function", "gain_of_function", "blocking_experiment", "rescue_experiment", "dose_response"})
+        measurement_text = _first_text_for_roles(trace, {"measurement", "statistical_support"})
+        result_text = _first_text_for_roles(trace, {"observation", "functional_result", "in_vivo_validation"})
+        control_text = _first_text_for_roles(trace, {"comparison_or_control"})
+        author_text = _first_text_for_roles(trace, {"author_interpretation", "final_conclusion"})
+        anchors = _anchors_for_trace(trace)
+        confidence = 0.85 if anchors and trace.get("trace_status") == "complete" else 0.65 if anchors else 0.3
+        status = "valid" if anchors and trace.get("trace_status") == "complete" else "partial" if anchors else "invalid"
+        chain = ExperimentalEvidenceChain(
+            chain_id="chain_" + _hash({"trace": trace.get("reasoning_trace_id"), "claim": trace.get("claim_id")})[:20],
+            paper_id=str(trace.get("paper_id") or trace.get("pmid") or trace.get("pmcid") or ""),
+            source_document_id=str(trace.get("pmcid") or trace.get("pmid") or trace.get("paper_id") or ""),
+            experimental_system=ExperimentalSystem(
+                species=_context_first(context, "species"),
+                disease_model=_context_first(context, "model_system", "disease_subtype"),
+                tissue=_context_first(context, "tissue"),
+                cell_type=_context_first(context, "cell_type"),
+                genotype=_context_first(context, "genotype"),
+                localization=_context_first(context, "localization"),
+            ),
+            interventions=[Intervention(
+                agent_raw=_context_first(context, "intervention_target", "intervention_type") or intervention_text or "",
+                dose=_context_first(context, "dose"),
+                duration=_context_first(context, "duration"),
+            )] if (intervention_text or _context_first(context, "intervention_target", "intervention_type", "dose", "duration")) else [],
+            comparators=[Comparator(comparator_type="other", description=control_text or "")] if control_text else [],
+            measurements=[Measurement(assay=_context_first(context, "assay_method"), endpoint=_context_first(context, "measured_endpoint") or measurement_text)],
+            observed_results=[ObservedResult(endpoint=_context_first(context, "measured_endpoint") or "", direction=_direction_from_text(result_text), effect_description=result_text or "")] if result_text else [],
+            author_interpretation=AuthorInterpretation(text=author_text, certainty="asserted" if author_text else "not_stated"),
+            causal_design=_causal_design(trace),
+            evidence_anchors=anchors,
+            extraction_confidence=confidence,
+            validation_status=status,
+            legacy_reasoning_trace_id=trace.get("reasoning_trace_id"),
+            claim_id=trace.get("claim_id"),
+            strength_profile=trace.get("strength_profile") or {},
+            extraction_version=EVIDENCE_CHAIN_EXTRACTOR_VERSION,
+        )
+        chains.append(chain.model_dump(mode="json"))
+    return chains
+
+
+def link_claims_to_evidence_chains(claims: list[dict[str, Any]], chains: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    claim_ids = {str(row.get("claim_id")) for row in claims if row.get("claim_id")}
+    chain_ids = {str(row.get("chain_id")) for row in chains if row.get("chain_id")}
+    links: list[ClaimEvidenceLink] = []
+    for chain in chains:
+        claim_id = str(chain.get("claim_id") or "")
+        if claim_id not in claim_ids:
+            continue
+        basis = ["derived from claim-centered trace"]
+        if chain.get("evidence_anchors"):
+            basis.append("shared sentence anchors from retrieved fulltext passages")
+        confidence = 0.75 if chain.get("validation_status") == "valid" else 0.55 if chain.get("validation_status") == "partial" else 0.3
+        relation = "supports" if confidence >= 0.5 else "unclear"
+        links.append(ClaimEvidenceLink(
+            link_id="link_" + _hash({"claim_id": claim_id, "chain_id": chain.get("chain_id")})[:20],
+            claim_id=claim_id,
+            chain_id=str(chain.get("chain_id")),
+            paper_id=str(chain.get("paper_id") or ""),
+            relation=relation,
+            link_method="shared_result_anchor",
+            link_confidence=confidence,
+            link_basis=basis,
+            evidence_anchor_ids=[str(anchor.get("anchor_id") or anchor.get("sentence_id")) for anchor in chain.get("evidence_anchors") or []],
+        ))
+    validate_claim_evidence_references(links, claim_ids=claim_ids, chain_ids=chain_ids)
+    return [link.model_dump(mode="json") for link in links]
+
+
+def evidence_chain_summary(claims: list[dict[str, Any]], chains: list[dict[str, Any]], links: list[dict[str, Any]]) -> dict[str, Any]:
+    linked_claims = {row.get("claim_id") for row in links}
+    strengths = [((row.get("causal_design") or {}).get("causal_strength") or "unclear") for row in chains]
+    statuses = [row.get("validation_status") for row in chains]
+    return {
+        "schema_version": "experimental_evidence_chain_summary_v1",
+        "claim_count": len(claims),
+        "evidence_chain_count": len(chains),
+        "claim_evidence_link_count": len(links),
+        "linked_claim_count": len(linked_claims),
+        "unlinked_claim_count": max(0, len(claims) - len(linked_claims)),
+        "association_chain_count": sum(x == "association" for x in strengths),
+        "necessity_support_count": sum(x == "necessity_support" for x in strengths),
+        "sufficiency_support_count": sum(x == "sufficiency_support" for x in strengths),
+        "rescue_support_count": sum(x == "rescue_support" for x in strengths),
+        "invalid_chain_count": sum(x == "invalid" for x in statuses),
+        "partial_chain_count": sum(x == "partial" for x in statuses),
+        "extractor_version": EVIDENCE_CHAIN_EXTRACTOR_VERSION,
+        "linker_version": CLAIM_EVIDENCE_LINKER_VERSION,
+        "evidence_chain_status": "completed" if chains else "unavailable_fulltext_required",
+        "claim_evidence_link_status": "completed" if links else "failed" if chains else "unavailable",
+    }
+
+
 def unavailable_abstract_trace(claim: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -583,7 +770,21 @@ def run_fulltext_reasoning_trace_stage(
     _write_jsonl(artifacts / "fulltext_claim_passage_index.jsonl", passages_out)
     _write_jsonl(artifacts / "fulltext_reasoning_traces.jsonl", traces)
     _write_jsonl(artifacts / "fulltext_reasoning_trace_warnings.jsonl", warnings)
+    chains = evidence_chains_from_traces(traces)
+    links = link_claims_to_evidence_chains(claims, chains)
+    _write_jsonl(artifacts / "experimental_evidence_chains.jsonl", chains)
+    _write_jsonl(artifacts / "claim_evidence_links.jsonl", links)
+    _write_json(artifacts / "experimental_evidence_chain_summary.json", evidence_chain_summary(claims, chains, links))
     summary = reasoning_summary(traces, eligible, api_calls=api_calls, cache_hits=cache_hits, newly=newly, reused=reused)
+    chain_summary = evidence_chain_summary(claims, chains, links)
+    summary.update({
+        "evidence_chain_count": chain_summary["evidence_chain_count"],
+        "claim_evidence_link_count": chain_summary["claim_evidence_link_count"],
+        "linked_claim_count": chain_summary["linked_claim_count"],
+        "unlinked_claim_count": chain_summary["unlinked_claim_count"],
+        "evidence_chain_status": chain_summary["evidence_chain_status"],
+        "claim_evidence_link_status": chain_summary["claim_evidence_link_status"],
+    })
     _write_json(artifacts / "fulltext_reasoning_trace_summary.json", summary)
     return summary
 
@@ -615,32 +816,93 @@ def reasoning_summary(traces: list[dict[str, Any]], eligible: int, *, api_calls:
     }
 
 
-def consolidate_context_for_trace(claim: dict[str, Any], trace: dict[str, Any]) -> dict[str, Any]:
+def _context_values_from_chain(chain: dict[str, Any]) -> dict[str, list[Any]]:
+    system = chain.get("experimental_system") if isinstance(chain.get("experimental_system"), dict) else {}
+    values = {
+        "species": _normalize_list(system.get("species")),
+        "model_system": _normalize_list(system.get("disease_model")),
+        "cell_type": _normalize_list(system.get("cell_type") or system.get("cell_line")),
+        "tissue": _normalize_list(system.get("tissue") or system.get("organ")),
+        "genotype": _normalize_list(system.get("genotype")),
+        "localization": _normalize_list(system.get("localization")),
+        "intervention_type": [],
+        "intervention_target": [],
+        "control_group": [],
+        "dose": [],
+        "duration": [],
+        "assay_method": [],
+        "measured_endpoint": [],
+        "validation_design": _normalize_list((chain.get("causal_design") or {}).get("causal_strength")),
+    }
+    for item in chain.get("interventions") or []:
+        if isinstance(item, dict):
+            values["intervention_target"].extend(_normalize_list(item.get("agent_raw")))
+            values["dose"].extend(_normalize_list(item.get("dose") or item.get("concentration")))
+            values["duration"].extend(_normalize_list(item.get("duration") or item.get("timing")))
+    for item in chain.get("comparators") or []:
+        if isinstance(item, dict):
+            values["control_group"].extend(_normalize_list(item.get("description") or item.get("comparator_type")))
+    for item in chain.get("measurements") or []:
+        if isinstance(item, dict):
+            values["assay_method"].extend(_normalize_list(item.get("assay")))
+            values["measured_endpoint"].extend(_normalize_list(item.get("endpoint")))
+    for item in chain.get("observed_results") or []:
+        if isinstance(item, dict):
+            values["measured_endpoint"].extend(_normalize_list(item.get("endpoint")))
+    return {key: [x for x in vals if x not in (None, "", [], {})] for key, vals in values.items()}
+
+
+def _agreement(values: list[ConsolidatedContextValue]) -> str:
+    unique = {str(item.value).casefold() for item in values}
+    source_types = {item.source_type for item in values}
+    if len(unique) <= 1 and len(source_types) <= 1:
+        return "single_source"
+    if len(unique) <= 1:
+        return "consistent"
+    return "mixed"
+
+
+def consolidate_context_for_claim(claim: dict[str, Any], linked_chains: list[dict[str, Any]], trace: dict[str, Any] | None = None) -> dict[str, Any]:
     claim_context_raw = claim.get("context") if isinstance(claim.get("context"), dict) else {}
     claim_scoped = {field: _normalize_list(claim_context_raw.get(field)) for field in CLAIM_SCOPED_FIELDS}
-    trace_context_raw = trace.get("experimental_context") if isinstance(trace.get("experimental_context"), dict) else {}
-    evidence_chain = {field: _normalize_list(trace_context_raw.get(field)) for field in EVIDENCE_CHAIN_FIELDS}
-    consolidated: dict[str, list[Any]] = {}
+    evidence_chain: dict[str, list[Any]] = {field: [] for field in EVIDENCE_CHAIN_FIELDS}
+    evidence_chain_sources: dict[str, list[dict[str, Any]]] = {}
+    for chain in linked_chains:
+        chain_values = _context_values_from_chain(chain)
+        for field, values in chain_values.items():
+            if field not in evidence_chain:
+                evidence_chain[field] = []
+            for value in values:
+                if value not in evidence_chain[field]:
+                    evidence_chain[field].append(value)
+                evidence_chain_sources.setdefault(field, []).append({"value": value, "source_type": "evidence_chain_context", "source_ids": [chain.get("chain_id")], "confidence": chain.get("extraction_confidence", 0.5)})
+    consolidated: dict[str, list[dict[str, Any]]] = {}
     provenance: dict[str, list[dict[str, Any]]] = {}
     conflicts: list[dict[str, Any]] = []
-    sentence_ids = [sid for step in trace.get("reasoning_steps") or [] for sid in step.get("sentence_ids") or []]
+    sentence_ids = [sid for step in (trace or {}).get("reasoning_steps") or [] for sid in step.get("sentence_ids") or []]
     for field in sorted(set(CLAIM_SCOPED_FIELDS) | set(EVIDENCE_CHAIN_FIELDS)):
-        values: list[Any] = []
-        for source, mapping in (("claim", claim_scoped), ("reasoning_trace", evidence_chain)):
+        values: list[ConsolidatedContextValue] = []
+        for source, mapping in (("explicit_claim_context", claim_scoped), ("evidence_chain_context", evidence_chain)):
             for value in mapping.get(field, []):
-                if value not in values:
-                    values.append(value)
-                    provenance.setdefault(field, []).append({"value": value, "source": source, "sentence_ids": sentence_ids if source == "reasoning_trace" else []})
-        consolidated[field] = values
-        if len({str(v).casefold() for v in values}) > 1:
-            conflicts.append({"field": field, "values": values, "sources": provenance.get(field, [])})
+                source_ids = [str(claim.get("claim_id"))] if source == "explicit_claim_context" else [str(item.get("source_ids", [""])[0]) for item in evidence_chain_sources.get(field, []) if item.get("value") == value]
+                entry = ConsolidatedContextValue(value=value, source_type=source, source_ids=[x for x in source_ids if x], confidence=0.95 if source == "explicit_claim_context" else 0.75)
+                if entry not in values:
+                    values.append(entry)
+                    provenance.setdefault(field, []).append({"value": value, "source_type": source, "source_ids": entry.source_ids, "sentence_ids": sentence_ids if source == "evidence_chain_context" else []})
+        agreement = _agreement(values)
+        for entry in values:
+            entry.agreement_status = agreement  # type: ignore[misc]
+        consolidated[field] = [entry.model_dump(mode="json") for entry in values]
+        if agreement == "mixed":
+            conflicts.append({"field": field, "values": [entry.value for entry in values], "sources": provenance.get(field, []), "agreement_status": agreement})
     missing = [field for field, values in consolidated.items() if not values]
     return {
         "schema_version": CONSOLIDATION_SCHEMA_VERSION,
         "claim_id": claim.get("claim_id"),
-        "reasoning_trace_id": trace.get("reasoning_trace_id"),
-        "trace_status": trace.get("trace_status"),
+        "reasoning_trace_id": (trace or {}).get("reasoning_trace_id"),
+        "trace_status": (trace or {}).get("trace_status"),
         "claim_context": claim_scoped,
+        "explicit_claim_context": claim_scoped,
         "reasoning_context": evidence_chain,
         "claim_scoped_context": claim_scoped,
         "evidence_chain_context": evidence_chain,
@@ -648,27 +910,90 @@ def consolidate_context_for_trace(claim: dict[str, Any], trace: dict[str, Any]) 
         "field_provenance": provenance,
         "context_conflicts": conflicts,
         "missing_context_fields": missing,
-        "strength_profile": trace.get("strength_profile") or {},
+        "linked_chain_ids": [chain.get("chain_id") for chain in linked_chains],
+        "strength_profile": (trace or {}).get("strength_profile") or {},
         "context_rule_version": CONTEXT_RULE_VERSION,
-        "source_record_hash": _hash({"claim": claim_identity_hash(claim), "trace": trace.get("source_record_hash"), "rule": CONTEXT_RULE_VERSION}),
+        "source_record_hash": _hash({"claim": claim_identity_hash(claim), "chains": [chain.get("chain_id") for chain in linked_chains], "rule": CONTEXT_RULE_VERSION}),
     }
+
+
+def consolidate_context_for_trace(claim: dict[str, Any], trace: dict[str, Any]) -> dict[str, Any]:
+    row = consolidate_context_for_claim(claim, [], trace)
+    trace_context_raw = trace.get("experimental_context") if isinstance(trace.get("experimental_context"), dict) else {}
+    trace_context = {field: _normalize_list(trace_context_raw.get(field)) for field in EVIDENCE_CHAIN_FIELDS}
+    for field, values in trace_context.items():
+        if values and not row["evidence_chain_context"].get(field):
+            row["evidence_chain_context"][field] = values
+            row["reasoning_context"][field] = values
+            row.setdefault("field_provenance", {})[field] = [
+                {
+                    "value": value,
+                    "source": "reasoning_trace",
+                    "source_type": "evidence_chain_context",
+                    "source_ids": [str(trace.get("reasoning_trace_id") or "")],
+                    "sentence_ids": [sid for step in trace.get("reasoning_steps") or [] for sid in step.get("sentence_ids") or []],
+                }
+                for value in values
+            ]
+            row["consolidated_context"][field] = [
+                ConsolidatedContextValue(
+                    value=value,
+                    source_type="evidence_chain_context",
+                    source_ids=[str(trace.get("reasoning_trace_id") or "")],
+                    confidence=0.7,
+                    agreement_status="single_source",
+                ).model_dump(mode="json")
+                for value in values
+            ]
+    row["source_record_hash"] = _hash({"claim": claim_identity_hash(claim), "trace": trace.get("source_record_hash"), "rule": CONTEXT_RULE_VERSION})
+    return row
 
 
 def run_fulltext_context_consolidation_stage(run_dir: str | Path, *, case_id: str | None = None) -> dict[str, Any]:
     run = Path(run_dir)
     artifacts = run / "artifacts"
-    claims = {str(row.get("claim_id")): row for row in _rows(artifacts / "l35_fulltext_l1_claims.jsonl")}
+    claim_rows = _rows(artifacts / "l35_fulltext_l1_claims.jsonl")
+    claims = {str(row.get("claim_id")): row for row in claim_rows}
     traces = _rows(artifacts / "fulltext_reasoning_traces.jsonl")
-    consolidations = [consolidate_context_for_trace(claims.get(str(trace.get("claim_id")), {}), trace) for trace in traces]
+    chains = {str(row.get("chain_id")): row for row in _rows(artifacts / "experimental_evidence_chains.jsonl")}
+    links = _rows(artifacts / "claim_evidence_links.jsonl")
+    if not chains and traces:
+        derived_chains = evidence_chains_from_traces(traces)
+        derived_links = link_claims_to_evidence_chains(claim_rows, derived_chains)
+        _write_jsonl(artifacts / "experimental_evidence_chains.jsonl", derived_chains)
+        _write_jsonl(artifacts / "claim_evidence_links.jsonl", derived_links)
+        _write_json(artifacts / "experimental_evidence_chain_summary.json", evidence_chain_summary(claim_rows, derived_chains, derived_links))
+        chains = {str(row.get("chain_id")): row for row in derived_chains}
+        links = derived_links
+    trace_by_claim = {str(row.get("claim_id")): row for row in traces}
+    links_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for link in links:
+        if link.get("relation") in {"supports", "weakens", "qualifies", "contextualizes"}:
+            links_by_claim.setdefault(str(link.get("claim_id")), []).append(link)
+    consolidations = [
+        consolidate_context_for_claim(
+            claim,
+            [chains[str(link.get("chain_id"))] for link in links_by_claim.get(str(claim.get("claim_id")), []) if str(link.get("chain_id")) in chains],
+            trace_by_claim.get(str(claim.get("claim_id"))),
+        )
+        for claim in claim_rows
+    ]
     _write_jsonl(artifacts / "fulltext_context_consolidations.jsonl", consolidations)
     summary = {
         "schema_version": "fulltext_context_consolidation_summary_v1",
         "claim_count": len(claims),
         "trace_count": len(traces),
+        "evidence_chain_count": len(chains),
+        "claim_evidence_link_count": len(links),
         "consolidation_count": len(consolidations),
-        "claims_with_reasoning_context": sum(any(v for v in row.get("reasoning_context", {}).values()) for row in consolidations),
+        "claims_with_reasoning_context": sum(any(v for v in row.get("evidence_chain_context", {}).values()) for row in consolidations),
+        "context_enriched_claim_count": sum(any(v for v in row.get("evidence_chain_context", {}).values()) for row in consolidations),
         "context_conflict_count": sum(len(row.get("context_conflicts") or []) for row in consolidations),
         "context_rule_version": CONTEXT_RULE_VERSION,
+        "claim_extraction_status": "reused",
+        "evidence_chain_status": "completed" if chains else "unavailable",
+        "claim_evidence_link_status": "completed" if links else "unavailable",
+        "context_consolidation_status": "completed",
         "api_call_count": 0,
     }
     _write_json(artifacts / "fulltext_context_consolidation_summary.json", summary)
@@ -681,6 +1006,9 @@ def optional_reasoning_artifact_hashes(run_dir: str | Path) -> dict[str, str]:
         "fulltext_claim_passage_index.jsonl",
         "fulltext_reasoning_traces.jsonl",
         "fulltext_reasoning_trace_summary.json",
+        "experimental_evidence_chains.jsonl",
+        "claim_evidence_links.jsonl",
+        "experimental_evidence_chain_summary.json",
         "fulltext_context_consolidations.jsonl",
         "fulltext_context_consolidation_summary.json",
     )

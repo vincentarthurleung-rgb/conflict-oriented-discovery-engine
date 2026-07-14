@@ -20,6 +20,13 @@ RELATION_LABELS={
 }
 CONTEXT_FIELDS=("species","cell_type","tissue","disease_or_cancer_type","treatment","dose","time","duration","genotype","localization","intervention_type","intervention_target","control_group","model_system","assay_method","measured_endpoint","validation_design","reasoning_trace_status")
 
+def _context_value(value):
+    if isinstance(value,dict) and "value" in value:return value.get("value")
+    if isinstance(value,list):
+        if not value:return None
+        return [_context_value(x) for x in value]
+    return value
+
 def _norm(value):
     return str(value or "").strip().casefold()
 
@@ -86,11 +93,12 @@ class DossierProjection:
         if not triple:return None
         did=dossier_id_for(triple)
         evidence=self.evidence(did)["groups"]
+        evidence_chains=self.evidence_chains(did)
         context=self.context_matrix(did)
         conflicts=self._conflicts_for(triple)
         review=self.review_target(did)
         paths=self.paths(did,{"limit":["8"]})["items"]
-        return {**self._summary_for(triple),"dossier_id":did,"summary":self._coverage_summary(triple,context,conflicts,review),"evidence_groups":evidence,"reasoning_traces":self.reasoning(did)["items"],"context_summary":context["summary"],"conflict_summary":self._conflict_summary(conflicts),"review_summary":self._review_summary(review),"related_paths":paths,"badges":self._badges(triple,conflicts,review)}
+        return {**self._summary_for(triple),"dossier_id":did,"summary":self._coverage_summary(triple,context,conflicts,review),"evidence_groups":evidence,"evidence_chains":evidence_chains["items"],"evidence_chain_summary":{"status":evidence_chains["status"],"total":evidence_chains["total"],"missing_message":evidence_chains.get("missing_message")},"reasoning_traces":self.reasoning(did)["items"],"context_summary":context["summary"],"conflict_summary":self._conflict_summary(conflicts),"review_summary":self._review_summary(review),"related_paths":paths,"badges":self._badges(triple,conflicts,review)}
 
     def evidence(self,dossier_id):
         triple=self.by_id.get(self.resolve(dossier_id) or "")
@@ -125,10 +133,15 @@ class DossierProjection:
             for field in CONTEXT_FIELDS:
                 values=[]
                 if c.get(field) not in (None,""):
-                    values.append({"source_layer":"claim-derived","value":c.get(field)})
+                    values.append({"source_layer":"claim-derived","value":_context_value(c.get(field))})
                 if context.get(field) not in (None,""):
                     layer="reasoning-derived" if field.startswith("reasoning_") else "consolidated"
-                    values.append({"source_layer":layer,"value":context.get(field)})
+                    raw=context.get(field)
+                    if isinstance(raw,list) and raw and isinstance(raw[0],dict) and "source_type" in raw[0]:
+                        for item in raw:
+                            values.append({"source_layer":item.get("source_type"),"value":item.get("value"),"source_ids":item.get("source_ids"),"confidence":item.get("confidence"),"agreement_status":item.get("agreement_status")})
+                    else:
+                        values.append({"source_layer":layer,"value":_context_value(raw)})
                 unique=[]
                 for value in values:
                     if value not in unique:unique.append(value)
@@ -142,6 +155,7 @@ class DossierProjection:
             row={"paper_title":e.get("paper_title") or c.get("paper_title") or MISSING,"pmid":e.get("pmid") or c.get("pmid") or MISSING,"pmcid":e.get("pmcid") or c.get("pmcid") or MISSING,"case_id":e.get("case_id") or c.get("case_id") or MISSING,"direction":e.get("direction") or c.get("direction") or triple.get("direction") or MISSING,"source_scope":e.get("source_scope") or MISSING,"section_title":e.get("section_title") or c.get("section_title") or MISSING}
             for field in CONTEXT_FIELDS:row[field]=merged.get(field) or MISSING
             row["context_provenance"]=provenance;row["context_source_values"]=source_values
+            row["linked_evidence_chains"]=e.get("evidence_chains") or []
             erow=self._evidence_row(e,triple)
             row["evidence_class"]=erow["evidence_class"]
             row["classification_reason"]=erow["classification_reason"]
@@ -168,6 +182,23 @@ class DossierProjection:
             seen.add(rid)
             items.append({"reasoning_trace_id":rid,"claim_id":trace.get("claim_id"),"trace_status":trace.get("trace_status"),"claim_identity_hash":trace.get("claim_identity_hash"),"source_scope":trace.get("source_scope"),"pmid":trace.get("pmid"),"pmcid":trace.get("pmcid"),"strength_profile":trace.get("strength_profile") or {},"strength_level":trace.get("strength_level"),"steps":trace.get("reasoning_steps") or [],"author_conclusion":trace.get("author_conclusion") or {},"missing_links":trace.get("missing_links") or []})
         return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"status":"available" if items else "unavailable","missing_message":"该运行未生成全文推理证据链。" if not items else None}
+
+    def evidence_chains(self,dossier_id):
+        triple=self.by_id.get(self.resolve(dossier_id) or "")
+        if not triple:return None
+        items=[];seen=set();missing=0
+        for e in self.api.evidence_by_triple.get(triple.get("triple_id"),[]):
+            chains=e.get("evidence_chains") if isinstance(e.get("evidence_chains"),list) else []
+            if not chains:
+                missing+=1
+            for bundle in chains:
+                chain=bundle.get("chain") if isinstance(bundle,dict) else {}
+                link=bundle.get("link") if isinstance(bundle,dict) else {}
+                cid=chain.get("chain_id")
+                if not cid or cid in seen:continue
+                seen.add(cid)
+                items.append({"chain_id":cid,"claim_id":link.get("claim_id") or e.get("claim_id"),"paper_id":chain.get("paper_id"),"relation":link.get("relation"),"link_confidence":link.get("link_confidence"),"link_basis":link.get("link_basis") or [],"experimental_system":chain.get("experimental_system") or {},"interventions":chain.get("interventions") or [],"comparators":chain.get("comparators") or [],"measurements":chain.get("measurements") or [],"observed_results":chain.get("observed_results") or [],"author_interpretation":chain.get("author_interpretation") or {},"causal_design":chain.get("causal_design") or {},"evidence_anchors":chain.get("evidence_anchors") or [],"validation_status":chain.get("validation_status"),"extraction_confidence":chain.get("extraction_confidence")})
+        return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"status":"available" if items else "unavailable","missing_message":"Experimental evidence chain not available for this historical run." if not items and missing else None}
 
     def audit(self):
         by_semantic={}
@@ -278,4 +309,4 @@ class DossierProjection:
         for conflict in self._conflicts_for(triple):
             if conflict.get("record_type")=="non_comparable_direction_pair":
                 evidence_class="opposing_or_differing";reason="conditions_differ_non_comparable_direction_pair";break
-        return {"direction":direction,"source_scope":e.get("source_scope"),"section":e.get("section_title"),"context":e.get("context") if isinstance(e.get("context"),dict) else {},"reasoning_trace_status":(e.get("reasoning_trace") or {}).get("trace_status") if isinstance(e.get("reasoning_trace"),dict) else None,"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"evidence_sentence":sentence,"evidence_class":evidence_class,"classification_reason":reason,"extracted":{"subject":triple.get("subject_display_label"),"relation":triple.get("relation_normalized"),"object":triple.get("object_display_label")},"case_id":e.get("case_id"),"source_file":e.get("source_file"),"source_line":e.get("source_line")}
+        return {"direction":direction,"source_scope":e.get("source_scope"),"section":e.get("section_title"),"context":e.get("context") if isinstance(e.get("context"),dict) else {},"reasoning_trace_status":(e.get("reasoning_trace") or {}).get("trace_status") if isinstance(e.get("reasoning_trace"),dict) else None,"evidence_chain_status":e.get("evidence_chain_status"),"evidence_chains":e.get("evidence_chains") or [],"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"evidence_sentence":sentence,"evidence_class":evidence_class,"classification_reason":reason,"extracted":{"subject":triple.get("subject_display_label"),"relation":triple.get("relation_normalized"),"object":triple.get("object_display_label")},"case_id":e.get("case_id"),"source_file":e.get("source_file"),"source_line":e.get("source_line")}

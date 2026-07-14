@@ -31,6 +31,9 @@ OPTIONAL_ARTIFACTS = {
     "fulltext_claim_passage_index": "artifacts/fulltext_claim_passage_index.jsonl",
     "fulltext_reasoning_traces": "artifacts/fulltext_reasoning_traces.jsonl",
     "fulltext_reasoning_trace_summary": "artifacts/fulltext_reasoning_trace_summary.json",
+    "experimental_evidence_chains": "artifacts/experimental_evidence_chains.jsonl",
+    "claim_evidence_links": "artifacts/claim_evidence_links.jsonl",
+    "experimental_evidence_chain_summary": "artifacts/experimental_evidence_chain_summary.json",
     "fulltext_context_consolidations": "artifacts/fulltext_context_consolidations.jsonl",
     "fulltext_context_consolidation_summary": "artifacts/fulltext_context_consolidation_summary.json",
 }
@@ -190,6 +193,9 @@ def build_handoff_manifest(
             raise HandoffError("declared_count_mismatch", f"{key}: declared={declared}, actual={actual}")
     if int(source.get("input_fulltext_claim_count", -1)) != input_count:
         raise HandoffError("declared_count_mismatch", "input_fulltext_claim_count does not match JSONL")
+    chain_count = artifact_specs.get("experimental_evidence_chains", {}).get("record_count", 0)
+    link_count = artifact_specs.get("claim_evidence_links", {}).get("record_count", 0)
+    context_count = artifact_specs.get("fulltext_context_consolidations", {}).get("record_count", 0)
 
     audit_path = run / OPTIONAL_ARTIFACTS["reentry_audit"]
     exploratory = conflict = 0
@@ -237,12 +243,19 @@ def build_handoff_manifest(
             **{f"{key}_count": value for key, value in lane_counts.items()},
             "exploratory_graph_eligible_count": exploratory,
             "conflict_eligible_count": conflict,
+            "evidence_chain_count": chain_count,
+            "claim_evidence_link_count": link_count,
+            "context_enriched_claim_count": context_count,
         },
         "available_capabilities": [
             "fulltext_claims",
             *(
                 ["reasoning_traces", "experimental_context", "dossier_reasoning_view"]
                 if "fulltext_reasoning_traces" in artifact_specs else []
+            ),
+            *(
+                ["experimental_evidence_chains", "claim_evidence_links", "claim_dossier_evidence_chains"]
+                if "experimental_evidence_chains" in artifact_specs else []
             ),
         ],
         "system_a_git_commit": _git_commit(),

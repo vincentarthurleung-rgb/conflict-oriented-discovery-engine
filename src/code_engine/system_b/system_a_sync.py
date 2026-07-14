@@ -173,6 +173,20 @@ def sync_system_a(
     plan_counts = {key: len(merged[key]) for key in ("dossier_evidence", "context_rows", "exploratory_triples", "conflict_predictions", "claim_review_candidates", "conflict_pair_candidates", "context_candidates")}
     plan_counts["dossiers"] = merged["dossier_index"]["dossier_count"]
     plan_counts["evaluation_candidates"] = sum(plan_counts[key] for key in ("claim_review_candidates", "conflict_pair_candidates", "context_candidates"))
+    evidence_chain_ids = {
+        bundle.get("chain", {}).get("chain_id")
+        for row in merged["dossier_evidence"]
+        for bundle in (row.get("evidence_chains") or [])
+        if isinstance(bundle, dict)
+    }
+    linked_claim_ids = {
+        row.get("claim_id")
+        for row in merged["dossier_evidence"]
+        if row.get("evidence_chains")
+    }
+    plan_counts["evidence_chain_count"] = len({x for x in evidence_chain_ids if x})
+    plan_counts["linked_claim_count"] = len({x for x in linked_claim_ids if x})
+    plan_counts["unlinked_claim_count"] = max(0, len({row.get("claim_id") for row in merged["dossier_evidence"] if row.get("claim_id")}) - plan_counts["linked_claim_count"])
     base_report = {"schema_version": "system_a_sync_report_v1", "ready_handoffs_scanned": len(paths), "valid_handoffs": len(valid), "new_ingestions": len(new), "no_op_ingestions": len(valid) - len(new), "quarantine_count": len(rejected), "rejected": rejected, "adapter_version": adapter_version, "counts": plan_counts, "database_write": bool(factory and not dry_run), "refresh_current_projection": bool(refresh_current_projection and not dry_run)}
     if dry_run:
         return {**base_report, "status": "dry_run", "cases": [{"case_id": item["manifest"]["case_id"], "source_run_id": item["manifest"]["source_run_id"], "manifest_hash": item["manifest_hash"], "counts": item["manifest"]["counts"]} for item in valid]}

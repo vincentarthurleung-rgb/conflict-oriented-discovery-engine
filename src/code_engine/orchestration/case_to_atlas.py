@@ -654,7 +654,14 @@ class CaseToAtlasOrchestrator:
         elif stage == "fulltext_l1":
             paths = [run / "fulltext_bridge_replay_manifest.json", run / "artifacts/l35_fulltext_l1_claims.jsonl", run / "artifacts/l35_fulltext_l1_summary.json"]
         elif stage == "fulltext_reasoning_trace":
-            paths = [run / "artifacts/fulltext_claim_passage_index.jsonl", run / "artifacts/fulltext_reasoning_traces.jsonl", run / "artifacts/fulltext_reasoning_trace_summary.json"]
+            paths = [
+                run / "artifacts/fulltext_claim_passage_index.jsonl",
+                run / "artifacts/fulltext_reasoning_traces.jsonl",
+                run / "artifacts/fulltext_reasoning_trace_summary.json",
+                run / "artifacts/experimental_evidence_chains.jsonl",
+                run / "artifacts/claim_evidence_links.jsonl",
+                run / "artifacts/experimental_evidence_chain_summary.json",
+            ]
         elif stage == "fulltext_context_consolidation":
             paths = [run / "artifacts/fulltext_context_consolidations.jsonl", run / "artifacts/fulltext_context_consolidation_summary.json"]
         elif stage == "reentry":
@@ -682,6 +689,9 @@ class CaseToAtlasOrchestrator:
             ("fulltext_l1_claims", path/"artifacts/l35_fulltext_l1_claims.jsonl"),
             ("reasoning_summary", path/"artifacts/fulltext_reasoning_trace_summary.json"),
             ("reasoning_traces", path/"artifacts/fulltext_reasoning_traces.jsonl"),
+            ("experimental_evidence_chains", path/"artifacts/experimental_evidence_chains.jsonl"),
+            ("claim_evidence_links", path/"artifacts/claim_evidence_links.jsonl"),
+            ("experimental_evidence_chain_summary", path/"artifacts/experimental_evidence_chain_summary.json"),
             ("context_summary", path/"artifacts/fulltext_context_consolidation_summary.json"),
             ("context_rows", path/"artifacts/fulltext_context_consolidations.jsonl"),
             ("fulltext_reentry_manifest", path/"fulltext_reentry_manifest.json"),
@@ -725,10 +735,11 @@ class CaseToAtlasOrchestrator:
                 return str(summary.get("status") or l1_summary.get("fulltext_l1_status") or "").startswith("completed") or str(l1_summary.get("fulltext_l1_status") or "").startswith("completed")
             if stage=="fulltext_reasoning_trace":
                 summary=_read(Path(record["output_run"])/"artifacts/fulltext_reasoning_trace_summary.json")
-                return bool(summary.get("status_accounting_valid", True))
+                chain_summary=_read(Path(record["output_run"])/"artifacts/experimental_evidence_chain_summary.json")
+                return bool(summary.get("status_accounting_valid", True)) and "evidence_chain_count" in chain_summary and (Path(record["output_run"])/"artifacts/claim_evidence_links.jsonl").is_file()
             if stage=="fulltext_context_consolidation":
                 summary=_read(Path(record["output_run"])/"artifacts/fulltext_context_consolidation_summary.json")
-                return "consolidation_count" in summary
+                return "consolidation_count" in summary and "claim_evidence_link_status" in summary
             if stage=="reentry": return _read(Path(record["output_run"])/"fulltext_reentry_manifest.json").get("status")=="completed"
             if stage=="handoff": validate_handoff(record["manifest_path"],runs_root=request.runs_root);return True
             if stage=="atlas_sync":

@@ -28,6 +28,9 @@ FULLTEXT_REUSED_ARTIFACTS = (
     "fulltext_reasoning_traces.jsonl",
     "fulltext_reasoning_trace_summary.json",
     "fulltext_reasoning_trace_warnings.jsonl",
+    "experimental_evidence_chains.jsonl",
+    "claim_evidence_links.jsonl",
+    "experimental_evidence_chain_summary.json",
     "fulltext_context_consolidations.jsonl",
     "fulltext_context_consolidation_summary.json",
 )
