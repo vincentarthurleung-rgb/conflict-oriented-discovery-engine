@@ -38,6 +38,23 @@ LinkRelation = Literal["supports", "weakens", "qualifies", "contextualizes", "un
 LinkMethod = Literal["explicit_reference", "shared_result_anchor", "section_proximity", "structured_matching", "llm_assisted"]
 ContextSourceType = Literal["explicit_claim_context", "evidence_chain_context"]
 AgreementStatus = Literal["consistent", "mixed", "conflicting", "single_source"]
+ParameterType = Literal[
+    "dose",
+    "concentration",
+    "duration",
+    "timepoint",
+    "wavelength",
+    "temperature",
+    "centrifugation_speed",
+    "rotation_speed",
+    "volume",
+    "mass",
+    "frequency",
+    "pH",
+    "assay_readout",
+    "statistical_value",
+    "unknown_parameter",
+]
 
 
 class ExperimentalSystem(CODEBaseModel):
@@ -64,6 +81,7 @@ class Intervention(CODEBaseModel):
     timing: str | None = None
     pretreatment: str | None = None
     combination: str | None = None
+    parameters: list[dict[str, Any]] = Field(default_factory=list)
     resolution_status: Literal["resolved", "ambiguous", "unresolved_fallback"] = "unresolved_fallback"
 
 
@@ -77,6 +95,7 @@ class Measurement(CODEBaseModel):
     endpoint: str | None = None
     measurement_time: str | None = None
     unit: str | None = None
+    parameters: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ObservedResult(CODEBaseModel):
@@ -144,6 +163,7 @@ class ClaimEvidenceLink(CODEBaseModel):
     link_method: LinkMethod = "structured_matching"
     link_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     link_basis: list[str] = Field(default_factory=list)
+    score_components: dict[str, float] = Field(default_factory=dict)
     evidence_anchor_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -159,6 +179,25 @@ class ConsolidatedContextValue(CODEBaseModel):
     source_ids: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     agreement_status: AgreementStatus = "single_source"
+
+
+class UnlinkedClaimReason(CODEBaseModel):
+    claim_id: str
+    status: Literal["unlinked"] = "unlinked"
+    primary_reason: Literal[
+        "background_claim",
+        "interpretive_claim",
+        "review_or_prior_work_claim",
+        "no_experimental_anchor",
+        "no_compatible_chain",
+        "insufficient_matching_evidence",
+        "conflicting_candidate_links",
+        "fulltext_experiment_not_reconstructed",
+        "unsupported_claim_type",
+    ]
+    reason_details: list[str] = Field(default_factory=list)
+    candidate_chain_count: int = 0
+    highest_candidate_score: float | None = None
 
 
 def validate_claim_evidence_references(

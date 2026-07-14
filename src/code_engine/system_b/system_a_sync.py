@@ -114,7 +114,37 @@ def _write_projection(root: Path, projection_id: str, merged: dict, sources: lis
     counts["evidence_chain_count"] = len({x for x in evidence_chain_ids if x})
     counts["linked_claim_count"] = len({x for x in linked_claim_ids if x})
     counts["unlinked_claim_count"] = max(0, len(all_claim_ids) - counts["linked_claim_count"])
+    counts["claim_count"] = len({x for x in all_claim_ids if x})
+    if counts["linked_claim_count"] + counts["unlinked_claim_count"] != counts["claim_count"]:
+        raise RuntimeError("projection claim link accounting invariant failed")
     counts["context_enriched_claim_count"] = sum(bool(row.get("context", {}).get("linked_chain_ids")) for row in merged["dossier_evidence"] if isinstance(row.get("context"), dict))
+    counts_by_case = {}
+    for case_id in sorted({row.get("case_id") for row in merged["dossier_evidence"] if row.get("case_id")}):
+        case_rows = [row for row in merged["dossier_evidence"] if row.get("case_id") == case_id]
+        case_claims = {row.get("claim_id") for row in case_rows if row.get("claim_id")}
+        case_linked = {row.get("claim_id") for row in case_rows if row.get("evidence_chains")}
+        case_chain_ids = {
+            bundle.get("chain", {}).get("chain_id")
+            for row in case_rows
+            for bundle in (row.get("evidence_chains") or [])
+            if isinstance(bundle, dict)
+        }
+        counts_by_case[case_id] = {
+            "case_id": case_id,
+            "projection_id": projection_id,
+            "claim_count": len(case_claims),
+            "evidence_chain_count": len({x for x in case_chain_ids if x}),
+            "claim_evidence_link_count": sum(len(row.get("evidence_chains") or []) for row in case_rows),
+            "linked_claim_count": len(case_linked),
+            "unlinked_claim_count": max(0, len(case_claims) - len(case_linked)),
+            "context_enriched_claim_count": sum(bool(row.get("context", {}).get("linked_chain_ids")) for row in case_rows if isinstance(row.get("context"), dict)),
+        }
+        if counts_by_case[case_id]["linked_claim_count"] + counts_by_case[case_id]["unlinked_claim_count"] != counts_by_case[case_id]["claim_count"]:
+            raise RuntimeError(f"case claim link accounting invariant failed: {case_id}")
+    counts["global_claim_count"] = counts["claim_count"]
+    counts["global_evidence_chain_count"] = counts["evidence_chain_count"]
+    counts["global_linked_claim_count"] = counts["linked_claim_count"]
+    counts["global_unlinked_claim_count"] = counts["unlinked_claim_count"]
     _atomic_json(root / "dossier_index.json", merged["dossier_index"])
     for key, filename in (("claim_review_candidates", "claim_review_candidates.jsonl"), ("conflict_pair_candidates", "conflict_pair_candidates.jsonl"), ("context_candidates", "context_candidates.jsonl")):
         counts[key] = _write_jsonl(staging / filename, merged[key])
@@ -123,7 +153,7 @@ def _write_projection(root: Path, projection_id: str, merged: dict, sources: lis
     for logical_name, rows in merged["display"].items(): _write_jsonl(root / f"{logical_name}.jsonl", rows)
     validation = {"status": "valid", "checks": {"evidence_not_kg_nodes": True, "formal_conflict_gate": True, "assignments_created": 0}, "counts": counts}
     _atomic_json(root / "validation_report.json", validation)
-    manifest = {"schema_version": "atlas_projection_v1", "projection_id": projection_id, "adapter_version": adapter_version, "source_manifests": [{"case_id": item["manifest"]["case_id"], "source_run_id": item["manifest"]["source_run_id"], "manifest_hash": item["manifest_hash"], "prediction_run_id": _prediction_id(item, adapter_version)} for item in sources], "counts": counts, "generated_at": datetime.now(timezone.utc).isoformat(), "validation_status": "valid"}
+    manifest = {"schema_version": "atlas_projection_v1", "projection_id": projection_id, "adapter_version": adapter_version, "source_manifests": [{"case_id": item["manifest"]["case_id"], "source_run_id": item["manifest"]["source_run_id"], "manifest_hash": item["manifest_hash"], "prediction_run_id": _prediction_id(item, adapter_version)} for item in sources], "counts": counts, "counts_by_case": counts_by_case, "generated_at": datetime.now(timezone.utc).isoformat(), "validation_status": "valid"}
     _atomic_json(root / "projection_manifest.json", manifest)
     return manifest
 
@@ -207,7 +237,12 @@ def sync_system_a(
     }
     plan_counts["evidence_chain_count"] = len({x for x in evidence_chain_ids if x})
     plan_counts["linked_claim_count"] = len({x for x in linked_claim_ids if x})
-    plan_counts["unlinked_claim_count"] = max(0, len({row.get("claim_id") for row in merged["dossier_evidence"] if row.get("claim_id")}) - plan_counts["linked_claim_count"])
+    plan_counts["claim_count"] = len({row.get("claim_id") for row in merged["dossier_evidence"] if row.get("claim_id")})
+    plan_counts["unlinked_claim_count"] = max(0, plan_counts["claim_count"] - plan_counts["linked_claim_count"])
+    plan_counts["global_claim_count"] = plan_counts["claim_count"]
+    plan_counts["global_evidence_chain_count"] = plan_counts["evidence_chain_count"]
+    plan_counts["global_linked_claim_count"] = plan_counts["linked_claim_count"]
+    plan_counts["global_unlinked_claim_count"] = plan_counts["unlinked_claim_count"]
     base_report = {"schema_version": "system_a_sync_report_v1", "ready_handoffs_scanned": len(paths), "valid_handoffs": len(valid), "new_ingestions": len(new), "no_op_ingestions": len(valid) - len(new), "quarantine_count": len(rejected), "rejected": rejected, "adapter_version": adapter_version, "counts": plan_counts, "database_write": bool(factory and not dry_run), "refresh_current_projection": bool(refresh_current_projection and not dry_run)}
     if dry_run:
         return {**base_report, "status": "dry_run", "cases": [{"case_id": item["manifest"]["case_id"], "source_run_id": item["manifest"]["source_run_id"], "manifest_hash": item["manifest_hash"], "counts": item["manifest"]["counts"]} for item in valid]}

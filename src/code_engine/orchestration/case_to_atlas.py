@@ -660,6 +660,7 @@ class CaseToAtlasOrchestrator:
                 run / "artifacts/fulltext_reasoning_trace_summary.json",
                 run / "artifacts/experimental_evidence_chains.jsonl",
                 run / "artifacts/claim_evidence_links.jsonl",
+                run / "artifacts/unlinked_claim_reasons.jsonl",
                 run / "artifacts/experimental_evidence_chain_summary.json",
             ]
         elif stage == "fulltext_context_consolidation":
@@ -691,6 +692,7 @@ class CaseToAtlasOrchestrator:
             ("reasoning_traces", path/"artifacts/fulltext_reasoning_traces.jsonl"),
             ("experimental_evidence_chains", path/"artifacts/experimental_evidence_chains.jsonl"),
             ("claim_evidence_links", path/"artifacts/claim_evidence_links.jsonl"),
+            ("unlinked_claim_reasons", path/"artifacts/unlinked_claim_reasons.jsonl"),
             ("experimental_evidence_chain_summary", path/"artifacts/experimental_evidence_chain_summary.json"),
             ("context_summary", path/"artifacts/fulltext_context_consolidation_summary.json"),
             ("context_rows", path/"artifacts/fulltext_context_consolidations.jsonl"),

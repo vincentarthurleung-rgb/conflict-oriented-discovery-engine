@@ -156,6 +156,8 @@ class DossierProjection:
             for field in CONTEXT_FIELDS:row[field]=merged.get(field) or MISSING
             row["context_provenance"]=provenance;row["context_source_values"]=source_values
             row["linked_evidence_chains"]=e.get("evidence_chains") or []
+            row["unlinked_reason"]=e.get("unlinked_reason")
+            row["context_sources"]={field:[{"chain_id":sid,"link_id":lid,"source_anchor":src.get("sentence_ids")} for src in (row.get("context_source_values",{}).get(field) or []) for sid,lid in zip(src.get("source_ids") or [], src.get("source_link_ids") or [None])] for field in CONTEXT_FIELDS}
             erow=self._evidence_row(e,triple)
             row["evidence_class"]=erow["evidence_class"]
             row["classification_reason"]=erow["classification_reason"]
@@ -197,14 +199,14 @@ class DossierProjection:
                 cid=chain.get("chain_id")
                 if not cid or cid in seen:continue
                 seen.add(cid)
-                items.append({"chain_id":cid,"claim_id":link.get("claim_id") or e.get("claim_id"),"paper_id":chain.get("paper_id"),"relation":link.get("relation"),"link_confidence":link.get("link_confidence"),"link_basis":link.get("link_basis") or [],"experimental_system":chain.get("experimental_system") or {},"interventions":chain.get("interventions") or [],"comparators":chain.get("comparators") or [],"measurements":chain.get("measurements") or [],"observed_results":chain.get("observed_results") or [],"author_interpretation":chain.get("author_interpretation") or {},"causal_design":chain.get("causal_design") or {},"evidence_anchors":chain.get("evidence_anchors") or [],"validation_status":chain.get("validation_status"),"extraction_confidence":chain.get("extraction_confidence")})
+                items.append({"chain_id":cid,"claim_id":link.get("claim_id") or e.get("claim_id"),"paper_id":chain.get("paper_id"),"relation":link.get("relation"),"link_confidence":link.get("link_confidence"),"link_basis":link.get("link_basis") or [],"score_components":link.get("score_components") or {},"normalized_entities":chain.get("normalized_entities") or [],"parameter_classification":[p for intervention in chain.get("interventions") or [] for p in (intervention.get("parameters") or [])]+[p for measurement in chain.get("measurements") or [] for p in (measurement.get("parameters") or [])],"experimental_system":chain.get("experimental_system") or {},"interventions":chain.get("interventions") or [],"comparators":chain.get("comparators") or [],"measurements":chain.get("measurements") or [],"observed_results":chain.get("observed_results") or [],"author_interpretation":chain.get("author_interpretation") or {},"causal_design":chain.get("causal_design") or {},"evidence_anchors":chain.get("evidence_anchors") or [],"validation_status":chain.get("validation_status"),"extraction_confidence":chain.get("extraction_confidence"),"unresolved_entity_warning":any((ent.get("resolution_status") not in {"resolved","ambiguous"}) for ent in chain.get("normalized_entities") or [])})
         return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"status":"available" if items else "unavailable","missing_message":"Experimental evidence chain not available for this historical run." if not items and missing else None}
 
     def compare_evidence_chains(self,params):
         ids=[x for x in (_one(params,"dossier_a"),_one(params,"dossier_b")) if x]
         if len(ids)!=2:return {"error":"dossier_a_and_dossier_b_required","items":[]}
         payloads=[self.evidence_chains(x) for x in ids]
-        fields=("species","disease_model","cell_line","cell_type","dose","concentration","route","duration","assay","endpoint","comparator","causal_strength")
+        fields=("species","disease_model","cell_line","cell_type","tissue","intervention","normalized_agent","dose","concentration","route","duration","timepoint","assay","assay_parameters","endpoint","comparator","result_direction","causal_strength")
         rows=[]
         for dossier_id,payload in zip(ids,payloads):
             for item in (payload or {}).get("items",[]):
@@ -213,7 +215,9 @@ class DossierProjection:
                 measurement=(item.get("measurements") or [{}])[0] if item.get("measurements") else {}
                 comparator=(item.get("comparators") or [{}])[0] if item.get("comparators") else {}
                 causal=item.get("causal_design") or {}
-                rows.append({"dossier_id":dossier_id,"chain_id":item.get("chain_id"),"claim_id":item.get("claim_id"),"species":system.get("species"),"disease_model":system.get("disease_model"),"cell_line":system.get("cell_line"),"cell_type":system.get("cell_type"),"dose":intervention.get("dose"),"concentration":intervention.get("concentration"),"route":intervention.get("route"),"duration":intervention.get("duration"),"assay":measurement.get("assay"),"endpoint":measurement.get("endpoint"),"comparator":comparator.get("description") or comparator.get("comparator_type"),"causal_strength":causal.get("causal_strength")})
+                result=(item.get("observed_results") or [{}])[0] if item.get("observed_results") else {}
+                assay_params=[p for p in (measurement.get("parameters") or []) if p.get("parameter_type") in {"wavelength","assay_readout","statistical_value"}]
+                rows.append({"dossier_id":dossier_id,"chain_id":item.get("chain_id"),"claim_id":item.get("claim_id"),"species":system.get("species"),"disease_model":system.get("disease_model"),"cell_line":system.get("cell_line"),"cell_type":system.get("cell_type"),"tissue":system.get("tissue"),"intervention":intervention.get("agent_raw"),"normalized_agent":intervention.get("canonical_name"),"dose":intervention.get("dose"),"concentration":intervention.get("concentration"),"route":intervention.get("route"),"duration":intervention.get("duration"),"timepoint":intervention.get("timing") or measurement.get("measurement_time"),"assay":measurement.get("assay"),"assay_parameters":assay_params,"endpoint":measurement.get("endpoint"),"comparator":comparator.get("description") or comparator.get("comparator_type"),"result_direction":result.get("direction"),"causal_strength":causal.get("causal_strength")})
         differences={field:sorted({str(row.get(field)) for row in rows if row.get(field) not in (None,"")}) for field in fields}
         differences={field:values for field,values in differences.items() if len(values)>1}
         return {"items":rows,"total":len(rows),"dossier_ids":ids,"differing_fields":differences}
@@ -327,4 +331,4 @@ class DossierProjection:
         for conflict in self._conflicts_for(triple):
             if conflict.get("record_type")=="non_comparable_direction_pair":
                 evidence_class="opposing_or_differing";reason="conditions_differ_non_comparable_direction_pair";break
-        return {"direction":direction,"source_scope":e.get("source_scope"),"section":e.get("section_title"),"context":e.get("context") if isinstance(e.get("context"),dict) else {},"reasoning_trace_status":(e.get("reasoning_trace") or {}).get("trace_status") if isinstance(e.get("reasoning_trace"),dict) else None,"evidence_chain_status":e.get("evidence_chain_status"),"evidence_chains":e.get("evidence_chains") or [],"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"evidence_sentence":sentence,"evidence_class":evidence_class,"classification_reason":reason,"extracted":{"subject":triple.get("subject_display_label"),"relation":triple.get("relation_normalized"),"object":triple.get("object_display_label")},"case_id":e.get("case_id"),"source_file":e.get("source_file"),"source_line":e.get("source_line")}
+        return {"direction":direction,"source_scope":e.get("source_scope"),"section":e.get("section_title"),"context":e.get("context") if isinstance(e.get("context"),dict) else {},"reasoning_trace_status":(e.get("reasoning_trace") or {}).get("trace_status") if isinstance(e.get("reasoning_trace"),dict) else None,"evidence_chain_status":e.get("evidence_chain_status"),"evidence_chains":e.get("evidence_chains") or [],"unlinked_reason":e.get("unlinked_reason"),"paper_title":e.get("paper_title"),"pmid":e.get("pmid"),"pmcid":e.get("pmcid"),"evidence_sentence":sentence,"evidence_class":evidence_class,"classification_reason":reason,"extracted":{"subject":triple.get("subject_display_label"),"relation":triple.get("relation_normalized"),"object":triple.get("object_display_label")},"case_id":e.get("case_id"),"source_file":e.get("source_file"),"source_line":e.get("source_line")}

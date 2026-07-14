@@ -33,6 +33,7 @@ OPTIONAL_ARTIFACTS = {
     "fulltext_reasoning_trace_summary": "artifacts/fulltext_reasoning_trace_summary.json",
     "experimental_evidence_chains": "artifacts/experimental_evidence_chains.jsonl",
     "claim_evidence_links": "artifacts/claim_evidence_links.jsonl",
+    "unlinked_claim_reasons": "artifacts/unlinked_claim_reasons.jsonl",
     "experimental_evidence_chain_summary": "artifacts/experimental_evidence_chain_summary.json",
     "fulltext_context_consolidations": "artifacts/fulltext_context_consolidations.jsonl",
     "fulltext_context_consolidation_summary": "artifacts/fulltext_context_consolidation_summary.json",

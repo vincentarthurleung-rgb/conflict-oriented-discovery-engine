@@ -10,7 +10,7 @@ from typing import Any
 from code_engine.integration.atlas_handoff import LANE_FILES, canonical_json, resolve_artifact
 from code_engine.system_b.explorer.dossier_projection import dossier_id_for
 
-ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v2"
+ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v3"
 CONTEXT_ALIASES = {
     "species": ("species",),
     "cell_type": ("cell_type", "cell_line"),
@@ -160,6 +160,7 @@ class FulltextReentryV5Adapter:
         reasoning_traces = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_reasoning_traces")}
         consolidations = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_context_consolidations")}
         chains = {str(row.get("chain_id")): row for row in _optional_jsonl(validated, "experimental_evidence_chains")}
+        unlinked_reasons = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "unlinked_claim_reasons")}
         links_by_claim: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for link in _optional_jsonl(validated, "claim_evidence_links"):
             links_by_claim[str(link.get("claim_id"))].append(link)
@@ -226,7 +227,8 @@ class FulltextReentryV5Adapter:
                 "reasoning_trace": reasoning_traces.get(str(row.get("claim_id"))),
                 "evidence_chains": linked_chains,
                 "evidence_chain_status": "available" if linked_chains else "unavailable",
-                "evidence_chain_missing_message": None if linked_chains else "Experimental evidence chain not available for this historical run.",
+                "evidence_chain_missing_message": None if linked_chains else "Experimental evidence chain not linked for this claim.",
+                "unlinked_reason": unlinked_reasons.get(str(row.get("claim_id"))),
                 "source_scope": row.get("source_scope"),
                 "direction": row.get("direction"),
             }
