@@ -10,7 +10,7 @@ from typing import Any
 from code_engine.integration.atlas_handoff import LANE_FILES, canonical_json, resolve_artifact
 from code_engine.system_b.explorer.dossier_projection import dossier_id_for
 
-ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v1"
+ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v2"
 CONTEXT_ALIASES = {
     "species": ("species",),
     "cell_type": ("cell_type", "cell_line"),

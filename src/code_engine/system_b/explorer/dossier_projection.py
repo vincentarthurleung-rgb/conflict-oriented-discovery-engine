@@ -200,6 +200,24 @@ class DossierProjection:
                 items.append({"chain_id":cid,"claim_id":link.get("claim_id") or e.get("claim_id"),"paper_id":chain.get("paper_id"),"relation":link.get("relation"),"link_confidence":link.get("link_confidence"),"link_basis":link.get("link_basis") or [],"experimental_system":chain.get("experimental_system") or {},"interventions":chain.get("interventions") or [],"comparators":chain.get("comparators") or [],"measurements":chain.get("measurements") or [],"observed_results":chain.get("observed_results") or [],"author_interpretation":chain.get("author_interpretation") or {},"causal_design":chain.get("causal_design") or {},"evidence_anchors":chain.get("evidence_anchors") or [],"validation_status":chain.get("validation_status"),"extraction_confidence":chain.get("extraction_confidence")})
         return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"status":"available" if items else "unavailable","missing_message":"Experimental evidence chain not available for this historical run." if not items and missing else None}
 
+    def compare_evidence_chains(self,params):
+        ids=[x for x in (_one(params,"dossier_a"),_one(params,"dossier_b")) if x]
+        if len(ids)!=2:return {"error":"dossier_a_and_dossier_b_required","items":[]}
+        payloads=[self.evidence_chains(x) for x in ids]
+        fields=("species","disease_model","cell_line","cell_type","dose","concentration","route","duration","assay","endpoint","comparator","causal_strength")
+        rows=[]
+        for dossier_id,payload in zip(ids,payloads):
+            for item in (payload or {}).get("items",[]):
+                system=item.get("experimental_system") or {}
+                intervention=(item.get("interventions") or [{}])[0] if item.get("interventions") else {}
+                measurement=(item.get("measurements") or [{}])[0] if item.get("measurements") else {}
+                comparator=(item.get("comparators") or [{}])[0] if item.get("comparators") else {}
+                causal=item.get("causal_design") or {}
+                rows.append({"dossier_id":dossier_id,"chain_id":item.get("chain_id"),"claim_id":item.get("claim_id"),"species":system.get("species"),"disease_model":system.get("disease_model"),"cell_line":system.get("cell_line"),"cell_type":system.get("cell_type"),"dose":intervention.get("dose"),"concentration":intervention.get("concentration"),"route":intervention.get("route"),"duration":intervention.get("duration"),"assay":measurement.get("assay"),"endpoint":measurement.get("endpoint"),"comparator":comparator.get("description") or comparator.get("comparator_type"),"causal_strength":causal.get("causal_strength")})
+        differences={field:sorted({str(row.get(field)) for row in rows if row.get(field) not in (None,"")}) for field in fields}
+        differences={field:values for field,values in differences.items() if len(values)>1}
+        return {"items":rows,"total":len(rows),"dossier_ids":ids,"differing_fields":differences}
+
     def audit(self):
         by_semantic={}
         unresolved=[];mixed_direction=[];mixed_negation=[];mixed_raw_relation=[]

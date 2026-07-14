@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from code_engine.integration.atlas_handoff import canonical_json, sha256_file
+from code_engine.normalization.resolver import ResolverCascade
 from code_engine.schemas.evidence_chain import (
     AuthorInterpretation,
     CausalDesign,
@@ -37,6 +38,7 @@ PROMPT_VERSION = "fulltext_reasoning_trace_prompt_v1"
 EXTRACTOR_CODE_VERSION = "fulltext_reasoning_trace_extractor_v1"
 CONTEXT_RULE_VERSION = "fulltext_context_consolidation_rules_v1"
 EVIDENCE_CHAIN_EXTRACTOR_VERSION = "experimental_evidence_chain_from_trace_v1"
+DIRECT_EVIDENCE_CHAIN_EXTRACTOR_VERSION = "direct_fulltext_evidence_chain_extractor_v1"
 CLAIM_EVIDENCE_LINKER_VERSION = "claim_evidence_linker_v1"
 RETRIEVAL_CONFIG_VERSION = "claim_centered_passage_retrieval_v1"
 
@@ -126,6 +128,15 @@ EXPERIMENT_TERMS = (
     "control",
     "assay",
 )
+INTERVENTION_PATTERNS = (
+    r"(?:treated|treatment|exposure|exposed|stimulated|incubated)\s+(?:with|to|by)?\s*([A-Za-z0-9α-ωΑ-Ωβγκ\-_/+. ]{2,60})",
+    r"([A-Za-z0-9α-ωΑ-Ωβγκ\-_/+. ]{2,60})\s+(?:treatment|exposure|stimulation|knockdown|knockout|overexpression|silencing|inhibition)",
+)
+DOSE_PATTERN = r"(\d+(?:\.\d+)?\s*(?:nM|uM|µM|mM|mg/kg|mg / kg|ng/ml|ng/mL|µg/ml|ug/ml|%))"
+TIME_PATTERN = r"(\d+(?:\.\d+)?\s*(?:h|hr|hrs|hours|day|days|min|minutes))"
+CELL_LINE_PATTERN = r"\b([A-Z][A-Za-z0-9-]{1,12}(?:-[A-Z0-9]+){0,3})\s+cells\b"
+FIGURE_PATTERN = r"\b(?:Fig\.?|Figure)\s*([0-9]+[A-Za-z]?)\b"
+TABLE_PATTERN = r"\bTable\s*([0-9]+[A-Za-z]?)\b"
 SECTION_PRIORITY = {
     "results": 0,
     "methods": 1,
@@ -502,6 +513,304 @@ def _direction_from_text(text: str | None) -> str:
     return "unknown"
 
 
+def _figure(text: str | None) -> str | None:
+    match = re.search(FIGURE_PATTERN, str(text or ""), flags=re.I)
+    return f"Figure {match.group(1)}" if match else None
+
+
+def _table(text: str | None) -> str | None:
+    match = re.search(TABLE_PATTERN, str(text or ""), flags=re.I)
+    return f"Table {match.group(1)}" if match else None
+
+
+def _extract_first(pattern: str, text: str | None) -> str | None:
+    match = re.search(pattern, str(text or ""), flags=re.I)
+    return re.sub(r"\s+", " ", match.group(1)).strip(" .;,") if match else None
+
+
+def _clean_agent(value: str | None) -> str | None:
+    if not value:
+        return None
+    text = re.sub(r"\b(?:for|at|in|on|and|or|the|a|an|cells?|cell lines?)\b.*$", "", value, flags=re.I).strip(" .;,")
+    return text[:80] or None
+
+
+def _direct_context_from_sentence(claim: dict[str, Any], sentence: dict[str, Any], nearby: list[dict[str, Any]]) -> dict[str, Any]:
+    text = " ".join([sentence.get("text") or "", *(row.get("text") or "" for row in nearby)])
+    claim_context = claim.get("context") if isinstance(claim.get("context"), dict) else {}
+    cell_line = claim_context.get("cell_line") or claim_context.get("cell_type") or _extract_first(CELL_LINE_PATTERN, text)
+    species = claim_context.get("species") or claim_context.get("organism")
+    if not species and re.search(r"\bmice|mouse|murine\b", text, flags=re.I):
+        species = "mouse"
+    elif not species and re.search(r"\brat|rats\b", text, flags=re.I):
+        species = "rat"
+    elif not species and re.search(r"\bhuman\b", text, flags=re.I):
+        species = "human"
+    return {
+        "species": species,
+        "cell_line": cell_line if cell_line and re.search(r"\d|[A-Z]{2,}", str(cell_line)) else None,
+        "cell_type": claim_context.get("cell_type") if claim_context.get("cell_type") != cell_line else None,
+        "disease_model": claim_context.get("disease") or claim_context.get("disease_model") or claim_context.get("model_system"),
+        "tissue": claim_context.get("tissue"),
+        "genotype": claim_context.get("genotype"),
+        "localization": claim_context.get("localization"),
+    }
+
+
+def _nearby_experimental_sentences(sentences: list[dict[str, Any]], target: dict[str, Any], window: int = 2) -> list[dict[str, Any]]:
+    section_index = target.get("section_index")
+    same_section = [row for row in sentences if row.get("section_index") == section_index]
+    try:
+        position = next(i for i, row in enumerate(same_section) if row.get("sentence_id") == target.get("sentence_id"))
+    except StopIteration:
+        return []
+    candidates = same_section[max(0, position - window): position] + same_section[position + 1: position + 1 + window]
+    return [row for row in candidates if any(_norm(term) in _norm(row.get("text")) for term in EXPERIMENT_TERMS) or str(row.get("section_type")) == "methods"]
+
+
+def _methods_context_sentences(sentences: list[dict[str, Any]], claim: dict[str, Any], limit: int = 3) -> list[dict[str, Any]]:
+    terms = [_norm(claim.get("subject")), _norm(claim.get("object"))]
+    rows: list[tuple[int, dict[str, Any]]] = []
+    for row in sentences:
+        if str(row.get("section_type")) != "methods":
+            continue
+        text = _norm(row.get("text"))
+        score = sum(2 for term in terms if term and term in text)
+        score += 2 if re.search(DOSE_PATTERN, str(row.get("text") or ""), flags=re.I) else 0
+        score += sum(1 for term in ("assay", "measured", "western blot", "qpcr", "transwell", "migration", "invasion") if term in text)
+        if score:
+            rows.append((score, row))
+    return [row for _, row in sorted(rows, key=lambda item: -item[0])[:limit]]
+
+
+def _claim_sentence_match(claim: dict[str, Any], sentences: list[dict[str, Any]]) -> dict[str, Any] | None:
+    evidence = _norm(claim.get("evidence_sentence"))
+    if not evidence:
+        return None
+    def usable(row: dict[str, Any]) -> bool:
+        text = str(row.get("text") or "").strip()
+        if len(text) < 25:
+            return False
+        if _norm(text) in {"results", "methods", "discussion", "conclusion", "abstract"}:
+            return False
+        return str(row.get("section_type") or "").casefold() not in {"abstract", "introduction", "conclusion"}
+    body = [row for row in sentences if usable(row)]
+    for row in body:
+        text_norm = _norm(row.get("text"))
+        if text_norm and (text_norm in evidence or evidence in text_norm):
+            return row
+    subject = _norm(claim.get("subject"))
+    obj = _norm(claim.get("object"))
+    relation = _norm(claim.get("predicate") or claim.get("relation_family"))
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for row in body:
+        text_norm = _norm(row.get("text"))
+        score = 0
+        score += 3 if subject and subject in text_norm else 0
+        score += 3 if obj and obj in text_norm else 0
+        score += 2 if relation and relation in text_norm else 0
+        score += sum(1 for term in EXPERIMENT_TERMS if _norm(term) in text_norm)
+        if score >= 4:
+            scored.append((score, row))
+    return sorted(scored, key=lambda item: (-item[0], SECTION_PRIORITY.get(str(item[1].get("section_type")), 8)))[0][1] if scored else None
+
+
+def _direct_causal_design(sentence_text: str, nearby_text: str) -> CausalDesign:
+    text = _norm(f"{sentence_text} {nearby_text}")
+    if any(term in text for term in ("rescue", "rescued", "restored", "reversed")):
+        return CausalDesign(evidence_type="rescue", causal_strength="rescue_support", classification_basis=["direct fulltext rescue terminology in anchored experiment"])
+    if any(term in text for term in ("knockdown", "silencing", "silenced", "depletion")):
+        return CausalDesign(evidence_type="knockdown", causal_strength="necessity_support", classification_basis=["direct fulltext knockdown/silencing design"])
+    if any(term in text for term in ("knockout", "deficiency", "deletion")):
+        return CausalDesign(evidence_type="knockout", causal_strength="necessity_support", classification_basis=["direct fulltext knockout/deficiency design"])
+    if any(term in text for term in ("inhibitor", "inhibition", "blockade", "blocked", "abolished")):
+        return CausalDesign(evidence_type="pharmacological_blockade", causal_strength="necessity_support", classification_basis=["direct fulltext blockade/inhibition design"])
+    if any(term in text for term in ("overexpression", "overexpressed", "forced expression")):
+        return CausalDesign(evidence_type="overexpression", causal_strength="sufficiency_support", classification_basis=["direct fulltext overexpression design"])
+    if any(term in text for term in ("dose", "concentration")) or re.search(DOSE_PATTERN, f"{sentence_text} {nearby_text}", flags=re.I):
+        return CausalDesign(evidence_type="dose_response", causal_strength="mechanistic_support", classification_basis=["direct fulltext dose/concentration context"])
+    if any(term in text for term in ("treated", "treatment", "exposure", "stimulated", "transfected")):
+        return CausalDesign(evidence_type="intervention", causal_strength="intervention_support", classification_basis=["direct fulltext intervention followed by measurement/result"])
+    if any(term in text for term in ("correlat", "associated", "association")):
+        return CausalDesign(evidence_type="association", causal_strength="association", classification_basis=["direct fulltext association wording"])
+    return CausalDesign(evidence_type="other", causal_strength="unclear", classification_basis=["direct fulltext anchor lacks clear experimental design"])
+
+
+def _direct_chain_for_claim(claim: dict[str, Any], paper: dict[str, Any], sentence: dict[str, Any], nearby: list[dict[str, Any]]) -> dict[str, Any]:
+    evidence_text = str(sentence.get("text") or claim.get("evidence_sentence") or "")
+    nearby_text = " ".join(str(row.get("text") or "") for row in nearby)
+    context = _direct_context_from_sentence(claim, sentence, nearby)
+    agent = _clean_agent(_extract_first(INTERVENTION_PATTERNS[0], evidence_text + " " + nearby_text) or _extract_first(INTERVENTION_PATTERNS[1], evidence_text + " " + nearby_text) or claim.get("subject"))
+    dose = _extract_first(DOSE_PATTERN, evidence_text + " " + nearby_text)
+    duration = _extract_first(TIME_PATTERN, evidence_text + " " + nearby_text) or (claim.get("context") or {}).get("exposure_time")
+    comparator = "control" if re.search(r"\bcontrol|vehicle|untreated|wild[- ]type\b", evidence_text + " " + nearby_text, flags=re.I) else None
+    assay = None
+    for term in ("western blot", "qRT-PCR", "qPCR", "MTT", "CCK-8", "transwell", "wound healing", "immunofluorescence", "flow cytometry", "ELISA", "migration assay", "invasion assay"):
+        if term.casefold() in (evidence_text + " " + nearby_text).casefold():
+            assay = term
+            break
+    endpoint = str(claim.get("object") or "")
+    anchor = EvidenceAnchor(
+        anchor_id="anc_" + _hash({"claim": claim.get("claim_id"), "sentence": sentence.get("sentence_id")})[:16],
+        section=sentence.get("section_title") or sentence.get("section_type"),
+        sentence_id=sentence.get("sentence_id"),
+        sentence_text=evidence_text,
+        figure=_figure(evidence_text),
+        table=_table(evidence_text) or (_table(sentence.get("section_title")) if sentence.get("section_type") == "table_caption" else None),
+    )
+    chain = ExperimentalEvidenceChain(
+        chain_id="chain_" + _hash({"origin": "direct_fulltext", "claim": claim.get("claim_id"), "sentence": sentence.get("sentence_id")})[:20],
+        paper_id=str(paper.get("paper_id") or claim.get("paper_id") or ""),
+        source_document_id=str(paper.get("pmcid") or claim.get("pmcid") or paper.get("pmid") or claim.get("pmid") or ""),
+        experimental_system=ExperimentalSystem(**{key: value for key, value in context.items() if key in ExperimentalSystem.model_fields}),
+        interventions=[Intervention(agent_raw=agent or "", dose=dose, duration=duration)] if agent or dose or duration else [],
+        comparators=[Comparator(comparator_type="other", description=comparator)] if comparator else [],
+        measurements=[Measurement(assay=assay, endpoint=endpoint or None, measurement_time=duration)],
+        observed_results=[ObservedResult(endpoint=endpoint, direction=_direction_from_text(evidence_text), effect_description=evidence_text)],
+        author_interpretation=AuthorInterpretation(text=evidence_text if re.search(r"\bsuggest|indicat|demonstrat|therefore|consequently|conclusion\b", evidence_text, flags=re.I) else None, certainty="suggested" if re.search(r"\bsuggest|indicat|consequently\b", evidence_text, flags=re.I) else "not_stated"),
+        causal_design=_direct_causal_design(evidence_text, nearby_text),
+        evidence_anchors=[anchor],
+        extraction_confidence=0.82 if str(sentence.get("section_type")) in {"results", "methods", "figure_caption", "table_caption"} else 0.65,
+        validation_status="valid",
+        extraction_origin="direct_fulltext",
+        claim_id=claim.get("claim_id"),
+        source_section_type=sentence.get("section_type"),
+        extraction_version=DIRECT_EVIDENCE_CHAIN_EXTRACTOR_VERSION,
+    )
+    return chain.model_dump(mode="json")
+
+
+def extract_direct_fulltext_evidence_chains(claims: list[dict[str, Any]], candidates: list[dict[str, Any]], artifacts: Path) -> list[dict[str, Any]]:
+    paper_by_key: dict[str, dict[str, Any]] = {}
+    for paper in candidates:
+        for key in (paper.get("paper_id"), paper.get("pmid"), paper.get("pmcid")):
+            if key:
+                paper_by_key[str(key)] = paper
+    chains: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for claim in claims:
+        if "full" not in str(claim.get("source_scope") or "").casefold():
+            continue
+        if str(claim.get("section_type") or "").casefold() == "abstract":
+            continue
+        key = str(claim.get("paper_id") or claim.get("pmid") or claim.get("pmcid") or "")
+        paper = paper_by_key.get(key) or {k: claim.get(k) for k in ("paper_id", "pmid", "pmcid", "case_id")}
+        article_path = artifacts / "fulltext/pmc_oa" / str(paper.get("pmcid") or claim.get("pmcid")) / "article_text.json"
+        if not article_path.is_file():
+            continue
+        article = _json(article_path, {})
+        sentences = _sentence_index(article, paper)
+        sentence = _claim_sentence_match(claim, sentences)
+        if not sentence:
+            continue
+        nearby = _nearby_experimental_sentences(sentences, sentence)
+        for row in _methods_context_sentences(sentences, claim):
+            if row.get("sentence_id") not in {item.get("sentence_id") for item in nearby}:
+                nearby.append(row)
+        chain = _direct_chain_for_claim(claim, paper, sentence, nearby)
+        if chain["chain_id"] not in seen:
+            chains.append(chain)
+            seen.add(chain["chain_id"])
+    return chains
+
+
+def _normalization_payload(decision: Any) -> dict[str, Any]:
+    return {
+        "raw_text": decision.raw_text,
+        "canonical_id": decision.canonical_id or None,
+        "canonical_name": decision.canonical_name or decision.normalized_surface,
+        "entity_type": decision.entity_type,
+        "resolution_status": decision.normalization_status,
+        "resolution_method": decision.resolver,
+        "confidence": decision.confidence,
+    }
+
+
+def _resolve_chain_value(resolver: ResolverCascade, value: Any, *, role: str, chain: dict[str, Any]) -> dict[str, Any] | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    decision = resolver.resolve_entity(text, {
+        "mention_role": role,
+        "expected_entity_type": "",
+        "paper_id": chain.get("paper_id"),
+        "claim_id": chain.get("claim_id"),
+        "context_text": " ".join(str((a or {}).get("sentence_text") or "") for a in chain.get("evidence_anchors") or []),
+    })
+    return _normalization_payload(decision)
+
+
+def normalize_evidence_chain_entities(
+    chains: list[dict[str, Any]],
+    *,
+    run_dir: str | Path,
+    network_enabled: bool = False,
+    api_enabled: bool = False,
+    entity_network_lookup: bool = False,
+    entity_llm_cleaner: bool = False,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    run = Path(run_dir)
+    profile = _json(run / "artifacts/domain_profile.json", {}) or _json(run / "artifacts/case_domain_profile.json", {})
+    resolver = ResolverCascade(
+        domain_id=profile.get("domain_id", "general_biomedical"),
+        entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"),
+        resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"),
+        run_dir=run,
+        execute=True,
+        network_enabled=network_enabled,
+        api_enabled=api_enabled,
+        entity_network_lookup=entity_network_lookup,
+        entity_llm_cleaner=entity_llm_cleaner,
+    )
+    counts = {"entity_resolved_count": 0, "entity_ambiguous_count": 0, "entity_unresolved_count": 0}
+    for chain in chains:
+        normalized_entities: list[dict[str, Any]] = []
+        for intervention in chain.get("interventions") or []:
+            if not isinstance(intervention, dict):
+                continue
+            payload = _resolve_chain_value(resolver, intervention.get("agent_raw"), role="intervention_agent", chain=chain)
+            if payload:
+                intervention["canonical_id"] = payload.get("canonical_id")
+                intervention["canonical_name"] = payload.get("canonical_name")
+                intervention["entity_type"] = payload.get("entity_type")
+                intervention["resolution_status"] = payload.get("resolution_status")
+                intervention["resolution_method"] = payload.get("resolution_method")
+                intervention["resolution_confidence"] = payload.get("confidence")
+                normalized_entities.append({**payload, "role": "intervention_agent"})
+        system = chain.get("experimental_system") if isinstance(chain.get("experimental_system"), dict) else {}
+        for key, role in (("disease_model", "disease_model"), ("cell_type", "cell_type"), ("cell_line", "cell_line"), ("tissue", "tissue")):
+            payload = _resolve_chain_value(resolver, system.get(key), role=role, chain=chain)
+            if payload:
+                normalized_entities.append({**payload, "role": role})
+        for measurement in chain.get("measurements") or []:
+            if isinstance(measurement, dict):
+                payload = _resolve_chain_value(resolver, measurement.get("endpoint"), role="assay_endpoint", chain=chain)
+                if payload:
+                    measurement["endpoint_normalization"] = payload
+                    normalized_entities.append({**payload, "role": "assay_endpoint"})
+        for result in chain.get("observed_results") or []:
+            if isinstance(result, dict):
+                payload = _resolve_chain_value(resolver, result.get("endpoint"), role="observed_endpoint", chain=chain)
+                if payload:
+                    result["endpoint_normalization"] = payload
+                    normalized_entities.append({**payload, "role": "observed_endpoint"})
+        for item in normalized_entities:
+            if item.get("resolution_status") == "resolved":
+                counts["entity_resolved_count"] += 1
+            elif item.get("resolution_status") == "ambiguous":
+                counts["entity_ambiguous_count"] += 1
+            else:
+                counts["entity_unresolved_count"] += 1
+        chain["normalized_entities"] = normalized_entities
+        chain["entity_normalization"] = {
+            "resolver": "ResolverCascade",
+            "network_enabled": bool(network_enabled and entity_network_lookup),
+            "llm_cleaner_enabled": bool(entity_llm_cleaner),
+            "entity_count": len(normalized_entities),
+        }
+    return chains, counts
+
+
 def _causal_design(trace: dict[str, Any]) -> CausalDesign:
     roles = {str(step.get("role")) for step in trace.get("reasoning_steps") or []}
     basis: list[str] = []
@@ -577,6 +886,7 @@ def evidence_chains_from_traces(traces: list[dict[str, Any]]) -> list[dict[str, 
             legacy_reasoning_trace_id=trace.get("reasoning_trace_id"),
             claim_id=trace.get("claim_id"),
             strength_profile=trace.get("strength_profile") or {},
+            extraction_origin="reasoning_trace_assisted" if trace.get("source_scope") == "fulltext" else "legacy_trace_migration",
             extraction_version=EVIDENCE_CHAIN_EXTRACTOR_VERSION,
         )
         chains.append(chain.model_dump(mode="json"))
@@ -615,6 +925,8 @@ def evidence_chain_summary(claims: list[dict[str, Any]], chains: list[dict[str, 
     linked_claims = {row.get("claim_id") for row in links}
     strengths = [((row.get("causal_design") or {}).get("causal_strength") or "unclear") for row in chains]
     statuses = [row.get("validation_status") for row in chains]
+    origins = [row.get("extraction_origin") for row in chains]
+    entity_rows = [entity for chain in chains for entity in chain.get("normalized_entities") or []]
     return {
         "schema_version": "experimental_evidence_chain_summary_v1",
         "claim_count": len(claims),
@@ -628,7 +940,14 @@ def evidence_chain_summary(claims: list[dict[str, Any]], chains: list[dict[str, 
         "rescue_support_count": sum(x == "rescue_support" for x in strengths),
         "invalid_chain_count": sum(x == "invalid" for x in statuses),
         "partial_chain_count": sum(x == "partial" for x in statuses),
+        "direct_fulltext_chain_count": sum(x == "direct_fulltext" for x in origins),
+        "reasoning_trace_assisted_chain_count": sum(x == "reasoning_trace_assisted" for x in origins),
+        "legacy_trace_migration_chain_count": sum(x == "legacy_trace_migration" for x in origins),
+        "entity_resolved_count": sum(entity.get("resolution_status") == "resolved" for entity in entity_rows),
+        "entity_ambiguous_count": sum(entity.get("resolution_status") == "ambiguous" for entity in entity_rows),
+        "entity_unresolved_count": sum(entity.get("resolution_status") not in {"resolved", "ambiguous"} for entity in entity_rows),
         "extractor_version": EVIDENCE_CHAIN_EXTRACTOR_VERSION,
+        "direct_extractor_version": DIRECT_EVIDENCE_CHAIN_EXTRACTOR_VERSION,
         "linker_version": CLAIM_EVIDENCE_LINKER_VERSION,
         "evidence_chain_status": "completed" if chains else "unavailable_fulltext_required",
         "claim_evidence_link_status": "completed" if links else "failed" if chains else "unavailable",
@@ -770,7 +1089,18 @@ def run_fulltext_reasoning_trace_stage(
     _write_jsonl(artifacts / "fulltext_claim_passage_index.jsonl", passages_out)
     _write_jsonl(artifacts / "fulltext_reasoning_traces.jsonl", traces)
     _write_jsonl(artifacts / "fulltext_reasoning_trace_warnings.jsonl", warnings)
-    chains = evidence_chains_from_traces(traces)
+    direct_chains = extract_direct_fulltext_evidence_chains(claims, candidates, artifacts)
+    trace_chains = evidence_chains_from_traces(traces)
+    direct_claim_ids = {str(row.get("claim_id")) for row in direct_chains}
+    chains = [*direct_chains, *[row for row in trace_chains if str(row.get("claim_id")) not in direct_claim_ids]]
+    chains, entity_counts = normalize_evidence_chain_entities(
+        chains,
+        run_dir=run,
+        network_enabled=False,
+        api_enabled=False,
+        entity_network_lookup=False,
+        entity_llm_cleaner=False,
+    )
     links = link_claims_to_evidence_chains(claims, chains)
     _write_jsonl(artifacts / "experimental_evidence_chains.jsonl", chains)
     _write_jsonl(artifacts / "claim_evidence_links.jsonl", links)
@@ -784,6 +1114,9 @@ def run_fulltext_reasoning_trace_stage(
         "unlinked_claim_count": chain_summary["unlinked_claim_count"],
         "evidence_chain_status": chain_summary["evidence_chain_status"],
         "claim_evidence_link_status": chain_summary["claim_evidence_link_status"],
+        "direct_fulltext_chain_count": chain_summary["direct_fulltext_chain_count"],
+        "reasoning_trace_assisted_chain_count": chain_summary["reasoning_trace_assisted_chain_count"],
+        **entity_counts,
     })
     _write_json(artifacts / "fulltext_reasoning_trace_summary.json", summary)
     return summary

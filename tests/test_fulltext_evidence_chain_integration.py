@@ -5,7 +5,9 @@ import pytest
 
 from code_engine.fulltext.reasoning_trace import (
     evidence_chains_from_traces,
+    extract_direct_fulltext_evidence_chains,
     link_claims_to_evidence_chains,
+    normalize_evidence_chain_entities,
     run_fulltext_context_consolidation_stage,
     run_fulltext_reasoning_trace_stage,
 )
@@ -120,6 +122,24 @@ def test_fulltext_processing_generates_chains_links_and_linked_context(tmp_path)
     consolidated = json.loads((artifacts / "fulltext_context_consolidations.jsonl").read_text().splitlines()[0])
     assert consolidated["consolidated_context"]["species"][0]["source_type"] == "explicit_claim_context"
     assert any(item["source_type"] == "evidence_chain_context" and item["value"] == "10 mg/kg" for item in consolidated["consolidated_context"]["dose"])
+    assert chains[0]["extraction_origin"] == "direct_fulltext"
+    assert "normalized_entities" in chains[0]
+
+
+def test_direct_fulltext_builds_multiple_independent_chains(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    paper = {"paper_id": "P1", "pmcid": "PMC1", "case_id": "case"}
+    claims = [
+        {"claim_id": "c1", "paper_id": "P1", "pmcid": "PMC1", "source_scope": "fulltext", "section_type": "results", "subject": "IL-6", "predicate": "induces", "object": "EMT", "evidence_sentence": "IL-6 treatment induced EMT in SK-BR-3 cells."},
+        {"claim_id": "c2", "paper_id": "P1", "pmcid": "PMC1", "source_scope": "fulltext", "section_type": "results", "subject": "siRNA", "predicate": "reduces", "object": "invasion", "evidence_sentence": "LAGE3 knockdown reduced invasion in TNBC cells."},
+    ]
+    _write_json(artifacts / "fulltext/pmc_oa/PMC1/article_text.json", {
+        "sections": [{"section_title": "Results", "section_type": "results", "text": "IL-6 treatment induced EMT in SK-BR-3 cells. LAGE3 knockdown reduced invasion in TNBC cells."}]
+    })
+    chains = extract_direct_fulltext_evidence_chains(claims, [paper], artifacts)
+    assert len(chains) == 2
+    assert {chain["claim_id"] for chain in chains} == {"c1", "c2"}
+    assert all(chain["extraction_origin"] == "direct_fulltext" for chain in chains)
 
 
 def test_linking_does_not_create_same_paper_cartesian_supports():
@@ -152,6 +172,48 @@ def test_context_consolidation_only_consumes_linked_chains():
     links = link_claims_to_evidence_chains([{"claim_id": "c1"}], [c for c in chains if c["claim_id"] == "c1"])
     assert len(links) == 1
     assert all(link["claim_id"] == "c1" for link in links)
+
+
+def test_chain_entity_normalization_uses_resolver_without_network_or_llm(tmp_path, monkeypatch):
+    calls = []
+
+    class Decision:
+        raw_text = "IL-6"
+        normalized_surface = "il 6"
+        canonical_id = "GENE:IL6"
+        canonical_name = "IL6"
+        entity_type = "gene"
+        normalization_status = "resolved"
+        resolver = "entity_resolution_hub_v1"
+        confidence = 0.91
+
+    class FakeResolver:
+        def __init__(self, **kwargs):
+            calls.append(kwargs)
+
+        def resolve_entity(self, raw_text, context=None, allow_fallback=False):
+            decision = Decision()
+            decision.raw_text = raw_text
+            return decision
+
+    monkeypatch.setattr("code_engine.fulltext.reasoning_trace.ResolverCascade", FakeResolver)
+    chains = [{
+        "chain_id": "chain_1",
+        "claim_id": "c1",
+        "paper_id": "P",
+        "interventions": [{"agent_raw": "IL-6"}],
+        "experimental_system": {"cell_line": "SK-BR-3"},
+        "measurements": [{"endpoint": "EMT"}],
+        "observed_results": [{"endpoint": "EMT"}],
+        "evidence_anchors": [{"sentence_text": "IL-6 induced EMT."}],
+    }]
+    normalized, counts = normalize_evidence_chain_entities(chains, run_dir=tmp_path)
+    assert calls
+    assert calls[0]["entity_network_lookup"] is False
+    assert calls[0]["entity_llm_cleaner"] is False
+    assert normalized[0]["interventions"][0]["canonical_id"] == "GENE:IL6"
+    assert normalized[0]["normalized_entities"][0]["resolution_status"] == "resolved"
+    assert counts["entity_resolved_count"] >= 1
 
 
 def test_adapter_projects_evidence_chains_without_kg_experiment_nodes(tmp_path):

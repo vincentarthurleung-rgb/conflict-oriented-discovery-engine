@@ -459,7 +459,7 @@ class CaseToAtlasOrchestrator:
                     invalidated=True
                 action = "reuse" if reusable else "recover" if recoverable else "run"
                 reason = decision.reason if reusable else "recoverable_existing_output" if recoverable else "forced" if forced else decision.reason
-            expected_api = 0 if action in {"reuse", "recover", "skip", "precondition_missing", "no_op"} else int(name in {"base_run", "fulltext_l1", "fulltext_reasoning_trace"} and request.api_enabled)
+            expected_api = 0 if action in {"reuse", "recover", "skip", "precondition_missing", "no_op"} else int(name in {"base_run", "fulltext_l1"} and request.api_enabled)
             expected_network = 0 if action in {"reuse", "recover", "skip", "precondition_missing", "no_op"} else int(name in {"base_run", "pmcid_repair", "fulltext_l1"} and request.network_enabled)
             item = decision.to_dict()
             item.update({"action": action, "reason": reason, "input_hash": input_hash,
@@ -855,11 +855,11 @@ class CaseToAtlasOrchestrator:
             reentry=Path(state["stages"]["reentry"]["output_run"]);result=publish_atlas_handoff(reentry,runs_root=request.runs_root,lineage={"base_run":state["stages"]["base_run"]["output_run"],"pmcid_repair_run":state["stages"]["pmcid_repair"]["output_run"],"fulltext_l1_run":state["stages"]["fulltext_l1"]["output_run"],"reentry_run":reentry})
             validate_handoff(result["manifest_path"],runs_root=request.runs_root);return {"manifest_path":result["manifest_path"],"manifest_hash":result["manifest_hash"],"operation_status":result["status"]}
         if name=="atlas_sync":
-            result=sync_system_a(runs_root=request.runs_root,database_url=request.database_url,output_root=request.system_b_output_root,refresh_current_projection=True)
+            result=sync_system_a(runs_root=request.runs_root,database_url=request.database_url,output_root=request.system_b_output_root,refresh_current_projection=True,manifest=state["stages"]["handoff"].get("manifest_path"))
             if result.get("status") not in {"completed","no_op"} or result.get("rejected"): raise ValueError(json.dumps(result,ensure_ascii=False))
             return {"result":result,"operation_status":result["status"],"projection_id":result.get("current_projection_id")}
         verification=self._verification(request,state)
-        second=sync_system_a(runs_root=request.runs_root,database_url=request.database_url,output_root=request.system_b_output_root,refresh_current_projection=True)
+        second=sync_system_a(runs_root=request.runs_root,database_url=request.database_url,output_root=request.system_b_output_root,refresh_current_projection=True,manifest=state["stages"]["handoff"].get("manifest_path"))
         if second.get("status")!="no_op": raise ValueError("second sync was not no-op")
         verification["second_sync_status"]="no_op";return {"verification":verification,"operation_status":"completed"}
 

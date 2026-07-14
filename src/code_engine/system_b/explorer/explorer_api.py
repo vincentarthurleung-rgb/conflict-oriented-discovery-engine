@@ -172,6 +172,7 @@ class ExplorerAPI:
         if path=="/api/search":return 200,self._search(_one(params,"q").casefold(),params)
         if path=="/api/dossiers":return 200,self.dossiers.list(params)
         if path=="/api/dossiers/audit" or path=="/api/dossier-audit":return 200,self.dossiers.audit()
+        if path=="/api/dossiers/evidence-chain-compare":return 200,self.dossiers.compare_evidence_chains(params)
         if path.startswith("/api/dossier/"):
             tail=unquote(path.removeprefix("/api/dossier/"))
             if tail.endswith("/evidence"):

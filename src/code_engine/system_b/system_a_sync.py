@@ -99,6 +99,22 @@ def _write_projection(root: Path, projection_id: str, merged: dict, sources: lis
     counts = {}
     for key, filename in (("dossier_evidence", "dossier_evidence.jsonl"), ("context_rows", "context_rows.jsonl"), ("exploratory_triples", "exploratory_triples.jsonl"), ("conflict_predictions", "conflict_predictions.jsonl")):
         counts[key] = _write_jsonl(root / filename, merged[key])
+    evidence_chain_ids = {
+        bundle.get("chain", {}).get("chain_id")
+        for row in merged["dossier_evidence"]
+        for bundle in (row.get("evidence_chains") or [])
+        if isinstance(bundle, dict)
+    }
+    linked_claim_ids = {
+        row.get("claim_id")
+        for row in merged["dossier_evidence"]
+        if row.get("evidence_chains")
+    }
+    all_claim_ids = {row.get("claim_id") for row in merged["dossier_evidence"] if row.get("claim_id")}
+    counts["evidence_chain_count"] = len({x for x in evidence_chain_ids if x})
+    counts["linked_claim_count"] = len({x for x in linked_claim_ids if x})
+    counts["unlinked_claim_count"] = max(0, len(all_claim_ids) - counts["linked_claim_count"])
+    counts["context_enriched_claim_count"] = sum(bool(row.get("context", {}).get("linked_chain_ids")) for row in merged["dossier_evidence"] if isinstance(row.get("context"), dict))
     _atomic_json(root / "dossier_index.json", merged["dossier_index"])
     for key, filename in (("claim_review_candidates", "claim_review_candidates.jsonl"), ("conflict_pair_candidates", "conflict_pair_candidates.jsonl"), ("context_candidates", "context_candidates.jsonl")):
         counts[key] = _write_jsonl(staging / filename, merged[key])
@@ -159,7 +175,12 @@ def sync_system_a(
     selected = []
     for case_id, candidates in sorted(grouped.items()):
         fresh = [item for item in candidates if (item["manifest"]["source_run_id"], item["manifest_hash"], adapter_version) not in existing_keys]
-        if len(fresh) > 1: raise HandoffError("ambiguous_new_case_runs", f"{case_id} has {len(fresh)} un-ingested ready handoffs")
+        if len(fresh) > 1:
+            current_fresh = [item for item in fresh if item["manifest_hash"] == current_hashes.get(case_id)]
+            if len(current_fresh) == 1:
+                selected.append(current_fresh[0])
+                continue
+            raise HandoffError("ambiguous_new_case_runs", f"{case_id} has {len(fresh)} un-ingested ready handoffs")
         if fresh: selected.append(fresh[0]); continue
         current = [item for item in candidates if item["manifest_hash"] == current_hashes.get(case_id)]
         if len(current) == 1: selected.append(current[0]); continue
