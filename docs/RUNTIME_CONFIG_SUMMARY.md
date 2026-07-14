@@ -232,10 +232,10 @@ python -m code_engine.cli.run_case \
 python -m code_engine.cli.run_case_batch \
   --generated-case-root configs/generated_cases \
   --case-ids case_1,case_2,case_3 \
+  --pipeline case-to-atlas \
   --external-data-root data/external \
   --api \
   --network \
-  --enable-fulltext-confirmation \
   --max-workers 3 \
   --l1-concurrency 8 \
   --pubmed-concurrency 3 \
@@ -254,10 +254,21 @@ python -m code_engine.cli.run_case_batch \
 | `--generated-case-root` | `configs/generated_cases` | No |
 | `--case-ids` | None | Yes (or `--case-inventory`) |
 | `--case-inventory` | None | No (JSONL/CSV alternative) |
+| `--pipeline` | `case-to-atlas` | No (`base-only` preserves legacy `run_case`) |
 | `--external-data-root` | `data/external` | No |
 | `--api` / `--no-api` | `--no-api` | No |
 | `--network` / `--no-network` | `--no-network` | No |
-| `--enable-fulltext-confirmation` | False | No |
+| `--database-url` | `sqlite:///data/code_atlas.db` | No |
+| `--runs-root` | `runs` | No |
+| `--system-b-output-root` | `system_b_outputs/system_a_sync` | No |
+| `--reuse-only` | False | No |
+| `--force-stage` | None | No; repeatable, `case-to-atlas` only |
+| `--from-stage` | None | No; `case-to-atlas` only |
+| `--to-stage` | None | No; `case-to-atlas` only |
+| `--stop-after` | None | No; `case-to-atlas` only |
+| `--no-atlas-sync` | False | No; `case-to-atlas` only |
+| `--no-publish-handoff` | False | No; `case-to-atlas` only |
+| `--enable-fulltext-confirmation` | False | No; `base-only` only |
 | `--max-workers` | `1` | No |
 | `--l1-concurrency` | `1` | No |
 | `--pubmed-concurrency` | `1` | No |

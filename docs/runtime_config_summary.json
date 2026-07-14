@@ -63,7 +63,7 @@
     },
     "run_case_batch": {
       "required": ["--output-root"],
-      "optional": ["--generated-case-root", "--case-ids", "--case-inventory", "--external-data-root", "--api", "--network", "--enable-fulltext-confirmation", "--max-workers", "--l1-concurrency", "--pubmed-concurrency", "--validator-concurrency", "--case-start-stagger-seconds", "--max-retries", "--retry-backoff-seconds", "--resume", "--overwrite-bundles", "--allow-degraded-intake", "--allow-narrow-discovery-plan", "--fail-fast", "--dry-run"]
+      "optional": ["--generated-case-root", "--case-ids", "--case-inventory", "--pipeline", "--external-data-root", "--api", "--network", "--database-url", "--runs-root", "--system-b-output-root", "--reuse-only", "--force-stage", "--from-stage", "--to-stage", "--stop-after", "--no-atlas-sync", "--no-publish-handoff", "--enable-fulltext-confirmation", "--max-workers", "--l1-concurrency", "--pubmed-concurrency", "--validator-concurrency", "--case-start-stagger-seconds", "--max-retries", "--retry-backoff-seconds", "--resume", "--overwrite-bundles", "--allow-degraded-intake", "--allow-narrow-discovery-plan", "--fail-fast", "--dry-run"]
     },
     "replay_case_stages": {
       "required": ["--case-id", "--case-version", "--output-bundle"],

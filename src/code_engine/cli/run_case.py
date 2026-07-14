@@ -44,6 +44,7 @@ def _audit(profile, decision, readiness, source_run=None, final_run=None, bundle
     return payload,"\n".join(lines)+"\n"
 def main(argv=None)->int:
     a=build_parser().parse_args(argv); load_dotenv(); profile=load_case_domain_profile(a.case_profile); policy=dict(profile.fulltext_policy or {})
+    print("WARNING: code_engine.cli.run_case runs only the base scientific pipeline. For the complete System A -> Atlas workflow, use code_engine.cli.run_case_to_atlas.", file=sys.stderr)
     fulltext_enabled=not a.disable_fulltext_confirmation and (a.enable_fulltext_confirmation or bool(policy.get("enabled")) or "full_text_conflict_confirmation" in profile.validation_needs or profile.case_type=="conflict_enriched")
     try:frozen_metadata=json.loads(a.search_plan_file.read_text(encoding="utf-8"))
     except (OSError,json.JSONDecodeError):frozen_metadata={}

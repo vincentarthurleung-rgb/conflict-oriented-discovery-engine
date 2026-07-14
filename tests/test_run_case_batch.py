@@ -16,7 +16,9 @@ class Result:
 class RunCaseBatchTests(unittest.TestCase):
     def _args(self,root,ids="a,b",**changes):
         values=dict(generated_case_root=root/"generated",case_ids=ids,case_inventory=None,external_data_root=root/"external",
-            api=False,network=False,enable_fulltext_confirmation=False,max_workers=2,l1_concurrency=2,pubmed_concurrency=2,
+            pipeline="case-to-atlas",api=False,network=False,database_url="sqlite:///atlas.db",runs_root=root/"runs",
+            system_b_output_root=root/"system_b",reuse_only=False,force_stage=[],from_stage=None,to_stage=None,stop_after=None,
+            no_atlas_sync=False,no_publish_handoff=False,enable_fulltext_confirmation=False,max_workers=2,l1_concurrency=2,pubmed_concurrency=2,
             validator_concurrency=2,case_start_stagger_seconds=0,max_retries=0,retry_backoff_seconds=0,resume=False,
             overwrite_bundles=False,allow_degraded_intake=False,allow_narrow_discovery_plan=False,
             fail_fast=False,dry_run=True,output_root=root/"batch")
@@ -39,11 +41,24 @@ class RunCaseBatchTests(unittest.TestCase):
             result=run_case_batch(self._args(root),subprocess_runner=runner)
             self.assertEqual(result["completed_count"],2); self.assertLessEqual(maximum,2)
             self.assertTrue((root/"batch/logs/a.stdout.log").is_file()); self.assertTrue((root/"batch/batch_report.md").is_file())
+            command=(root/"batch/logs/a.stdout.log").read_text()
+            self.assertIn("code_engine.cli.run_case_to_atlas",command)
+            self.assertIn("--case-id a",command)
+            self.assertIn("--json",command)
+
+    def test_base_only_pipeline_uses_legacy_run_case(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); self._packages(root,("a",))
+            result=run_case_batch(self._args(root,"a",pipeline="base-only",max_workers=1),subprocess_runner=lambda *a,**k:Result())
+            self.assertEqual(result["completed_count"],1)
+            command=(root/"batch/logs/a.stdout.log").read_text()
+            self.assertIn("code_engine.cli.run_case",command)
+            self.assertNotIn("code_engine.cli.run_case_to_atlas",command)
 
     def test_existing_bundle_skipped_and_degraded_blocked(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); self._packages(root,("a",),valid=True); (root/"batch/bundles/a").mkdir(parents=True)
-            result=run_case_batch(self._args(root,"a",max_workers=1),subprocess_runner=lambda *a,**k:Result())
+            result=run_case_batch(self._args(root,"a",pipeline="base-only",max_workers=1),subprocess_runner=lambda *a,**k:Result())
             self.assertEqual(result["skipped_count"],1)
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); self._packages(root,("a",),valid=False)

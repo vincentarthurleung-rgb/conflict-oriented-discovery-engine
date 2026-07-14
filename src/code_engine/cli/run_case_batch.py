@@ -26,7 +26,14 @@ def build_parser():
     p=argparse.ArgumentParser(description="Run generated modern case packages with safe bounded concurrency.")
     p.add_argument("--generated-case-root",type=Path,default=Path("configs/generated_cases")); p.add_argument("--case-ids")
     p.add_argument("--case-inventory",type=Path); p.add_argument("--external-data-root",type=Path,default=Path("data/external"))
+    p.add_argument("--pipeline",choices=("case-to-atlas","base-only"),default="case-to-atlas",
+        help="case-to-atlas runs the current System A -> Atlas DAG; base-only preserves the legacy run_case bundle path.")
     p.add_argument("--api",action=argparse.BooleanOptionalAction,default=False); p.add_argument("--network",action=argparse.BooleanOptionalAction,default=False)
+    p.add_argument("--database-url",default="sqlite:///data/code_atlas.db"); p.add_argument("--runs-root",type=Path,default=Path("runs"))
+    p.add_argument("--system-b-output-root",type=Path,default=Path("system_b_outputs/system_a_sync"))
+    p.add_argument("--reuse-only",action="store_true"); p.add_argument("--force-stage",action="append",default=[])
+    p.add_argument("--from-stage"); p.add_argument("--to-stage"); p.add_argument("--stop-after")
+    p.add_argument("--no-atlas-sync",action="store_true"); p.add_argument("--no-publish-handoff",action="store_true")
     p.add_argument("--enable-fulltext-confirmation",action="store_true"); p.add_argument("--max-workers",type=int,default=1)
     p.add_argument("--l1-concurrency",type=int,default=1); p.add_argument("--pubmed-concurrency",type=int,default=1); p.add_argument("--validator-concurrency",type=int,default=1)
     p.add_argument("--case-start-stagger-seconds",type=float,default=0); p.add_argument("--max-retries",type=int,default=0); p.add_argument("--retry-backoff-seconds",type=float,default=30)
@@ -48,6 +55,8 @@ def _case_ids(args)->list[str]:
 def _status_template(case_id:str,package:Path,root:Path)->dict:
     return {"case_id":case_id,"status":"queued","case_profile":str(package/"case_profile.json"),
         "search_plan":str(package/"search_plan.frozen.json"),"case_bundle":str(root/"bundles"/case_id),
+        "pipeline":None,"base_run":None,"pmcid_repair_run":None,"fulltext_run":None,"reentry_run":None,
+        "handoff_status":None,"sync_status":None,"projection_id":None,
         "started_at":None,"finished_at":None,"duration_seconds":0,"return_code":None,
         "stdout_log":str(root/"logs"/f"{case_id}.stdout.log"),"stderr_log":str(root/"logs"/f"{case_id}.stderr.log"),
         "executed_validators":[],"scientific_output_class":None,"graph_observation_count":0,
@@ -62,6 +71,8 @@ def _summary(batch_id:str,statuses:list[dict])->dict:
 
 def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)->dict:
     if args.max_workers<1 or min(args.l1_concurrency,args.pubmed_concurrency,args.validator_concurrency)<1: raise ValueError("concurrency values must be >= 1")
+    pipeline=getattr(args,"pipeline","case-to-atlas")
+    if pipeline not in {"case-to-atlas","base-only"}: raise ValueError("--pipeline must be case-to-atlas or base-only")
     case_ids=_case_ids(args)
     if not case_ids: raise ValueError("provide --case-ids or --case-inventory with at least one case")
     root=args.output_root; (root/"logs").mkdir(parents=True,exist_ok=True); (root/"cases").mkdir(parents=True,exist_ok=True)
@@ -83,6 +94,7 @@ def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)-
             _write(root/"batch_status.json",_summary(batch_id,statuses))
     persist()
     manifest={"schema_version":"run_case_batch_manifest_v1","batch_id":batch_id,"created_at":_now(),"case_ids":case_ids,
+        "pipeline":pipeline,
         "generated_case_root":str(args.generated_case_root),"external_data_root":str(args.external_data_root),"requested_max_workers":args.max_workers,
         "effective_max_workers":effective,"l1_concurrency":args.l1_concurrency,"pubmed_concurrency":args.pubmed_concurrency,
         "validator_concurrency":args.validator_concurrency,"dry_run":args.dry_run,"resume":args.resume,"warnings":warnings}
@@ -100,16 +112,33 @@ def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)-
                     "case_factory_semantic_quality_blocked" if degraded and not args.allow_degraded_intake else
                     "case_factory_discovery_planning_quality_blocked")
             item.update(status="blocked",finished_at=_now(),return_code=2,warnings=[reason]); persist(item); return item
+        item["pipeline"]=pipeline
         bundle=root/"bundles"/item["case_id"]
-        if bundle.exists() and not args.overwrite_bundles:
+        if pipeline=="base-only" and bundle.exists() and not args.overwrite_bundles:
             item.update(status="skipped",finished_at=_now(),return_code=0,warnings=["case_bundle_already_exists"]); persist(item); return item
-        if bundle.exists() and args.overwrite_bundles: shutil.rmtree(bundle)
+        if pipeline=="base-only" and bundle.exists() and args.overwrite_bundles: shutil.rmtree(bundle)
         item.update(status="running",started_at=_now()); persist(item); started=time.monotonic()
-        command=[sys.executable,"-m","code_engine.cli.run_case","--case-profile",item["case_profile"],"--search-plan-file",item["search_plan"],
-            "--external-data-root",str(args.external_data_root),"--output-case-bundle-root",str(root/"bundles")]
-        command += ["--api"] if args.api else []; command += ["--network"] if args.network else []
-        command += ["--enable-fulltext-confirmation"] if args.enable_fulltext_confirmation else []
-        command += ["--dry-run"] if args.dry_run else []
+        if pipeline=="case-to-atlas":
+            command=[sys.executable,"-m","code_engine.cli.run_case_to_atlas","--case-id",item["case_id"],
+                "--case-profile",item["case_profile"],"--search-plan-file",item["search_plan"],
+                "--runs-root",str(getattr(args,"runs_root",Path("runs"))),"--database-url",str(getattr(args,"database_url","sqlite:///data/code_atlas.db")),
+                "--system-b-output-root",str(getattr(args,"system_b_output_root",Path("system_b_outputs/system_a_sync"))),"--external-data-root",str(args.external_data_root),
+                "--json"]
+            command += ["--api"] if args.api else ["--no-api"]; command += ["--network"] if args.network else ["--no-network"]
+            command += ["--reuse-only"] if getattr(args,"reuse_only",False) else []
+            for stage in getattr(args,"force_stage",[]) or []: command += ["--force-stage",stage]
+            command += ["--from-stage",args.from_stage] if getattr(args,"from_stage",None) else []
+            command += ["--to-stage",args.to_stage] if getattr(args,"to_stage",None) else []
+            command += ["--stop-after",args.stop_after] if getattr(args,"stop_after",None) else []
+            command += ["--no-atlas-sync"] if getattr(args,"no_atlas_sync",False) else []
+            command += ["--no-publish-handoff"] if getattr(args,"no_publish_handoff",False) else []
+            command += ["--dry-run"] if args.dry_run else []
+        else:
+            command=[sys.executable,"-m","code_engine.cli.run_case","--case-profile",item["case_profile"],"--search-plan-file",item["search_plan"],
+                "--external-data-root",str(args.external_data_root),"--output-case-bundle-root",str(root/"bundles")]
+            command += ["--api"] if args.api else []; command += ["--network"] if args.network else []
+            command += ["--enable-fulltext-confirmation"] if args.enable_fulltext_confirmation else []
+            command += ["--dry-run"] if args.dry_run else []
         Path(item["stdout_log"]).write_text("COMMAND: "+" ".join(command)+"\n",encoding="utf-8"); Path(item["stderr_log"]).write_text("",encoding="utf-8")
         if args.case_start_stagger_seconds: time.sleep(args.case_start_stagger_seconds)
         result=None
@@ -119,20 +148,29 @@ def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)-
             with Path(item["stderr_log"]).open("a",encoding="utf-8") as h:h.write(result.stderr or "")
             if result.returncode==0:break
             if attempt<args.max_retries:time.sleep(args.retry_backoff_seconds*(2**attempt))
-        bundle_manifest=_read(bundle/"case_bundle_manifest.json",{}) if not args.dry_run else {}
         ok=result is not None and result.returncode==0
+        payload={}
+        if result and result.stdout:
+            try: payload=json.loads(result.stdout.strip().splitlines()[-1])
+            except (IndexError,json.JSONDecodeError): payload={}
+        bundle_manifest=_read(bundle/"case_bundle_manifest.json",{}) if pipeline=="base-only" and not args.dry_run else {}
         item.update(status="completed" if ok else "failed",finished_at=_now(),duration_seconds=round(time.monotonic()-started,3),
             return_code=result.returncode if result else 1,executed_validators=bundle_manifest.get("executed_validators",[]),
             scientific_output_class=bundle_manifest.get("scientific_output_class"),graph_observation_count=bundle_manifest.get("graph_observation_count",0),
             core_observation_count=bundle_manifest.get("core_observation_count",0),true_graph_conflict_count=bundle_manifest.get("true_graph_conflict_count",0),
             formal_hypothesis_count=bundle_manifest.get("formal_hypothesis_count",0),warnings=["dry_run_no_execution"] if args.dry_run else bundle_manifest.get("bundle_export_warnings",[]))
+        if pipeline=="case-to-atlas" and payload:
+            item.update(base_run=payload.get("base_run"),pmcid_repair_run=payload.get("pmcid_repair_run"),
+                fulltext_run=payload.get("fulltext_run"),reentry_run=payload.get("reentry_run"),
+                handoff_status=payload.get("handoff_status"),sync_status=payload.get("sync_status"),
+                projection_id=payload.get("projection_id"),warnings=payload.get("warnings",item["warnings"]))
         if not ok and args.fail_fast:stop.set()
         persist(item); return item
     with ThreadPoolExecutor(max_workers=effective,thread_name_prefix="run-case") as pool:
         futures=[pool.submit(execute,item) for item in statuses]
         for future in as_completed(futures): future.result()
     result=_summary(batch_id,statuses); _write(root/"batch_status.json",result)
-    lines=["# Run Case Batch Report","",f"- Batch: `{batch_id}`",f"- Total cases: {len(statuses)}",f"- Effective workers: {effective}",
+    lines=["# Run Case Batch Report","",f"- Batch: `{batch_id}`",f"- Pipeline: `{pipeline}`",f"- Total cases: {len(statuses)}",f"- Effective workers: {effective}",
         f"- Completed: {result['completed_count']}",f"- Failed: {result['failed_count']}",f"- Blocked: {result['blocked_count']}",f"- Skipped: {result['skipped_count']}","","## Cases",""]
     lines += [f"- `{x['case_id']}`: {x['status']}" for x in statuses]
     (root/"batch_report.md").write_text("\n".join(lines)+"\n",encoding="utf-8")
