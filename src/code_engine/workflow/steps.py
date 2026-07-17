@@ -199,7 +199,17 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                 requires_manual_review=True,
             )
         else:
-            subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {"expected_entity_type": item.get("subject_type") or ""})
+            subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {
+                "expected_entity_type": item.get("subject_type") or "",
+                "context_text": item.get("evidence_sentence") or item.get("evidence_text") or "",
+                "context_slots": item.get("context_slots") or item.get("context_mentions") or {},
+                "species": (item.get("context_slots") or item.get("context_mentions") or {}).get("species") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
+                "assay_context": (item.get("context_slots") or item.get("context_mentions") or {}).get("assay_or_readout") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
+                "paper_id": item.get("paper_id"),
+                "claim_id": item.get("claim_id"),
+                "observation_id": item.get("evidence_id") or item.get("claim_id"),
+                "mention_role": "subject",
+            })
         if resolver_mode == "hint_only" and not object_hint:
             from code_engine.normalization.models import NormalizationDecision
             obj = NormalizationDecision(
@@ -213,7 +223,17 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                 requires_manual_review=True,
             )
         else:
-            obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {"expected_entity_type": item.get("object_type") or ""})
+            obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {
+                "expected_entity_type": item.get("object_type") or "",
+                "context_text": item.get("evidence_sentence") or item.get("evidence_text") or "",
+                "context_slots": item.get("context_slots") or item.get("context_mentions") or {},
+                "species": (item.get("context_slots") or item.get("context_mentions") or {}).get("species") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
+                "assay_context": (item.get("context_slots") or item.get("context_mentions") or {}).get("assay_or_readout") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
+                "paper_id": item.get("paper_id"),
+                "claim_id": item.get("claim_id"),
+                "observation_id": item.get("evidence_id") or item.get("claim_id"),
+                "mention_role": "object",
+            })
         paper = paper_by_id.get(str(item.get("paper_id") or ""), {})
         decision = decide_l2_evidence_layer(item, subject, obj, subject_hint, object_hint, hints,
                                             seed_triple=seed_triple, semantic_search_intent=intent_payload,
@@ -221,8 +241,10 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                             paper_metadata=paper)
         usable = bool(decision["canonical_graph_eligible"])
         observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
-        subject_id = subject.canonical_id or (subject_hint or {}).get("canonical_id") or ""
-        object_id = obj.canonical_id or (object_hint or {}).get("canonical_id") or ""
+        subject_resolved = subject.normalization_status == "resolved"
+        object_resolved = obj.normalization_status == "resolved"
+        subject_id = (subject.canonical_id if subject_resolved else "") or (subject_hint or {}).get("canonical_id") or ""
+        object_id = (obj.canonical_id if object_resolved else "") or (object_hint or {}).get("canonical_id") or ""
         subject_name = subject.canonical_name or (subject_hint or {}).get("canonical_name") or item.get("subject_raw") or ""
         object_name = obj.canonical_name or (object_hint or {}).get("canonical_name") or item.get("object_raw") or ""
         observation = {
@@ -240,6 +262,14 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             "object_entity_type": (object_hint or {}).get("entity_type") or obj.entity_type or "unknown",
             "subject_normalization_status": subject.normalization_status or ("resolved_runtime_hint" if subject_hint else "unresolved"),
             "object_normalization_status": obj.normalization_status or ("resolved_runtime_hint" if object_hint else "unresolved"),
+            "subject_resolution_decision_id": f"{observation_id}:subject",
+            "object_resolution_decision_id": f"{observation_id}:object",
+            "subject_raw_name": item.get("subject_raw") or "",
+            "object_raw_name": item.get("object_raw") or "",
+            "subject_cleaned_name": subject.selected_cleaned_surface or subject.normalized_surface,
+            "object_cleaned_name": obj.selected_cleaned_surface or obj.normalized_surface,
+            "subject_provider": subject.external_verification_provider or subject.selected_source or None,
+            "object_provider": obj.external_verification_provider or obj.selected_source or None,
             "normalization_status": "resolved" if usable else "low_confidence",
             "normalization_quality": "resolved_or_acceptable" if usable else "low_confidence",
             "allow_high_confidence_graph_use": usable,
@@ -971,6 +1001,18 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                                      "entities": [hint.to_dict() for hint in hints]})
     observations_path = _write(run_dir, "l2_abstract_observations.json", observations)
     excluded_reasons = Counter(item.get("excluded_from_retention_reason") or item.get("excluded_from_core_reason") or "unknown" for item in observations if not item.get("retained"))
+    endpoint_rows = [
+        (item, role, (item.get("normalization") or {}).get(role, {}))
+        for item in observations
+        for role in ("subject", "object")
+    ]
+    resolved_endpoints = [(item, role, norm) for item, role, norm in endpoint_rows if norm.get("normalization_status") == "resolved"]
+    resolved_graph_endpoints = [(item, role, norm) for item, role, norm in resolved_endpoints if item.get("graph_observation_eligible")]
+    decision_to_observation_failures = [
+        {"observation_id": item.get("observation_id"), "endpoint_role": role, "canonical_id": norm.get("canonical_id")}
+        for item, role, norm in resolved_graph_endpoints
+        if norm.get("canonical_id") and not item.get(f"{role}_canonical_id")
+    ]
     summary = {
         "layered_retention_enabled": True,
         "normalized_observation_count": len(observations),
@@ -1006,6 +1048,15 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "runtime_entity_hints_used": bool(hints),
         "run_entity_registry_entity_count": len(hints),
         "source_scope": "abstract",
+        "resolved_total_entity_mentions": len(resolved_endpoints),
+        "resolved_graph_endpoint_mentions": len(resolved_graph_endpoints),
+        "resolved_non_graph_entity_mentions": len(resolved_endpoints) - len(resolved_graph_endpoints),
+        "resolved_subject_endpoints": sum(role == "subject" for _, role, _ in resolved_graph_endpoints),
+        "resolved_object_endpoints": sum(role == "object" for _, role, _ in resolved_graph_endpoints),
+        "canonical_subject_ids_written_to_observations": sum(bool(item.get("subject_canonical_id")) for item, role, _ in resolved_graph_endpoints if role == "subject"),
+        "canonical_object_ids_written_to_observations": sum(bool(item.get("object_canonical_id")) for item, role, _ in resolved_graph_endpoints if role == "object"),
+        "decision_to_observation_propagation_failures": len(decision_to_observation_failures),
+        "decision_to_observation_propagation_failure_examples": decision_to_observation_failures[:20],
     }
     intent_for_discovery = _read(run_dir, "semantic_search_intent.json", {})
     if intent_for_discovery.get("discovery_planning_mode") == "neutral_discovery":

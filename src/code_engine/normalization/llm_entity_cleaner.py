@@ -26,7 +26,10 @@ from typing import Any, Literal
 # ---------------------------------------------------------------------------
 SUPPORTED_ENTITY_TYPES: tuple[str, ...] = (
     "gene",
+    "gene_or_protein",
     "protein",
+    "protein_family",
+    "protein_complex",
     "receptor",
     "enzyme",
     "drug",
@@ -51,7 +54,10 @@ SUPPORTED_ENTITY_TYPES: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 DEFAULT_ONTOLOGY_ROUTES: dict[str, list[str]] = {
     "gene": ["mygene", "uniprot"],
+    "gene_or_protein": ["mygene", "uniprot"],
     "protein": ["uniprot", "mygene"],
+    "protein_family": ["uniprot", "mygene"],
+    "protein_complex": ["uniprot"],
     "receptor": ["uniprot", "chembl"],
     "enzyme": ["uniprot", "mygene"],
     "drug": ["pubchem", "chembl"],
@@ -241,6 +247,14 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
     found_aliases: list[str] = []
     extra_heads: list = []
 
+    # Remove leading time/exposure context without treating it as entity text.
+    cleaned = re.sub(
+        r"^\s*(?:after|at|for)\s+\d+(?:\.\d+)?\s*(?:h|hr|hrs|hour|hours|min|mins|day|days)\s+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+
     # Step 0: Parenthetical alias extraction
     # Pattern: "primary_name (ABBREV, ...)" or "primary_name (ABBREV)"
     paren_match = re.match(r"^(.+?)\s*\(([A-Z0-9][A-Z0-9,\-\s]+)\)\s*$", cleaned)
@@ -278,7 +292,20 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
             removed.append(desc)
             cleaned = cleaned[m.end():].strip()
 
-    # Step 2: Pathway decomposition
+    # Step 2: Pathway/state normalization
+    state_match = re.match(
+        r"^(.+?\b(?:pathway|signaling|signalling))\s+(activation|inhibition|suppression|activity)\s*$",
+        cleaned,
+        re.IGNORECASE,
+    )
+    if state_match:
+        cleaned = state_match.group(1).strip()
+        removed.append(state_match.group(2).casefold())
+    pathway_alias = re.match(r"^(PI3K/AKT)\s+pathway\s*$", cleaned, re.IGNORECASE)
+    if pathway_alias:
+        cleaned = "PI3K/AKT signaling pathway"
+
+    # Step 3: Pathway decomposition
     pathway_match = re.match(
         r"^([A-Z][A-Za-z0-9]+(?:[-/][A-Z][A-Za-z0-9]+)+)\s+(?:(?:signalling|signaling)\s+)?pathway\s*$",
         cleaned, re.IGNORECASE
@@ -300,12 +327,12 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
                     rationale_short=f"extracted from pathway: {original}",
                 ))
 
-    # Step 3: Post-processing
+    # Step 4: Post-processing
     # Strip trailing "production" if present after other cleaning
     cleaned = re.sub(r"\s+production\s*$", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"\s+(?:mRNA|protein)?\s*(?:expression|levels?|activity|phosphorylation)\s*$", "", cleaned, flags=re.IGNORECASE).strip()
 
-    # Step 4: Check known aliases
+    # Step 5: Check known aliases
     cleaned_lower = cleaned.casefold()
     for canonical, aliases in KNOWN_ALIASES.items():
         if cleaned_lower == canonical.casefold():
@@ -330,6 +357,9 @@ def _infer_entity_type_heuristic(surface: str, l1_hint: str | None = None) -> st
 
     # Gene/protein patterns: all-caps short names, gene symbols
     import re
+    # Pathway patterns should take precedence over all-caps component strings.
+    if any(term in text for term in ("pathway", "signaling", "signalling", "cascade")):
+        return "pathway"
     if re.fullmatch(r"[A-Z][A-Z0-9]{1,8}", surface.strip()):
         return "gene"
     if re.fullmatch(r"[a-z]{3,5}-[0-9]+[a-z]?", surface.strip()):
@@ -339,9 +369,8 @@ def _infer_entity_type_heuristic(surface: str, l1_hint: str | None = None) -> st
     if re.search(r"(\d+-)?[A-Z]{2,}\d+", surface.strip()):  # e.g., SB203580, LY294002
         return "compound"
 
-    # Pathway patterns
-    if any(term in text for term in ("pathway", "signaling", "signalling", "cascade")):
-        return "pathway"
+    if l1_hint in {"assay", "assay_readout"} and any(term in text for term in ("cadherin", "vimentin", "interleukin", "il-")):
+        return "gene_or_protein"
 
     # Biological process patterns
     if text.endswith(("tion", "sis", "ment", "ance", "ing")):

@@ -78,8 +78,10 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
     observation_id = _first(item, "observation_id", "triple_id", "normalized_observation_id")
     claim_id = _first(item, "claim_id", "l1_claim_id")
     evidence_id = _first(item, "evidence_id", "linked_evidence_id")
-    source = _first(item, "subject_canonical_id", "subject_id", "normalized_subject_id")
-    target = _first(item, "object_canonical_id", "object_id", "normalized_object_id")
+    subject_canonical_id = _first(item, "subject_canonical_id", "subject_id", "normalized_subject_id")
+    object_canonical_id = _first(item, "object_canonical_id", "object_id", "normalized_object_id")
+    source = subject_canonical_id
+    target = object_canonical_id
     direction = _first(item, "direction", "relation_direction", "effect_direction")
     if direction is None:
         sign = _first(item, "relation_sign", "sign")
@@ -90,9 +92,11 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
     canonical = _first(item, "canonical_paper_id") or paper.get("canonical_paper_id") or paper_key
     warnings = []
     if not source:
-        warnings.extend(["missing_subject_canonical_id", "excluded_from_relation_bundle_reasoning"])
+        warnings.extend(["missing_subject_canonical_id", "unresolved_subject_scoped_fallback_identity"])
+        source = f"RUN:{graph_context['run_id']}:OBS:{observation_id or evidence_id or claim_id or 'unknown'}:subject:{_first(item, 'subject_raw', 'subject_raw_name', 'subject_name', 'subject') or 'unknown'}"
     if not target:
-        warnings.extend(["missing_object_canonical_id", "excluded_from_relation_bundle_reasoning"])
+        warnings.extend(["missing_object_canonical_id", "unresolved_object_scoped_fallback_identity"])
+        target = f"RUN:{graph_context['run_id']}:OBS:{observation_id or evidence_id or claim_id or 'unknown'}:object:{_first(item, 'object_raw', 'object_raw_name', 'object_name', 'object') or 'unknown'}"
     if direction == "unknown":
         warnings.append("missing_or_unknown_direction")
     if not (paper_id or canonical):
@@ -133,8 +137,16 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
         claim_id=str(claim_id) if claim_id else None, evidence_id=str(evidence_id) if evidence_id else None,
         warnings=warnings, subject_name=_first(item, "subject_name", "subject_canonical_name", "normalized_subject", "subject"),
         subject_type=_first(item, "subject_type", "subject_entity_type"),
+        subject_canonical_id=str(subject_canonical_id) if subject_canonical_id else None,
+        subject_canonical_name=_first(item, "subject_canonical_name", "normalized_subject"),
+        subject_resolution_status=_first(item, "subject_resolution_status", "subject_normalization_status"),
+        subject_resolution_decision_id=_first(item, "subject_resolution_decision_id"),
         object_name=_first(item, "object_name", "object_canonical_name", "normalized_object", "object"),
         object_type=_first(item, "object_type", "object_entity_type"),
+        object_canonical_id=str(object_canonical_id) if object_canonical_id else None,
+        object_canonical_name=_first(item, "object_canonical_name", "normalized_object"),
+        object_resolution_status=_first(item, "object_resolution_status", "object_normalization_status"),
+        object_resolution_decision_id=_first(item, "object_resolution_decision_id"),
         linked_claim_ids=_list(item, "linked_claim_ids", "claim_id", "l1_claim_id"),
         linked_evidence_ids=_list(item, "linked_evidence_ids", "evidence_id"),
         linked_observation_ids=_list(item, "linked_observation_ids", "observation_id", "triple_id"),
@@ -172,6 +184,8 @@ def _dedup(values: list[Any], field: str) -> list[Any]:
 def _source_gate_exclusion(edge: EvidenceEdge, context_specific: bool) -> str | None:
     if not edge.observation_id:
         return "missing_observation_provenance"
+    if not edge.subject_canonical_id or not edge.object_canonical_id:
+        return "missing_endpoint_canonical_id"
     if edge.query_context_only:
         return "query_context_only"
     if edge.graph_layer in {"mechanism_layer", "cross_context_mechanism_layer"}:
@@ -239,7 +253,7 @@ def build_merged_evidence_graph_from_run_artifacts(
     if include_fulltext:
         raw.extend(records(load_artifact(source_dir / "fulltext_evidence_records.jsonl")))
     evidence_edges = _dedup([normalize_observation_to_evidence_edge(item, manifest, context) for item in raw], "evidence_edge_id")
-    incomplete_evidence_edges = [item for item in evidence_edges if not item.source_entity_id or not item.target_entity_id]
+    incomplete_evidence_edges = [item for item in evidence_edges if not item.subject_canonical_id or not item.object_canonical_id]
     truncation_warning = None
     if max_edges is not None and len(evidence_edges) > max_edges:
         evidence_edges = evidence_edges[:max_edges]
@@ -320,8 +334,11 @@ def build_merged_evidence_graph_from_run_artifacts(
                                    warnings=[w for w in item.warnings if "paper" in w], export_ready=bool(item.canonical_paper_id or item.doi)))
         for entity_id, name, entity_type, role in ((item.source_entity_id, item.subject_name, item.subject_type, "subject"), (item.target_entity_id, item.object_name, item.object_type, "object")):
             if entity_id:
+                canonical = item.subject_canonical_id if role == "subject" else item.object_canonical_id
+                status = item.subject_resolution_status if role == "subject" else item.object_resolution_status
                 add_node(EvidenceGraphNode(stable_id("entity", entity_id), "entity", name or entity_id, entity_id,
-                                           attributes={"entity_type": entity_type, "role": role}))
+                                           attributes={"entity_type": entity_type, "role": role, "canonical_id": canonical, "resolution_status": status,
+                                                       "identity_scope": "canonical" if canonical else "observation_scoped_raw_fallback"}))
         observation_identity = item.observation_id or item.evidence_id or item.claim_id or item.evidence_edge_id
         observation_node = stable_id("observation", observation_identity)
         observation_node_by_evidence[item.evidence_edge_id] = observation_node
@@ -338,9 +355,17 @@ def build_merged_evidence_graph_from_run_artifacts(
             add_edge(paper_node, span_node, "paper_contains_evidence", provenance=provenance)
             add_edge(observation_node, span_node, "observation_supported_by_evidence", provenance=provenance)
         if item.source_entity_id:
-            add_edge(observation_node, stable_id("entity", item.source_entity_id), "observation_subject_entity", provenance=provenance)
+            add_edge(observation_node, stable_id("entity", item.source_entity_id), "observation_subject_entity",
+                     attributes={"subject_canonical_id": item.subject_canonical_id, "subject_canonical_name": item.subject_canonical_name,
+                                 "subject_resolution_status": item.subject_resolution_status,
+                                 "subject_resolution_decision_id": item.subject_resolution_decision_id},
+                     provenance=provenance)
         if item.target_entity_id:
-            add_edge(observation_node, stable_id("entity", item.target_entity_id), "observation_object_entity", provenance=provenance)
+            add_edge(observation_node, stable_id("entity", item.target_entity_id), "observation_object_entity",
+                     attributes={"object_canonical_id": item.object_canonical_id, "object_canonical_name": item.object_canonical_name,
+                                 "object_resolution_status": item.object_resolution_status,
+                                 "object_resolution_decision_id": item.object_resolution_decision_id},
+                     provenance=provenance)
 
     candidate_by_bundle = {item.bundle_id: item for item in candidates}
     for bundle in bundles:
@@ -457,10 +482,36 @@ def build_merged_evidence_graph_from_run_artifacts(
     contract.update({
         "incomplete_evidence_edge_count": len(incomplete_evidence_edges),
         "excluded_from_bundle_reasoning_count": len(incomplete_evidence_edges),
-        "missing_subject_canonical_id_count": sum(not item.source_entity_id for item in evidence_edges),
-        "missing_object_canonical_id_count": sum(not item.target_entity_id for item in evidence_edges),
+        "missing_subject_canonical_id_count": sum(not item.subject_canonical_id for item in evidence_edges),
+        "missing_object_canonical_id_count": sum(not item.object_canonical_id for item in evidence_edges),
         "identity_incomplete_conflict_candidate_count": 0,
     })
+    graph_subject_ids = {
+        edge["attributes"].get("subject_canonical_id")
+        for edge in graph_edge_rows
+        if edge.get("edge_type") == "observation_subject_entity" and edge.get("attributes", {}).get("subject_canonical_id")
+    }
+    graph_object_ids = {
+        edge["attributes"].get("object_canonical_id")
+        for edge in graph_edge_rows
+        if edge.get("edge_type") == "observation_object_entity" and edge.get("attributes", {}).get("object_canonical_id")
+    }
+    resolved_subject_obs = {edge.subject_canonical_id for edge in evidence_edges if edge.subject_resolution_status == "resolved" and edge.subject_canonical_id}
+    resolved_object_obs = {edge.object_canonical_id for edge in evidence_edges if edge.object_resolution_status == "resolved" and edge.object_canonical_id}
+    contract["canonical_subject_ids_written_to_graph"] = len(resolved_subject_obs & graph_subject_ids)
+    contract["canonical_object_ids_written_to_graph"] = len(resolved_object_obs & graph_object_ids)
+    resolved_missing_obs = sum(
+        (edge.subject_resolution_status == "resolved" and not edge.subject_canonical_id)
+        + (edge.object_resolution_status == "resolved" and not edge.object_canonical_id)
+        for edge in evidence_edges
+    )
+    contract["resolved_endpoint_missing_observation_canonical_id_failures"] = resolved_missing_obs
+    contract["observation_to_graph_propagation_failures"] = (
+        len(resolved_subject_obs - graph_subject_ids) + len(resolved_object_obs - graph_object_ids) + resolved_missing_obs
+    )
+    if contract["observation_to_graph_propagation_failures"]:
+        contract["status"] = "warnings"
+        contract["warnings"] = sorted(set(contract.get("warnings", []) + ["observation_to_graph_propagation_failures"]))
     existing = records(load_artifact(source_dir / "abstract_conflict_candidates.jsonl"))
     existing_keys = {_key(item): item for item in existing}
     graph_conflicts = [item for item in candidate_rows if item["status"] == "graph_conflict_candidate"]
@@ -518,9 +569,12 @@ def build_merged_evidence_graph_from_run_artifacts(
         "existing_only_conflict_count": len(set(existing_keys) - set(graph_keys)),
         "incomplete_evidence_edge_count": len(incomplete_evidence_edges),
         "excluded_from_bundle_reasoning_count": len(incomplete_evidence_edges),
-        "missing_subject_canonical_id_count": sum(not item.source_entity_id for item in evidence_edges),
-        "missing_object_canonical_id_count": sum(not item.target_entity_id for item in evidence_edges),
+        "missing_subject_canonical_id_count": sum(not item.subject_canonical_id for item in evidence_edges),
+        "missing_object_canonical_id_count": sum(not item.object_canonical_id for item in evidence_edges),
         "identity_incomplete_conflict_candidate_count": 0,
+        "canonical_subject_ids_written_to_graph": contract["canonical_subject_ids_written_to_graph"],
+        "canonical_object_ids_written_to_graph": contract["canonical_object_ids_written_to_graph"],
+        "observation_to_graph_propagation_failures": contract["observation_to_graph_propagation_failures"],
         "graph_conflict_candidates_used_by_hypothesis": int(hypothesis_summary.get("graph_conflict_candidates_used", 0)) if isinstance(hypothesis_summary, dict) else 0,
         "graph_conflict_candidates_used_by_timeline": int(timeline_summary.get("graph_conflict_candidates_used", 0)) if isinstance(timeline_summary, dict) else 0,
         "timeline_rebuild_status": timeline_summary.get("timeline_rebuild_status") if isinstance(timeline_summary, dict) else None,

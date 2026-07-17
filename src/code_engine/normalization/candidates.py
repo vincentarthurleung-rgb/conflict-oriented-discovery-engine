@@ -38,6 +38,22 @@ class EntityCandidate(CODEBaseModel):
     supporting_context: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     raw_provider_payload_ref: str | None = None
+    species_context: str | None = None
+    candidate_species: str | None = None
+    species_match_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    species_match_status: str = "unknown"
+    mention_granularity: str | None = None
+    candidate_granularity: str | None = None
+    granularity_match_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    granularity_status: str = "unknown"
+    label_match_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    alias_match_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    normalized_string_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    entity_type_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    assay_context_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    source_priority_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    obsolete_penalty: float = Field(default=0.0, ge=0.0, le=1.0)
+    final_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
     @model_validator(mode="after")
     def enforce_llm_boundary(self):
@@ -62,6 +78,12 @@ class EntityResolutionRequest(CODEBaseModel):
     paper_id: str | None = None
     claim_id: str | None = None
     observation_id: str | None = None
+    endpoint_role: str | None = None
+    species_context: str | None = None
+    species_context_status: str = "unknown"
+    mention_granularity: str | None = None
+    assay_context: str | None = None
+    measurement_dimension: str | None = None
     network_enabled: bool = False
     api_enabled: bool = False
     execute: bool = False

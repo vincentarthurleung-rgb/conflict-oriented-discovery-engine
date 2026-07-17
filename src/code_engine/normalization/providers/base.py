@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from code_engine.normalization.candidates import EntityCandidate, EntityResolutionRequest
-from code_engine.normalization.entity_type import canonical_entity_type
+from code_engine.normalization.entity_type import canonical_entity_type, compatible_entity_types
 
 
 class CandidateProvider(ABC):
@@ -23,7 +23,8 @@ class CandidateProvider(ABC):
 
     def can_handle(self, request: EntityResolutionRequest) -> bool:
         hinted = canonical_entity_type(request.l1_entity_type_hint)
-        type_ok = not self.supported_entity_types or not hinted or hinted == "unknown" or hinted in self.supported_entity_types
+        compatible = set(compatible_entity_types(hinted))
+        type_ok = not self.supported_entity_types or not hinted or hinted == "unknown" or hinted in self.supported_entity_types or bool(compatible & set(self.supported_entity_types))
         domain_ok = not self.supported_domains or not request.domain_id or request.domain_id in self.supported_domains
         return type_ok and domain_ok
 
@@ -41,8 +42,14 @@ class ExternalCandidateProvider(CandidateProvider):
         self.client = client
         self._query_cache: dict[tuple[str, str, tuple[str, ...]], list[EntityCandidate]] = {}
 
-    def cache_key(self, request: EntityResolutionRequest) -> tuple[str, str, tuple[str, ...]]:
-        return (request.surface.casefold().strip(), str(request.l1_entity_type_hint or ""), tuple(request.allowed_entity_types))
+    def cache_key(self, request: EntityResolutionRequest) -> tuple[str, str, tuple[str, ...], str, str]:
+        return (
+            request.surface.casefold().strip(),
+            str(request.l1_entity_type_hint or ""),
+            tuple(request.allowed_entity_types),
+            str(request.species_context or ""),
+            str(request.mention_granularity or ""),
+        )
 
     def propose(self, request: EntityResolutionRequest) -> list[EntityCandidate]:
         self.last_warnings = []
@@ -69,7 +76,9 @@ class ExternalCandidateProvider(CandidateProvider):
             external_ids.setdefault(self.resource_name, record_id)
             canonical_name = str(item.get("canonical_name") or item.get("name") or request.surface)
             normalized_surface = str(item.get("normalized_surface") or canonical_name.casefold())
-            result.append(EntityCandidate(surface=request.surface, normalized_surface=normalized_surface, candidate_id=f"{self.name}:{record_id}", canonical_id=str(item.get("canonical_id") or f"{self.resource_name}:{record_id}"), canonical_name=canonical_name, entity_type=item.get("entity_type") or (request.l1_entity_type_hint if request.l1_entity_type_hint != "unknown" else None), semantic_level=item.get("semantic_level"), source="external_provider", provider_name=self.name, provider_record_id=record_id, external_ids=external_ids, aliases=list(item.get("aliases") or []), match_type=str(item.get("match_type") or "external_candidate"), match_score=float(item.get("match_score", item.get("score", 0.9))), type_score=float(item.get("type_score", 0.9)), source_reliability=float(item.get("source_reliability", self.source_reliability)), context_score=float(item.get("context_score", 0.5)), overall_score=float(item.get("overall_score", item.get("score", 0.85))), is_grounded=True, supporting_context=dict(item.get("supporting_context") or {}), warnings=list(item.get("warnings") or []), raw_provider_payload_ref=item.get("raw_provider_payload_ref")))
+            result.append(EntityCandidate(surface=request.surface, normalized_surface=normalized_surface, candidate_id=f"{self.name}:{record_id}", canonical_id=str(item.get("canonical_id") or f"{self.resource_name}:{record_id}"), canonical_name=canonical_name, entity_type=item.get("entity_type") or (request.l1_entity_type_hint if request.l1_entity_type_hint != "unknown" else None), semantic_level=item.get("semantic_level"), source="external_provider", provider_name=self.name, provider_record_id=record_id, external_ids=external_ids, aliases=list(item.get("aliases") or []), match_type=str(item.get("match_type") or "external_candidate"), match_score=float(item.get("match_score", item.get("score", 0.9))), type_score=float(item.get("type_score", 0.9)), source_reliability=float(item.get("source_reliability", self.source_reliability)), context_score=float(item.get("context_score", 0.5)), overall_score=float(item.get("overall_score", item.get("score", 0.85))), is_grounded=True, supporting_context=dict(item.get("supporting_context") or {}), warnings=list(item.get("warnings") or []), raw_provider_payload_ref=item.get("raw_provider_payload_ref"),
+                                  species_context=request.species_context, candidate_species=item.get("species") or item.get("organism") or item.get("taxon"),
+                                  mention_granularity=request.mention_granularity, candidate_granularity=item.get("granularity") or item.get("semantic_level")))
         self._query_cache[key] = [item.model_copy(deep=True) for item in result]
         self.last_status = "candidates_returned" if result else "no_candidates"
         return result

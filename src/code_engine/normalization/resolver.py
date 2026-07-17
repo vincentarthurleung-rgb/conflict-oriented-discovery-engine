@@ -22,7 +22,7 @@ from code_engine.normalization.providers.ontology import OLSOntologyCandidatePro
 from code_engine.normalization.providers.pubchem import PubChemCandidateProvider
 from code_engine.normalization.providers.uniprot import UniProtCandidateProvider
 from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH, LocalBiomedicalRegistry
-from code_engine.normalization.entity_type import canonical_entity_type
+from code_engine.normalization.entity_type import canonical_entity_type, refine_type_for_cleaned_mention
 
 import re
 
@@ -53,6 +53,38 @@ def _looks_like_non_entity(raw_text: str) -> str | None:
     if len(text.split()) > 18 and re.search(r"\b(?:showed|demonstrated|measured|treated|induced|resulted|significantly)\b", text, re.I):
         return "sentence_or_experimental_description"
     return None
+
+
+def _species_context(context: dict[str, Any]) -> tuple[str | None, str]:
+    candidates = [
+        context.get("species"),
+        (context.get("context_slots") or {}).get("species") if isinstance(context.get("context_slots"), dict) else None,
+        (context.get("context_mentions") or {}).get("species") if isinstance(context.get("context_mentions"), dict) else None,
+        (context.get("experimental_context") or {}).get("species") if isinstance(context.get("experimental_context"), dict) else None,
+    ]
+    text = " ".join(str(item or "") for item in candidates).strip()
+    if text:
+        return text, "explicit"
+    context_text = str(context.get("context_text") or "")
+    lowered = context_text.casefold()
+    for label in ("human", "mouse", "murine", "rat", "bovine", "homo sapiens", "mus musculus"):
+        if label in lowered:
+            return label, "inferred"
+    return None, "unknown"
+
+
+def _mention_granularity(surface: str, entity_type: str | None) -> str:
+    text = str(surface or "").casefold().strip()
+    etype = canonical_entity_type(entity_type)
+    if etype == "gene_or_protein":
+        return "gene_or_protein"
+    if etype in {"pathway", "biological_process", "phenotype", "protein_complex", "protein_family", "receptor"}:
+        return etype
+    if text in {"tgf-β", "tgf-beta", "tgfb", "transforming growth factor beta"}:
+        return "protein_family"
+    if etype in {"gene", "protein"}:
+        return etype
+    return "unknown"
 
 
 def _legacy_candidate(candidate: EntityCandidate) -> NormalizationCandidate | None:
@@ -131,7 +163,9 @@ class ResolverCascade:
             return NormalizationDecision(raw_text=lexical.raw_text, normalized_surface=lexical.normalized_surface, normalization_status="rejected", confidence=0.0, decision_reason=f"not_entity:{non_entity_reason}", warnings=lexical.warnings + ["entity_resolver_skipped_non_entity_input"], entity_resolution_status="not_entity", requires_manual_review=False, **self._domain_metadata())
         context = context or {}
         expected_type = canonical_entity_type(context.get("expected_entity_type") or context.get("l1_entity_type_hint"))
-        request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), network_enabled=bool(self.execute and self.network_enabled), api_enabled=bool(self.execute and self.api_enabled), execute=self.execute)
+        species_value, species_status = _species_context(context)
+        measurement_dimension = None
+        request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), endpoint_role=context.get("mention_role"), species_context=species_value, species_context_status=species_status, mention_granularity=_mention_granularity(lexical.raw_text, expected_type), assay_context=context.get("assay_context"), measurement_dimension=measurement_dimension, network_enabled=bool(self.execute and self.network_enabled), api_enabled=bool(self.execute and self.api_enabled), execute=self.execute)
         request.l1_entity_type_hint = expected_type
         result = self.hub.resolve(request)
         selected = result.selected_candidate
@@ -155,7 +189,21 @@ class ResolverCascade:
                 # If cleaner produced better surfaces, attempt external lookup for each
                 if llm_cleaner_result.cleaned_head_entities and llm_cleaner_result.llm_cleaner_status in {"cleaned", "cleaned_with_warnings"}:
                     verified_candidates: list[EntityCandidate] = []
+                    cleaner_type_traces: list[dict[str, Any]] = []
                     for head in llm_cleaner_result.cleaned_head_entities:
+                        type_trace = refine_type_for_cleaned_mention(
+                            lexical.raw_text,
+                            head.surface,
+                            original_entity_type=context.get("expected_entity_type") or context.get("l1_entity_type_hint"),
+                            cleaner_suggested_type=head.entity_type,
+                            context_text=context.get("context_text"),
+                        )
+                        cleaner_type_traces.append(type_trace)
+                        final_type = canonical_entity_type(type_trace["final_expected_entity_type"])
+                        from code_engine.normalization.llm_entity_cleaner import DEFAULT_ONTOLOGY_ROUTES
+                        routes = DEFAULT_ONTOLOGY_ROUTES.get(final_type, []) or head.ontology_routes
+                        head.entity_type = final_type
+                        head.ontology_routes = list(dict.fromkeys(routes))
                         for route in head.ontology_routes:
                             # Only attempt external lookups if network is enabled
                             if not (self.execute and self.network_enabled and self.entity_network_lookup):
@@ -171,10 +219,16 @@ class ResolverCascade:
                                 domain_id=self.domain_id,
                                 entity_registry_profile=self.entity_registry_profile,
                                 resolver_policy_id=self.resolver_policy_id,
-                                l1_entity_type_hint=canonical_entity_type(head.entity_type),
+                                l1_entity_type_hint=final_type,
                                 paper_id=context.get("paper_id"),
                                 claim_id=context.get("claim_id"),
                                 observation_id=context.get("observation_id"),
+                                endpoint_role=context.get("mention_role"),
+                                species_context=species_value,
+                                species_context_status=species_status,
+                                mention_granularity=_mention_granularity(head.surface, final_type),
+                                assay_context=context.get("assay_context"),
+                                measurement_dimension=type_trace.get("measurement_dimension"),
                                 network_enabled=bool(self.execute and self.network_enabled),
                                 api_enabled=bool(self.execute and self.api_enabled),
                                 execute=self.execute,
@@ -284,6 +338,7 @@ class ResolverCascade:
                      "confidence": h.confidence}
                     for h in llm_cleaner_result.cleaned_head_entities
                 ],
+                "type_traces": locals().get("cleaner_type_traces", []),
                 "external_verification_result": llm_cleaner_result.external_verification_result,
                 "final_decision": llm_cleaner_result.final_decision,
                 "high_confidence_graph_allowed": llm_cleaner_result.high_confidence_graph_allowed,
@@ -321,7 +376,7 @@ class ResolverCascade:
             normalized_surface=lexical.normalized_surface,
             canonical_id=str(selected.canonical_id or "") if selected else "",
             canonical_name=canonical_name,
-            entity_type=str(selected.entity_type or "unknown") if selected else "unknown",
+            entity_type=str(selected.entity_type or expected_type or "unknown") if selected else str(expected_type or "unknown"),
             semantic_level=str(selected.semantic_level or "unknown") if selected else "unresolved",
             external_ids=dict(selected.external_ids) if selected else {},
             relations=selected_legacy.relations if selected_legacy else [],

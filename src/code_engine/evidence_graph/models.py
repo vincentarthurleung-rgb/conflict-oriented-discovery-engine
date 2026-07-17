@@ -101,8 +101,16 @@ class EvidenceEdge(Serializable):
     warnings: list[str] = field(default_factory=list)
     subject_name: str | None = None
     subject_type: str | None = None
+    subject_canonical_id: str | None = None
+    subject_canonical_name: str | None = None
+    subject_resolution_status: str | None = None
+    subject_resolution_decision_id: str | None = None
     object_name: str | None = None
     object_type: str | None = None
+    object_canonical_id: str | None = None
+    object_canonical_name: str | None = None
+    object_resolution_status: str | None = None
+    object_resolution_decision_id: str | None = None
     linked_claim_ids: list[str] = field(default_factory=list)
     linked_evidence_ids: list[str] = field(default_factory=list)
     linked_observation_ids: list[str] = field(default_factory=list)

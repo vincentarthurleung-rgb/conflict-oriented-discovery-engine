@@ -11,7 +11,10 @@ from typing import Any
 
 CANONICAL_ENTITY_TYPES: tuple[str, ...] = (
     "gene",
+    "gene_or_protein",
     "protein",
+    "protein_family",
+    "protein_complex",
     "receptor",
     "enzyme",
     "drug",
@@ -32,11 +35,9 @@ CANONICAL_ENTITY_TYPES: tuple[str, ...] = (
 )
 
 TYPE_ALIASES: dict[str, str] = {
-    "gene_or_protein": "protein",
     "molecular_endpoint": "assay_readout",
     "compound_or_biomolecule": "compound",
     "receptor_complex": "receptor",
-    "protein_complex": "protein",
     "behavioral_assay": "assay",
     "treatment": "unknown",
     "experimental_condition": "unknown",
@@ -61,6 +62,88 @@ STRUCTURED_ATTRIBUTE_TYPES = {
     "assay_readout",
     "clinical_outcome",
 }
+
+GENE_PROTEIN_COMPATIBLE_TYPES = {"gene", "protein", "gene_or_protein", "receptor", "enzyme"}
+
+
+def compatible_entity_types(entity_type: str | None) -> list[str]:
+    value = canonical_entity_type(entity_type)
+    if value == "gene_or_protein":
+        return ["gene", "protein"]
+    if value == "protein_family":
+        return ["protein_family", "protein"]
+    if value == "protein_complex":
+        return ["protein_complex", "protein"]
+    if value == "receptor":
+        return ["receptor", "protein"]
+    if value == "enzyme":
+        return ["enzyme", "protein", "gene"]
+    return [] if value == "unknown" else [value]
+
+
+def detect_measurement_dimension(value: str) -> str | None:
+    text = str(value or "").casefold()
+    if any(term in text for term in ("mrna", "transcript", "qpcr", "rt-pcr", "real-time pcr", "rna-seq", "rna seq")):
+        return "mRNA expression"
+    if any(term in text for term in ("protein level", "protein expression", "western blot", "immunoblot", "immunohistochemistry", "elisa")):
+        return "protein level"
+    if "expression" in text or "level" in text or "levels" in text:
+        return "expression"
+    if "activation" in text or "activity" in text or "phosphorylation" in text:
+        return "activation"
+    return None
+
+
+def refine_type_for_cleaned_mention(raw_text: str, cleaned_surface: str, *, original_entity_type: str | None = None,
+                                    structured_entity_type: str | None = None, cleaner_suggested_type: str | None = None,
+                                    context_text: str | None = None) -> dict[str, Any]:
+    original = canonical_entity_type(original_entity_type)
+    structured = canonical_entity_type(structured_entity_type)
+    suggested = canonical_entity_type(cleaner_suggested_type)
+    combined = " ".join(str(x or "") for x in (raw_text, cleaned_surface, context_text))
+    measurement = detect_measurement_dimension(combined)
+    lower_cleaned = str(cleaned_surface or "").casefold()
+
+    deterministic = "unknown"
+    method = "unknown"
+    if "pathway" in lower_cleaned or "signaling" in lower_cleaned or "signalling" in lower_cleaned:
+        deterministic, method = "pathway", "deterministic_alias_type_inference"
+    elif measurement == "mRNA expression":
+        deterministic, method = "gene", "assay_context_refinement"
+    elif measurement == "protein level":
+        deterministic, method = "protein", "assay_context_refinement"
+    elif measurement == "expression" and original in {"assay", "assay_readout", "unknown"}:
+        deterministic, method = "gene_or_protein", "assay_context_refinement"
+    elif any(token in lower_cleaned for token in ("tgf-β", "tgf-beta", "tgfb")) and lower_cleaned in {"tgf-β", "tgf-beta", "tgfb", "transforming growth factor beta"}:
+        deterministic, method = "protein_family", "deterministic_alias_type_inference"
+
+    priority: list[tuple[str, str]] = []
+    if original not in {"unknown", "assay", "assay_readout", "clinical_outcome"}:
+        priority.append((original, "original_expected_entity_type"))
+    if structured not in {"unknown", "assay", "assay_readout", "clinical_outcome"}:
+        priority.append((structured, "structured_field_type"))
+    if deterministic != "unknown":
+        priority.append((deterministic, method))
+    if original in {"assay", "assay_readout"} and deterministic != "unknown":
+        priority.insert(0, (deterministic, method))
+    if suggested != "unknown":
+        priority.append((suggested, "llm_cleaner_type_suggestion"))
+
+    final_type, final_method = priority[0] if priority else ("unknown", "unknown")
+    higher = {t for t, m in priority if m != "llm_cleaner_type_suggestion"}
+    conflict = bool(suggested != "unknown" and higher and suggested not in higher and final_type != suggested)
+    if conflict and final_type not in GENE_PROTEIN_COMPATIBLE_TYPES.union({"pathway", "protein_family", "protein_complex"}):
+        final_type, final_method = "unknown", "type_conflict_downgraded"
+    return {
+        "raw_mention": raw_text,
+        "cleaned_mention": cleaned_surface,
+        "original_entity_type": original,
+        "cleaner_suggested_type": suggested,
+        "final_expected_entity_type": final_type,
+        "type_resolution_method": final_method,
+        "type_conflict": conflict,
+        "measurement_dimension": measurement,
+    }
 
 
 def canonical_entity_type(entity_type: str | None) -> str:
