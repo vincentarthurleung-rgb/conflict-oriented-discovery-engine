@@ -19,6 +19,7 @@ EDGE_TYPES = {
     "conflict_has_source_window", "conflict_has_later_window", "temporal_window_contains_evidence",
     "hypothesis_explains_conflict", "hypothesis_uses_evidence", "hypothesis_uses_mechanism_edge",
     "hypothesis_uses_mechanism_path", "hypothesis_compared_with_later_evidence",
+    "projected_core_relation",
 }
 
 
@@ -111,6 +112,16 @@ class EvidenceEdge(Serializable):
     object_canonical_name: str | None = None
     object_resolution_status: str | None = None
     object_resolution_decision_id: str | None = None
+    original_subject_canonical_id: str | None = None
+    original_object_canonical_id: str | None = None
+    original_relation_family: str | None = None
+    relation_raw: str | None = None
+    core_projection_status: str | None = None
+    core_projection_role: str | None = None
+    core_projection_relation: str | None = None
+    core_projection_reason: str | None = None
+    subject_endpoint: dict[str, Any] = field(default_factory=dict)
+    object_endpoint: dict[str, Any] = field(default_factory=dict)
     linked_claim_ids: list[str] = field(default_factory=list)
     linked_evidence_ids: list[str] = field(default_factory=list)
     linked_observation_ids: list[str] = field(default_factory=list)

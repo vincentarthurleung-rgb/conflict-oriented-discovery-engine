@@ -35,6 +35,17 @@ def build_relation_evidence_bundles(evidence_edges: Iterable[EvidenceEdge]) -> l
     for edge in evidence_edges:
         if not edge.source_entity_id or not edge.target_entity_id:
             continue
+        missing_canonical_identity = bool(
+            {"missing_subject_canonical_id", "missing_object_canonical_id",
+             "unresolved_subject_scoped_fallback_identity", "unresolved_object_scoped_fallback_identity"}
+            & set(edge.warnings)
+        )
+        if missing_canonical_identity:
+            if "excluded_from_relation_bundle_reasoning" not in edge.warnings:
+                edge.warnings.append("excluded_from_relation_bundle_reasoning")
+            if "excluded_from_relation_bundle_reasoning" not in edge.export_warnings:
+                edge.export_warnings.append("excluded_from_relation_bundle_reasoning")
+            continue
         groups[bundle_key(edge)].append(edge)
     bundles = []
     for key, items in sorted(groups.items()):

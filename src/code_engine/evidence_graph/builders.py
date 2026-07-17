@@ -78,8 +78,17 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
     observation_id = _first(item, "observation_id", "triple_id", "normalized_observation_id")
     claim_id = _first(item, "claim_id", "l1_claim_id")
     evidence_id = _first(item, "evidence_id", "linked_evidence_id")
-    subject_canonical_id = _first(item, "subject_canonical_id", "subject_id", "normalized_subject_id")
-    object_canonical_id = _first(item, "object_canonical_id", "object_id", "normalized_object_id")
+    original_subject_canonical_id = _first(item, "subject_canonical_id", "subject_id", "normalized_subject_id")
+    original_object_canonical_id = _first(item, "object_canonical_id", "object_id", "normalized_object_id")
+    subject_canonical_id = original_subject_canonical_id
+    object_canonical_id = original_object_canonical_id
+    projection_status = _first(item, "core_projection_status")
+    projection_role = _first(item, "core_projection_role")
+    projection_relation = _first(item, "core_projection_relation")
+    if projection_status == "projected" and projection_role == "subject":
+        subject_canonical_id = _first(item, "projected_subject_canonical_id", "subject_endpoint.measured_entity_canonical_id") or subject_canonical_id
+    if projection_status == "projected" and projection_role == "object":
+        object_canonical_id = _first(item, "projected_object_canonical_id", "object_endpoint.measured_entity_canonical_id") or object_canonical_id
     source = subject_canonical_id
     target = object_canonical_id
     direction = _first(item, "direction", "relation_direction", "effect_direction")
@@ -111,7 +120,7 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
     return EvidenceEdge(
         evidence_edge_id=stable_id("evidence_edge", canonical, identity, source, target),
         source_entity_id=str(source) if source else None, target_entity_id=str(target) if target else None,
-        relation_family=str(_first(item, "relation_family", "relation_type", "predicate") or "unknown"),
+        relation_family=str(projection_relation or _first(item, "relation_family", "relation_type", "predicate") or "unknown"),
         polarity_type=str(_first(item, "polarity_type", "polarity") or "unknown"), direction=direction,
         direction_polarity=direction_polarity(direction),
         context_variables=_first(item, "context_variables", "context_slots", "context", "conditions") or {},
@@ -138,15 +147,27 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
         warnings=warnings, subject_name=_first(item, "subject_name", "subject_canonical_name", "normalized_subject", "subject"),
         subject_type=_first(item, "subject_type", "subject_entity_type"),
         subject_canonical_id=str(subject_canonical_id) if subject_canonical_id else None,
-        subject_canonical_name=_first(item, "subject_canonical_name", "normalized_subject"),
+        subject_canonical_name=(_first(item, "projected_subject_canonical_name", "subject_endpoint.measured_entity_canonical_name")
+                                if projection_status == "projected" and projection_role == "subject" else None) or _first(item, "subject_canonical_name", "normalized_subject"),
         subject_resolution_status=_first(item, "subject_resolution_status", "subject_normalization_status"),
         subject_resolution_decision_id=_first(item, "subject_resolution_decision_id"),
         object_name=_first(item, "object_name", "object_canonical_name", "normalized_object", "object"),
         object_type=_first(item, "object_type", "object_entity_type"),
         object_canonical_id=str(object_canonical_id) if object_canonical_id else None,
-        object_canonical_name=_first(item, "object_canonical_name", "normalized_object"),
+        object_canonical_name=(_first(item, "projected_object_canonical_name", "object_endpoint.measured_entity_canonical_name")
+                               if projection_status == "projected" and projection_role == "object" else None) or _first(item, "object_canonical_name", "normalized_object"),
         object_resolution_status=_first(item, "object_resolution_status", "object_normalization_status"),
         object_resolution_decision_id=_first(item, "object_resolution_decision_id"),
+        original_subject_canonical_id=str(original_subject_canonical_id) if original_subject_canonical_id else None,
+        original_object_canonical_id=str(original_object_canonical_id) if original_object_canonical_id else None,
+        original_relation_family=_first(item, "relation_family", "relation_type", "predicate"),
+        relation_raw=_first(item, "relation_raw"),
+        core_projection_status=projection_status,
+        core_projection_role=projection_role,
+        core_projection_relation=projection_relation,
+        core_projection_reason=_first(item, "core_projection_reason"),
+        subject_endpoint=item.get("subject_endpoint") if isinstance(item.get("subject_endpoint"), dict) else {},
+        object_endpoint=item.get("object_endpoint") if isinstance(item.get("object_endpoint"), dict) else {},
         linked_claim_ids=_list(item, "linked_claim_ids", "claim_id", "l1_claim_id"),
         linked_evidence_ids=_list(item, "linked_evidence_ids", "evidence_id"),
         linked_observation_ids=_list(item, "linked_observation_ids", "observation_id", "triple_id"),
@@ -366,6 +387,24 @@ def build_merged_evidence_graph_from_run_artifacts(
                                  "object_resolution_status": item.object_resolution_status,
                                  "object_resolution_decision_id": item.object_resolution_decision_id},
                      provenance=provenance)
+        if item.core_projection_status == "projected" and item.source_entity_id and item.target_entity_id and item.core_projection_relation:
+            add_edge(stable_id("entity", item.source_entity_id), stable_id("entity", item.target_entity_id), "projected_core_relation",
+                     attributes={
+                         "relation": item.core_projection_relation,
+                         "projection_role": item.core_projection_role,
+                         "projection_reason": item.core_projection_reason,
+                         "subject_canonical_id": item.subject_canonical_id,
+                         "object_canonical_id": item.object_canonical_id,
+                         "original_subject_canonical_id": item.original_subject_canonical_id,
+                         "original_object_canonical_id": item.original_object_canonical_id,
+                         "original_relation_family": item.original_relation_family,
+                         "relation_raw": item.relation_raw,
+                         "subject_endpoint": item.subject_endpoint,
+                         "object_endpoint": item.object_endpoint,
+                         "observation_id": item.observation_id,
+                         "evidence_id": item.evidence_id,
+                     },
+                     provenance=provenance)
 
     candidate_by_bundle = {item.bundle_id: item for item in candidates}
     for bundle in bundles:
@@ -484,6 +523,12 @@ def build_merged_evidence_graph_from_run_artifacts(
         "excluded_from_bundle_reasoning_count": len(incomplete_evidence_edges),
         "missing_subject_canonical_id_count": sum(not item.subject_canonical_id for item in evidence_edges),
         "missing_object_canonical_id_count": sum(not item.object_canonical_id for item in evidence_edges),
+        "missing_raw_subject_endpoint_canonical_id_count": sum(not item.original_subject_canonical_id for item in evidence_edges),
+        "missing_raw_object_endpoint_canonical_id_count": sum(not item.original_object_canonical_id for item in evidence_edges),
+        "successful_core_projections": sum(item.core_projection_status == "projected" for item in evidence_edges),
+        "unsupported_relation_projections": sum(item.core_projection_reason == "relation_projection_not_supported" for item in evidence_edges),
+        "graph_policy_exclusions": sum(item.core_projection_status in {"excluded", "unsupported"} for item in evidence_edges),
+        "non_molecular_readout_exclusions": sum(item.core_projection_reason == "non_molecular_readout" for item in evidence_edges),
         "identity_incomplete_conflict_candidate_count": 0,
     })
     graph_subject_ids = {
@@ -500,15 +545,33 @@ def build_merged_evidence_graph_from_run_artifacts(
     resolved_object_obs = {edge.object_canonical_id for edge in evidence_edges if edge.object_resolution_status == "resolved" and edge.object_canonical_id}
     contract["canonical_subject_ids_written_to_graph"] = len(resolved_subject_obs & graph_subject_ids)
     contract["canonical_object_ids_written_to_graph"] = len(resolved_object_obs & graph_object_ids)
+    def _resolved_missing_observation_id_failure(edge: EvidenceEdge, role: str) -> bool:
+        endpoint = edge.subject_endpoint if role == "subject" else edge.object_endpoint
+        if endpoint.get("endpoint_decomposition_status") == "decomposed" and endpoint.get("core_projection_status") != "projected":
+            return False
+        status = edge.subject_resolution_status if role == "subject" else edge.object_resolution_status
+        canonical_id = edge.subject_canonical_id if role == "subject" else edge.object_canonical_id
+        return bool(status == "resolved" and not canonical_id)
+
     resolved_missing_obs = sum(
-        (edge.subject_resolution_status == "resolved" and not edge.subject_canonical_id)
-        + (edge.object_resolution_status == "resolved" and not edge.object_canonical_id)
+        _resolved_missing_observation_id_failure(edge, "subject")
+        + _resolved_missing_observation_id_failure(edge, "object")
         for edge in evidence_edges
     )
     contract["resolved_endpoint_missing_observation_canonical_id_failures"] = resolved_missing_obs
     contract["observation_to_graph_propagation_failures"] = (
         len(resolved_subject_obs - graph_subject_ids) + len(resolved_object_obs - graph_object_ids) + resolved_missing_obs
     )
+    contract["engineering_propagation_errors"] = {
+        "endpoint_decision_join_failures": 0,
+        "decision_to_observation_propagation_failures": resolved_missing_obs,
+        "observation_to_graph_propagation_failures": contract["observation_to_graph_propagation_failures"],
+    }
+    contract["intentional_core_graph_exclusions"] = {
+        "relation_projection_not_supported": contract["unsupported_relation_projections"],
+        "graph_policy_exclusions": contract["graph_policy_exclusions"],
+        "non_molecular_readout": contract["non_molecular_readout_exclusions"],
+    }
     if contract["observation_to_graph_propagation_failures"]:
         contract["status"] = "warnings"
         contract["warnings"] = sorted(set(contract.get("warnings", []) + ["observation_to_graph_propagation_failures"]))
@@ -571,6 +634,12 @@ def build_merged_evidence_graph_from_run_artifacts(
         "excluded_from_bundle_reasoning_count": len(incomplete_evidence_edges),
         "missing_subject_canonical_id_count": sum(not item.subject_canonical_id for item in evidence_edges),
         "missing_object_canonical_id_count": sum(not item.object_canonical_id for item in evidence_edges),
+        "missing_raw_subject_endpoint_canonical_id_count": sum(not item.original_subject_canonical_id for item in evidence_edges),
+        "missing_raw_object_endpoint_canonical_id_count": sum(not item.original_object_canonical_id for item in evidence_edges),
+        "successful_core_projections": sum(item.core_projection_status == "projected" for item in evidence_edges),
+        "unsupported_relation_projections": sum(item.core_projection_reason == "relation_projection_not_supported" for item in evidence_edges),
+        "graph_policy_exclusions": sum(item.core_projection_status in {"excluded", "unsupported"} for item in evidence_edges),
+        "non_molecular_readout_exclusions": sum(item.core_projection_reason == "non_molecular_readout" for item in evidence_edges),
         "identity_incomplete_conflict_candidate_count": 0,
         "canonical_subject_ids_written_to_graph": contract["canonical_subject_ids_written_to_graph"],
         "canonical_object_ids_written_to_graph": contract["canonical_object_ids_written_to_graph"],

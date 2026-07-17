@@ -152,6 +152,12 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
     from code_engine.normalization.layered_grounding import (
         decide_l2_evidence_layer, load_runtime_entity_hints, match_runtime_hint,
     )
+    from code_engine.normalization.composite_endpoints import (
+        apply_core_projection,
+        decompose_endpoint,
+        endpoint_with_resolution,
+    )
+    from code_engine.normalization.models import NormalizationDecision
     if resolver_mode not in {"provider_route", "hint_only"}:
         raise ValueError(f"unsupported resolver_mode: {resolver_mode}")
 
@@ -183,57 +189,54 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             for key in (paper.get("paper_id"), paper.get("canonical_paper_id"), paper.get("pmid"), paper.get("pmcid")):
                 if key: paper_by_id[str(key)] = paper
     observations = []
+    def resolve_endpoint(raw_text: str, endpoint_type: str, role: str, item: dict[str, Any], hint: dict[str, Any] | None):
+        decomposition = decompose_endpoint(raw_text, endpoint_type)
+        endpoint = decomposition.to_endpoint_fields()
+        observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
+        resolver_surface = decomposition.measured_entity_raw if decomposition.endpoint_decomposition_status == "decomposed" else raw_text
+        resolver_type = "gene_or_protein" if decomposition.endpoint_decomposition_status == "decomposed" else endpoint_type
+        if decomposition.non_molecular_readout:
+            decision = NormalizationDecision(
+                raw_text=str(raw_text or ""),
+                normalized_surface=str(raw_text or "").casefold(),
+                normalization_status="rejected",
+                confidence=0.0,
+                decision_reason="not_entity:non_molecular_readout",
+                allow_high_confidence_graph_use=False,
+                entity_resolution_status="not_entity",
+                requires_manual_review=False,
+            )
+        elif resolver_mode == "hint_only" and not hint:
+            decision = NormalizationDecision(
+                raw_text=str(resolver_surface or ""),
+                normalized_surface=str(resolver_surface or "").casefold(),
+                normalization_status="unresolved_fallback",
+                confidence=0.0,
+                decision_reason="no_runtime_hint_match",
+                allow_high_confidence_graph_use=False,
+                entity_resolution_status="unresolved",
+                requires_manual_review=True,
+            )
+        else:
+            decision = resolver.resolve_entity(str(resolver_surface or ""), {
+                "expected_entity_type": resolver_type or "",
+                "context_text": item.get("evidence_sentence") or item.get("evidence_text") or "",
+                "context_slots": item.get("context_slots") or item.get("context_mentions") or {},
+                "species": (item.get("context_slots") or item.get("context_mentions") or {}).get("species") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
+                "assay_context": (item.get("context_slots") or item.get("context_mentions") or {}).get("assay_or_readout") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
+                "paper_id": item.get("paper_id"),
+                "claim_id": item.get("claim_id"),
+                "observation_id": observation_id,
+                "mention_role": role,
+            })
+        endpoint = endpoint_with_resolution(endpoint, decision, f"{observation_id}:{role}")
+        return decision, endpoint, decomposition
+
     for item in records:
         subject_hint = match_runtime_hint(str(item.get("subject_raw") or ""), hints)
         object_hint = match_runtime_hint(str(item.get("object_raw") or ""), hints)
-        if resolver_mode == "hint_only" and not subject_hint:
-            from code_engine.normalization.models import NormalizationDecision
-            subject = NormalizationDecision(
-                raw_text=str(item.get("subject_raw") or ""),
-                normalized_surface=str(item.get("subject_raw") or "").casefold(),
-                normalization_status="unresolved_fallback",
-                confidence=0.0,
-                decision_reason="no_runtime_hint_match",
-                allow_high_confidence_graph_use=False,
-                entity_resolution_status="unresolved",
-                requires_manual_review=True,
-            )
-        else:
-            subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {
-                "expected_entity_type": item.get("subject_type") or "",
-                "context_text": item.get("evidence_sentence") or item.get("evidence_text") or "",
-                "context_slots": item.get("context_slots") or item.get("context_mentions") or {},
-                "species": (item.get("context_slots") or item.get("context_mentions") or {}).get("species") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
-                "assay_context": (item.get("context_slots") or item.get("context_mentions") or {}).get("assay_or_readout") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
-                "paper_id": item.get("paper_id"),
-                "claim_id": item.get("claim_id"),
-                "observation_id": item.get("evidence_id") or item.get("claim_id"),
-                "mention_role": "subject",
-            })
-        if resolver_mode == "hint_only" and not object_hint:
-            from code_engine.normalization.models import NormalizationDecision
-            obj = NormalizationDecision(
-                raw_text=str(item.get("object_raw") or ""),
-                normalized_surface=str(item.get("object_raw") or "").casefold(),
-                normalization_status="unresolved_fallback",
-                confidence=0.0,
-                decision_reason="no_runtime_hint_match",
-                allow_high_confidence_graph_use=False,
-                entity_resolution_status="unresolved",
-                requires_manual_review=True,
-            )
-        else:
-            obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {
-                "expected_entity_type": item.get("object_type") or "",
-                "context_text": item.get("evidence_sentence") or item.get("evidence_text") or "",
-                "context_slots": item.get("context_slots") or item.get("context_mentions") or {},
-                "species": (item.get("context_slots") or item.get("context_mentions") or {}).get("species") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
-                "assay_context": (item.get("context_slots") or item.get("context_mentions") or {}).get("assay_or_readout") if isinstance(item.get("context_slots") or item.get("context_mentions"), dict) else None,
-                "paper_id": item.get("paper_id"),
-                "claim_id": item.get("claim_id"),
-                "observation_id": item.get("evidence_id") or item.get("claim_id"),
-                "mention_role": "object",
-            })
+        subject, subject_endpoint, subject_decomposition = resolve_endpoint(str(item.get("subject_raw") or ""), str(item.get("subject_type") or ""), "subject", item, subject_hint)
+        obj, object_endpoint, object_decomposition = resolve_endpoint(str(item.get("object_raw") or ""), str(item.get("object_type") or ""), "object", item, object_hint)
         paper = paper_by_id.get(str(item.get("paper_id") or ""), {})
         decision = decide_l2_evidence_layer(item, subject, obj, subject_hint, object_hint, hints,
                                             seed_triple=seed_triple, semantic_search_intent=intent_payload,
@@ -243,8 +246,10 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         observation_id = str(item.get("evidence_id") or item.get("claim_id") or "")
         subject_resolved = subject.normalization_status == "resolved"
         object_resolved = obj.normalization_status == "resolved"
-        subject_id = (subject.canonical_id if subject_resolved else "") or (subject_hint or {}).get("canonical_id") or ""
-        object_id = (obj.canonical_id if object_resolved else "") or (object_hint or {}).get("canonical_id") or ""
+        subject_is_composite = subject_decomposition.endpoint_decomposition_status == "decomposed"
+        object_is_composite = object_decomposition.endpoint_decomposition_status == "decomposed"
+        subject_id = (subject.canonical_id if subject_resolved and not subject_is_composite else "") or (subject_hint or {}).get("canonical_id") or ""
+        object_id = (obj.canonical_id if object_resolved and not object_is_composite else "") or (object_hint or {}).get("canonical_id") or ""
         subject_name = subject.canonical_name or (subject_hint or {}).get("canonical_name") or item.get("subject_raw") or ""
         object_name = obj.canonical_name or (object_hint or {}).get("canonical_name") or item.get("object_raw") or ""
         observation = {
@@ -277,14 +282,54 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             "exclude_from_high_confidence_conflict": not usable,
             "context": dict(item.get("context_slots") or item.get("context_mentions") or {}),
             "normalization": {"subject": subject.model_dump(), "object": obj.model_dump()},
+            "subject_endpoint": subject_endpoint,
+            "object_endpoint": object_endpoint,
             "runtime_hint_matches": {"subject": subject_hint, "object": object_hint},
             **decision,
         }
         from code_engine.normalization.graph_eligibility import apply_graph_eligibility
         observation=apply_graph_eligibility(observation,existing_conflict_eligible=usable)
+        if subject_is_composite:
+            observation["subject_canonical_id"] = ""
+            observation["subject_canonical_source"] = None
+            observation["subject_external_mapping_status"] = None
+        if object_is_composite:
+            observation["object_canonical_id"] = ""
+            observation["object_canonical_source"] = None
+            observation["object_external_mapping_status"] = None
         observation["canonical_graph_eligible"]=observation["conflict_reasoning_eligible"]
         observation["allow_high_confidence_graph_use"]=bool(observation.get("allow_high_confidence_graph_use") and observation["conflict_reasoning_eligible"])
         observation["exclude_from_high_confidence_conflict"]=not observation["allow_high_confidence_graph_use"]
+        observation["subject_endpoint"] = apply_core_projection(observation, "subject", subject_endpoint, claim_graph_eligible=usable)
+        observation["object_endpoint"] = apply_core_projection(observation, "object", object_endpoint, claim_graph_eligible=usable)
+        projected_roles = [role for role in ("subject", "object") if (observation.get(f"{role}_endpoint") or {}).get("core_projection_status") == "projected"]
+        if len(projected_roles) == 1:
+            projected_role = projected_roles[0]
+            endpoint = observation[f"{projected_role}_endpoint"]
+            observation["core_projection_status"] = "projected"
+            observation["core_projection_role"] = projected_role
+            observation["core_projection_relation"] = endpoint.get("core_projection_relation")
+            observation["core_projection_reason"] = endpoint.get("core_projection_reason")
+            observation["projected_object_canonical_id" if projected_role == "object" else "projected_subject_canonical_id"] = endpoint.get("measured_entity_canonical_id")
+            observation["projected_object_canonical_name" if projected_role == "object" else "projected_subject_canonical_name"] = endpoint.get("measured_entity_canonical_name")
+            observation["graph_observation_eligible"] = True
+            observation["conflict_reasoning_eligible"] = True
+            observation["canonical_graph_eligible"] = True
+            observation["allow_high_confidence_graph_use"] = True
+            observation["exclude_from_high_confidence_conflict"] = False
+            observation["graph_layer"] = "core_canonical_graph"
+            observation["excluded_from_core_reason"] = None
+        elif projected_roles:
+            observation["core_projection_status"] = "excluded"
+            observation["core_projection_reason"] = "multiple_composite_endpoint_projection_not_supported"
+        else:
+            reasons = [
+                (observation.get(f"{role}_endpoint") or {}).get("core_projection_reason")
+                for role in ("subject", "object")
+                if (observation.get(f"{role}_endpoint") or {}).get("endpoint_decomposition_status") in {"decomposed", "unsupported"}
+            ]
+            observation["core_projection_status"] = "excluded"
+            observation["core_projection_reason"] = next((reason for reason in reasons if reason), "composite_endpoint_not_decomposed")
         observations.append(observation)
     # Flush LLM cleaner audit files if available
     if resolver._llm_cleaner is not None and resolver._run_dir is not None:
@@ -1006,12 +1051,24 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         for item in observations
         for role in ("subject", "object")
     ]
+    endpoint_detail_rows = [
+        (item, role, (item.get(f"{role}_endpoint") or {}))
+        for item in observations
+        for role in ("subject", "object")
+    ]
     resolved_endpoints = [(item, role, norm) for item, role, norm in endpoint_rows if norm.get("normalization_status") == "resolved"]
     resolved_graph_endpoints = [(item, role, norm) for item, role, norm in resolved_endpoints if item.get("graph_observation_eligible")]
+    composite_endpoints = [(item, role, endpoint) for item, role, endpoint in endpoint_detail_rows
+                           if endpoint.get("endpoint_decomposition_status") in {"decomposed", "unsupported", "ambiguous"}]
+    projected_endpoints = [(item, role, endpoint) for item, role, endpoint in composite_endpoints
+                           if endpoint.get("core_projection_status") == "projected"]
+    endpoint_reason_counts = Counter(endpoint.get("core_projection_reason") or "unknown" for _, _, endpoint in composite_endpoints)
     decision_to_observation_failures = [
         {"observation_id": item.get("observation_id"), "endpoint_role": role, "canonical_id": norm.get("canonical_id")}
         for item, role, norm in resolved_graph_endpoints
-        if norm.get("canonical_id") and not item.get(f"{role}_canonical_id")
+        if norm.get("canonical_id")
+        and not item.get(f"{role}_canonical_id")
+        and (item.get(f"{role}_endpoint") or {}).get("endpoint_decomposition_status") != "decomposed"
     ]
     summary = {
         "layered_retention_enabled": True,
@@ -1057,6 +1114,31 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "canonical_object_ids_written_to_observations": sum(bool(item.get("object_canonical_id")) for item, role, _ in resolved_graph_endpoints if role == "object"),
         "decision_to_observation_propagation_failures": len(decision_to_observation_failures),
         "decision_to_observation_propagation_failure_examples": decision_to_observation_failures[:20],
+        "observation_endpoint_schema_version": "observation_endpoint_schema.v1",
+        "endpoint_decomposition_version": "endpoint_decomposition.deterministic.v1",
+        "measurement_dimension_classifier_version": "measurement_dimension_classifier.v1",
+        "core_projection_rule_version": "core_projection_rules.v1",
+        "graph_projection_version": "graph_projection.v1",
+        "composite_endpoint_count": len(composite_endpoints),
+        "composite_endpoints_decomposed": sum(endpoint.get("endpoint_decomposition_status") == "decomposed" for _, _, endpoint in composite_endpoints),
+        "composite_endpoints_unsupported": sum(endpoint.get("endpoint_decomposition_status") == "unsupported" for _, _, endpoint in composite_endpoints),
+        "measured_entities_resolved": sum(endpoint.get("measured_entity_resolution_status") == "resolved" for _, _, endpoint in composite_endpoints),
+        "measured_entities_ambiguous": sum(endpoint.get("measured_entity_resolution_status") == "ambiguous" for _, _, endpoint in composite_endpoints),
+        "measured_entities_unresolved": sum(endpoint.get("measured_entity_resolution_status") in {"unresolved_fallback", "rejected", None} for _, _, endpoint in composite_endpoints),
+        "eligible_core_projections": len(projected_endpoints),
+        "successful_core_projections": len(projected_endpoints),
+        "unsupported_relation_projections": endpoint_reason_counts["relation_projection_not_supported"],
+        "graph_policy_exclusions": sum(endpoint.get("core_projection_status") == "excluded" for _, _, endpoint in composite_endpoints),
+        "non_molecular_readout_exclusions": endpoint_reason_counts["non_molecular_readout"],
+        "endpoint_decision_join_failures": 0,
+        "decision_to_observation_propagation_failures": len(decision_to_observation_failures),
+        "observation_to_graph_propagation_failures": 0,
+        "endpoint_projection_reason_counts": dict(endpoint_reason_counts),
+        "resolved_measured_entity_not_projected_by_policy": sum(
+            endpoint.get("measured_entity_resolution_status") == "resolved"
+            and endpoint.get("core_projection_status") != "projected"
+            for _, _, endpoint in composite_endpoints
+        ),
     }
     intent_for_discovery = _read(run_dir, "semantic_search_intent.json", {})
     if intent_for_discovery.get("discovery_planning_mode") == "neutral_discovery":
