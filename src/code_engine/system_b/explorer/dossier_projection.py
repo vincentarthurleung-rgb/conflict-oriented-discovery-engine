@@ -183,7 +183,15 @@ class DossierProjection:
                 continue
             seen.add(rid)
             items.append({"reasoning_trace_id":rid,"claim_id":trace.get("claim_id"),"trace_status":trace.get("trace_status"),"claim_identity_hash":trace.get("claim_identity_hash"),"source_scope":trace.get("source_scope"),"pmid":trace.get("pmid"),"pmcid":trace.get("pmcid"),"strength_profile":trace.get("strength_profile") or {},"strength_level":trace.get("strength_level"),"steps":trace.get("reasoning_steps") or [],"author_conclusion":trace.get("author_conclusion") or {},"missing_links":trace.get("missing_links") or []})
-        return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"status":"available" if items else "unavailable","missing_message":"该运行未生成全文推理证据链。" if not items else None}
+        usable=[item for item in items if item.get("trace_status") in {"complete","partial","reasoning_complete","reasoning_partial"} and item.get("steps") and any(any(step.get(key) for key in ("sentence_ids","passage_ids","source_spans","evidence_anchor_ids","provenance")) for step in item.get("steps") if isinstance(step,dict))]
+        reasons=[missing.get("reason") for item in items for missing in item.get("missing_links") or [] if isinstance(missing,dict) and missing.get("reason")]
+        if usable:
+            status="available" if len(usable)==len(items) else "partial";message=None
+        elif items:
+            status="produced_but_unusable";message="本次运行已生成推理链记录，但没有可用实验推理步骤。该运行尚未完成有效的全文实验推理链提取。"
+        else:
+            status="artifact_missing";message="该运行未生成全文实验推理链。"
+        return {"dossier_id":dossier_id_for(triple),"items":items,"total":len(items),"usable_count":len(usable),"status":status,"missing_message":message,"technical_reason":max(set(reasons),key=reasons.count) if reasons else None}
 
     def evidence_chains(self,dossier_id):
         triple=self.by_id.get(self.resolve(dossier_id) or "")

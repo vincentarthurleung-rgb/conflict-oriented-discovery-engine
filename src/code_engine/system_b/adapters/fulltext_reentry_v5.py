@@ -10,7 +10,7 @@ from typing import Any
 from code_engine.integration.atlas_handoff import LANE_FILES, canonical_json, resolve_artifact
 from code_engine.system_b.explorer.dossier_projection import dossier_id_for
 
-ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v3"
+ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v4"
 CONTEXT_ALIASES = {
     "species": ("species",),
     "cell_type": ("cell_type", "cell_line"),
@@ -131,7 +131,7 @@ def _provenance(row: dict, *, case_id: str, source_run_id: str, logical_name: st
         "source_run_id": source_run_id,
         "source_artifact": logical_name,
         "source_record_index": index,
-        "source_record_hash": _canonical_hash(row),
+        "source_record_hash": row.get("source_record_hash") or _canonical_hash(row),
         "source_artifact_hash": artifact_hash,
     }
 
@@ -164,6 +164,8 @@ class FulltextReentryV5Adapter:
         links_by_claim: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for link in _optional_jsonl(validated, "claim_evidence_links"):
             links_by_claim[str(link.get("claim_id"))].append(link)
+        source_units = _optional_jsonl(validated, "source_text_units")
+        source_unit_by_chunk = {str(row.get("chunk_hash")): row for row in source_units if row.get("chunk_hash")}
         records = []
         for lane, relative in LANE_FILES.items():
             spec = manifest["artifacts"][f"lane_{lane}"]
@@ -184,6 +186,7 @@ class FulltextReentryV5Adapter:
         conflict_predictions = []
         claim_candidates = []
         context_candidates = []
+        predicted_claim_frame = []
         for row, logical_name, artifact_hash, index in records:
             subject_id, subject, subject_type = _entity(row, "subject")
             object_id, obj, object_type = _entity(row, "object")
@@ -191,6 +194,7 @@ class FulltextReentryV5Adapter:
             triple_shape = {"subject_id": subject_id or str(row.get("subject") or ""), "relation_normalized": relation or "", "object_id": object_id or str(row.get("object") or ""), "direction": row.get("direction")}
             dossier_id = dossier_id_for(triple_shape)
             provenance = _provenance(row, case_id=case_id, source_run_id=source_run_id, logical_name=logical_name, artifact_hash=artifact_hash, index=index)
+            source_unit = source_unit_by_chunk.get(str(row.get("chunk_hash") or (row.get("section_provenance") or {}).get("chunk_hash")))
             reasoning_context = _reasoning_context_for(row.get("claim_id"), consolidations, reasoning_traces)
             linked_links = links_by_claim.get(str(row.get("claim_id")), [])
             linked_chains = []
@@ -217,6 +221,7 @@ class FulltextReentryV5Adapter:
                 "core_gate_passed": row.get("core_gate_passed"),
                 "core_gate_failures": row.get("core_gate_failures"),
                 "claim_identity_hash": row.get("claim_identity_hash"),
+                "source_unit_id": source_unit.get("source_unit_id") if source_unit else None,
                 "duplicate_match_basis": row.get("duplicate_match_basis"),
                 "dedup_action": row.get("dedup_action"),
                 "evidence_sentence": row.get("evidence_sentence"),
@@ -257,6 +262,18 @@ class FulltextReentryV5Adapter:
             claim_candidates.append({"source_key": claim_key, "schema_id": "claim_review_v1", "schema_version": "1", "prediction_run_id": prediction_run_id, "case_id": case_id, "dossier_id": dossier_id, "claim_id": row.get("claim_id"), "source_artifact_hash": artifact_hash, "payload": evidence})
             context_key = _canonical_hash(source_key_material + ["context_attribution_v1", "1"])
             context_candidates.append({"source_key": context_key, "schema_id": "context_attribution_v1", "schema_version": "1", "prediction_run_id": prediction_run_id, "case_id": case_id, "dossier_id": dossier_id, "claim_id": row.get("claim_id"), "source_artifact_hash": artifact_hash, "payload": context})
+            predicted_claim_frame.append({
+                "schema_version": "predicted_claim_frame_v1", "prediction_claim_key": claim_key,
+                "claim_id": row.get("claim_id"), "claim_identity_hash": row.get("claim_identity_hash"),
+                "source_record_hash": provenance["source_record_hash"], "source_unit_id": source_unit.get("source_unit_id") if source_unit else None,
+                "paper_id": row.get("pmid") or row.get("pmcid") or row.get("doi") or row.get("paper_id"),
+                "pmid": row.get("pmid"), "pmcid": row.get("pmcid"), "doi": row.get("doi"), "case_id": case_id,
+                "domain_snapshot": {"domain_id": (manifest.get("domain_classification") or {}).get("primary_domain_id"), "taxonomy_version": (manifest.get("domain_classification") or {}).get("taxonomy_version")},
+                "source_scope": "fulltext", "section_type": row.get("section_type"), "relation_type": relation,
+                "confidence_band": "high" if float(row.get("confidence") or 0) >= .8 else "medium" if float(row.get("confidence") or 0) >= .5 else "low",
+                "negated": bool(row.get("negated") or row.get("is_negated")), "artifact_sha256": artifact_hash,
+                "projection_id": None, "prediction_run_id": prediction_run_id,
+            })
             if _graph_eligible(row):
                 graph_evidence = {key: value for key, value in evidence.items() if key != "reasoning_trace"}
                 graph_records.append({**graph_evidence, "subject_id": subject_id, "subject_entity_type": subject_type, "object_id": object_id, "object_entity_type": object_type, "prediction_run_id": prediction_run_id, "edge_scope": "formal" if row.get("conflict_eligible") is True else "exploratory"})
@@ -275,6 +292,24 @@ class FulltextReentryV5Adapter:
             "claim_review_candidates": sorted({row["source_key"]: row for row in claim_candidates}.values(), key=lambda row: row["source_key"]),
             "conflict_pair_candidates": [],
             "context_candidates": sorted({row["source_key"]: row for row in context_candidates}.values(), key=lambda row: row["source_key"]),
+            "predicted_claim_frame": sorted({row["prediction_claim_key"]: row for row in predicted_claim_frame}.values(), key=lambda row: row["prediction_claim_key"]),
+            "source_text_unit_frame": [{
+                "schema_version": "source_text_unit_frame_v1", "source_unit_id": row.get("source_unit_id"),
+                "paper_id": row.get("pmid") or row.get("pmcid") or row.get("doi") or row.get("paper_id"),
+                "pmid": row.get("pmid"), "pmcid": row.get("pmcid"), "doi": row.get("doi"), "case_id": case_id,
+                "domain_snapshot": {"domain_id": (manifest.get("domain_classification") or {}).get("primary_domain_id"), "taxonomy_version": (manifest.get("domain_classification") or {}).get("taxonomy_version")},
+                "source_scope": row.get("source_scope") or "fulltext", "section_type": row.get("section_type"),
+                "parent_chunk_id": row.get("parent_chunk_id"), "chunk_hash": row.get("chunk_hash"),
+                "text_hash": row.get("text_hash"), "source_artifact_sha256": row.get("source_artifact_sha256"),
+                "eligible_for_extraction": row.get("eligible_for_extraction") is True,
+                "sampling_frame_scope": "selected_for_l1_extraction", "stratum": None,
+                "inclusion_probability": None, "sampling_weight": None,
+            } for row in source_units],
+            "case_metadata": {"case_id": case_id, "domain_classification": manifest.get("domain_classification") or {
+                "primary_domain_id": None, "primary_domain_label": None, "secondary_domains": [], "legacy_domain_tags": [],
+                "status": "legacy_unknown", "source": "legacy_handoff",
+            }, "capabilities": manifest.get("capabilities") or {}, "handoff_schema_version": manifest.get("schema_version"),
+                "manifest_hash": validated.get("manifest_hash"), "identity_hash": validated.get("identity_hash") or validated.get("manifest_hash")},
             "display": display,
         }
 

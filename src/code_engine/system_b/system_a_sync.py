@@ -12,11 +12,14 @@ from typing import Any, Iterable
 
 from sqlalchemy import select
 
-from code_engine.integration.atlas_handoff import HANDOFF_SCHEMA_VERSION, HandoffError, canonical_json, sha256_file, validate_handoff
+from code_engine.integration.atlas_handoff import HandoffError, canonical_json, sha256_file, validate_handoff
 from code_engine.system_b.adapters.fulltext_reentry_v5 import ADAPTER_VERSION, FulltextReentryV5Adapter
 from code_engine.system_b.persistence.database import create_atlas_engine, session_factory
 from code_engine.system_b.persistence.models import PredictionRun, SourceArtifact, SourceIngestion, utcnow
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
+from code_engine.system_b.evaluation.claim_sampling import evaluation_readiness, sampling_frame_hash
+
+PROJECTION_SCHEMA_VERSION = "atlas_projection_v2"
 
 
 def _atomic_json(path: Path, value: Any) -> None:
@@ -40,6 +43,12 @@ def _write_jsonl(path: Path, rows: Iterable[dict]) -> int:
     return count
 
 
+def _write_failure_audit(output_root: str | Path, *, code: str, summary: str, rejected: list[dict] | None = None) -> None:
+    payload = {"schema_version": "system_a_sync_failure_v1", "status": "failed", "error_code": code, "error_summary": summary, "rejected": rejected or [], "occurred_at": datetime.now(timezone.utc).isoformat()}
+    digest = hashlib.sha256(canonical_json({"code": code, "summary": summary, "rejected": rejected or []})).hexdigest()[:20]
+    _atomic_json(Path(output_root) / "sync_audit" / f"failed_{digest}.json", payload)
+
+
 def discover_handoffs(runs_root: str | Path, manifest: str | Path | None = None) -> list[Path]:
     if manifest:
         return [Path(manifest).resolve()]
@@ -50,22 +59,31 @@ def _validate_ready(path: Path) -> None:
     ready = path.parent / "ATLAS_READY"
     try: marker = json.loads(ready.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error: raise HandoffError("ready_marker_invalid", str(error)) from error
-    if marker.get("schema_version") != HANDOFF_SCHEMA_VERSION or marker.get("manifest_sha256") != sha256_file(path):
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if marker.get("schema_version") != manifest.get("schema_version") or marker.get("manifest_sha256") != sha256_file(path):
         raise HandoffError("ready_marker_mismatch", str(path))
 
 
 def _prediction_id(validated: dict, adapter_version: str) -> str:
-    material = f"{validated['manifest_hash']}|{adapter_version}"
+    material = f"{validated.get('identity_hash') or validated['manifest_hash']}|{adapter_version}"
     return "pred_" + hashlib.sha256(material.encode()).hexdigest()[:24]
 
 
 def _merge_projects(projects: list[dict]) -> dict:
     row_keys = ("dossier_evidence", "context_rows", "exploratory_triples", "conflict_predictions", "claim_review_candidates", "conflict_pair_candidates", "context_candidates")
     result = {key: [] for key in row_keys}
+    result["predicted_claim_frame"] = []
+    result["source_text_unit_frame"] = []
+    result["case_metadata"] = {}
     dossier_items = {}
     display = {key: [] for key in ("display_entities_v2", "display_triples_v2", "display_chains_v2", "case_focused_triples", "case_focused_chains", "triple_evidence_links", "triple_contexts", "validator_annotations", "conflict_lens_records")}
     for project in projects:
         for key in row_keys: result[key].extend(project[key])
+        result["predicted_claim_frame"].extend(project.get("predicted_claim_frame") or [])
+        result["source_text_unit_frame"].extend(project.get("source_text_unit_frame") or [])
+        metadata = project.get("case_metadata") or {}
+        if metadata.get("case_id"):
+            result["case_metadata"][metadata["case_id"]] = metadata
         for item in project["dossier_index"]["items"]:
             existing = dossier_items.get(item["triple_id"])
             if not existing: dossier_items[item["triple_id"]] = dict(item)
@@ -89,6 +107,8 @@ def _merge_projects(projects: list[dict]) -> dict:
     for key in row_keys:
         unique_key = "source_key" if key.endswith("candidates") else "source_record_hash" if key not in {"exploratory_triples"} else "triple_id"
         result[key] = sorted({str(row.get(unique_key)): row for row in result[key]}.values(), key=lambda row: str(row.get(unique_key)))
+    result["predicted_claim_frame"] = sorted({str(row.get("prediction_claim_key")): row for row in result["predicted_claim_frame"]}.values(), key=lambda row: str(row.get("prediction_claim_key")))
+    result["source_text_unit_frame"] = sorted({str(row.get("source_unit_id")): row for row in result["source_text_unit_frame"] if row.get("source_unit_id")}.values(), key=lambda row: str(row.get("source_unit_id")))
     result["display"] = display
     return result
 
@@ -150,10 +170,20 @@ def _write_projection(root: Path, projection_id: str, merged: dict, sources: lis
         counts[key] = _write_jsonl(staging / filename, merged[key])
     sampling = {"schema_version": "evaluation_staging_v1", "automatic_import": False, "assignments_created": 0, "counts": {key: counts[key] for key in counts if key.endswith("candidates")}}
     _atomic_json(staging / "sampling_summary.json", sampling)
+    for row in merged["predicted_claim_frame"]:
+        row["projection_id"] = projection_id
+    counts["predicted_claim_frame"] = _write_jsonl(staging / "predicted_claim_frame.jsonl", merged["predicted_claim_frame"])
+    counts["source_text_unit_frame"] = _write_jsonl(staging / "source_text_unit_frame.jsonl", merged["source_text_unit_frame"])
+    readiness = evaluation_readiness(merged["source_text_unit_frame"])
+    readiness["frame_hash"] = sampling_frame_hash(merged["source_text_unit_frame"])
+    readiness["projection_id"] = projection_id
+    _atomic_json(staging / "claim_evaluation_readiness.json", readiness)
+    case_metadata = {"schema_version": "atlas_case_metadata_v1", "items": [merged["case_metadata"][key] for key in sorted(merged["case_metadata"])]}
+    _atomic_json(root / "case_metadata.json", case_metadata)
     for logical_name, rows in merged["display"].items(): _write_jsonl(root / f"{logical_name}.jsonl", rows)
     validation = {"status": "valid", "checks": {"evidence_not_kg_nodes": True, "formal_conflict_gate": True, "assignments_created": 0}, "counts": counts}
     _atomic_json(root / "validation_report.json", validation)
-    manifest = {"schema_version": "atlas_projection_v1", "projection_id": projection_id, "adapter_version": adapter_version, "source_manifests": [{"case_id": item["manifest"]["case_id"], "source_run_id": item["manifest"]["source_run_id"], "manifest_hash": item["manifest_hash"], "prediction_run_id": _prediction_id(item, adapter_version)} for item in sources], "counts": counts, "counts_by_case": counts_by_case, "generated_at": datetime.now(timezone.utc).isoformat(), "validation_status": "valid"}
+    manifest = {"schema_version": PROJECTION_SCHEMA_VERSION, "projection_id": projection_id, "adapter_version": adapter_version, "source_manifests": [{"case_id": item["manifest"]["case_id"], "source_run_id": item["manifest"]["source_run_id"], "manifest_hash": item.get("identity_hash") or item["manifest_hash"], "transport_manifest_hash": item["manifest_hash"], "handoff_schema_version": item["manifest"].get("schema_version"), "prediction_run_id": _prediction_id(item, adapter_version)} for item in sources], "counts": counts, "counts_by_case": counts_by_case, "case_metadata_schema_version": "atlas_case_metadata_v1", "claim_sampling_frame_scope": "selected_for_l1_extraction", "generated_at": datetime.now(timezone.utc).isoformat(), "validation_status": "valid"}
     _atomic_json(root / "projection_manifest.json", manifest)
     return manifest
 
@@ -194,30 +224,33 @@ def sync_system_a(
     if factory:
         session = factory()
         try:
-            existing_keys = set(session.execute(select(SourceIngestion.source_run_id, SourceIngestion.manifest_hash, SourceIngestion.adapter_version).where(SourceIngestion.status == "completed")).all())
+            existing_keys = set(session.execute(select(SourceIngestion.case_id, SourceIngestion.manifest_hash, SourceIngestion.adapter_version).where(SourceIngestion.status == "completed")).all())
         except Exception:
             if not dry_run: raise
         finally: session.close()
     grouped = {}
     for item in valid: grouped.setdefault(item["manifest"]["case_id"], []).append(item)
     missing_current = sorted(set(current_hashes) - set(grouped))
-    if missing_current: raise HandoffError("current_projection_source_missing", ", ".join(missing_current))
+    if missing_current:
+        summary = ", ".join(missing_current)
+        _write_failure_audit(output_root, code="current_projection_source_missing", summary=summary, rejected=rejected)
+        raise HandoffError("current_projection_source_missing", summary)
     selected = []
     for case_id, candidates in sorted(grouped.items()):
-        fresh = [item for item in candidates if (item["manifest"]["source_run_id"], item["manifest_hash"], adapter_version) not in existing_keys]
+        fresh = [item for item in candidates if (case_id, item.get("identity_hash") or item["manifest_hash"], adapter_version) not in existing_keys and current_hashes.get(case_id) != (item.get("identity_hash") or item["manifest_hash"])]
         if len(fresh) > 1:
-            current_fresh = [item for item in fresh if item["manifest_hash"] == current_hashes.get(case_id)]
+            current_fresh = [item for item in fresh if (item.get("identity_hash") or item["manifest_hash"]) == current_hashes.get(case_id)]
             if len(current_fresh) == 1:
                 selected.append(current_fresh[0])
                 continue
             raise HandoffError("ambiguous_new_case_runs", f"{case_id} has {len(fresh)} un-ingested ready handoffs")
         if fresh: selected.append(fresh[0]); continue
-        current = [item for item in candidates if item["manifest_hash"] == current_hashes.get(case_id)]
+        current = [item for item in candidates if (item.get("identity_hash") or item["manifest_hash"]) == current_hashes.get(case_id)]
         if len(current) == 1: selected.append(current[0]); continue
         if len(candidates) == 1: selected.append(candidates[0]); continue
         raise HandoffError("ambiguous_current_case_run", f"{case_id} has no unique current handoff")
     valid = selected
-    new = [item for item in valid if (item["manifest"]["source_run_id"], item["manifest_hash"], adapter_version) not in existing_keys]
+    new = [item for item in valid if (item["manifest"]["case_id"], item.get("identity_hash") or item["manifest_hash"], adapter_version) not in existing_keys and current_hashes.get(item["manifest"]["case_id"]) != (item.get("identity_hash") or item["manifest_hash"])]
     adapter = FulltextReentryV5Adapter()
     projects = [adapter.project(item, prediction_run_id=_prediction_id(item, adapter_version)) for item in valid]
     merged = _merge_projects(projects)
@@ -251,7 +284,8 @@ def sync_system_a(
         _atomic_json(quarantine / (hashlib.sha256(item["manifest"].encode()).hexdigest()[:20] + ".json"), item)
     if not new:
         return {**base_report, "status": "no_op", "current_projection_id": _current_id(Path(output_root))}
-    projection_id = "projection_" + hashlib.sha256((adapter_version + "|" + "|".join(sorted(item["manifest_hash"] for item in valid))).encode()).hexdigest()[:24]
+    projection_material = {"projection_schema_version": PROJECTION_SCHEMA_VERSION, "adapter_version": adapter_version, "cases": sorted((item["manifest"]["case_id"], item.get("identity_hash") or item["manifest_hash"]) for item in valid), "capability_summary_schema_version": "atlas_capability_effectiveness_v1"}
+    projection_id = "projection_" + hashlib.sha256(canonical_json(projection_material)).hexdigest()[:24]
     output = Path(output_root); final = output / "projections" / projection_id
     temporary = output / "projections" / f".{projection_id}.{os.getpid()}.tmp"
     if temporary.exists(): shutil.rmtree(temporary)
@@ -261,12 +295,15 @@ def sync_system_a(
         try:
             for item in new:
                 source = item["manifest"]
-                ingestion = SourceIngestion(case_id=source["case_id"], source_run_id=source["source_run_id"], manifest_hash=item["manifest_hash"], handoff_schema_version=source["schema_version"], adapter_version=adapter_version, prediction_version=source["prediction_version"], status="projecting", namespace="system_a", discovered_at=utcnow(), started_at=utcnow(), projection_root=str(final))
+                ingestion = SourceIngestion(case_id=source["case_id"], source_run_id=source["source_run_id"], manifest_hash=item.get("identity_hash") or item["manifest_hash"], handoff_schema_version=source["schema_version"], adapter_version=adapter_version, prediction_version=source["prediction_version"], status="projecting", namespace="system_a", discovered_at=utcnow(), started_at=utcnow(), projection_root=str(final), projection_identity_hash=projection_id.removeprefix("projection_"), domain_snapshot_json=json.dumps(source.get("domain_classification") or {}, ensure_ascii=False, sort_keys=True), capability_summary_json=json.dumps(source.get("capabilities") or {}, ensure_ascii=False, sort_keys=True))
                 session.add(ingestion); session.flush()
                 write_audit_event(session, action="source_ingestion_discovered", object_type="source_ingestion", object_id=ingestion.ingestion_id, case_id=source["case_id"], metadata={"source_run_id": source["source_run_id"], "manifest_hash": item["manifest_hash"]})
                 write_audit_event(session, action="source_ingestion_validated", object_type="source_ingestion", object_id=ingestion.ingestion_id, case_id=source["case_id"], metadata={"schema_version": source["schema_version"]})
                 write_audit_event(session, action="source_ingestion_projecting", object_type="source_ingestion", object_id=ingestion.ingestion_id, case_id=source["case_id"], metadata={"projection_id": projection_id})
-                for logical_name, spec in source["artifacts"].items(): session.add(SourceArtifact(source_ingestion_id=ingestion.ingestion_id, logical_name=logical_name, relative_path=spec["relative_path"], sha256=spec["sha256"], size_bytes=spec["size_bytes"], record_count=spec.get("record_count"), required=bool(spec["required"]), validation_status="valid"))
+                capability_names = {"input_fulltext_claims": "fulltext_l1", "fulltext_reasoning_traces": "reasoning_trace", "fulltext_context_consolidations": "context_consolidation", "reentry_manifest": "reentry"}
+                for logical_name, spec in source["artifacts"].items():
+                    capability = (source.get("capabilities") or {}).get(capability_names.get(logical_name, ""), {})
+                    session.add(SourceArtifact(source_ingestion_id=ingestion.ingestion_id, logical_name=logical_name, relative_path=spec["relative_path"], sha256=spec["sha256"], size_bytes=spec["size_bytes"], record_count=spec.get("record_count"), required=bool(spec["required"]), validation_status="valid", schema_version=spec.get("schema_version") or "", adapter_status="supported" if capability.get("schema_supported", True) else "schema_unsupported", usable_record_count=capability.get("usable_record_count"), coverage=capability.get("coverage"), error_reason=capability.get("reason") or "", metadata_json=json.dumps(capability, ensure_ascii=False, sort_keys=True)))
                 for previous in session.execute(select(PredictionRun).where(PredictionRun.case_id == source["case_id"], PredictionRun.is_current.is_(True))).scalars(): previous.is_current=False
                 session.add(PredictionRun(prediction_run_id=_prediction_id(item, adapter_version), case_id=source["case_id"], source_ingestion_id=ingestion.ingestion_id, prediction_version=source["prediction_version"], system_a_git_commit=source.get("system_a_git_commit") or "", configuration_hash=source.get("configuration_hash") or "", source_completed_at=_parse_time(source.get("completed_at")), is_current=True))
                 ingestion.status="completed"; ingestion.completed_at=utcnow()
@@ -286,7 +323,7 @@ def sync_system_a(
         final.parent.mkdir(parents=True, exist_ok=True); os.replace(temporary, final)
     if refresh_current_projection:
         _atomic_json(output / "current_projection.json", {"schema_version": "atlas_current_projection_v1", "projection_id": projection_id, "projection_relative_path": f"projections/{projection_id}", "projection_manifest_sha256": sha256_file(final / "projection_manifest.json"), "updated_at": datetime.now(timezone.utc).isoformat()})
-    return {**base_report, "status": "completed", "current_projection_id": projection_id, "projection_root": str(final), "database_ingestions_created": len(new), "prediction_runs_created": len(new)}
+    return {**base_report, "status": "completed", "current_projection_id": projection_id, "projection_root": str(final), "database_ingestions_created": len(new) if factory else 0, "prediction_runs_created": len(new) if factory else 0}
 
 
 def _parse_time(value: Any):

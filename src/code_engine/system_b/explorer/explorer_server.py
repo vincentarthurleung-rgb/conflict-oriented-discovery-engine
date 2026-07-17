@@ -10,7 +10,7 @@ from flask import Flask,Response,jsonify,redirect,request,send_from_directory,se
 from werkzeug.security import check_password_hash
 from .auth import PUBLIC_REGISTER_ERROR,LoginLimiter,find_usable_invite,hash_password,load_user_store,utc_now_iso,validate_display_name,validate_password_strength,validate_username,write_user_store
 from .explorer_api import ExplorerAPI
-from code_engine.system_b.persistence.database import create_atlas_engine, database_url as resolve_database_url, session_factory, session_scope, sqlite_health
+from code_engine.system_b.persistence.database import ATLAS_SCHEMA_HEAD, create_atlas_engine, database_url as resolve_database_url, session_factory, session_scope, sqlite_health
 from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User, UserOnboardingAcknowledgement
 from code_engine.system_b.persistence.services.adjudication_service import adjudication_detail, adjudication_queue, submit_adjudication
 from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items, my_review_metrics, my_review_workspace
@@ -42,7 +42,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     if database_url or require_database:
         db_engine=create_atlas_engine(resolve_database_url(database_url));db_factory=session_factory(db_engine)
         health=sqlite_health(db_engine)
-        if require_database and health.get("schema_version")!="0008_system_a_ingestion_ledger":raise RuntimeError("Atlas database is not migrated to head")
+        if require_database and health.get("schema_version")!=ATLAS_SCHEMA_HEAD:raise RuntimeError("Atlas database is not migrated to head")
         if review_root and not legacy_json_readonly:
             with session_scope(db_factory) as dbs:import_review_items(dbs,review_root,namespace="test" if not require_auth else "production")
     if require_auth and not db_factory and (not users_file or not Path(users_file).is_file()):raise FileNotFoundError("Authentication requires an existing --users-file")
@@ -225,6 +225,9 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             ident=current_identity()
             try:
                 with session_scope(db_factory) as dbs:
+                    if path in {"/api/owner/claim-evaluation/readiness","/api/owner/claim-evaluation/pilot-samples"}:
+                        status,value=api.dispatch(path,request.args.to_dict(flat=False),method=request.method,body=body)
+                        return jsonify(value),status
                     if path=="/api/owner/overview":return jsonify(owner_overview(dbs))
                     if path=="/api/owner/users":return jsonify(owner_users(dbs,q=request.args.get("q"),role=request.args.get("role"),enabled=request.args.get("enabled"))) if request.method=="GET" else (jsonify(owner_create_user(dbs,owner=ident,username=body.get("username"),display_name=body.get("display_name"),role=body.get("role"),temporary_password=True)),201)
                     if path.startswith("/api/owner/user/"):

@@ -142,6 +142,9 @@ class SourceIngestion(Base):
     error_code: Mapped[str] = mapped_column(String(120), default="", nullable=False)
     error_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
     projection_root: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    projection_identity_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    domain_snapshot_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    capability_summary_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     supersedes_ingestion_id: Mapped[str | None] = mapped_column(ForeignKey("source_ingestions.ingestion_id"))
     created_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -176,6 +179,12 @@ class SourceArtifact(Base):
     record_count: Mapped[int | None] = mapped_column(Integer)
     required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     validation_status: Mapped[str] = mapped_column(String(32), nullable=False, default="valid")
+    schema_version: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    adapter_status: Mapped[str] = mapped_column(String(40), default="supported", nullable=False)
+    usable_record_count: Mapped[int | None] = mapped_column(Integer)
+    coverage: Mapped[float | None] = mapped_column(Float)
+    error_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     __table_args__ = (UniqueConstraint("source_ingestion_id", "logical_name", name="uq_source_artifact_logical_name"),)
 
 

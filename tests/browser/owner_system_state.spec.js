@@ -24,7 +24,7 @@ test('owner can inspect system state without placeholder zeroes', async ({ page 
   await expect(page.getByRole('heading', { name: 'System State' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Review items', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Assignments', exact: true })).toBeVisible();
-  await expect(page.getByText('Schema 0008_system_a_ingestion_ledger')).toBeVisible();
+  await expect(page.getByText('Schema 0009_system_a_v2_metadata')).toBeVisible();
 });
 
 test('pilot setup preview distinguishes cases from review items', async ({ page }) => {

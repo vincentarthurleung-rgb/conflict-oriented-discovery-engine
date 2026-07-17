@@ -1,0 +1,16 @@
+{
+  "schema_id": "source_unit_claim_gold_v1",
+  "version": "1",
+  "title": "Source-unit exhaustive Claim Gold",
+  "description": "Exhaustive claims for one selected source text unit. Recall and F1 remain unavailable until completeness is confirmed.",
+  "instructions_version": "source_unit_claim_gold_instructions_v1",
+  "instructions_hash": "source_unit_claim_gold_instructions_v1",
+  "frozen": true,
+  "fields": [
+    {"name": "source_unit_id", "type": "string", "required": true},
+    {"name": "gold_claims", "type": "array", "required": true},
+    {"name": "annotation_completeness", "type": "enum", "options": ["exhaustive", "partial"], "required": true},
+    {"name": "reviewer_id", "type": "string", "required": true}
+  ],
+  "skip_options": ["source_text_unreadable", "out_of_scope"]
+}

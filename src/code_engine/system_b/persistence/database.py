@@ -12,6 +12,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 DEFAULT_DATABASE_URL = "sqlite:///data/code_atlas.db"
+ATLAS_SCHEMA_HEAD = "0009_system_a_v2_metadata"
 
 
 def database_url(value: str | None = None) -> str:

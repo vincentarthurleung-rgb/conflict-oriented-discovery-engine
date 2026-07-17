@@ -29,7 +29,7 @@ class AtlasDatabaseTests(unittest.TestCase):
             self.assertEqual(health["foreign_keys"], 1)
             self.assertEqual(health["journal_mode"], "wal")
             self.assertEqual(health["busy_timeout"], 10000)
-            self.assertEqual(health["schema_version"], "0008_system_a_ingestion_ledger")
+            self.assertEqual(health["schema_version"], "0009_system_a_v2_metadata")
 
     def test_user_model_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:

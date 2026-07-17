@@ -10,7 +10,12 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-HANDOFF_SCHEMA_VERSION = "atlas_handoff_v1"
+LEGACY_HANDOFF_SCHEMA_VERSION = "atlas_handoff_v1"
+HANDOFF_SCHEMA_VERSION = "atlas_handoff_v2"
+SUPPORTED_HANDOFF_SCHEMA_VERSIONS = {LEGACY_HANDOFF_SCHEMA_VERSION, HANDOFF_SCHEMA_VERSION}
+CAPABILITY_SCHEMA_VERSION = "atlas_capability_effectiveness_v1"
+DOMAIN_TAXONOMY_VERSION = "code_domain_taxonomy_v1"
+SOURCE_UNIT_SCHEMA_VERSION = "claim_source_unit_v1"
 MANIFEST_NAME = "atlas_handoff_manifest.json"
 READY_NAME = "ATLAS_READY"
 LANE_FILES = {
@@ -37,6 +42,14 @@ OPTIONAL_ARTIFACTS = {
     "experimental_evidence_chain_summary": "artifacts/experimental_evidence_chain_summary.json",
     "fulltext_context_consolidations": "artifacts/fulltext_context_consolidations.jsonl",
     "fulltext_context_consolidation_summary": "artifacts/fulltext_context_consolidation_summary.json",
+    "source_text_units": "artifacts/claim_evaluation_source_units.jsonl",
+}
+
+SUPPORTED_ARTIFACT_SCHEMAS = {
+    "input_fulltext_claims": {"fulltext_l1_claim_v1_legacy", "fulltext_l1_claim_v1", "fulltext_l1_claim_v2"},
+    "fulltext_reasoning_traces": {"fulltext_reasoning_trace_v1", "fulltext_reasoning_trace_v2"},
+    "fulltext_context_consolidations": {"fulltext_context_consolidation_v1", "fulltext_context_consolidation_v2"},
+    "source_text_units": {SOURCE_UNIT_SCHEMA_VERSION},
 }
 
 
@@ -88,6 +101,136 @@ def _jsonl_count(path: Path) -> int:
     except OSError as error:
         raise HandoffError("artifact_read_error", f"cannot read {path}: {error}") from error
     return count
+
+
+def _jsonl_rows(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    with path.open(encoding="utf-8") as handle:
+        for index, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise HandoffError("malformed_jsonl", f"{path.name}:{index}: {error}") from error
+            if not isinstance(value, dict):
+                raise HandoffError("invalid_jsonl_record", f"{path.name}:{index} must be an object")
+            rows.append(value)
+    return rows
+
+
+def _artifact_schema_version(logical_name: str, path: Path) -> str | None:
+    if logical_name == "input_fulltext_claims":
+        rows = _jsonl_rows(path)
+        versions = {str(row.get("schema_version")) for row in rows if row.get("schema_version")}
+        return versions.pop() if len(versions) == 1 else "fulltext_l1_claim_v1_legacy" if not versions else "mixed"
+    if path.suffix == ".jsonl" and logical_name in SUPPORTED_ARTIFACT_SCHEMAS:
+        versions = {str(row.get("schema_version")) for row in _jsonl_rows(path) if row.get("schema_version")}
+        if logical_name == "source_text_units" and not versions:
+            return SOURCE_UNIT_SCHEMA_VERSION
+        return versions.pop() if len(versions) == 1 else "mixed" if versions else None
+    if path.suffix == ".json":
+        return str(_json(path).get("schema_version") or "") or None
+    return None
+
+
+def _nonempty(value: Any) -> bool:
+    if value in (None, "", [], {}):
+        return False
+    if isinstance(value, list):
+        return any(_nonempty(item) for item in value)
+    if isinstance(value, dict) and "value" in value:
+        return _nonempty(value.get("value"))
+    return True
+
+
+def _reasoning_step_has_provenance(step: Any) -> bool:
+    if not isinstance(step, dict):
+        return False
+    return any(_nonempty(step.get(key)) for key in (
+        "sentence_ids", "passage_ids", "source_spans", "evidence_anchor_ids", "provenance",
+    ))
+
+
+def _reasoning_usable(row: dict[str, Any]) -> bool:
+    status = str(row.get("trace_status") or "").casefold()
+    steps = row.get("reasoning_steps")
+    return status in {"complete", "partial", "reasoning_complete", "reasoning_partial"} and isinstance(steps, list) and bool(steps) and any(_reasoning_step_has_provenance(step) for step in steps)
+
+
+def _context_slots(row: dict[str, Any]) -> dict[str, Any]:
+    value = row.get("consolidated_context")
+    return value if isinstance(value, dict) else {}
+
+
+def _context_nonempty(row: dict[str, Any]) -> bool:
+    return any(_nonempty(value) for value in _context_slots(row).values()) or any(
+        _nonempty(value) for value in (row.get("field_provenance") or {}).values()
+    )
+
+
+def _capability_status(*, present: bool, count: int, usable: int, partial_allowed: bool = False) -> str:
+    if not present:
+        return "artifact_missing"
+    if count == 0:
+        return "available_no_records"
+    if usable == count:
+        return "available"
+    if usable == 0:
+        return "produced_but_unusable"
+    return "partial" if partial_allowed else "produced_but_unusable"
+
+
+def _capability_summary(run: Path, specs: dict[str, dict[str, Any]], *, conflict_count: int) -> dict[str, Any]:
+    def rows(name: str) -> list[dict[str, Any]]:
+        spec = specs.get(name)
+        return _jsonl_rows(resolve_artifact(run, spec["relative_path"])) if spec else []
+
+    claims = rows("input_fulltext_claims")
+    traces = rows("fulltext_reasoning_traces")
+    contexts = rows("fulltext_context_consolidations")
+    reasoning_usable = sum(_reasoning_usable(row) for row in traces)
+    context_usable = sum(_context_nonempty(row) for row in contexts)
+    slot_names = sorted({slot for row in contexts for slot in _context_slots(row)})
+    slot_coverage = {
+        slot: round(sum(_nonempty(_context_slots(row).get(slot)) for row in contexts) / len(contexts), 6)
+        if contexts else 0.0
+        for slot in slot_names
+    }
+    reasons = []
+    for row in traces:
+        for missing in row.get("missing_links") or []:
+            if isinstance(missing, dict) and missing.get("reason"):
+                reasons.append(str(missing["reason"]))
+    reason = max(set(reasons), key=reasons.count) if reasons else None
+    def base(name: str, records: list[dict[str, Any]], usable: int) -> dict[str, Any]:
+        spec = specs.get(name)
+        schema = spec.get("schema_version") if spec else None
+        supported = schema in SUPPORTED_ARTIFACT_SCHEMAS.get(name, {schema}) if schema else name not in SUPPORTED_ARTIFACT_SCHEMAS
+        return {
+            "declared": bool(spec), "artifact_present": bool(spec), "hash_valid": bool(spec),
+            "schema_supported": supported, "schema_version": schema,
+            "record_count": len(records), "usable_record_count": usable,
+            "coverage": round(usable / len(records), 6) if records else 0.0,
+        }
+    fulltext = base("input_fulltext_claims", claims, len(claims))
+    fulltext["status"] = _capability_status(present=bool(specs.get("input_fulltext_claims")), count=len(claims), usable=len(claims))
+    reasoning = base("fulltext_reasoning_traces", traces, reasoning_usable)
+    reasoning["status"] = _capability_status(present=bool(specs.get("fulltext_reasoning_traces")), count=len(traces), usable=reasoning_usable, partial_allowed=True)
+    if reason and reasoning["status"] == "produced_but_unusable":
+        reasoning["reason"] = reason
+    context = base("fulltext_context_consolidations", contexts, context_usable)
+    context.update({"nonempty_record_count": context_usable, "slot_coverage": slot_coverage})
+    context["status"] = _capability_status(present=bool(specs.get("fulltext_context_consolidations")), count=len(contexts), usable=context_usable, partial_allowed=True)
+    reentry_count = specs.get("reentry_audit", {}).get("record_count")
+    return {
+        "schema_version": CAPABILITY_SCHEMA_VERSION,
+        "fulltext_l1": fulltext,
+        "reasoning_trace": reasoning,
+        "context_consolidation": context,
+        "reentry": {"declared": True, "artifact_present": "reentry_manifest" in specs, "hash_valid": "reentry_manifest" in specs, "record_count": reentry_count, "status": "available" if "reentry_manifest" in specs else "artifact_missing"},
+        "formal_conflict": {"declared": True, "count": conflict_count, "status": "available" if conflict_count else "available_no_records"},
+    }
 
 
 def safe_relative_path(value: str) -> PurePosixPath:
@@ -146,6 +289,104 @@ def _lineage_value(value: Any, runs_root: Path) -> str | None:
     return Path(*parts[1:]).as_posix() if parts and parts[0] == runs_root.name else path.as_posix()
 
 
+def _lineage_path(value: Any, runs_root: Path) -> Path | None:
+    if not value:
+        return None
+    path = Path(str(value))
+    return path.resolve() if path.is_absolute() else (runs_root / path).resolve()
+
+
+def _legacy_domain(case_id: str) -> dict[str, Any]:
+    profile = Path("configs/generated_cases") / case_id / "case_profile.json"
+    tags: list[str] = []
+    if profile.is_file():
+        value = _json(profile)
+        tags = [str(item) for item in value.get("domain_tags") or [] if item]
+    return {
+        "primary_domain_id": None, "primary_domain_label": None, "secondary_domains": [],
+        "legacy_domain_tags": tags, "taxonomy_version": None, "classifier_version": None,
+        "classification_method": None, "confidence": None, "status": "legacy_unknown",
+        "source_artifact_sha256": sha256_file(profile) if profile.is_file() else None,
+        "source": "case_profile_domain_tags" if tags else "missing_artifact",
+    }
+
+
+def _domain_classification(case_id: str, lineage: dict[str, Any], runs_root: Path) -> dict[str, Any]:
+    base = _lineage_path(lineage.get("base_run"), runs_root)
+    intake_path = base / "artifacts/intake.json" if base else None
+    if not intake_path or not intake_path.is_file():
+        return _legacy_domain(case_id)
+    intake = _json(intake_path)
+    semantic = intake.get("semantic_intake") if isinstance(intake.get("semantic_intake"), dict) else {}
+    routing = semantic.get("domain_routing") if isinstance(semantic.get("domain_routing"), dict) else {}
+    domain_id = routing.get("domain_id")
+    if not domain_id:
+        return _legacy_domain(case_id)
+    profile_path = base / "artifacts/domain_profile.json"
+    profile = _json(profile_path) if profile_path.is_file() else {}
+    confidence = routing.get("confidence")
+    alternatives = []
+    for item in routing.get("alternative_domains") or []:
+        if isinstance(item, dict) and item.get("domain_id"):
+            alternatives.append({"domain_id": str(item["domain_id"]), "label": item.get("label") or str(item["domain_id"]).replace("_", " ").title(), "confidence": item.get("confidence")})
+    status = "low_confidence" if routing.get("requires_manual_review") or (isinstance(confidence, (int, float)) and confidence < 0.7) else "classified"
+    return {
+        "primary_domain_id": str(domain_id),
+        "primary_domain_label": profile.get("display_name") or str(domain_id).replace("_", " ").title(),
+        "secondary_domains": alternatives,
+        "legacy_domain_tags": [],
+        "taxonomy_version": DOMAIN_TAXONOMY_VERSION,
+        "classifier_version": "semantic_intake_domain_routing_v1",
+        "classification_method": semantic.get("semantic_mode") or intake.get("semantic_mode") or "recorded_system_a_routing",
+        "confidence": confidence,
+        "status": status,
+        "source_artifact_sha256": sha256_file(intake_path),
+        "source": "system_a_semantic_intake_domain_routing",
+    }
+
+
+def _source_unit_rows(case_id: str, l1_run: Path, chunks_path: Path) -> list[dict[str, Any]]:
+    artifact_hash = sha256_file(chunks_path)
+    rows = []
+    for index, chunk in enumerate(_jsonl_rows(chunks_path)):
+        text = str(chunk.get("text") or "")
+        chunk_hash = str(chunk.get("chunk_hash") or hashlib.sha256(text.encode("utf-8")).hexdigest())
+        identity = canonical_json({"case_id": case_id, "paper_id": chunk.get("pmid") or chunk.get("pmcid"), "parent_chunk_id": chunk.get("chunk_id"), "chunk_hash": chunk_hash})
+        rows.append({
+            "schema_version": SOURCE_UNIT_SCHEMA_VERSION,
+            "source_unit_id": "su_" + hashlib.sha256(identity).hexdigest()[:24],
+            "case_id": case_id, "paper_id": chunk.get("pmid") or chunk.get("paper_id") or chunk.get("pmcid"),
+            "pmid": chunk.get("pmid"), "pmcid": chunk.get("pmcid"), "doi": chunk.get("doi"),
+            "source_scope": "fulltext", "section_type": chunk.get("section_type"), "section_title": chunk.get("section_title"),
+            "parent_chunk_id": chunk.get("chunk_id"), "chunk_hash": chunk_hash, "unit_index": index,
+            "char_start": 0, "char_end": len(text), "text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "text": text, "eligible_for_extraction": True, "chunker_version": "existing_l1_selected_chunk_boundary_v1",
+            "source_artifact_sha256": artifact_hash,
+        })
+    return rows
+
+
+def _ensure_source_text_units(run: Path, runs_root: Path, lineage: dict[str, Any] | None) -> None:
+    source = _json(run / "fulltext_reentry_manifest.json")
+    case_id = str(source.get("case_id") or "")
+    lineage = lineage or {}
+    l1_value = lineage.get("fulltext_l1_run") or source.get("fulltext_run")
+    l1_run = _lineage_path(l1_value, runs_root)
+    if not l1_run:
+        return
+    chunks = l1_run / "artifacts/l35_fulltext_discovery_selected_chunks.jsonl"
+    if not chunks.is_file():
+        return
+    rows = _source_unit_rows(case_id, l1_run, chunks)
+    payload = b"".join(canonical_json(row) for row in rows)
+    destination = run / OPTIONAL_ARTIFACTS["source_text_units"]
+    if destination.is_file():
+        if destination.read_bytes() != payload:
+            raise HandoffError("immutable_source_units_mismatch", str(destination))
+        return
+    _atomic_write(destination, payload)
+
+
 def build_handoff_manifest(
     run_dir: str | Path,
     *,
@@ -154,6 +395,7 @@ def build_handoff_manifest(
     prediction_version: str = "fulltext_reentry_v5",
     pipeline_profile: str = "fulltext_reentry_high_recall_v5",
     adapter_hint: str = "fulltext_reentry_v5",
+    schema_version: str = HANDOFF_SCHEMA_VERSION,
 ) -> dict[str, Any]:
     run = Path(run_dir).resolve()
     root = Path(runs_root).resolve()
@@ -168,6 +410,8 @@ def build_handoff_manifest(
     if not case_id:
         raise HandoffError("missing_case_id", "re-entry manifest has no case_id")
 
+    if schema_version not in SUPPORTED_HANDOFF_SCHEMA_VERSIONS:
+        raise HandoffError("unsupported_schema", schema_version)
     artifact_specs: dict[str, dict[str, Any]] = {}
     for required, mapping in ((True, REQUIRED_ARTIFACTS), (False, OPTIONAL_ARTIFACTS)):
         for logical_name, relative in mapping.items():
@@ -182,6 +426,7 @@ def build_handoff_manifest(
                 "size_bytes": path.stat().st_size,
                 "record_count": _jsonl_count(path) if path.suffix == ".jsonl" else None,
                 "required": required,
+                "schema_version": _artifact_schema_version(logical_name, path),
             }
 
     input_count = artifact_specs["input_fulltext_claims"]["record_count"]
@@ -228,8 +473,11 @@ def build_handoff_manifest(
         "adapter_hint": adapter_hint,
         "source_artifacts": {key: value["sha256"] for key, value in sorted(artifact_specs.items())},
     }
-    return {
-        "schema_version": HANDOFF_SCHEMA_VERSION,
+    domain = _domain_classification(case_id, effective_lineage, root)
+    capabilities = _capability_summary(run, artifact_specs, conflict_count=conflict)
+    source_units_spec = artifact_specs.get("source_text_units")
+    manifest = {
+        "schema_version": schema_version,
         "case_id": case_id,
         "source_run_id": run.name,
         "source_run_relative_path": run_relative,
@@ -264,12 +512,31 @@ def build_handoff_manifest(
         "generated_at": completed_at or datetime.now(timezone.utc).isoformat(),
         "completed_at": completed_at,
     }
+    if schema_version == HANDOFF_SCHEMA_VERSION:
+        manifest.update({
+            "domain_classification": domain,
+            "domain_classification_snapshot_hash": hashlib.sha256(canonical_json(domain)).hexdigest(),
+            "capabilities": capabilities,
+            "source_text_units": ({
+                "artifact_type": "claim_evaluation_source_units",
+                "relative_path": source_units_spec["relative_path"], "sha256": source_units_spec["sha256"],
+                "schema_version": source_units_spec["schema_version"], "record_count": source_units_spec["record_count"],
+                "scope": "selected_for_l1_extraction",
+            } if source_units_spec else None),
+            "identity_contract": {
+                "schema_version": "atlas_stable_identity_v1",
+                "claim_id": "run_scoped_extraction_record_id", "claim_identity_hash": "content_stable_claim_identity",
+                "source_record_hash": "artifact_record_identity", "source_unit_id": "selected_source_text_unit_identity",
+                "paper_identity_priority": ["pmid", "pmcid", "doi", "paper_id"],
+            },
+        })
+    return manifest
 
 
 def validate_handoff(manifest_path: str | Path, *, runs_root: str | Path = "runs", verify_hashes: bool = True) -> dict[str, Any]:
     path = Path(manifest_path).resolve()
     manifest = _json(path)
-    if manifest.get("schema_version") != HANDOFF_SCHEMA_VERSION:
+    if manifest.get("schema_version") not in SUPPORTED_HANDOFF_SCHEMA_VERSIONS:
         raise HandoffError("unsupported_schema", str(manifest.get("schema_version")))
     if manifest.get("run_status") != "completed":
         raise HandoffError("run_not_completed", str(manifest.get("run_status")))
@@ -297,18 +564,42 @@ def validate_handoff(manifest_path: str | Path, *, runs_root: str | Path = "runs
             raise HandoffError("size_mismatch", str(logical_name))
         if artifact.suffix == ".jsonl" and _jsonl_count(artifact) != spec.get("record_count"):
             raise HandoffError("record_count_mismatch", str(logical_name))
-    return {"manifest": manifest, "manifest_hash": sha256_file(path), "run_dir": run, "warnings": warnings}
+        schema = spec.get("schema_version")
+        supported = SUPPORTED_ARTIFACT_SCHEMAS.get(logical_name)
+        if schema and supported and schema not in supported:
+            raise HandoffError("unsupported_artifact_schema", f"{logical_name}:{schema}")
+    if manifest.get("schema_version") == HANDOFF_SCHEMA_VERSION:
+        if not isinstance(manifest.get("capabilities"), dict):
+            raise HandoffError("missing_capabilities", CAPABILITY_SCHEMA_VERSION)
+        if not isinstance(manifest.get("domain_classification"), dict):
+            raise HandoffError("missing_domain_classification", "domain_classification")
+    transport_hash = sha256_file(path)
+    if manifest.get("schema_version") == LEGACY_HANDOFF_SCHEMA_VERSION:
+        identity_hash = transport_hash
+    else:
+        material = {
+            "handoff_schema_version": manifest.get("schema_version"), "case_id": manifest.get("case_id"),
+            "artifact_hashes": {key: value.get("sha256") for key, value in sorted(artifacts.items())},
+            "artifact_schemas": {key: value.get("schema_version") for key, value in sorted(artifacts.items())},
+            "domain_classification_snapshot_hash": manifest.get("domain_classification_snapshot_hash"),
+            "capability_summary_schema_version": (manifest.get("capabilities") or {}).get("schema_version"),
+        }
+        identity_hash = hashlib.sha256(canonical_json(material)).hexdigest()
+    return {"manifest": manifest, "manifest_hash": transport_hash, "identity_hash": identity_hash, "run_dir": run, "warnings": warnings}
 
 
 def publish_atlas_handoff(run_dir: str | Path, **kwargs: Any) -> dict[str, Any]:
     run = Path(run_dir).resolve()
+    schema_version = kwargs.get("schema_version", HANDOFF_SCHEMA_VERSION)
+    if schema_version == HANDOFF_SCHEMA_VERSION:
+        _ensure_source_text_units(run, Path(kwargs.get("runs_root", "runs")).resolve(), kwargs.get("lineage"))
     artifacts = run / "artifacts"
     manifest_path = artifacts / MANIFEST_NAME
     ready_path = artifacts / READY_NAME
     manifest = build_handoff_manifest(run, **kwargs)
     payload = canonical_json(manifest)
     digest = hashlib.sha256(payload).hexdigest()
-    marker = canonical_json({"schema_version": HANDOFF_SCHEMA_VERSION, "manifest_sha256": digest})
+    marker = canonical_json({"schema_version": schema_version, "manifest_sha256": digest})
     if manifest_path.is_file() and ready_path.is_file():
         if manifest_path.read_bytes() == payload and ready_path.read_bytes() == marker:
             return {"status": "no_op", "manifest_path": str(manifest_path), "manifest_hash": digest, "manifest": manifest}

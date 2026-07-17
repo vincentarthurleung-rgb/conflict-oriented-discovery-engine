@@ -82,7 +82,7 @@ class AtlasFrontendInitializationTests(unittest.TestCase):
           '/api/session':{user:{display_name:'Owner',role:'owner'},username:'owner',role:'owner',csrf_token:'csrf',allowed_workspaces:['discover','review','library','console','owner'],debug_access:true},
           '/api/cases':{items:[]},
           '/api/owner/projects':{items:[{project_id:'p1',name:'Eleven-case Pilot Readiness',namespace:'pilot'}]},
-          '/api/owner/system-state':{database_path:'data/code_atlas.db',schema_head:'0008_system_a_ingestion_ledger',owner:{username:'owner'},assignment_batch_count:0,adjudication_count:0,metric_result_count:0,active_invite_count:0,projects:[],review_items_by_namespace:[],review_items_by_project:[],assignment_counts:[],annotation_counts:[],gold_counts:[],metric_run_counts:[],quality_warnings:[]}
+          '/api/owner/system-state':{database_path:'data/code_atlas.db',schema_head:'0009_system_a_v2_metadata',owner:{username:'owner'},assignment_batch_count:0,adjudication_count:0,metric_result_count:0,active_invite_count:0,projects:[],review_items_by_namespace:[],review_items_by_project:[],assignment_counts:[],annotation_counts:[],gold_counts:[],metric_run_counts:[],quality_warnings:[]}
         };
         async function fetch(path){ if(!responses[path]) return {ok:false,statusText:'Not Found',json:async()=>({error:'not_found:'+path})}; return {ok:true,json:async()=>responses[path]}; }
         const ctx={console,document,location,localStorage,fetch,navigator:{},setTimeout,requestAnimationFrame:(cb)=>cb(),CSS:{escape:(s)=>String(s)},addEventListener(){}};

@@ -16,7 +16,7 @@ from tests.test_system_b_knowledge_explorer import KnowledgeExplorerTests
 def main() -> None:
     tmp = tempfile.TemporaryDirectory()
     project_root = Path(__file__).resolve().parents[2]
-    root = project_root / "system_b_outputs" / "system_a_sync"
+    root = Path(os.environ.get("ATLAS_DISPLAY_ROOT") or project_root / "system_b_outputs" / "system_a_sync")
     if not (root / "current_projection.json").is_file():
         # Keep the browser harness runnable in a minimal source checkout.
         root = Path(tmp.name) / "kg"

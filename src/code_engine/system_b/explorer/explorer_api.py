@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote
 from .annotation_store import AnnotationStore
@@ -11,6 +12,7 @@ from .dossier_projection import DossierProjection
 from .graph_projection import GraphProjection
 from code_engine.system_b.annotation_schemas import schema_for_item_type
 from code_engine.system_b.annotation_schemas.render_projection import form_projection
+from code_engine.system_b.evaluation.claim_sampling import create_pilot_sample
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
 CASE_CATALOG = {
@@ -87,7 +89,12 @@ class ExplorerAPI:
         self.review_by_id={x["review_item_id"]:x for x in self.review};self.annotations=AnnotationStore(self.review_root,self.review)
         self.paper_metrics=_json(self.review_root/"paper_metrics_starter.json") if self.review_root else {}
         self.annotation_status=self._annotation_status()
-        self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])})
+        case_metadata=_json(self.root/"case_metadata.json")
+        self.case_metadata={row.get("case_id"):row for row in case_metadata.get("items",[]) if isinstance(row,dict) and row.get("case_id")}
+        self.source_text_unit_frame=_jsonl(self.root/"evaluation_staging"/"source_text_unit_frame.jsonl")
+        self.claim_evaluation_readiness=_json(self.root/"evaluation_staging"/"claim_evaluation_readiness.json")
+        self.claim_sampling_root=(self.configured_root/"sampling_batches") if self.registry_path else (self.root.parent/(self.root.name+"_sampling_batches"))
+        self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])}|set(self.case_metadata))
         self.graph=GraphProjection(self);self.dossiers=DossierProjection(self)
         self.projection_manifest=_json(self.root/"projection_manifest.json")
 
@@ -123,10 +130,51 @@ class ExplorerAPI:
         if not self.review_root or not self.review_root.exists(): warnings.append("Review root unavailable; review panels are optional and empty.")
         return {"cases":len(self.cases),"display_entities":len(self.entities),"display_triples":len(self.triples),"display_chains":len(self.chains),"fulltext_evidence_count":fulltext,"conflict_lens_records":len(self.conflicts),"review_queue_count":len(self.review),"warnings":warnings,"scientific_boundary":BOUNDARY}
 
+    def _create_claim_pilot_sample(self, body):
+        if not self.source_text_unit_frame:
+            raise ValueError("source-unit sampling frame is unavailable")
+        try:
+            sample_size=int(body.get("sample_size",50));random_seed=int(body.get("random_seed",20260717))
+        except (TypeError,ValueError) as error:
+            raise ValueError("sample_size and random_seed must be integers") from error
+        def values(key):
+            value=body.get(key,[])
+            if value is None:return []
+            if not isinstance(value,list) or any(not isinstance(item,str) for item in value):raise ValueError(key+" must be a list of strings")
+            return value
+        sample=create_pilot_sample(
+            self.source_text_unit_frame,sample_size=sample_size,random_seed=random_seed,
+            domain_ids=values("domain_ids"),source_scopes=values("source_scopes"),section_types=values("section_types"),
+        )
+        identity={key:sample[key] for key in ("schema_version","frame_hash","random_seed","requested_sample_size","filters")}
+        batch_id="claim-pilot-"+hashlib.sha256(json.dumps(identity,ensure_ascii=False,sort_keys=True,separators=(",", ":")).encode("utf-8")).hexdigest()[:20]
+        target=self.claim_sampling_root/(batch_id+".json")
+        if target.is_file():
+            existing=_json(target);existing["creation_status"]="no_op";return existing
+        payload={**sample,"batch_id":batch_id,"created_at":datetime.now(timezone.utc).isoformat(),"creation_status":"created","conditional_only":True,
+                 "metric_boundary":"This batch can support conditional Claim Precision after annotation. Claim Recall/F1 remain blocked without exhaustive source-unit Gold."}
+        self.claim_sampling_root.mkdir(parents=True,exist_ok=True)
+        temporary=target.with_suffix(".json.tmp")
+        temporary.write_bytes(json.dumps(payload,ensure_ascii=False,sort_keys=True,indent=2).encode("utf-8")+b"\n")
+        temporary.replace(target)
+        return payload
+
     def dispatch(self,path,params=None,method="GET",body=None):
         self._refresh_if_needed()
         params=params or {}
         if path=="/api/summary":return 200,self.summary()
+        if path=="/api/domains":return 200,self._domains(params)
+        if path.startswith("/api/domains/"):
+            tail=unquote(path.removeprefix("/api/domains/"));parts=tail.split("/");domain_id=parts[0]
+            value=self._domain(domain_id)
+            if not value:return 404,{"error":"domain_not_found"}
+            if len(parts)>1 and parts[1]=="cases":return 200,{"items":value["cases"],"total":len(value["cases"])}
+            if len(parts)>1 and parts[1] in {"summary","graph-overview"}:return 200,value
+            return 200,value
+        if path in {"/api/claim-evaluation/readiness","/api/owner/claim-evaluation/readiness"}:return 200,self.claim_evaluation_readiness
+        if path=="/api/owner/claim-evaluation/pilot-samples" and method=="POST":
+            try:return 201,self._create_claim_pilot_sample(body or {})
+            except ValueError as error:return 400,{"error":"invalid_claim_sample_request","detail":str(error)}
         if path=="/api/cases":return 200,{"items":[self._case_summary(x) for x in self.cases],"total":len(self.cases)}
         if path.startswith("/api/case/"):
             case=unquote(path.removeprefix("/api/case/")); return (200,self._case(case)) if case in self.cases else (404,{"error":"case_not_found"})
@@ -214,6 +262,27 @@ class ExplorerAPI:
         if _bool(p,"has_results"):rows=[x for x in rows if x.get("results_section_evidence_count",0)>0]
         if status:rows=[x for x in rows if x.get("conflict_status")==status]
         return sorted(rows,key=lambda x:-x.get("display_priority_score_v2",0))
+
+    def _domain_for_case(self,case):
+        value=(self.case_metadata.get(case) or {}).get("domain_classification") or {}
+        if value.get("primary_domain_id"):
+            return value
+        return {**value,"primary_domain_id":"legacy_unclassified","primary_domain_label":"待分类 / 旧版领域信息","status":value.get("status") or "legacy_unknown"}
+
+    def _domains(self,params=None):
+        groups=defaultdict(list)
+        for case in self.cases:groups[self._domain_for_case(case)["primary_domain_id"]].append(case)
+        items=[]
+        for domain_id,case_ids in sorted(groups.items()):
+            domain=self._domain_for_case(case_ids[0]);summaries=[self._case_summary(case) for case in case_ids]
+            items.append({"domain_id":domain_id,"label":domain.get("primary_domain_label") or domain_id,"status":domain.get("status"),"case_count":len(case_ids),"dossier_count":sum(row["display_triples_count"] for row in summaries),"formal_conflict_count":sum(row["formal_conflict_count"] for row in summaries),"fulltext_case_count":sum(row["capabilities"]["fulltext"]=="available" for row in summaries),"reasoning_available_case_count":sum(row["capabilities"]["reasoning"]=="available" for row in summaries),"context_available_case_count":sum(row["capabilities"]["context"] in {"available","partial"} for row in summaries),"review_progress":{"completed":sum(row["reviewed_items"] for row in summaries),"total":sum(row["review_queue_items"] for row in summaries)}})
+        return {"items":items,"total":len(items),"unclassified_domain_id":"legacy_unclassified"}
+
+    def _domain(self,domain_id):
+        entry=next((row for row in self._domains()["items"] if row["domain_id"]==domain_id),None)
+        if not entry:return None
+        cases=[self._case_summary(case) for case in self.cases if self._domain_for_case(case)["primary_domain_id"]==domain_id]
+        return {**entry,"cases":cases,"graph_overview":{"level":"domain","case_count":len(cases),"scientific_topology_unchanged":True},"secondary_domains_are_tags_only":True}
 
     def _chains(self,p):
         rows=self.chains; case=_one(p,"case_id"); q=_one(p,"q").casefold(); start=_one(p,"start_entity").casefold(); end=_one(p,"end_entity").casefold(); etype=_one(p,"entity_type")
@@ -523,6 +592,17 @@ class ExplorerAPI:
         annotations=sum(1 for x in self.review if x.get("case_id")==case and self.annotations.get(x.get("review_item_id")))
         review_total=sum(x.get("case_id")==case for x in self.review)
         title,question,short_name=CASE_CATALOG.get(case,(case.replace("_"," ").title(),"查看该研究问题下的机制证据。",case))
+        metadata=self.case_metadata.get(case) or {};declared=metadata.get("capabilities") or {}
+        reasoning_declared=declared.get("reasoning_trace") or {}
+        context_declared=declared.get("context_consolidation") or {}
+        fulltext_declared=declared.get("fulltext_l1") or {}
+        reentry_declared=declared.get("reentry") or {}
+        def status(value,fallback):
+            raw=value.get("status")
+            return raw if raw else fallback
+        fallback_reasoning="available" if traces and any((x.get("reasoning_steps") or []) for x in traces) else "produced_but_unusable" if traces else "artifact_missing"
+        fallback_context="available" if contexts else "artifact_missing"
+        domain=self._domain_for_case(case)
         return {
             "case_id":case,"short_name":short_name,"display_name":title,"research_question":question,
             "display_triples_count":len(triples),"display_chains_count":len(chains),
@@ -533,12 +613,16 @@ class ExplorerAPI:
             "formal_conflict_count":sum(x.get("record_type")=="formal_hypothesis" for x in conflicts),
             "review_queue_items":review_total,"reviewed_items":annotations,
             "review_progress":round(annotations/review_total,4) if review_total else None,
+            "domain_classification":domain,
             "capabilities":{
-                "fulltext": "available" if evidence and any("full" in str(x.get("source_scope","")).casefold() for x in evidence) else "unavailable",
-                "reasoning": "available" if traces and all(x.get("trace_status") not in {None,"","invalid"} for x in traces) else "partial" if traces else "unavailable",
-                "context": "available" if contexts else "unavailable",
-                "reentry": "available" if evidence else "legacy_unknown",
+                "fulltext":status(fulltext_declared,"available" if evidence and any("full" in str(x.get("source_scope","")).casefold() for x in evidence) else "artifact_missing"),
+                "reasoning":status(reasoning_declared,fallback_reasoning),
+                "context":status(context_declared,fallback_context),
+                "reentry":status(reentry_declared,"available" if evidence else "legacy_unknown"),
+                "formal_conflict":(declared.get("formal_conflict") or {}).get("status","legacy_unknown"),
+                "details":declared,
             },
+            "context_coverage":context_declared.get("coverage"),"context_slot_coverage":context_declared.get("slot_coverage") or {},
             "last_synced_at":self.projection_manifest.get("generated_at"),
         }
 

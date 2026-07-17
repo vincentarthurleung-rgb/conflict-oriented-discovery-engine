@@ -24,6 +24,7 @@ ITEM_TYPE_SCHEMA_MAP = {
     "hypothesis": "hypothesis_expert_v1",
     "formal_hypothesis": "hypothesis_expert_v1",
     "forward_validation": "forward_validation_v1",
+    "source_unit_claim_gold": "source_unit_claim_gold_v1",
 }
 
 
