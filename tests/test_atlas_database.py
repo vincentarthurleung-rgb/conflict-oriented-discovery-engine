@@ -26,6 +26,7 @@ class AtlasDatabaseTests(unittest.TestCase):
             migrate(url)
             health = sqlite_health(create_atlas_engine(url))
             self.assertEqual(health["status"], "ok")
+            self.assertEqual(health["foreign_key_check"], [])
             self.assertEqual(health["foreign_keys"], 1)
             self.assertEqual(health["journal_mode"], "wal")
             self.assertEqual(health["busy_timeout"], 10000)

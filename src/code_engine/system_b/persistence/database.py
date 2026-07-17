@@ -75,6 +75,7 @@ def session_scope(factory: sessionmaker[Session]) -> Iterator[Session]:
 def sqlite_health(engine: Engine) -> dict:
     with engine.connect() as conn:
         integrity = conn.execute(text("PRAGMA integrity_check")).scalar()
+        foreign_key_check = [dict(row._mapping) for row in conn.execute(text("PRAGMA foreign_key_check")).all()]
         foreign_keys = conn.execute(text("PRAGMA foreign_keys")).scalar()
         journal_mode = conn.execute(text("PRAGMA journal_mode")).scalar()
         busy_timeout = conn.execute(text("PRAGMA busy_timeout")).scalar()
@@ -85,8 +86,9 @@ def sqlite_health(engine: Engine) -> dict:
         except Exception:
             version = None
     return {
-        "status": "ok" if integrity == "ok" and foreign_keys == 1 else "failed",
+        "status": "ok" if integrity == "ok" and foreign_keys == 1 and not foreign_key_check else "failed",
         "integrity_check": integrity,
+        "foreign_key_check": foreign_key_check,
         "foreign_keys": foreign_keys,
         "journal_mode": journal_mode,
         "busy_timeout": busy_timeout,
