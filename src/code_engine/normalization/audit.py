@@ -11,6 +11,8 @@ from code_engine.normalization.candidates import EntityResolutionResult
 
 class EntityResolutionAuditWriter:
     def __init__(self, run_dir: str | Path):
+        self.run_dir = Path(run_dir)
+        self.decision_run_id = self.run_dir.name
         self.artifacts = Path(run_dir) / "artifacts"
         self.artifacts.mkdir(parents=True, exist_ok=True)
         self.candidates_path = self.artifacts / "entity_resolution_candidates.jsonl"
@@ -22,7 +24,14 @@ class EntityResolutionAuditWriter:
         with self.candidates_path.open("a", encoding="utf-8") as handle:
             for candidate in result.candidates:
                 handle.write(candidate.model_dump_json() + "\n")
-        payload = {**result.model_dump(), "provider_trace": provider_trace or []}
+        payload = {
+            **result.model_dump(),
+            "decision_run_id": self.decision_run_id,
+            "source_decision_run_id": None,
+            "completion_mode": "generated",
+            "provider_trace": provider_trace or [],
+            "audit_ref": str(self.decisions_path),
+        }
         with self.decisions_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
         decisions = self._read_lines(self.decisions_path)

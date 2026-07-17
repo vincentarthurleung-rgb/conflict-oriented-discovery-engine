@@ -152,6 +152,35 @@ class ReplayNetworkPassthroughTests(unittest.TestCase):
                 "manifest must explicitly state why entity lookups were skipped"
             )
 
+    def test_l2_replay_regenerates_current_run_entity_decisions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile, plan, source = replay_fixture(root)
+            old_decision = {
+                "decision_run_id": "old_source_run",
+                "request": {"surface": "STALE"},
+                "normalization_status": "unresolved",
+                "decision_reason": "stale_source_decision",
+                "provider_trace": [{"provider_name": "NullProvider"}],
+            }
+            source_decisions = source / "artifacts" / "entity_resolution_decisions.jsonl"
+            source_decisions.write_text(json.dumps(old_decision) + "\n")
+
+            from code_engine.cli.replay_case_from_stage import replay
+            result = replay(profile, plan, source, "l2",
+                            root / "runs", "replay", "r2",
+                            network=False, api=False,
+                            bundle_root=root / "bundles")
+
+            new_run = Path(result["new_run"])
+            decisions_path = new_run / "artifacts" / "entity_resolution_decisions.jsonl"
+            decisions = [json.loads(line) for line in decisions_path.read_text().splitlines() if line.strip()]
+            self.assertTrue(decisions)
+            self.assertFalse(any(item.get("request", {}).get("surface") == "STALE" for item in decisions))
+            self.assertTrue(all(item.get("decision_run_id") == new_run.name for item in decisions))
+            self.assertTrue(all(item.get("completion_mode") == "generated" for item in decisions))
+            self.assertTrue(all(str(item.get("audit_ref", "")).startswith(str(new_run)) for item in decisions))
+
     def test_report_contains_network_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

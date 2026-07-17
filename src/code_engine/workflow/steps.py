@@ -137,14 +137,23 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                    execute: bool = False, network: bool = False, api: bool = False,
                                    entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
                                    entity_llm_cleaner: bool = False,
+                                   resolver_mode: str = "provider_route",
+                                   entity_external_clients=None,
                                    entity_resolution_policy: dict | None = None) -> list[dict[str, Any]]:
-    """Normalize progressive claims while preserving evidence scope."""
+    """Normalize progressive claims while preserving evidence scope.
+
+    Runtime hints are context signals for layer assignment and scoring.  The
+    default resolver path remains entity-type/provider-route controlled; only an
+    explicit internal hint_only mode may skip a mention for missing hints.
+    """
 
     from code_engine.normalization.registry import LocalBiomedicalRegistry
     from code_engine.normalization.resolver import ResolverCascade
     from code_engine.normalization.layered_grounding import (
         decide_l2_evidence_layer, load_runtime_entity_hints, match_runtime_hint,
     )
+    if resolver_mode not in {"provider_route", "hint_only"}:
+        raise ValueError(f"unsupported resolver_mode: {resolver_mode}")
 
     registry_path = Path(entity_registry_path) if entity_registry_path else None
     try:
@@ -160,6 +169,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         registry=registry, execute=execute, network_enabled=network, api_enabled=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
         entity_llm_cleaner=entity_llm_cleaner,
+        external_clients=entity_external_clients,
         adjudicator_policy=entity_resolution_policy,
     )
     hints = load_runtime_entity_hints(run_dir)
@@ -174,10 +184,36 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                 if key: paper_by_id[str(key)] = paper
     observations = []
     for item in records:
-        subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {"expected_entity_type": item.get("subject_type") or ""})
-        obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {"expected_entity_type": item.get("object_type") or ""})
         subject_hint = match_runtime_hint(str(item.get("subject_raw") or ""), hints)
         object_hint = match_runtime_hint(str(item.get("object_raw") or ""), hints)
+        if resolver_mode == "hint_only" and not subject_hint:
+            from code_engine.normalization.models import NormalizationDecision
+            subject = NormalizationDecision(
+                raw_text=str(item.get("subject_raw") or ""),
+                normalized_surface=str(item.get("subject_raw") or "").casefold(),
+                normalization_status="unresolved_fallback",
+                confidence=0.0,
+                decision_reason="no_runtime_hint_match",
+                allow_high_confidence_graph_use=False,
+                entity_resolution_status="unresolved",
+                requires_manual_review=True,
+            )
+        else:
+            subject = resolver.resolve_entity(str(item.get("subject_raw") or ""), {"expected_entity_type": item.get("subject_type") or ""})
+        if resolver_mode == "hint_only" and not object_hint:
+            from code_engine.normalization.models import NormalizationDecision
+            obj = NormalizationDecision(
+                raw_text=str(item.get("object_raw") or ""),
+                normalized_surface=str(item.get("object_raw") or "").casefold(),
+                normalization_status="unresolved_fallback",
+                confidence=0.0,
+                decision_reason="no_runtime_hint_match",
+                allow_high_confidence_graph_use=False,
+                entity_resolution_status="unresolved",
+                requires_manual_review=True,
+            )
+        else:
+            obj = resolver.resolve_entity(str(item.get("object_raw") or ""), {"expected_entity_type": item.get("object_type") or ""})
         paper = paper_by_id.get(str(item.get("paper_id") or ""), {})
         decision = decide_l2_evidence_layer(item, subject, obj, subject_hint, object_hint, hints,
                                             seed_triple=seed_triple, semantic_search_intent=intent_payload,
@@ -817,6 +853,8 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                          entity_registry_path: str | Path | None = None, execute: bool = False,
                          network: bool = False, api: bool = False, entity_network_lookup: bool = False,
                          entity_llm_proposer: bool = False, entity_llm_cleaner: bool = False,
+                         entity_external_clients=None,
+                         resolver_mode: str = "provider_route",
                          entity_resolution_policy=None,
                          pilot_terms: list[str] | None = None, **_: Any) -> StepResult:
     if l1_mode == "legacy":
@@ -829,6 +867,8 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         entity_registry_path=entity_registry_path, execute=execute, network=network, api=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
         entity_llm_cleaner=entity_llm_cleaner,
+        entity_external_clients=entity_external_clients,
+        resolver_mode=resolver_mode,
         entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
     )
     from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl
@@ -872,13 +912,14 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                                                 "context_sources": (item.get("context_compatibility") or {}).get("context_sources", []),
                                                 "core_context_eligible": item.get("core_context_eligible"),
                                                 "excluded_from_core_reason": item.get("excluded_from_core_reason")} for item in observations))
-    candidate_records = []
+    mention_audit_records = []
     entity_audit_records = []
     for item in observations:
         for role in ("subject", "object"):
             norm = (item.get("normalization") or {}).get(role, {})
             match = (item.get("runtime_hint_matches") or {}).get(role)
-            candidate_records.append({
+            resolver_attempted = norm.get("decision_reason") != "no_runtime_hint_match"
+            mention_audit_records.append({
                 "mention": item.get(f"{role}_raw"),
                 "normalized_mention": str(item.get(f"{role}_raw") or "").casefold(),
                 "original_mention": norm.get("original_surface") or item.get(f"{role}_raw"),
@@ -895,9 +936,11 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                 "final_selected_source": norm.get("selected_source", ""),
                 "high_confidence_graph_allowed": norm.get("allow_high_confidence_graph_use", False),
                 "accepted_into_resolver_decision": norm.get("normalization_status") == "resolved",
+                "resolver_invoked": resolver_attempted,
+                "resolver_mode": resolver_mode,
                 "rejection_reason": norm.get("rejection_reason", ""),
                 "used_for_core_graph": bool(item.get("canonical_graph_eligible")),
-                "reason": (match or {}).get("mention_role") or "no_runtime_hint_match",
+                "reason": (match or {}).get("mention_role") or ("no_runtime_hint_match_hint_only_skip" if not resolver_attempted else "no_runtime_hint_match_resolver_attempted"),
             })
             entity_audit_records.append({
                 "observation_id": item.get("observation_id"),
@@ -917,7 +960,11 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                 "canonical_graph_eligible": item.get("canonical_graph_eligible"),
                 "graph_layer": item.get("graph_layer"),
             })
-    candidates_path = run_dir / "artifacts/entity_resolution_candidates.jsonl"; atomic_write_jsonl(candidates_path, iter(candidate_records))
+    candidates_path = run_dir / "artifacts/entity_resolution_candidates.jsonl"
+    candidates_path.touch(exist_ok=True)
+    decisions_path = run_dir / "artifacts/entity_resolution_decisions.jsonl"
+    decisions_path.touch(exist_ok=True)
+    mention_audit_path = run_dir / "artifacts/l2_entity_resolution_mentions.jsonl"; atomic_write_jsonl(mention_audit_path, iter(mention_audit_records))
     entity_audit_path = run_dir / "artifacts/entity_resolution_audit.jsonl"; atomic_write_jsonl(entity_audit_path, iter(entity_audit_records))
     registry_path = run_dir / "artifacts/run_entity_registry.json"
     atomic_write_json(registry_path, {"source": "runtime_l2_resolution", "curated": False,
@@ -976,7 +1023,8 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         artifacts={"l2_abstract_observations": observations_path, "l2_abstract_summary": summary_path,
                    **{key: str(value) for key, value in layer_paths.items()},
                    "l2_exclusion_audit": str(exclusion_path), "context_compatibility_audit": str(context_audit_path), "run_entity_registry": str(registry_path),
-                   "entity_resolution_candidates": str(candidates_path), "entity_resolution_audit_jsonl": str(entity_audit_path)},
+                   "entity_resolution_candidates": str(candidates_path), "entity_resolution_decisions": str(decisions_path),
+                   "entity_resolution_mentions": str(mention_audit_path), "entity_resolution_audit_jsonl": str(entity_audit_path)},
         counts={key: value for key, value in summary.items() if key.endswith("_count")},
         warnings=(["entity_resolution_low_coverage_for_pilot_query"] if low_pilot_coverage else []) + ([] if observations else ["no_abstract_claims_to_normalize"]),
     )
