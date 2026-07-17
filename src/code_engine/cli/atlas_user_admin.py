@@ -20,10 +20,10 @@ def main(argv=None):
     p=argparse.ArgumentParser(description="Manage preconfigured C.O.D.E. Atlas users.");sub=p.add_subparsers(dest="command",required=True)
     for name in ("create-user","reset-password"):
         q=sub.add_parser(name);q.add_argument("--users-file",required=True);q.add_argument("--username",required=True);q.add_argument("--password-env")
-        if name=="create-user":q.add_argument("--display-name",required=True);q.add_argument("--role",choices=("admin","developer","reviewer","pharma"),default="reviewer")
+        if name=="create-user":q.add_argument("--display-name",required=True);q.add_argument("--role",choices=("admin","developer","reviewer","adjudicator","researcher","pharma"),default="reviewer")
     q=sub.add_parser("list-users");q.add_argument("--users-file",required=True)
     q=sub.add_parser("disable-user");q.add_argument("--users-file",required=True);q.add_argument("--username",required=True)
-    q=sub.add_parser("create-invite");q.add_argument("--users-file",required=True);q.add_argument("--label",required=True);q.add_argument("--role",choices=("admin","developer","reviewer","pharma"),default="reviewer");q.add_argument("--max-uses",type=int,default=1);q.add_argument("--expires-in-days",type=int,required=True);q.add_argument("--created-by",default="admin")
+    q=sub.add_parser("create-invite");q.add_argument("--users-file",required=True);q.add_argument("--label",required=True);q.add_argument("--role",choices=("admin","developer","reviewer","adjudicator","researcher","pharma"),default="reviewer");q.add_argument("--max-uses",type=int,default=1);q.add_argument("--expires-in-days",type=int,required=True);q.add_argument("--created-by",default="admin")
     q=sub.add_parser("list-invites");q.add_argument("--users-file",required=True)
     q=sub.add_parser("disable-invite");q.add_argument("--users-file",required=True);q.add_argument("--label",required=True)
     q=sub.add_parser("create-owner");q.add_argument("--database-url",default=None);q.add_argument("--username",required=True);q.add_argument("--display-name",required=True);q.add_argument("--password-env")

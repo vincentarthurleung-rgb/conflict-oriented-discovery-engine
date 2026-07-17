@@ -28,10 +28,20 @@ def main() -> None:
     password = hash_password("correct horse battery staple")
     with session_scope(factory) as session:
         owner = User(username="owner", display_name="Owner", password_hash=password, role="owner", enabled=True)
+        researcher = User(username="researcher", display_name="Researcher", password_hash=password, role="researcher", enabled=True)
         primary = User(username="primary", display_name="Primary", password_hash=password, role="reviewer", enabled=True)
         secondary = User(username="secondary", display_name="Secondary", password_hash=password, role="reviewer", enabled=True)
-        adjudicator = User(username="adjudicator", display_name="Adjudicator", password_hash=password, role="developer", enabled=True)
-        session.add_all([owner, primary, secondary, adjudicator])
+        adjudicator = User(username="adjudicator", display_name="Adjudicator", password_hash=password, role="adjudicator", enabled=True)
+        developer = User(username="developer", display_name="Developer", password_hash=password, role="developer", enabled=True)
+        admin = User(username="admin", display_name="Admin", password_hash=password, role="admin", enabled=True)
+        empty_reviewer = User(username="empty-reviewer", display_name="Empty Reviewer", password_hash=password, role="reviewer", enabled=True)
+        role_changing = User(username="role-changing", display_name="Role Changing", password_hash=password, role="reviewer", enabled=True)
+        session_target = User(username="session-target", display_name="Session Target", password_hash=password, role="researcher", enabled=True)
+        disable_target = User(username="disable-target", display_name="Disable Target", password_hash=password, role="researcher", enabled=True)
+        session.add_all([
+            owner, researcher, primary, secondary, adjudicator, developer, admin,
+            empty_reviewer, role_changing, session_target, disable_target,
+        ])
         session.flush()
         session.add(SystemSetting(key="owner_user_id", value=owner.user_id))
         item1 = add_review_item(session, "browser-item-1", case_id="case-a", namespace="pilot", item_type="conflict_pair")

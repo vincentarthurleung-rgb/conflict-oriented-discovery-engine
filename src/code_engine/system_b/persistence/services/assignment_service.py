@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from code_engine.system_b.persistence.models import Annotation, Assignment, AssignmentBatch, EvaluationProject, EvaluationProtocol, ReviewItem, User, utcnow
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
 from code_engine.system_b.persistence.services.review_service import review_item_to_dict
+from code_engine.system_b.authorization import REVIEW_ASSIGNMENT_ROLES
 
 
 def _json(value) -> str:
@@ -53,6 +54,10 @@ def create_project_with_assignments(
     primary = _user(session, primary_reviewer_user_id)
     secondary = _user(session, secondary_reviewer_user_id)
     adjudicator = _user(session, adjudicator_user_id)
+    if primary.role != "reviewer" or secondary.role != "reviewer":
+        raise ValueError("primary_secondary_must_be_reviewers")
+    if adjudicator.role not in {"adjudicator", "reviewer"}:
+        raise ValueError("adjudicator_role_required")
     if primary.user_id == adjudicator.user_id or secondary.user_id == adjudicator.user_id:
         raise ValueError("adjudicator_must_be_distinct")
 
@@ -159,16 +164,18 @@ def my_assignments(session: Session, *, user_id: str) -> list[dict]:
 
 
 def my_batches(session: Session, *, user_id: str) -> list[dict]:
-    rows = session.execute(select(AssignmentBatch).where(AssignmentBatch.reviewer_user_id == user_id).order_by(AssignmentBatch.batch_index, AssignmentBatch.batch_id)).scalars().all()
+    rows = session.execute(select(AssignmentBatch, EvaluationProject).join(EvaluationProject, AssignmentBatch.project_id == EvaluationProject.project_id).where(AssignmentBatch.reviewer_user_id == user_id).order_by(AssignmentBatch.batch_index, AssignmentBatch.batch_id)).all()
     return [{
         "batch_id": row.batch_id,
         "project_id": row.project_id,
+        "project_name": project.name,
+        "project_namespace": project.namespace,
         "batch_index": row.batch_index,
         "batch_size": row.batch_size,
         "status": row.status,
         "assigned_at": row.assigned_at.isoformat() if row.assigned_at else "",
         "due_at": row.due_at.isoformat() if row.due_at else "",
-    } for row in rows]
+    } for row, project in rows]
 
 
 def my_review_items(
@@ -188,7 +195,7 @@ def my_review_items(
             Annotation.review_item_id == Assignment.review_item_id,
             Annotation.reviewer_user_id == Assignment.reviewer_user_id,
         ))
-        .where(Assignment.reviewer_user_id == user_id)
+        .where(Assignment.reviewer_user_id == user_id, Assignment.assignment_role.in_(REVIEW_ASSIGNMENT_ROLES))
         .order_by(Assignment.assigned_at, ReviewItem.case_id, ReviewItem.review_item_id)
     )
     if case_id:
@@ -268,7 +275,7 @@ def my_review_metrics(session: Session, *, user_id: str) -> dict:
 
 
 def my_progress(session: Session, *, user_id: str) -> dict:
-    rows = session.execute(select(Assignment.status, func.count()).where(Assignment.reviewer_user_id == user_id).group_by(Assignment.status)).all()
+    rows = session.execute(select(Assignment.status, func.count()).where(Assignment.reviewer_user_id == user_id, Assignment.assignment_role.in_(REVIEW_ASSIGNMENT_ROLES)).group_by(Assignment.status)).all()
     counts = {status: count for status, count in rows}
     total = sum(counts.values())
     done = sum(counts.get(status, 0) for status in ("submitted", "skipped", "revisit", "completed"))

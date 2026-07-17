@@ -10,13 +10,14 @@ async function login(page, username = 'owner') {
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.locator('#current-user')).toContainText(username === 'owner' ? 'Owner' : username === 'primary' ? 'Primary' : username);
+  const display = { owner: 'Owner', primary: 'Primary', researcher: 'Researcher' }[username] || username;
+  await expect(page.locator('#current-user')).toContainText(display);
 }
 
 async function finishOnboarding(page) {
   for (;;) {
     const confirm = page.getByRole('button', { name: '我已阅读并确认' });
-    const workspace = page.getByRole('heading', { name: '证据判断工作台' });
+    const workspace = page.getByRole('heading', { name: '我的审核' });
     await expect.poll(async () => {
       if (await workspace.count()) return 'ready';
       if (await confirm.count()) return 'confirm';
@@ -44,7 +45,7 @@ test('researcher completes the Wnt evidence-reading path on real eleven-case dat
   const issues = runtimeAudit(page);
   await page.goto('/login');
   await page.screenshot({ path: `${out}/01-login.png` });
-  await login(page);
+  await login(page, 'researcher');
 
   await expect(page.getByRole('heading', { name: '理解文献证据为何一致，又为何不同' })).toBeVisible();
   await expect(page.locator('.case-card')).toHaveCount(11);
@@ -94,7 +95,7 @@ test('reviewer and owner task workspaces expose actions before internals', async
   await login(reviewer, 'primary');
   await reviewer.goto('/review');
   await finishOnboarding(reviewer);
-  await expect(reviewer.getByRole('heading', { name: '证据判断工作台' })).toBeVisible();
+  await expect(reviewer.getByRole('heading', { name: '我的审核' })).toBeVisible();
   await reviewer.locator('.review-layer-card').first().click();
   await expect(reviewer.locator('.review-save-btn')).toContainText('提交判断并进入下一条');
   // Capture the independently scrolling workbench itself so the task,

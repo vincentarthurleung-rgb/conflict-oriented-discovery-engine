@@ -4,7 +4,9 @@ Values are stored as strings to keep SQLite migrations simple and auditable.
 """
 from __future__ import annotations
 
-ROLES = ("owner", "admin", "developer", "reviewer", "pharma")
+from code_engine.system_b.authorization import GLOBAL_ROLES
+
+ROLES = GLOBAL_ROLES
 PROJECT_NAMESPACES = ("pilot", "production", "calibration", "test")
 PROJECT_STATUSES = ("draft", "active", "frozen", "archived")
 ASSIGNMENT_ROLES = ("primary", "secondary", "expert", "adjudicator")

@@ -24,6 +24,7 @@ from code_engine.system_b.persistence.models import (
     utcnow,
 )
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
+from code_engine.system_b.authorization import can_review_item
 
 
 DEFAULT_PROJECT_NAME = "Atlas default review project"
@@ -237,13 +238,9 @@ def save_annotation(
         assignment_id = assignment.assignment_id
     if assignment:
         project = session.get(EvaluationProject, assignment.project_id)
-        if not project or project.status != "active":
-            raise PermissionError("assignment_project_not_active")
+        if not can_review_item(identity,assignment_owned=assignment.reviewer_user_id==user.user_id,assignment_role=assignment.assignment_role,assignment_open=assignment.status in {"assigned","in_progress","revisit"},project_active=bool(project and project.status=="active")):
+            raise PermissionError("review_authorization_failed")
         namespace = project.namespace
-        if assignment.assignment_role not in {"primary", "secondary", "expert"}:
-            raise PermissionError("assignment_role_cannot_submit_annotation")
-        if assignment.status not in {"assigned", "in_progress", "revisit"}:
-            raise PermissionError("assignment_not_open")
     else:
         project = ensure_project(session, namespace=namespace, name=project_name)
     client_submission_id = payload.get("client_submission_id") or None

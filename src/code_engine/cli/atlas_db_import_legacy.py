@@ -33,7 +33,7 @@ def _import_users(session, users_file: str | None) -> dict:
             username=normalized,
             display_name=row.get("display_name") or normalized,
             password_hash=row.get("password_hash") or "",
-            role=row.get("role") if row.get("role") in {"owner", "admin", "developer", "reviewer", "pharma"} else "reviewer",
+            role=row.get("role") if row.get("role") in {"owner", "admin", "developer", "reviewer", "adjudicator", "researcher", "pharma"} else "reviewer",
             enabled=bool(row.get("enabled", True)),
         ))
         inserted_users += 1
@@ -42,7 +42,7 @@ def _import_users(session, users_file: str | None) -> dict:
         code_hash = row.get("code_hash")
         if not code_hash or session.execute(select(Invite).where(Invite.code_hash == code_hash)).scalar_one_or_none():
             continue
-        role = row.get("role") if row.get("role") in {"owner", "admin", "developer", "reviewer", "pharma"} else "reviewer"
+        role = row.get("role") if row.get("role") in {"owner", "admin", "developer", "reviewer", "adjudicator", "researcher", "pharma"} else "reviewer"
         session.add(Invite(
             code_hash=code_hash,
             label=row.get("label") or "legacy",

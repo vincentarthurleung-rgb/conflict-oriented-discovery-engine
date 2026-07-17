@@ -10,18 +10,20 @@ from code_engine.system_b.persistence.models import Adjudication, AdjudicationSo
 from code_engine.system_b.persistence.services.agreement_service import compare_annotations, project_disagreements
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
 from code_engine.system_b.persistence.services.review_service import StaleAnnotationRevision, canonical_json, review_item_to_dict
+from code_engine.system_b.authorization import can_adjudicate_item
 
 
 def _can_adjudicate(session: Session, *, identity: dict, project_id: str, review_item_id: str) -> bool:
-    if identity.get("role") == "owner":
-        return True
+    # reviewer is retained only for existing databases where an adjudicator
+    # assignment predates the dedicated global role. Developer/Admin/Owner do
+    # not inherit blind-review access from their global authority.
     assignment = session.execute(select(Assignment).where(
         Assignment.project_id == project_id,
         Assignment.review_item_id == review_item_id,
         Assignment.reviewer_user_id == identity.get("user_id"),
         Assignment.assignment_role == "adjudicator",
     )).scalar_one_or_none()
-    return bool(assignment)
+    return can_adjudicate_item(identity, assignment_owned=bool(assignment), double_submitted=True, disagreement=True)
 
 
 def adjudication_queue(session: Session, *, identity: dict, project_id: str | None = None) -> list[dict]:
@@ -36,10 +38,36 @@ def adjudication_queue(session: Session, *, identity: dict, project_id: str | No
     return rows
 
 
+def adjudication_summary(session: Session, *, identity: dict) -> dict:
+    if identity.get("role") not in {"adjudicator", "reviewer"}:
+        raise PermissionError("adjudication_role_required")
+    assignments = session.execute(select(Assignment).where(
+        Assignment.reviewer_user_id == identity.get("user_id"),
+        Assignment.assignment_role == "adjudicator",
+    )).scalars().all()
+    pending = waiting = 0
+    for assignment in assignments:
+        status = compare_annotations(session, project_id=assignment.project_id, review_item_id=assignment.review_item_id).get("status")
+        if status == "needs_adjudication":pending += 1
+        elif status in {"waiting_for_second_annotation", "needs_assignment", "not_gold_eligible"}:waiting += 1
+    completed = session.execute(select(Adjudication).where(
+        Adjudication.adjudicator_user_id == identity.get("user_id"),
+        Adjudication.status == "submitted",
+    )).scalars().all()
+    return {
+        "assigned_count": len(assignments), "pending_count": pending, "waiting_for_double_review_count": waiting,
+        "completed_count": len(completed),
+        "guideline_ambiguity_count": sum("[guideline_ambiguity]" in (row.notes or "") for row in completed),
+        "insufficient_evidence_count": sum(row.final_label == "UNCLEAR" for row in completed),
+    }
+
+
 def adjudication_detail(session: Session, *, identity: dict, project_id: str, review_item_id: str) -> dict:
     if not _can_adjudicate(session, identity=identity, project_id=project_id, review_item_id=review_item_id):
         raise PermissionError("not_assigned_adjudicator")
     comparison = compare_annotations(session, project_id=project_id, review_item_id=review_item_id)
+    if comparison.get("status") != "needs_adjudication":
+        raise PermissionError("adjudication_not_available")
     annotations = session.execute(select(Annotation).where(Annotation.project_id == project_id, Annotation.review_item_id == review_item_id).order_by(Annotation.created_at)).scalars().all()
     item = session.get(ReviewItem, review_item_id)
     current = session.execute(select(Adjudication).where(Adjudication.project_id == project_id, Adjudication.review_item_id == review_item_id)).scalar_one_or_none()
@@ -72,7 +100,7 @@ def submit_adjudication(
     if not user:
         raise PermissionError("adjudicator_not_found")
     comparison = compare_annotations(session, project_id=project_id, review_item_id=review_item_id)
-    if comparison.get("status") not in {"needs_adjudication", "agreement"}:
+    if comparison.get("status") != "needs_adjudication":
         raise ValueError(comparison.get("status") or "not_ready_for_adjudication")
     current = session.execute(select(Adjudication).where(Adjudication.project_id == project_id, Adjudication.review_item_id == review_item_id)).scalar_one_or_none()
     expected = payload.get("expected_revision")

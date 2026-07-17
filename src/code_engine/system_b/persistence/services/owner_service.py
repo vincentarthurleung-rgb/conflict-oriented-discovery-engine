@@ -31,6 +31,7 @@ from code_engine.system_b.annotation_schemas import schema_for_item_type
 from code_engine.system_b.persistence.services.auth_service import create_invite, issue_password_reset
 from code_engine.system_b.persistence.services.agreement_service import project_disagreements
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
+from code_engine.system_b.authorization import CREATABLE_ROLES
 
 
 def validate_single_owner(session: Session) -> dict:
@@ -225,9 +226,9 @@ def owner_pilot_preview(
         user = session.get(User, user_id)
         if not user or not user.enabled:
             errors.append({"code": "user_not_available", "role": label, "user_id": user_id})
-        elif label in {"primary", "secondary"} and user.role not in {"reviewer", "pharma", "developer"}:
+        elif label in {"primary", "secondary"} and user.role != "reviewer":
             errors.append({"code": "reviewer_role_mismatch", "role": label, "user_id": user_id, "actual_role": user.role})
-        elif label == "adjudicator" and user.role not in {"reviewer", "developer", "admin"}:
+        elif label == "adjudicator" and user.role not in {"adjudicator", "reviewer"}:
             errors.append({"code": "adjudicator_role_mismatch", "user_id": user_id, "actual_role": user.role})
         if user and not session.execute(select(func.count()).select_from(UserOnboardingAcknowledgement).where(UserOnboardingAcknowledgement.user_id == user.user_id)).scalar():
             warnings.append({"code": "onboarding_not_yet_acknowledged", "role": label, "user_id": user.user_id})
@@ -294,6 +295,29 @@ def owner_people(session: Session) -> dict:
     return {"items": rows, "total": len(rows)}
 
 
+def owner_adjudication_status(session: Session, *, project_id: str | None = None) -> dict:
+    query = select(Assignment).where(Assignment.assignment_role == "adjudicator")
+    if project_id:
+        query = query.where(Assignment.project_id == project_id)
+    assignments = session.execute(query).scalars().all()
+    items = []
+    for assignment in assignments:
+        comparison = next((row for row in project_disagreements(session, project_id=assignment.project_id) if row.get("review_item_id") == assignment.review_item_id), {"status": "unknown"})
+        items.append({
+            "project_id": assignment.project_id,
+            "review_item_id": assignment.review_item_id,
+            "adjudicator_user_id": assignment.reviewer_user_id,
+            "assignment_status": assignment.status,
+            "workflow_status": comparison.get("status"),
+        })
+    return {
+        "items": items, "total": len(items),
+        "waiting_for_double_review": sum(row["workflow_status"] == "waiting_for_second_annotation" for row in items),
+        "needs_adjudication": sum(row["workflow_status"] == "needs_adjudication" for row in items),
+        "blind_payload_included": False,
+    }
+
+
 def user_status(user: User) -> str:
     if not user.enabled:
         return "disabled"
@@ -344,7 +368,7 @@ def owner_users(session: Session, *, q: str | None = None, role: str | None = No
 
 
 def owner_create_user(session: Session, *, owner: dict, username: str, display_name: str, role: str, temporary_password: bool = True) -> dict:
-    if role == "owner" or role not in {"admin", "developer", "reviewer", "pharma"}:
+    if role == "owner" or role not in CREATABLE_ROLES:
         raise ValueError("invalid_role")
     username = validate_username(username)
     display_name = validate_display_name(display_name)
@@ -379,7 +403,7 @@ def owner_change_role(session: Session, *, owner: dict, user_id: str, role: str)
     user = session.get(User, user_id)
     if not user:
         raise KeyError("user_not_found")
-    if role == "owner" or role not in {"admin", "developer", "reviewer", "pharma"}:
+    if role == "owner" or role not in CREATABLE_ROLES:
         raise ValueError("invalid_role")
     if user.role == "owner":
         raise ValueError("cannot_change_owner_role")
@@ -510,7 +534,7 @@ def owner_quality_alerts(session: Session) -> dict:
     disabled_open = session.execute(select(Assignment, User).join(User, Assignment.reviewer_user_id == User.user_id).where(User.enabled == False, Assignment.status.in_(["assigned", "in_progress", "revisit"]))).all()  # noqa: E712
     if disabled_open:
         alerts.append({"code": "disabled_user_still_has_open_assignments", "severity": "medium", "count": len(disabled_open)})
-    incompatible = session.execute(select(Assignment, User).join(User, Assignment.reviewer_user_id == User.user_id).where(Assignment.assignment_role.in_(["primary", "secondary"]), User.role.notin_(["reviewer", "pharma", "developer", "owner"]))).all()
+    incompatible = session.execute(select(Assignment, User).join(User, Assignment.reviewer_user_id == User.user_id).where(Assignment.assignment_role.in_(["primary", "secondary"]), User.role != "reviewer")).all()
     if incompatible:
         alerts.append({"code": "account_role_incompatible_with_assignment", "severity": "medium", "count": len(incompatible)})
     for invite in session.execute(select(Invite)).scalars().all():

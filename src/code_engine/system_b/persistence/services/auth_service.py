@@ -14,6 +14,7 @@ from werkzeug.security import check_password_hash
 from code_engine.system_b.explorer.auth import hash_invite_code, hash_password, validate_display_name, validate_password_strength, validate_username
 from code_engine.system_b.persistence.models import Invite, InviteUsageEvent, PasswordResetToken, SystemSetting, User, utcnow
 from code_engine.system_b.persistence.services.audit_service import write_audit_event
+from code_engine.system_b.authorization import CREATABLE_ROLES
 
 
 class AuthError(RuntimeError):
@@ -157,7 +158,7 @@ def create_invite(
     project_scope: dict | None = None,
     notes: str = "",
 ) -> Invite:
-    if role not in {"admin", "developer", "reviewer", "pharma"}:
+    if role not in CREATABLE_ROLES:
         raise ValueError("owner invites are not allowed")
     invite = Invite(
         code_hash=hash_invite_code(code),
