@@ -27,16 +27,22 @@ from typing import Any, Literal
 SUPPORTED_ENTITY_TYPES: tuple[str, ...] = (
     "gene",
     "protein",
+    "receptor",
+    "enzyme",
     "drug",
     "compound",
+    "metabolite",
     "pathway",
     "biological_process",
     "phenotype",
     "disease",
     "cell_type",
+    "cell_line",
     "tissue",
-    "experimental_condition",
-    "context",
+    "organ",
+    "clinical_outcome",
+    "assay",
+    "assay_readout",
     "unknown",
 )
 
@@ -46,16 +52,22 @@ SUPPORTED_ENTITY_TYPES: tuple[str, ...] = (
 DEFAULT_ONTOLOGY_ROUTES: dict[str, list[str]] = {
     "gene": ["mygene", "uniprot"],
     "protein": ["uniprot", "mygene"],
+    "receptor": ["uniprot", "chembl"],
+    "enzyme": ["uniprot", "mygene"],
     "drug": ["pubchem", "chembl"],
-    "compound": ["pubchem", "chembl"],
-    "pathway": [],           # future: Reactome, KEGG, WikiPathways
-    "biological_process": [], # future: GO
-    "phenotype": [],          # future: HPO, Disease Ontology
-    "disease": [],            # future: Disease Ontology, MeSH, MONDO
-    "cell_type": [],          # future: Cell Ontology
-    "tissue": [],             # future: Uberon, MeSH
-    "experimental_condition": [],
-    "context": [],
+    "compound": ["pubchem", "chembl", "ols"],
+    "metabolite": ["pubchem", "chembl", "ols"],
+    "pathway": ["ols"],
+    "biological_process": ["ols"],
+    "phenotype": ["ols"],
+    "disease": ["ols"],
+    "cell_type": ["ols"],
+    "cell_line": [],
+    "tissue": ["ols"],
+    "organ": ["ols"],
+    "clinical_outcome": [],
+    "assay": [],
+    "assay_readout": [],
     "unknown": [],
 }
 
@@ -154,6 +166,7 @@ MODIFIER_PATTERNS: list[tuple[str, str]] = [
 
     # inhibition of endogenous X production pattern
     (r"\binhibition\s+of\s+endogenous\s+", "inhibition_of_endogenous_modifier"),
+    (r"\b(?:silenced|knockdown|overexpression|upregulation|downregulation)\s+", "state_prefix_modifier"),
 ]
 
 # Known alias expansions (deterministic, no LLM)
@@ -290,6 +303,7 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
     # Step 3: Post-processing
     # Strip trailing "production" if present after other cleaning
     cleaned = re.sub(r"\s+production\s*$", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"\s+(?:mRNA|protein)?\s*(?:expression|levels?|activity|phosphorylation)\s*$", "", cleaned, flags=re.IGNORECASE).strip()
 
     # Step 4: Check known aliases
     cleaned_lower = cleaned.casefold()
@@ -308,7 +322,8 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
 
 def _infer_entity_type_heuristic(surface: str, l1_hint: str | None = None) -> str:
     """Heuristic entity type inference (no LLM, fast fallback)."""
-    if l1_hint and l1_hint != "unknown":
+    structured_hints = {"assay", "assay_readout", "clinical_outcome", "treatment", "experimental_condition", "context"}
+    if l1_hint and l1_hint != "unknown" and l1_hint not in structured_hints:
         return l1_hint
 
     text = surface.casefold().strip()

@@ -36,6 +36,8 @@ class EntityResolutionAuditWriter:
         CONCRETE_EXTERNAL_PROVIDERS = {
             "PubChemCandidateProvider", "ChEMBLCandidateProvider",
             "MyGeneCandidateProvider", "UniProtCandidateProvider",
+            "OLSOntologyCandidateProvider", "ReactomeCandidateProvider",
+            "CellosaurusCandidateProvider",
         }
         provider_eligible_count = 0
         provider_ineligible_count = 0
@@ -43,6 +45,12 @@ class EntityResolutionAuditWriter:
         provider_ineligible_by_type: dict[str, int] = {}
         provider_ineligible_reason_counts: dict[str, int] = {}
         provider_attempt_by_provider: dict[str, int] = {}
+        provider_candidate_hits_by_provider: dict[str, int] = {}
+        provider_final_accept_by_provider: dict[str, int] = {}
+        provider_network_calls_by_provider: dict[str, int] = {}
+        duplicate_query_by_provider_surface: dict[str, int] = {}
+        seen_provider_surface: set[str] = set()
+        type_status_counts: dict[str, dict[str, int]] = {}
         provider_no_result_count = 0
         provider_ambiguous_count = 0
         provider_resolved_count = 0
@@ -84,6 +92,8 @@ class EntityResolutionAuditWriter:
             has_active_external_provider = len(active_external_providers) > 0
 
             entity_type = request.get("l1_entity_type_hint", "unknown")
+            type_status_counts.setdefault(entity_type, {})
+            type_status_counts[entity_type][status] = type_status_counts[entity_type].get(status, 0) + 1
 
             if has_active_external_provider:
                 provider_eligible_count += 1
@@ -109,6 +119,13 @@ class EntityResolutionAuditWriter:
                 pname = trace.get("provider_name", "")
                 if trace.get("status") not in {"not_applicable", "not_needed"}:
                     provider_attempt_by_provider[pname] = provider_attempt_by_provider.get(pname, 0) + 1
+                    provider_network_calls_by_provider[pname] = provider_network_calls_by_provider.get(pname, 0) + int(trace.get("network_calls_made", 0))
+                    if int(trace.get("candidate_count", 0)) > 0:
+                        provider_candidate_hits_by_provider[pname] = provider_candidate_hits_by_provider.get(pname, 0) + 1
+                    key = f"{pname}\t{surface.casefold()}"
+                    if key in seen_provider_surface and int(trace.get("network_calls_made", 0)) > 0:
+                        duplicate_query_by_provider_surface[key] = duplicate_query_by_provider_surface.get(key, 0) + 1
+                    seen_provider_surface.add(key)
 
             if status == "unresolved":
                 provider_no_result_count += 1
@@ -120,6 +137,10 @@ class EntityResolutionAuditWriter:
                 provider_ambiguous_count += 1
             elif status in {"resolved_external_grounded", "resolved_curated", "resolved_cache"}:
                 provider_resolved_count += 1
+                selected = item.get("selected_candidate") or {}
+                pname = selected.get("provider_name")
+                if pname:
+                    provider_final_accept_by_provider[pname] = provider_final_accept_by_provider.get(pname, 0) + 1
             elif status == "manual_review_required":
                 adjudicator_rejected_count += 1
 
@@ -148,6 +169,11 @@ class EntityResolutionAuditWriter:
             "provider_ineligible_count_by_type": provider_ineligible_by_type,
             "provider_ineligible_reason_counts": provider_ineligible_reason_counts,
             "provider_attempt_count_by_provider": provider_attempt_by_provider,
+            "provider_candidate_hit_count_by_provider": provider_candidate_hits_by_provider,
+            "provider_final_accept_count_by_provider": provider_final_accept_by_provider,
+            "provider_network_calls_by_provider": provider_network_calls_by_provider,
+            "duplicate_network_query_count_by_provider_surface": duplicate_query_by_provider_surface,
+            "type_status_counts": type_status_counts,
             "provider_no_result_count": provider_no_result_count,
             "provider_ambiguous_count": provider_ambiguous_count,
             "provider_resolved_count": provider_resolved_count,

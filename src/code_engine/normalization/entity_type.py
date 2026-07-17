@@ -9,6 +9,65 @@ from __future__ import annotations
 import re
 from typing import Any
 
+CANONICAL_ENTITY_TYPES: tuple[str, ...] = (
+    "gene",
+    "protein",
+    "receptor",
+    "enzyme",
+    "drug",
+    "compound",
+    "metabolite",
+    "pathway",
+    "biological_process",
+    "disease",
+    "phenotype",
+    "cell_type",
+    "cell_line",
+    "tissue",
+    "organ",
+    "clinical_outcome",
+    "assay",
+    "assay_readout",
+    "unknown",
+)
+
+TYPE_ALIASES: dict[str, str] = {
+    "gene_or_protein": "protein",
+    "molecular_endpoint": "assay_readout",
+    "compound_or_biomolecule": "compound",
+    "receptor_complex": "receptor",
+    "protein_complex": "protein",
+    "behavioral_assay": "assay",
+    "treatment": "unknown",
+    "experimental_condition": "unknown",
+    "context": "unknown",
+}
+
+ONTOLOGY_RESOLVABLE_TYPES = {
+    "biological_process",
+    "pathway",
+    "disease",
+    "phenotype",
+    "compound",
+    "metabolite",
+    "cell_type",
+    "cell_line",
+    "tissue",
+    "organ",
+}
+
+STRUCTURED_ATTRIBUTE_TYPES = {
+    "assay",
+    "assay_readout",
+    "clinical_outcome",
+}
+
+
+def canonical_entity_type(entity_type: str | None) -> str:
+    value = str(entity_type or "unknown").strip().casefold()
+    value = TYPE_ALIASES.get(value, value)
+    return value if value in CANONICAL_ENTITY_TYPES else "unknown"
+
 
 def infer_entity_type_candidates(value: str, *, l1_entity_type_hint: str | None = None, provider_candidates: list[Any] | None = None) -> list[dict[str, Any]]:
     ranked: dict[str, dict[str, Any]] = {}

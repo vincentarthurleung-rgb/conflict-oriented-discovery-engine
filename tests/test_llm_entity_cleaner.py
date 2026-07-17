@@ -161,8 +161,8 @@ class LLMEntityCleanerTests(unittest.TestCase):
         result = cleaner.clean("EMT", mention_role="subject")
         head = result.cleaned_head_entities[0]
         self.assertEqual(head.entity_type, "biological_process")
-        # EMT should NOT be routed to MyGene/UniProt
-        self.assertEqual(head.ontology_routes, [])
+        # EMT should route to ontology lookup, not MyGene/UniProt.
+        self.assertEqual(head.ontology_routes, ["ols"])
 
     # Test 10: LLM cleaner splits pathway into gene/protein heads
     def test_splits_grb2_ras_raf_mek_erk_pathway(self):
@@ -437,10 +437,10 @@ class EntityTypeClassificationTests(unittest.TestCase):
         routes = _route_entity_type("gene")
         self.assertTrue(any(r in routes for r in ["mygene", "uniprot"]))
 
-    def test_routing_biological_process_empty(self):
+    def test_routing_biological_process_to_ols(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type
         routes = _route_entity_type("biological_process")
-        self.assertEqual(routes, [])
+        self.assertEqual(routes, ["ols"])
 
 
 # ---------------------------------------------------------------------------
@@ -599,20 +599,20 @@ class CleanerVerifiedRejectedTests(unittest.TestCase):
 class ProviderEligibilityTests(unittest.TestCase):
     """Test the redefined provider eligibility rules."""
 
-    def test_pathway_without_provider_is_ineligible(self):
+    def test_pathway_has_ontology_route(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type
         routes = _route_entity_type("pathway")
-        self.assertEqual(routes, [], "pathway should have no provider routes")
+        self.assertEqual(routes, ["ols"], "pathway should have ontology route")
 
-    def test_biological_process_without_provider_is_ineligible(self):
+    def test_biological_process_has_ontology_route(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type
         routes = _route_entity_type("biological_process")
-        self.assertEqual(routes, [], "biological_process should have no provider routes")
+        self.assertEqual(routes, ["ols"], "biological_process should have ontology route")
 
-    def test_disease_without_provider_is_ineligible(self):
+    def test_disease_has_ontology_route(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type
         routes = _route_entity_type("disease")
-        self.assertEqual(routes, [], "disease should have no provider routes")
+        self.assertEqual(routes, ["ols"], "disease should have ontology route")
 
     def test_drug_has_concrete_provider_routes(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type
@@ -639,10 +639,10 @@ class ProviderEligibilityTests(unittest.TestCase):
         routes = _route_entity_type("clinical_outcome")
         self.assertEqual(routes, [], "clinical_outcome should have no provider routes")
 
-    def test_phenotype_has_no_provider_route(self):
+    def test_phenotype_has_ontology_route(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type
         routes = _route_entity_type("phenotype")
-        self.assertEqual(routes, [], "phenotype should have no provider routes")
+        self.assertEqual(routes, ["ols"], "phenotype should have ontology route")
 
     def test_context_has_no_provider_route(self):
         from code_engine.normalization.llm_entity_cleaner import _route_entity_type

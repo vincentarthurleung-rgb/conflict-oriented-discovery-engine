@@ -6,6 +6,7 @@ from code_engine.normalization.clients.mygene_client import MyGeneClient
 from code_engine.normalization.clients.uniprot_client import UniProtClient
 from code_engine.normalization.clients.pubchem_client import PubChemClient
 from code_engine.normalization.clients.chembl_client import ChEMBLClient
+from code_engine.normalization.clients.ols_client import OLSClient
 
 
 def create_default_clients() -> dict[str, object]:
@@ -15,6 +16,7 @@ def create_default_clients() -> dict[str, object]:
         "uniprot": UniProtClient(),
         "pubchem": PubChemClient(),
         "chembl": ChEMBLClient(),
+        "ols": OLSClient(),
     }
 
 
@@ -23,5 +25,6 @@ __all__ = [
     "UniProtClient",
     "PubChemClient",
     "ChEMBLClient",
+    "OLSClient",
     "create_default_clients",
 ]

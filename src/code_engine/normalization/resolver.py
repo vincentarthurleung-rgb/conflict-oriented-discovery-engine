@@ -18,12 +18,41 @@ from code_engine.normalization.providers.local_cache import LocalCacheProvider
 from code_engine.normalization.providers.local_curated import LocalCuratedProvider
 from code_engine.normalization.providers.mygene import MyGeneCandidateProvider
 from code_engine.normalization.providers.null import NullProvider
+from code_engine.normalization.providers.ontology import OLSOntologyCandidateProvider
 from code_engine.normalization.providers.pubchem import PubChemCandidateProvider
 from code_engine.normalization.providers.uniprot import UniProtCandidateProvider
 from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH, LocalBiomedicalRegistry
+from code_engine.normalization.entity_type import canonical_entity_type
+
+import re
 
 
 DANGEROUS_WARNINGS = {"receptor_complex_to_gene_merge", "metabolite_to_parent_merge", "phenotype_to_gene_merge", "assay_to_phenotype_merge_without_relation"}
+
+
+NON_ENTITY_PARAMETER_RE = re.compile(
+    r"^\s*(?:"
+    r"(?:p\s*[<=>]\s*\d+(?:\.\d+)?)|"
+    r"(?:OD\s*\d{3,4})|"
+    r"(?:\d+(?:\.\d+)?\s*(?:mg\s*/\s*kg|ug\s*/\s*kg|µg\s*/\s*kg|μg\s*/\s*kg|mg|ug|µg|μg|"
+    r"nM|uM|µM|μM|mM|M|mg\s*/\s*mL|ng\s*/\s*mL|ug\s*/\s*mL|µg\s*/\s*mL|μg\s*/\s*mL|"
+    r"s|sec|secs|min|mins|h|hr|hrs|hour|hours|day|days|week|weeks|"
+    r"nm|°C|C|K|rpm|x\s*g|×\s*g|g-force|mL|uL|µL|μL|L|Hz|kHz|%))|"
+    r"(?:Fig\.?|Figure|Table)\s*\d+[A-Za-z]?"
+    r")\s*$",
+    re.I,
+)
+
+
+def _looks_like_non_entity(raw_text: str) -> str | None:
+    text = " ".join(str(raw_text or "").split())
+    if not text:
+        return "empty_surface"
+    if NON_ENTITY_PARAMETER_RE.match(text):
+        return "structured_experimental_parameter"
+    if len(text.split()) > 18 and re.search(r"\b(?:showed|demonstrated|measured|treated|induced|resulted|significantly)\b", text, re.I):
+        return "sentence_or_experimental_description"
+    return None
 
 
 def _legacy_candidate(candidate: EntityCandidate) -> NormalizationCandidate | None:
@@ -69,7 +98,7 @@ class ResolverCascade:
         # the provider trace will not show these providers at all, and the
         # caller's manifest/report can record the skip reason.
         if entity_network_lookup:
-            providers.extend([PubChemCandidateProvider(clients.get("pubchem")), ChEMBLCandidateProvider(clients.get("chembl")), MyGeneCandidateProvider(clients.get("mygene")), UniProtCandidateProvider(clients.get("uniprot"))])
+            providers.extend([PubChemCandidateProvider(clients.get("pubchem")), ChEMBLCandidateProvider(clients.get("chembl")), MyGeneCandidateProvider(clients.get("mygene")), UniProtCandidateProvider(clients.get("uniprot")), OLSOntologyCandidateProvider(clients.get("ols"))])
         if entity_llm_proposer:
             providers.append(LLMCandidateProposerProvider(llm_client))
         providers.append(NullProvider())
@@ -97,8 +126,13 @@ class ResolverCascade:
         lexical = normalize_lexical_surface(raw_text)
         if lexical.invalid:
             return NormalizationDecision(raw_text=lexical.raw_text, normalized_surface=lexical.normalized_surface, normalization_status="empty_or_invalid", confidence=0.0, decision_reason="empty_invalid_or_placeholder_input", warnings=lexical.warnings, entity_resolution_status="unresolved", requires_manual_review=True, **self._domain_metadata())
+        non_entity_reason = _looks_like_non_entity(lexical.raw_text)
+        if non_entity_reason:
+            return NormalizationDecision(raw_text=lexical.raw_text, normalized_surface=lexical.normalized_surface, normalization_status="rejected", confidence=0.0, decision_reason=f"not_entity:{non_entity_reason}", warnings=lexical.warnings + ["entity_resolver_skipped_non_entity_input"], entity_resolution_status="not_entity", requires_manual_review=False, **self._domain_metadata())
         context = context or {}
+        expected_type = canonical_entity_type(context.get("expected_entity_type") or context.get("l1_entity_type_hint"))
         request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), network_enabled=bool(self.execute and self.network_enabled), api_enabled=bool(self.execute and self.api_enabled), execute=self.execute)
+        request.l1_entity_type_hint = expected_type
         result = self.hub.resolve(request)
         selected = result.selected_candidate
         legacy_candidates = [item for item in (_legacy_candidate(candidate) for candidate in result.candidates) if item]
@@ -137,7 +171,7 @@ class ResolverCascade:
                                 domain_id=self.domain_id,
                                 entity_registry_profile=self.entity_registry_profile,
                                 resolver_policy_id=self.resolver_policy_id,
-                                l1_entity_type_hint=head.entity_type,
+                                l1_entity_type_hint=canonical_entity_type(head.entity_type),
                                 paper_id=context.get("paper_id"),
                                 claim_id=context.get("claim_id"),
                                 observation_id=context.get("observation_id"),
@@ -324,6 +358,7 @@ class ResolverCascade:
             "chembl": "ChEMBLCandidateProvider",
             "mygene": "MyGeneCandidateProvider",
             "uniprot": "UniProtCandidateProvider",
+            "ols": "OLSOntologyCandidateProvider",
         }
         target_name = route_map.get(route.casefold())
         if not target_name:

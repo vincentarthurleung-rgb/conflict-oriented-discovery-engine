@@ -5,14 +5,23 @@ from __future__ import annotations
 from code_engine.normalization.candidates import EntityCandidate, EntityResolutionRequest, EntityResolutionResult
 
 
+def _norm(value: str) -> str:
+    return " ".join(str(value or "").casefold().split())
+
+
 DEFAULT_POLICY = {"high_confidence_threshold": 0.82, "ambiguous_margin": 0.08, "external_grounded_min_score": 0.75, "curated_min_score": 0.70, "llm_ungrounded_max_confidence": 0.45}
 
 
 def _score(request: EntityResolutionRequest, candidate: EntityCandidate) -> float:
     score = candidate.overall_score or (0.35 * candidate.match_score + 0.2 * candidate.type_score + 0.25 * candidate.source_reliability + 0.2 * candidate.context_score)
-    surfaces = {candidate.normalized_surface.casefold(), str(candidate.canonical_name or "").casefold(), *(item.casefold() for item in candidate.aliases)}
-    if request.surface.casefold().strip() in surfaces:
+    request_surface = _norm(request.surface)
+    surfaces = {_norm(candidate.normalized_surface), _norm(str(candidate.canonical_name or "")), *(_norm(item) for item in candidate.aliases)}
+    if request_surface in surfaces:
         score = min(1.0, score + (0.1 if candidate.is_grounded else 0.03))
+    elif candidate.is_grounded:
+        contained = any(request_surface and surface and (request_surface in surface or surface in request_surface) and min(len(request_surface), len(surface)) >= 5 for surface in surfaces)
+        if not contained:
+            score *= 0.82
     if request.l1_entity_type_hint and candidate.entity_type == request.l1_entity_type_hint:
         score = min(1.0, score + 0.04)
     elif request.allowed_entity_types and candidate.entity_type not in request.allowed_entity_types:
