@@ -139,7 +139,9 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                    entity_llm_cleaner: bool = False,
                                    resolver_mode: str = "provider_route",
                                    entity_external_clients=None,
-                                   entity_resolution_policy: dict | None = None) -> list[dict[str, Any]]:
+                                   entity_resolution_policy: dict | None = None,
+                                   _drain_external: bool = True,
+                                   _resolver=None) -> list[dict[str, Any]]:
     """Normalize progressive claims while preserving evidence scope.
 
     Runtime hints are context signals for layer assignment and scoring.  The
@@ -167,7 +169,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
     except FileNotFoundError:
         registry = None
 
-    resolver = ResolverCascade(
+    resolver = _resolver or ResolverCascade(
         domain_id=profile.get("domain_id", "general_biomedical"),
         entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"),
         resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"),
@@ -331,6 +333,40 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             observation["core_projection_status"] = "excluded"
             observation["core_projection_reason"] = next((reason for reason in reasons if reason), "composite_endpoint_not_decomposed")
         observations.append(observation)
+    manager = resolver._provider_execution_manager
+    if _drain_external and manager is not None and manager.has_registered_pending():
+        manager.drain_pending()
+        if not manager.stop_requested and not manager.has_registered_pending():
+            artifacts = run_dir / "artifacts"
+            for name in (
+                "entity_resolution_candidates.jsonl",
+                "entity_resolution_decisions.jsonl",
+                "entity_resolution_audit.json",
+            ):
+                path = artifacts / name
+                if path.exists():
+                    path.unlink()
+            return _normalize_progressive_records(
+                records,
+                profile,
+                run_dir,
+                entity_registry_path=entity_registry_path,
+                execute=execute,
+                network=network,
+                api=api,
+                entity_network_lookup=entity_network_lookup,
+                entity_llm_proposer=entity_llm_proposer,
+                entity_llm_cleaner=entity_llm_cleaner,
+                resolver_mode=resolver_mode,
+                entity_external_clients=entity_external_clients,
+                entity_resolution_policy=entity_resolution_policy,
+                _drain_external=False,
+                _resolver=resolver,
+            )
+
+    if manager is not None:
+        manager.finalize()
+
     # Flush LLM cleaner audit files if available
     if resolver._llm_cleaner is not None and resolver._run_dir is not None:
         try:

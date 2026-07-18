@@ -224,6 +224,44 @@ class LLMEntityCleanerTests(unittest.TestCase):
         fields = cleaner.manifest_fields()
         self.assertTrue(fields["entity_llm_cleaner_enabled"])
         self.assertEqual(fields["entity_llm_cleaner_calls_made"], 1)
+        self.assertEqual(fields["cleaner_eligible_mentions"], 1)
+        self.assertEqual(fields["cleaner_actual_calls"], 1)
+
+    def test_persistent_cache_resumes_without_repeating_llm_call(self):
+        first_client = FakeLLMClient()
+        first = self._make_cleaner(first_client)
+        initial = first.clean(
+            "the therapeutic effect of 5-fluorouracil (5-FU)",
+            claim_context="5-FU reduced viability",
+            mention_role="object",
+        )
+        self.assertEqual(len(first_client._calls), 1)
+
+        resumed_client = FakeLLMClient()
+        resumed = self._make_cleaner(resumed_client)
+        cached = resumed.clean(
+            "the therapeutic effect of 5-fluorouracil (5-FU)",
+            claim_context="5-FU reduced viability",
+            mention_role="object",
+        )
+
+        self.assertEqual(len(resumed_client._calls), 0)
+        self.assertEqual(cached.cleaned_head_entities, initial.cleaned_head_entities)
+        self.assertEqual(resumed.manifest_fields()["cleaner_cache_hits"], 1)
+        cache_files = list((self.tmp_path / "entity_llm_cleaner_cache").glob("*.json"))
+        self.assertEqual(len(cache_files), 1)
+        cache_payload = cache_files[0].read_text(encoding="utf-8")
+        self.assertNotIn("5-FU reduced viability", cache_payload)
+
+    def test_deterministic_skip_accounts_for_zero_actual_calls(self):
+        cleaner = self._make_cleaner(llm_client=None, enabled=True)
+        cleaner.clean("overexpression of Trop2", mention_role="subject")
+
+        fields = cleaner.manifest_fields()
+        self.assertEqual(fields["cleaner_eligible_mentions"], 1)
+        self.assertEqual(fields["cleaner_deterministic_skip"], 1)
+        self.assertEqual(fields["cleaner_actual_calls"], 0)
+        self.assertEqual(fields["cleaner_pending"], 0)
 
     # Test: update_verification_status works
     def test_update_verification_status(self):

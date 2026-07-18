@@ -158,13 +158,19 @@ def classify_provider_exception(exc: BaseException) -> str:
     name = type(exc).__name__.lower()
     message = str(exc).lower()
     if isinstance(exc, TimeoutError) or "timeout" in name or "timed out" in message:
+        if "connect" in name or "connect" in message:
+            return "connection_timeout"
         return "read_timeout"
-    if "connect" in name or "connection" in name:
-        return "connection_error"
     if "dns" in message or "name resolution" in message or "gaierror" in name:
         return "dns_error"
     if "ssl" in name or "tls" in message or "certificate" in message:
         return "tls_error"
+    if "connection reset" in message or "remote end closed" in message or "remote closed" in message:
+        return "remote_closed"
+    if "connect" in name or "connect" in message:
+        return "connection_timeout"
+    if "connection" in name or "connection" in message:
+        return "connection_error"
     if "429" in message:
         return "http_429"
     for code in ("500", "502", "503", "504"):
@@ -176,7 +182,7 @@ def classify_provider_exception(exc: BaseException) -> str:
 class L2ProviderExecutionManager:
     """Persistent ledger/cache for patient L2 provider lookups."""
 
-    def __init__(self, run_dir: str | Path, *, config: ProviderExecutionConfig | None = None, run_id: str | None = None, time_fn: Callable[[], float] | None = None, sleep_fn: Callable[[float], None] | None = None):
+    def __init__(self, run_dir: str | Path, *, config: ProviderExecutionConfig | None = None, run_id: str | None = None, time_fn: Callable[[], float] | None = None, sleep_fn: Callable[[float], None] | None = None, install_signal_handlers: bool = True):
         self.run_dir = Path(run_dir)
         self.run_id = run_id or self.run_dir.name
         self.config = config or ProviderExecutionConfig.from_env()
@@ -186,6 +192,7 @@ class L2ProviderExecutionManager:
         self.ledger_path = self.artifacts / "l2_provider_query_ledger.json"
         self.summary_path = self.artifacts / "l2_provider_query_ledger_summary.json"
         self.heartbeat_path = self.artifacts / "l2_provider_heartbeat.json"
+        self.terminal_state_path = self.artifacts / "l2_provider_terminal_state.json"
         self.cache_dir = self.artifacts / "l2_provider_result_cache"
         self.lock = threading.RLock()
         self.states: dict[str, ProviderQueryState] = {}
@@ -193,6 +200,7 @@ class L2ProviderExecutionManager:
         self.consecutive_failures: dict[str, int] = {}
         self.stop_requested = False
         self.active: dict[str, Any] | None = None
+        self.jobs: dict[str, tuple[str, EntityResolutionRequest, Any, Callable[[], list[dict[str, Any]]], str, int]] = {}
         self.metrics = {
             "raw_provider_query_requests": 0,
             "unique_provider_query_keys": 0,
@@ -200,12 +208,16 @@ class L2ProviderExecutionManager:
             "persistent_cache_hits": 0,
             "negative_cache_hits": 0,
             "network_attempts": 0,
+            "network_call_units": 0,
+            "network_call_units_by_provider": {},
             "retryable_failures": 0,
             "resumed_queries": 0,
+            "legacy_migrated_queries": 0,
         }
         self._load()
         self._repair_running_from_previous_run()
-        self._install_signal_handlers()
+        if install_signal_handlers:
+            self._install_signal_handlers()
         self._write_all()
 
     def _install_signal_handlers(self) -> None:
@@ -214,13 +226,14 @@ class L2ProviderExecutionManager:
         for sig in (signal.SIGTERM, signal.SIGINT):
             try:
                 previous = signal.getsignal(sig)
-                if previous not in (signal.SIG_DFL, signal.SIG_IGN):
+                if previous not in (signal.SIG_DFL, signal.SIG_IGN) and not getattr(previous, "_l2_provider_signal_handler", False):
                     continue
 
                 def handler(signum, _frame, self=self):
                     self.request_stop(f"signal_{signum}")
                     raise KeyboardInterrupt(f"interrupted_by_signal_{signum}")
 
+                handler._l2_provider_signal_handler = True
                 signal.signal(sig, handler)
             except Exception:
                 continue
@@ -235,6 +248,14 @@ class L2ProviderExecutionManager:
                     state.last_error_message_safe = reason
                     state.next_retry_at = now_iso()
             self._write_all_locked()
+            atomic_write_json(self.terminal_state_path, {
+                "schema_version": "l2_provider_terminal_state.v1",
+                "status": "interrupted",
+                "reason": reason,
+                "run_id": self.run_id,
+                "written_at": now_iso(),
+                "retryable_queries": sum(1 for state in self.states.values() if state.status == "retryable_failed"),
+            })
 
     def _load(self) -> None:
         if not self.ledger_path.exists():
@@ -294,6 +315,10 @@ class L2ProviderExecutionManager:
                     state.last_completed_at = now_iso()
         if self.states:
             self.metrics["unique_provider_query_keys"] = len(self.states)
+            self.metrics["legacy_migrated_queries"] = sum(
+                state.status in {"completed", "negative_terminal"}
+                for state in self.states.values()
+            )
 
     @staticmethod
     def _legacy_provider_cache_key(provider: str, request: EntityResolutionRequest) -> Any:
@@ -343,13 +368,13 @@ class L2ProviderExecutionManager:
 
     def _repair_running_from_previous_run(self) -> None:
         for state in self.states.values():
+            state.attempt_count_current_run = 0
             if state.status == "running" and state.last_run_id != self.run_id:
                 state.status = "retryable_failed"
                 state.last_error_category = "interrupted"
                 state.last_error_message_safe = "previous run ended while query was running"
                 state.next_retry_at = now_iso()
                 self.metrics["resumed_queries"] += 1
-                state.attempt_count_current_run = 0
 
     def _write_all(self) -> None:
         with self.lock:
@@ -421,9 +446,11 @@ class L2ProviderExecutionManager:
                 state.consumers.append(consumer)
             return state
 
-    def execute(self, provider_name: str, request: EntityResolutionRequest, provider_cache_key: Any, search_fn: Callable[[], list[dict[str, Any]]], *, mode: str = "direct") -> tuple[str, list[dict[str, Any]], list[str]]:
+    def execute(self, provider_name: str, request: EntityResolutionRequest, provider_cache_key: Any, search_fn: Callable[[], list[dict[str, Any]]], *, mode: str = "direct", network_call_cost: int = 1, _internal_retry: bool = False) -> tuple[str, list[dict[str, Any]], list[str]]:
         state = self.state_for(provider_name, request, provider_cache_key, mode=mode)
-        self.metrics["raw_provider_query_requests"] += 1
+        self.jobs[state.query_hash] = (provider_name, request.model_copy(deep=True), provider_cache_key, search_fn, mode, max(1, int(network_call_cost)))
+        if not _internal_retry:
+            self.metrics["raw_provider_query_requests"] += 1
         if state.status == "completed" and state.result_cache_ref:
             records = self._read_cache(state)
             self.metrics["persistent_cache_hits"] += 1
@@ -446,6 +473,14 @@ class L2ProviderExecutionManager:
             self._write_all()
             return "retryable_failed", [], ["provider_resolution_pending"]
 
+        cooldown_until = self._provider_cooldown_until(provider_name)
+        if cooldown_until > self.time_fn():
+            state.status = "retryable_failed"
+            state.last_error_category = "provider_cooldown"
+            state.next_retry_at = datetime.fromtimestamp(cooldown_until, tz=timezone.utc).isoformat()
+            self._write_all()
+            return "retry_pending", [], ["provider_resolution_pending:provider_cooldown"]
+
         retry_delays = (0.0,) + self.config.current_run_retry_delays_seconds
         last_category = "provider_exception"
         for attempt_index, delay in enumerate(retry_delays):
@@ -457,14 +492,25 @@ class L2ProviderExecutionManager:
                 state.next_retry_at = now_iso()
                 self._write_all()
                 return "retryable_failed", [], ["provider_resolution_pending"]
-            self._wait_for_cooldown(provider_name)
+            cooldown_until = self._provider_cooldown_until(provider_name)
+            if cooldown_until > self.time_fn():
+                state.status = "retryable_failed"
+                state.last_error_category = "provider_cooldown"
+                state.next_retry_at = datetime.fromtimestamp(cooldown_until, tz=timezone.utc).isoformat()
+                self._write_all()
+                return "retry_pending", [], ["provider_resolution_pending:provider_cooldown"]
+            cooldown = self.cooldowns.get(provider_name)
+            if cooldown and not cooldown.get("recovered_at"):
+                cooldown["probe_attempt"] = True
             try:
-                records = self._attempt(provider_name, state, search_fn)
+                records = self._attempt(provider_name, state, search_fn, network_call_cost)
                 self._write_cache_then_complete(state, records)
                 self.consecutive_failures[provider_name] = 0
+                if cooldown and not cooldown.get("recovered_at"):
+                    cooldown["recovered_at"] = now_iso()
                 status = "completed" if records else "negative_terminal"
                 state.status = status
-                state.last_error_category = None
+                state.last_error_category = None if records else "empty_result"
                 state.last_error_message_safe = None
                 state.next_retry_at = None
                 state.last_completed_at = now_iso()
@@ -479,6 +525,9 @@ class L2ProviderExecutionManager:
                 self._write_cache_then_complete(state, [])
                 self._write_all()
                 return "negative_terminal", [], []
+            except KeyboardInterrupt:
+                self._write_all()
+                raise
             except BaseException as exc:
                 last_category = getattr(exc, "category", classify_provider_exception(exc))
                 state.status = "retryable_failed"
@@ -490,6 +539,76 @@ class L2ProviderExecutionManager:
                 self._record_provider_failure(provider_name, last_category)
                 self._write_all()
         return "retryable_failed", [], [f"provider_resolution_pending:{last_category}"]
+
+    def drain_pending(self) -> dict[str, Any]:
+        """Retry registered non-terminal queries until terminal or interrupted."""
+        while not self.stop_requested:
+            pending = [
+                state for query_hash, state in self.states.items()
+                if query_hash in self.jobs and state.status not in {"completed", "negative_terminal", "cancelled"}
+            ]
+            if not pending:
+                break
+            progressed = False
+            for state in pending:
+                if self.stop_requested:
+                    break
+                if not self._retry_due(state):
+                    continue
+                provider_name, request, provider_cache_key, search_fn, mode, network_call_cost = self.jobs[state.query_hash]
+                self.execute(
+                    provider_name,
+                    request,
+                    provider_cache_key,
+                    search_fn,
+                    mode=mode,
+                    network_call_cost=network_call_cost,
+                    _internal_retry=True,
+                )
+                progressed = True
+            if self.stop_requested:
+                break
+            if not progressed:
+                self.write_heartbeat()
+                delay = self._next_pending_delay(pending)
+                self.sleep_fn(min(max(delay, 0.05), self.config.heartbeat_interval_seconds))
+        self._write_all()
+        return self.summary()
+
+    def finalize(self) -> dict[str, Any]:
+        if self.has_registered_pending() and not self.stop_requested:
+            self.drain_pending()
+        status = "interrupted" if self.stop_requested else (
+            "completed" if not self.has_registered_pending() else "completed_with_pending_external_queries"
+        )
+        payload = {
+            "schema_version": "l2_provider_terminal_state.v1",
+            "status": status,
+            "run_id": self.run_id,
+            "written_at": now_iso(),
+            "status_counts": self.summary().get("status_counts", {}),
+        }
+        atomic_write_json(self.terminal_state_path, payload)
+        return payload
+
+    def has_registered_pending(self) -> bool:
+        return any(
+            query_hash in self.jobs and state.status not in {"completed", "negative_terminal", "cancelled"}
+            for query_hash, state in self.states.items()
+        )
+
+    def _next_pending_delay(self, states: list[ProviderQueryState]) -> float:
+        targets: list[float] = []
+        for state in states:
+            if state.next_retry_at:
+                try:
+                    targets.append(datetime.fromisoformat(state.next_retry_at).timestamp())
+                except ValueError:
+                    pass
+            cooldown = self._provider_cooldown_until(state.provider)
+            if cooldown:
+                targets.append(cooldown)
+        return max(0.05, min(targets, default=self.time_fn() + self.config.heartbeat_interval_seconds) - self.time_fn())
 
     def _retry_due(self, state: ProviderQueryState) -> bool:
         if not state.next_retry_at:
@@ -512,21 +631,17 @@ class L2ProviderExecutionManager:
             self.write_heartbeat(active_provider=provider_name)
             self.sleep_fn(min(1.0, target - self.time_fn()))
 
-    def _wait_for_cooldown(self, provider_name: str) -> None:
+    def _provider_cooldown_until(self, provider_name: str) -> float:
         info = self.cooldowns.get(provider_name)
         if not info:
-            return
+            return 0.0
         try:
-            until = datetime.fromisoformat(str(info.get("cooldown_until"))).timestamp()
+            return datetime.fromisoformat(str(info.get("cooldown_until"))).timestamp()
         except ValueError:
-            return
-        while self.time_fn() < until and not self.stop_requested:
-            info["probe_attempt"] = True
-            self.write_heartbeat(active_provider=provider_name)
-            self.sleep_fn(min(5.0, until - self.time_fn()))
+            return 0.0
 
     def _record_provider_failure(self, provider_name: str, category: str) -> None:
-        retryable = {"connection_timeout", "read_timeout", "connection_error", "dns_error", "tls_error", "http_429", "http_500", "http_502", "http_503", "http_504", "provider_unavailable", "attempt_watchdog_timeout"}
+        retryable = {"connection_timeout", "read_timeout", "remote_closed", "connection_error", "dns_error", "tls_error", "http_429", "http_500", "http_502", "http_503", "http_504", "provider_unavailable", "attempt_watchdog_timeout"}
         if category not in retryable:
             return
         count = self.consecutive_failures.get(provider_name, 0) + 1
@@ -539,12 +654,15 @@ class L2ProviderExecutionManager:
                 "last_error_category": category,
             }
 
-    def _attempt(self, provider_name: str, state: ProviderQueryState, search_fn: Callable[[], list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    def _attempt(self, provider_name: str, state: ProviderQueryState, search_fn: Callable[[], list[dict[str, Any]]], network_call_cost: int) -> list[dict[str, Any]]:
         state.status = "running"
         state.attempt_count_total += 1
         state.attempt_count_current_run += 1
         state.last_attempt_at = now_iso()
         self.metrics["network_attempts"] += 1
+        self.metrics["network_call_units"] += max(1, int(network_call_cost))
+        by_provider = self.metrics.setdefault("network_call_units_by_provider", {})
+        by_provider[provider_name] = int(by_provider.get(provider_name, 0)) + max(1, int(network_call_cost))
         self.active = {"provider": provider_name, "query_hash": state.query_hash, "query_safe": state.normalized_mention, "started_at": self.time_fn()}
         self.write_heartbeat(active_provider=provider_name, active_query_safe=state.normalized_mention)
         self._write_all()
@@ -559,10 +677,16 @@ class L2ProviderExecutionManager:
 
             worker = threading.Thread(target=target, name=f"l2_provider_{provider_name}_{state.query_hash[:8]}", daemon=True)
             worker.start()
-            try:
-                kind, value = result_queue.get(timeout=self.config.attempt_watchdog_seconds)
-            except queue.Empty as exc:
-                raise ProviderRetryableError("attempt_watchdog_timeout", f"{provider_name} attempt watchdog expired") from exc
+            deadline = time.monotonic() + self.config.attempt_watchdog_seconds
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ProviderRetryableError("attempt_watchdog_timeout", f"{provider_name} attempt watchdog expired")
+                try:
+                    kind, value = result_queue.get(timeout=min(remaining, self.config.heartbeat_interval_seconds))
+                    break
+                except queue.Empty:
+                    self.write_heartbeat(active_provider=provider_name, active_query_safe=state.normalized_mention)
             if kind == "error":
                 raise value
             return value

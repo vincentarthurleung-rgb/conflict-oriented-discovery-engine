@@ -9,6 +9,7 @@ from code_engine.normalization.providers.base import ExternalCandidateProvider
 from code_engine.normalization.providers.patient_execution import (
     L2ProviderExecutionManager,
     ProviderExecutionConfig,
+    ProviderNegativeTerminal,
     ProviderRetryableError,
 )
 
@@ -45,6 +46,12 @@ class FakeProvider(ExternalCandidateProvider):
     name = "FakeProvider"
     resource_name = "FakeDB"
     supported_entity_types = ["gene", "protein"]
+
+
+class LegacyPubChemProvider(ExternalCandidateProvider):
+    name = "PubChemCandidateProvider"
+    resource_name = "PubChem"
+    supported_entity_types = ["gene"]
 
 
 def cfg(**kwargs):
@@ -109,6 +116,19 @@ def test_dead_socket_attempt_becomes_retryable_not_negative(tmp_path):
     assert "negative_terminal" not in summary["status_counts"]
 
 
+def test_retryable_provider_result_remains_external_pending_in_hub(tmp_path):
+    from code_engine.normalization.hub import EntityResolutionHub
+
+    client = FakeClient([ProviderRetryableError("read_timeout", "slow provider")])
+    provider = FakeProvider(client, execution_manager=manager(tmp_path))
+
+    result = EntityResolutionHub([provider]).resolve(request())
+
+    assert result.normalization_status == "external_resolution_pending"
+    assert result.decision_reason == "external_provider_resolution_pending"
+    assert "external_provider_resolution_pending" in result.warnings
+
+
 def test_resume_retryable_query_then_completes(tmp_path):
     client = FakeClient([ProviderRetryableError("http_503", "temporary")])
     provider = FakeProvider(client, execution_manager=manager(tmp_path))
@@ -125,6 +145,24 @@ def test_resume_retryable_query_then_completes(tmp_path):
     assert read_summary(tmp_path)["status_counts"]["completed"] == 1
 
 
+def test_pending_queue_drains_without_total_run_deadline(tmp_path):
+    mgr = manager(tmp_path)
+    client = FakeClient([
+        ProviderRetryableError("http_503", "temporary"),
+        [{"provider_record_id": "2", "canonical_id": "DB:2", "canonical_name": "E-cadherin", "entity_type": "gene"}],
+    ])
+    provider = FakeProvider(client, execution_manager=mgr)
+
+    assert provider.propose(request()) == []
+    assert mgr.has_registered_pending()
+
+    terminal = mgr.finalize()
+
+    assert terminal["status"] == "completed"
+    assert not mgr.has_registered_pending()
+    assert len(provider.propose(request())) == 1
+
+
 def test_completed_query_does_not_repeat_network(tmp_path):
     client = FakeClient([[{"provider_record_id": "1", "canonical_id": "DB:1", "canonical_name": "E-cadherin", "entity_type": "gene"}]])
     provider = FakeProvider(client, execution_manager=manager(tmp_path))
@@ -136,6 +174,52 @@ def test_completed_query_does_not_repeat_network(tmp_path):
     assert client.calls == 1
     assert summary["persistent_cache_hits"] == 1
     assert summary["deduplicated_requests"] == 1
+    assert summary["network_call_units"] == 1
+
+
+def test_legacy_decisions_migrate_to_persistent_cache(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    req = request()
+    decision = {
+        "request": req.model_dump(),
+        "candidates": [{
+            "provider_name": "PubChemCandidateProvider",
+            "provider_record_id": "1",
+            "canonical_id": "PubChem:1",
+            "canonical_name": "E-cadherin",
+            "entity_type": "gene",
+        }],
+        "provider_trace": [{
+            "provider_name": "PubChemCandidateProvider",
+            "status": "candidates_returned",
+        }],
+    }
+    (artifacts / "entity_resolution_decisions.jsonl").write_text(json.dumps(decision) + "\n")
+
+    L2ProviderExecutionManager(tmp_path, config=cfg(), install_signal_handlers=False)
+    client = FakeClient([])
+    provider = LegacyPubChemProvider(
+        client,
+        execution_manager=L2ProviderExecutionManager(tmp_path, config=cfg()),
+    )
+
+    assert len(provider.propose(req)) == 1
+    assert client.calls == 0
+    assert read_summary(tmp_path)["persistent_cache_hits"] == 1
+    assert read_summary(tmp_path)["legacy_migrated_queries"] == 1
+
+
+def test_provider_declared_network_call_cost_is_persisted(tmp_path):
+    client = FakeClient([[{"provider_record_id": "1", "canonical_id": "DB:1", "canonical_name": "E-cadherin", "entity_type": "gene"}]])
+    client.network_call_cost = 2
+    provider = FakeProvider(client, execution_manager=manager(tmp_path))
+
+    assert len(provider.propose(request())) == 1
+    summary = read_summary(tmp_path)
+    assert summary["network_attempts"] == 1
+    assert summary["network_call_units"] == 2
+    assert summary["network_call_units_by_provider"] == {"FakeProvider": 2}
 
 
 def test_same_query_multiple_consumers_one_network_call(tmp_path):
@@ -200,12 +284,48 @@ def test_circuit_cooldown_reopens_for_later_probe(tmp_path):
     assert summary["status_counts"]["retryable_failed"] == 1
 
 
+def test_circuit_cooldown_recovers_during_patient_drain(tmp_path):
+    clock = FakeClock()
+    client = FakeClient([
+        ProviderRetryableError("http_503", "down"),
+        [{"provider_record_id": "1", "canonical_id": "DB:1", "canonical_name": "E-cadherin", "entity_type": "gene"}],
+    ])
+    mgr = manager(
+        tmp_path,
+        clock,
+        circuit_failure_threshold=1,
+        provider_cooldown_seconds=5,
+        heartbeat_interval_seconds=5,
+    )
+    provider = FakeProvider(client, execution_manager=mgr)
+
+    assert provider.propose(request()) == []
+    mgr.finalize()
+
+    cooldown = read_summary(tmp_path)["provider_cooldowns"]["FakeProvider"]
+    assert cooldown["probe_attempt"] is True
+    assert cooldown["recovered_at"]
+    assert read_summary(tmp_path)["status_counts"]["completed"] == 1
+
+
 def test_empty_result_enters_negative_cache(tmp_path):
     provider = FakeProvider(FakeClient([[]]), execution_manager=manager(tmp_path))
 
     assert provider.propose(request()) == []
     assert provider.last_status == "no_candidates"
     assert read_summary(tmp_path)["status_counts"]["negative_terminal"] == 1
+
+
+def test_deterministic_4xx_enters_negative_cache(tmp_path):
+    provider = FakeProvider(
+        FakeClient([ProviderNegativeTerminal("deterministic_4xx", "HTTP 404")]),
+        execution_manager=manager(tmp_path),
+    )
+
+    assert provider.propose(request()) == []
+    ledger = json.loads((tmp_path / "artifacts/l2_provider_query_ledger.json").read_text())
+    assert ledger["queries"][0]["status"] == "negative_terminal"
+    assert ledger["queries"][0]["last_error_category"] == "deterministic_4xx"
 
 
 def test_running_from_dead_run_is_recoverable(tmp_path):
@@ -243,3 +363,23 @@ def test_heartbeat_updates_without_ending_run(tmp_path):
     assert heartbeat["active_provider"] == "FakeProvider"
     assert heartbeat["stop_requested"] is False
 
+
+def test_watchdog_wait_emits_periodic_heartbeat(tmp_path):
+    def slow_but_successful():
+        time.sleep(0.12)
+        return [{"provider_record_id": "1", "canonical_id": "DB:1", "canonical_name": "E-cadherin", "entity_type": "gene"}]
+
+    mgr = manager(tmp_path, attempt_watchdog_seconds=0.5, heartbeat_interval_seconds=0.03)
+    heartbeat_calls = 0
+    original = mgr.write_heartbeat
+
+    def counted_heartbeat(**kwargs):
+        nonlocal heartbeat_calls
+        heartbeat_calls += 1
+        return original(**kwargs)
+
+    mgr.write_heartbeat = counted_heartbeat
+    provider = FakeProvider(FakeClient([slow_but_successful]), execution_manager=mgr)
+
+    assert len(provider.propose(request())) == 1
+    assert heartbeat_calls >= 3

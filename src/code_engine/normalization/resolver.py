@@ -106,6 +106,7 @@ class ResolverCascade:
         self.entity_llm_cleaner_enabled = entity_llm_cleaner
         self._llm_client = llm_client
         self._run_dir = Path(run_dir) if run_dir else None
+        self._provider_execution_manager: L2ProviderExecutionManager | None = None
         # LLM cleaner (lazy init)
         self._llm_cleaner: Any = None
         if hub is not None:
@@ -117,6 +118,7 @@ class ResolverCascade:
             external_clients = create_default_clients()
         clients = external_clients or {}
         execution_manager = L2ProviderExecutionManager(run_dir) if run_dir and execute and network_enabled and entity_network_lookup else None
+        self._provider_execution_manager = execution_manager
         providers = []
         if registry is not None:
             providers.append(LocalCuratedProvider(registry=registry))

@@ -359,6 +359,13 @@ class AuditNetworkCallCountTests(unittest.TestCase):
             summary_path = Path(tmp) / "artifacts" / "entity_resolution_audit.json"
             summary = json.loads(summary_path.read_text())
             self.assertEqual(summary["network_calls_made"], 0)
+            self.assertEqual(summary["cleaner_eligible_mentions"], 0)
+            self.assertEqual(summary["cleaner_actual_calls"], 0)
+            self.assertEqual(summary["cleaner_pending"], 0)
+            self.assertEqual(
+                summary["cleaner_accounting_reason"],
+                "entity_llm_cleaner_summary_absent_or_not_enabled",
+            )
 
 
 class ResolverCascadeNetworkGateTests(unittest.TestCase):

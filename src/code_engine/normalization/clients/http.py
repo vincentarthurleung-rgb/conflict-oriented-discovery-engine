@@ -6,7 +6,7 @@ from typing import Any
 
 import requests
 
-from code_engine.normalization.providers.patient_execution import ProviderExecutionConfig, ProviderRetryableError
+from code_engine.normalization.providers.patient_execution import ProviderExecutionConfig, ProviderNegativeTerminal, ProviderRetryableError, classify_provider_exception
 
 
 def provider_timeout() -> tuple[float, float]:
@@ -38,14 +38,14 @@ def get_json(url: str, *, params: dict[str, Any] | None = None, headers: dict[st
     except requests.exceptions.SSLError as exc:
         raise ProviderRetryableError("tls_error", str(exc)) from exc
     except requests.exceptions.ConnectionError as exc:
-        raise ProviderRetryableError("connection_error", str(exc)) from exc
+        category = classify_provider_exception(exc)
+        raise ProviderRetryableError(category if category != "provider_exception" else "connection_error", str(exc)) from exc
     except requests.exceptions.RequestException as exc:
         raise ProviderRetryableError("provider_unavailable", str(exc)) from exc
     raise_for_retryable_status(response)
     if 400 <= response.status_code < 500:
-        return response.status_code, {}
+        raise ProviderNegativeTerminal("deterministic_4xx", f"provider returned HTTP {response.status_code}")
     try:
         return response.status_code, response.json()
     except ValueError as exc:
         raise ProviderRetryableError("remote_closed", str(exc)) from exc
-

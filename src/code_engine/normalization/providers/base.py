@@ -8,7 +8,7 @@ from typing import Any
 
 from code_engine.normalization.candidates import EntityCandidate, EntityResolutionRequest
 from code_engine.normalization.entity_type import canonical_entity_type, compatible_entity_types
-from code_engine.normalization.providers.patient_execution import L2ProviderExecutionManager
+from code_engine.normalization.providers.patient_execution import L2ProviderExecutionManager, ProviderNegativeTerminal
 
 
 class CandidateProvider(ABC):
@@ -77,6 +77,7 @@ class ExternalCandidateProvider(CandidateProvider):
                 request,
                 key,
                 lambda: self.client.search(request.surface, request=request),
+                network_call_cost=int(getattr(self.client, "network_call_cost", 1)),
             )
             self.last_warnings.extend(warnings)
             if status in {"completed_cache_hit", "negative_cache_hit", "retry_pending"}:
@@ -99,7 +100,13 @@ class ExternalCandidateProvider(CandidateProvider):
                 self.last_status = "retry_pending"
                 return []
         else:
-            records = self.client.search(request.surface, request=request)
+            try:
+                records = self.client.search(request.surface, request=request)
+            except ProviderNegativeTerminal as exc:
+                self.last_status = "no_candidates"
+                self.last_warnings = [exc.category]
+                self._query_cache[key] = []
+                return []
             self.last_network_calls = int(getattr(self.client, "network_call_cost", 0))
         records = list(records or [])
         result = []

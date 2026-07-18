@@ -35,6 +35,16 @@ class EntityResolutionHub:
                 warnings.append(warning)
                 trace.append({"provider_name": provider.name, "status": "error", "candidate_count": 0, "warnings": [warning]})
         result = adjudicate_entity_candidates(request, candidates, self.adjudicator_policy)
+        external_pending = any(
+            item.get("status") in {"retry_pending", "retryable_failed"}
+            for item in trace
+        )
+        if result.normalization_status == "unresolved" and external_pending:
+            result.normalization_status = "external_resolution_pending"
+            result.decision_reason = "external_provider_resolution_pending"
+            result.warnings = list(dict.fromkeys(
+                result.warnings + ["external_provider_resolution_pending"]
+            ))
         result.warnings = list(dict.fromkeys(result.warnings + warnings))
         if self.audit_writer:
             result.audit_ref = self.audit_writer.write(result, trace)

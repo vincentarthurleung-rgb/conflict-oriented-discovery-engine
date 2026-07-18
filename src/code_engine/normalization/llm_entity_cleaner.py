@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -89,6 +90,30 @@ CleanerStatus = Literal[
     "disabled",
     "empty_surface",
 ]
+
+CLEANER_CACHE_VERSION = "entity_llm_cleaner_v1"
+
+
+def _atomic_write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    with tmp.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
+
+
+def _atomic_write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    with tmp.open("w", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -485,6 +510,10 @@ class LLMEntityCleaner:
         self.calls_made: int = 0
         self.cleaned_count: int = 0
         self.failed_count: int = 0
+        self.eligible_count: int = 0
+        self.deterministic_skip_count: int = 0
+        self.cache_hits: int = 0
+        self.pending_count: int = 0
         self.suggested_unverified_count: int = 0
         self.external_verified_after_cleaning_count: int = 0
         self.external_lookup_after_cleaning_calls: int = 0
@@ -495,6 +524,7 @@ class LLMEntityCleaner:
 
         # Audit records
         self._audit_records: list[dict[str, Any]] = []
+        self._load_audit_records()
 
     # ------------------------------------------------------------------
     # Stats / manifest helpers
@@ -506,6 +536,12 @@ class LLMEntityCleaner:
             "entity_llm_cleaner_calls_made": self.calls_made,
             "entity_llm_cleaner_cleaned_count": self.cleaned_count,
             "entity_llm_cleaner_failed_count": self.failed_count,
+            "cleaner_eligible_mentions": self.eligible_count,
+            "cleaner_deterministic_skip": self.deterministic_skip_count,
+            "cleaner_cache_hits": self.cache_hits,
+            "cleaner_actual_calls": self.calls_made,
+            "cleaner_failures": self.failed_count,
+            "cleaner_pending": self.pending_count,
             "entity_llm_suggested_unverified_count": self.suggested_unverified_count,
             "entity_external_verified_after_llm_cleaning_count": self.external_verified_after_cleaning_count,
             "entity_external_lookup_after_cleaning_calls_made": self.external_lookup_after_cleaning_calls,
@@ -567,6 +603,30 @@ class LLMEntityCleaner:
             )
 
         # Step 1: Deterministic pre-cleaning (always runs, even without LLM)
+        self.eligible_count += 1
+        cache_key, cache_path = self._cache_identity(
+            mention=mention,
+            claim_context=claim_context,
+            mention_role=mention_role,
+            l1_type_hint=l1_type_hint,
+        )
+        cached = self._read_cache(cache_path)
+        if cached is not None:
+            self.cache_hits += 1
+            result = self._result_from_cache(
+                cached,
+                mention=mention,
+                claim_context=claim_context,
+                mention_role=mention_role,
+                l1_type_hint=l1_type_hint,
+                claim_id=claim_id,
+                observation_id=observation_id,
+            )
+            if result.llm_cleaner_status in {"cleaned", "cleaned_with_warnings"}:
+                self.cleaned_count += 1
+            self._record_audit(result, cache_key=cache_key, cache_hit=True)
+            return result
+
         cleaned_surface, removed_mods, found_aliases, extra_heads = _deterministic_clean(mention)
 
         # Step 2: Try LLM if available
@@ -574,20 +634,31 @@ class LLMEntityCleaner:
         llm_status: CleanerStatus = "no_change_needed"
         llm_warnings: list[str] = []
         residual = ""
+        actual_call_made = False
+        deterministic_skip = False
+        pending = False
 
         if self.llm_client is not None:
             try:
+                actual_call_made = True
+                self.calls_made += 1
                 llm_heads, residual, llm_status, llm_warnings = self._call_llm(
                     mention=mention,
                     claim_context=claim_context,
                     mention_role=mention_role,
                     l1_type_hint=l1_type_hint or "",
                 )
-                self.calls_made += 1
             except Exception as exc:
                 llm_status = "llm_error"
                 llm_warnings = [f"llm_cleaner_error:{type(exc).__name__}:{str(exc)[:200]}"]
                 self.failed_count += 1
+                self.pending_count += 1
+                pending = True
+            else:
+                if llm_status == "llm_error":
+                    self.failed_count += 1
+                    self.pending_count += 1
+                    pending = True
         else:
             llm_status = "llm_unavailable"
             llm_warnings = ["llm_client_not_configured_fallback_to_deterministic"]
@@ -617,6 +688,9 @@ class LLMEntityCleaner:
             merged_heads.extend(extra_heads)
             self.cleaned_count += 1
             status = "cleaned_with_warnings"
+            if not actual_call_made:
+                self.deterministic_skip_count += 1
+                deterministic_skip = True
             if not llm_warnings:
                 llm_warnings.append("llm_unavailable_used_deterministic_fallback")
         else:
@@ -635,6 +709,9 @@ class LLMEntityCleaner:
                 )
             ]
             status = llm_status
+            if llm_status in {"llm_unavailable", "llm_error"} and not pending:
+                self.pending_count += 1
+                pending = True
 
         result = LLMCleanerResult(
             original_mention=mention,
@@ -649,8 +726,16 @@ class LLMEntityCleaner:
             surrounding_context=claim_context,
         )
 
-        # Record audit
-        self._record_audit(result)
+        if not pending:
+            self._write_cache(cache_path, cache_key, result)
+        self._record_audit(
+            result,
+            cache_key=cache_key,
+            actual_call_made=actual_call_made,
+            deterministic_skip=deterministic_skip,
+            cleaner_failure=llm_status == "llm_error",
+            pending=pending,
+        )
         return result
 
     # ------------------------------------------------------------------
@@ -772,10 +857,156 @@ class LLMEntityCleaner:
         return merged
 
     # ------------------------------------------------------------------
+    # Persistent cache / recovery
+    # ------------------------------------------------------------------
+
+    def _cache_identity(
+        self,
+        *,
+        mention: str,
+        claim_context: str,
+        mention_role: str,
+        l1_type_hint: str | None,
+    ) -> tuple[str, Path | None]:
+        payload = {
+            "cache_version": CLEANER_CACHE_VERSION,
+            "normalized_mention": " ".join(mention.casefold().split()),
+            "claim_context_hash": hashlib.sha256(claim_context.encode("utf-8")).hexdigest(),
+            "mention_role": mention_role or "",
+            "l1_type_hint": l1_type_hint or "",
+        }
+        encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+        cache_key = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        path = self.audit_dir / "entity_llm_cleaner_cache" / f"{cache_key}.json" if self.audit_dir else None
+        return cache_key, path
+
+    @staticmethod
+    def _read_cache(path: Path | None) -> dict[str, Any] | None:
+        if path is None or not path.is_file():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if payload.get("cache_version") != CLEANER_CACHE_VERSION:
+            return None
+        result = payload.get("result")
+        return result if isinstance(result, dict) else None
+
+    @staticmethod
+    def _result_from_cache(
+        payload: dict[str, Any],
+        *,
+        mention: str,
+        claim_context: str,
+        mention_role: str,
+        l1_type_hint: str | None,
+        claim_id: str | None,
+        observation_id: str | None,
+    ) -> LLMCleanerResult:
+        heads = [
+            CleanedHeadEntity(
+                surface=str(item.get("surface") or ""),
+                aliases=list(item.get("aliases") or []),
+                entity_type=str(item.get("entity_type") or "unknown"),
+                ontology_routes=list(item.get("ontology_routes") or []),
+                removed_modifiers=list(item.get("removed_modifiers") or []),
+                confidence=float(item.get("confidence") or 0.0),
+                rationale_short=str(item.get("rationale_short") or ""),
+            )
+            for item in payload.get("cleaned_head_entities") or []
+            if isinstance(item, dict) and item.get("surface")
+        ]
+        return LLMCleanerResult(
+            original_mention=mention,
+            cleaned_head_entities=heads,
+            residual_context=str(payload.get("residual_context") or ""),
+            llm_cleaner_status=payload.get("llm_cleaner_status") or "no_change_needed",
+            warnings=list(payload.get("warnings") or []),
+            claim_id=claim_id,
+            observation_id=observation_id,
+            mention_role=mention_role,
+            l1_entity_type_hint=l1_type_hint,
+            surrounding_context=claim_context,
+        )
+
+    @staticmethod
+    def _cache_result_payload(result: LLMCleanerResult) -> dict[str, Any]:
+        return {
+            "cleaned_head_entities": [
+                {
+                    "surface": head.surface,
+                    "aliases": head.aliases,
+                    "entity_type": head.entity_type,
+                    "ontology_routes": head.ontology_routes,
+                    "removed_modifiers": head.removed_modifiers,
+                    "confidence": head.confidence,
+                    "rationale_short": head.rationale_short,
+                }
+                for head in result.cleaned_head_entities
+            ],
+            "residual_context": result.residual_context,
+            "llm_cleaner_status": result.llm_cleaner_status,
+            "warnings": result.warnings,
+        }
+
+    def _write_cache(self, path: Path | None, cache_key: str, result: LLMCleanerResult) -> None:
+        if path is None:
+            return
+        _atomic_write_json(path, {
+            "cache_version": CLEANER_CACHE_VERSION,
+            "cache_key": cache_key,
+            "result": self._cache_result_payload(result),
+        })
+
+    def _load_audit_records(self) -> None:
+        if self.audit_dir is None:
+            return
+        audit_path = self.audit_dir / "entity_llm_cleaner_audit.jsonl"
+        if not audit_path.is_file():
+            return
+        for line in audit_path.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(record, dict):
+                self._audit_records.append(record)
+        self.calls_made = sum(int(bool(row.get("actual_call_made"))) for row in self._audit_records)
+        self.cleaned_count = sum(row.get("llm_cleaner_status") in {"cleaned", "cleaned_with_warnings"} for row in self._audit_records)
+        self.failed_count = sum(int(bool(row.get("cleaner_failure"))) for row in self._audit_records)
+        self.eligible_count = sum(int(bool(row.get("cleaner_eligible"))) for row in self._audit_records)
+        self.deterministic_skip_count = sum(int(bool(row.get("deterministic_skip"))) for row in self._audit_records)
+        self.cache_hits = sum(int(bool(row.get("cache_hit"))) for row in self._audit_records)
+        self.pending_count = sum(int(bool(row.get("pending"))) for row in self._audit_records)
+        summary_path = self.audit_dir / "entity_llm_cleaner_summary.json"
+        try:
+            summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.is_file() else {}
+        except (OSError, json.JSONDecodeError):
+            summary = {}
+        self.calls_made = max(self.calls_made, int(summary.get("cleaner_actual_calls", summary.get("entity_llm_cleaner_calls_made", 0)) or 0))
+        self.cleaned_count = max(self.cleaned_count, int(summary.get("entity_llm_cleaner_cleaned_count", 0) or 0))
+        self.failed_count = max(self.failed_count, int(summary.get("cleaner_failures", summary.get("entity_llm_cleaner_failed_count", 0)) or 0))
+        self.eligible_count = max(self.eligible_count, int(summary.get("cleaner_eligible_mentions", 0) or 0))
+        self.deterministic_skip_count = max(self.deterministic_skip_count, int(summary.get("cleaner_deterministic_skip", 0) or 0))
+        self.cache_hits = max(self.cache_hits, int(summary.get("cleaner_cache_hits", 0) or 0))
+        self.pending_count = max(self.pending_count, int(summary.get("cleaner_pending", 0) or 0))
+
+    # ------------------------------------------------------------------
     # Audit
     # ------------------------------------------------------------------
 
-    def _record_audit(self, result: LLMCleanerResult) -> None:
+    def _record_audit(
+        self,
+        result: LLMCleanerResult,
+        *,
+        cache_key: str,
+        cache_hit: bool = False,
+        actual_call_made: bool = False,
+        deterministic_skip: bool = False,
+        cleaner_failure: bool = False,
+        pending: bool = False,
+    ) -> None:
         """Record audit entry for this cleaning operation."""
         record = {
             "original_mention": result.original_mention,
@@ -814,25 +1045,34 @@ class LLMEntityCleaner:
             "rejection_reason": result.rejection_reason,
             "llm_cleaner_status": result.llm_cleaner_status,
             "warnings": result.warnings,
+            "cleaner_cache_key": cache_key,
+            "cleaner_eligible": True,
+            "cache_hit": cache_hit,
+            "actual_call_made": actual_call_made,
+            "deterministic_skip": deterministic_skip,
+            "cleaner_failure": cleaner_failure,
+            "pending": pending,
         }
         self._audit_records.append(record)
+        self._checkpoint_audit()
 
     def write_audit_files(self, artifacts_dir: Path) -> dict[str, str]:
         """Write all audit files to the artifacts directory."""
         artifacts_dir = Path(artifacts_dir)
         artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-        paths: dict[str, str] = {}
-
-        # Write llm_cleaner_audit.jsonl
         audit_jsonl = artifacts_dir / "entity_llm_cleaner_audit.jsonl"
-        with audit_jsonl.open("a", encoding="utf-8") as f:
-            for record in self._audit_records:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        paths["entity_llm_cleaner_audit_jsonl"] = str(audit_jsonl)
+        summary_path = artifacts_dir / "entity_llm_cleaner_summary.json"
+        _atomic_write_jsonl(audit_jsonl, self._audit_records)
+        _atomic_write_json(summary_path, self._summary_payload())
+        self._merge_entity_audit_accounting(artifacts_dir)
+        return {
+            "entity_llm_cleaner_audit_jsonl": str(audit_jsonl),
+            "entity_llm_cleaner_summary": str(summary_path),
+        }
 
-        # Write summary
-        summary = {
+    def _summary_payload(self) -> dict[str, Any]:
+        return {
             **self.manifest_fields(),
             "total_audit_records": len(self._audit_records),
             "status_distribution": {
@@ -858,11 +1098,34 @@ class LLMEntityCleaner:
                 and r.get("high_confidence_graph_allowed")
             ),
         }
-        summary_path = artifacts_dir / "entity_llm_cleaner_summary.json"
-        summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-        paths["entity_llm_cleaner_summary"] = str(summary_path)
 
-        return paths
+    def _checkpoint_audit(self) -> None:
+        if self.audit_dir is None:
+            return
+        self.write_audit_files(self.audit_dir)
+
+    def _merge_entity_audit_accounting(self, artifacts_dir: Path) -> None:
+        entity_audit_path = artifacts_dir / "entity_resolution_audit.json"
+        if not entity_audit_path.is_file():
+            return
+        try:
+            entity_audit = json.loads(entity_audit_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        fields = {
+            key: self.manifest_fields()[key]
+            for key in (
+                "cleaner_eligible_mentions",
+                "cleaner_deterministic_skip",
+                "cleaner_cache_hits",
+                "cleaner_actual_calls",
+                "cleaner_failures",
+                "cleaner_pending",
+            )
+        }
+        entity_audit.update(fields)
+        entity_audit["cleaner_accounting_reason"] = "recorded_from_entity_llm_cleaner_summary"
+        _atomic_write_json(entity_audit_path, entity_audit)
 
     def update_verification_status(
         self,
@@ -892,6 +1155,7 @@ class LLMEntityCleaner:
                             "final_decision": final_decision,
                             "rejection_reason": rejection_reason or "unknown",
                         })
+                self._checkpoint_audit()
                 break
 
 

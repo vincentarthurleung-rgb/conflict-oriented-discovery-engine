@@ -196,6 +196,30 @@ class EntityResolutionAuditWriter:
             "top_provider_eligible_unresolved_mentions": top_unresolved_eligible[:20],
         }
 
+        cleaner_summary_path = self.artifacts / "entity_llm_cleaner_summary.json"
+        cleaner_summary: dict = {}
+        if cleaner_summary_path.is_file():
+            try:
+                cleaner_summary = json.loads(cleaner_summary_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                cleaner_summary = {}
+        cleaner_accounting = {
+            key: int(cleaner_summary.get(key, 0) or 0)
+            for key in (
+                "cleaner_eligible_mentions",
+                "cleaner_deterministic_skip",
+                "cleaner_cache_hits",
+                "cleaner_actual_calls",
+                "cleaner_failures",
+                "cleaner_pending",
+            )
+        }
+        cleaner_accounting["cleaner_accounting_reason"] = (
+            "recorded_from_entity_llm_cleaner_summary"
+            if cleaner_summary
+            else "entity_llm_cleaner_summary_absent_or_not_enabled"
+        )
+
         self.summary_path.write_text(json.dumps({
             "total_mentions": len(decisions),
             "status_counts": statuses,
@@ -203,6 +227,7 @@ class EntityResolutionAuditWriter:
             "network_calls_made": network_calls,
             "api_calls_made": api_calls,
             "failure_taxonomy": failure_taxonomy,
+            **cleaner_accounting,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
         return str(self.decisions_path)
 

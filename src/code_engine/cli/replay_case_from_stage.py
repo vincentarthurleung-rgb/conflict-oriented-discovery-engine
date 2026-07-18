@@ -144,11 +144,29 @@ def _current_call_accounting(target: Path, *, source: Path, reused: list[str], r
     historical = _historical_call_counts(source_artifacts)
     run_papers = _count_lines(source_artifacts / "run_paper_manifest.jsonl")
     provider_ledger_summary = _read_json(artifacts / "l2_provider_query_ledger_summary.json", {})
+    ledger_network_calls = provider_ledger_summary.get("network_call_units_by_provider") or {}
+    if ledger_network_calls:
+        provider_network = Counter({
+            key: int(value or 0)
+            for provider_name, value in ledger_network_calls.items()
+            if (key := _provider_key(str(provider_name)))
+        })
     current = {
         "abstract_retrieval_http_calls": 0,
         "abstract_documents_downloaded": 0,
         "abstract_l1_provider_calls": 0,
         "l2_entity_llm_cleaner_calls": cleaner_calls,
+        "l2_entity_llm_cleaner_accounting": {
+            key: int(cleaner.get(key, 0) or 0)
+            for key in (
+                "cleaner_eligible_mentions",
+                "cleaner_deterministic_skip",
+                "cleaner_cache_hits",
+                "cleaner_actual_calls",
+                "cleaner_failures",
+                "cleaner_pending",
+            )
+        },
         "l2_entity_llm_proposer_calls": 0,
         "entity_network_calls": dict(provider_network),
         "fulltext_download_calls": 0 if skip_fulltext else None,
@@ -164,6 +182,8 @@ def _current_call_accounting(target: Path, *, source: Path, reused: list[str], r
             "deduplicated_requests": int(provider_ledger_summary.get("deduplicated_requests", 0) or 0),
             "network_attempts": int(provider_ledger_summary.get("network_attempts", 0) or 0),
             "retryable_failures": int(provider_ledger_summary.get("retryable_failures", 0) or 0),
+            "legacy_migrated_queries": int(provider_ledger_summary.get("legacy_migrated_queries", 0) or 0),
+            "network_call_units": int(provider_ledger_summary.get("network_call_units", 0) or 0),
             "status_counts": provider_ledger_summary.get("status_counts", {}),
         },
     }
@@ -323,6 +343,9 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     rerun=[]
     if from_stage=="l2":
         from code_engine.workflow.steps import run_l2_abstract_step,run_abstract_conflict_screening_step
+        if network and entity_network_lookup:
+            from code_engine.normalization.providers.patient_execution import L2ProviderExecutionManager
+            L2ProviderExecutionManager(target, install_signal_handlers=False)
         _clear_current_run_resolver_artifacts(artifacts)
         run_l2_abstract_step(run_dir=target,l1_mode="abstract_screening",execute=True,network=network,api=api,entity_network_lookup=entity_network_lookup,entity_llm_cleaner=entity_llm_cleaner)
         rerun.append("l2")
@@ -388,6 +411,17 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
                 "entity_llm_suggested_unverified_count": int(llm_cleaner_summary.get("entity_llm_suggested_unverified_count", 0)),
                 "entity_external_verified_after_llm_cleaning_count": int(llm_cleaner_summary.get("entity_external_verified_after_llm_cleaning_count", 0)),
                 "entity_external_lookup_after_cleaning_calls_made": int(llm_cleaner_summary.get("entity_external_lookup_after_cleaning_calls_made", 0)),
+                **{
+                    key: int(llm_cleaner_summary.get(key, 0) or 0)
+                    for key in (
+                        "cleaner_eligible_mentions",
+                        "cleaner_deterministic_skip",
+                        "cleaner_cache_hits",
+                        "cleaner_actual_calls",
+                        "cleaner_failures",
+                        "cleaner_pending",
+                    )
+                },
             }
         except (json.JSONDecodeError, OSError):
             llm_cleaner_fields = {"entity_llm_cleaner_enabled": entity_llm_cleaner}

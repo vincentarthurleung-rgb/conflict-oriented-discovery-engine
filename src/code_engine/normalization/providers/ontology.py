@@ -7,6 +7,7 @@ from typing import Any
 
 from code_engine.normalization.candidates import EntityResolutionRequest
 from code_engine.normalization.providers.base import ExternalCandidateProvider
+from code_engine.normalization.providers.patient_execution import ProviderNegativeTerminal
 
 
 TYPE_ONTOLOGY_ROUTES: dict[str, list[str]] = {
@@ -112,6 +113,7 @@ class OLSOntologyCandidateProvider(ExternalCandidateProvider):
                 request,
                 key,
                 lambda: self.client.search(request.surface, request=request, ontologies=ontologies),
+                network_call_cost=int(getattr(self.client, "network_call_cost", 1)),
             )
             self.last_warnings.extend(warnings)
             if status in {"completed_cache_hit", "negative_cache_hit", "retry_pending"}:
@@ -134,7 +136,13 @@ class OLSOntologyCandidateProvider(ExternalCandidateProvider):
                 self.last_status = "retry_pending"
                 return []
         else:
-            records = self.client.search(request.surface, request=request, ontologies=ontologies)
+            try:
+                records = self.client.search(request.surface, request=request, ontologies=ontologies)
+            except ProviderNegativeTerminal as exc:
+                self.last_status = "no_candidates"
+                self.last_warnings = [exc.category]
+                self._query_cache[key] = []
+                return []
             self.last_network_calls = int(getattr(self.client, "network_call_cost", 0))
         records = list(records or [])
         items: list[dict[str, Any]] = []

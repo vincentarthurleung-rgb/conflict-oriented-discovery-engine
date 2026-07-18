@@ -9,7 +9,7 @@ from pydantic import Field, model_validator
 from code_engine.schemas.models import CODEBaseModel
 
 
-EntityResolutionStatus = Literal["resolved_curated", "resolved_external_grounded", "resolved_cache", "ambiguous", "unresolved", "manual_review_required", "external_lookup_not_enabled", "external_provider_not_configured", "llm_suggestion_ungrounded", "error"]
+EntityResolutionStatus = Literal["resolved_curated", "resolved_external_grounded", "resolved_cache", "ambiguous", "unresolved", "external_resolution_pending", "manual_review_required", "external_lookup_not_enabled", "external_provider_not_configured", "llm_suggestion_ungrounded", "error"]
 
 
 class EntityCandidate(CODEBaseModel):
