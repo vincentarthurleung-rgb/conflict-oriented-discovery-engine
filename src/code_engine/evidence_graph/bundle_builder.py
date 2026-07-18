@@ -10,7 +10,7 @@ from typing import Iterable
 
 from .models import EvidenceEdge, RelationEvidenceBundle
 
-KNOWN_DIRECTIONS = {"increase", "decrease", "activate", "inhibit", "no_effect", "mixed"}
+KNOWN_DIRECTIONS = {"positive", "negative", "increase", "decrease", "activate", "inhibit", "no_effect", "mixed"}
 
 
 def stable_id(prefix: str, *parts: object) -> str:

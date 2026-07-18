@@ -382,6 +382,9 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
         finalize_discovery_escalation(target,prepared=prepared,expected=expected,explicitly_disabled=False,shared_summary=shared_fulltext,strict_conflict_count=0)
         rerun.append("l35_fulltext")
     audit_result=l2_audit(target);write_l2_audit(audit_result,artifacts)
+    from code_engine.reporting.whitebox_case import generate_whitebox_case_artifacts
+    generate_whitebox_case_artifacts(target)
+    core_count=sum(1 for x in (artifacts/"l2_core_graph_observations.jsonl").read_text().splitlines() if x.strip()) if (artifacts/"l2_core_graph_observations.jsonl").is_file() else 0
     # --- read entity resolution audit to capture actual network call counts ---
     entity_audit_path = artifacts / "entity_resolution_audit.json"
     entity_network_calls = 0

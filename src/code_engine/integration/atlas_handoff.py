@@ -13,6 +13,9 @@ from typing import Any
 LEGACY_HANDOFF_SCHEMA_VERSION = "atlas_handoff_v1"
 HANDOFF_SCHEMA_VERSION = "atlas_handoff_v2"
 SUPPORTED_HANDOFF_SCHEMA_VERSIONS = {LEGACY_HANDOFF_SCHEMA_VERSION, HANDOFF_SCHEMA_VERSION}
+FULLTEXT_REENTRY_PROFILE = "fulltext_reentry"
+ABSTRACT_L2_PROFILE = "abstract_l2_projection"
+SUPPORTED_HANDOFF_PROFILES = {FULLTEXT_REENTRY_PROFILE, ABSTRACT_L2_PROFILE}
 CAPABILITY_SCHEMA_VERSION = "atlas_capability_effectiveness_v1"
 DOMAIN_TAXONOMY_VERSION = "code_domain_taxonomy_v1"
 SOURCE_UNIT_SCHEMA_VERSION = "claim_source_unit_v1"
@@ -43,6 +46,30 @@ OPTIONAL_ARTIFACTS = {
     "fulltext_context_consolidations": "artifacts/fulltext_context_consolidations.jsonl",
     "fulltext_context_consolidation_summary": "artifacts/fulltext_context_consolidation_summary.json",
     "source_text_units": "artifacts/claim_evaluation_source_units.jsonl",
+}
+ABSTRACT_L2_REQUIRED_ARTIFACTS = {
+    "case_profile": "artifacts/case_domain_profile.json",
+    "search_plan": "artifacts/search_plan.json",
+    "abstract_l1_claims": "artifacts/abstract_l1_claims.jsonl",
+    "run_summary": "artifacts/replay_terminal_state_audit.json",
+    "entity_normalization_summary": "artifacts/l2_abstract_summary.json",
+    "l2_core_graph_observations": "artifacts/l2_core_graph_observations.jsonl",
+    "core_graph_gate_audit": "artifacts/core_graph_gate_audit.jsonl",
+    "formal_graph_edges": "artifacts/merged_evidence_graph_edges.jsonl",
+    "formal_graph_nodes": "artifacts/merged_evidence_graph_nodes.jsonl",
+    "graph_conflict_summary": "artifacts/graph_conflict_summary.json",
+    "graph_conflict_candidates": "artifacts/graph_conflict_candidates.jsonl",
+    "hypothesis_summary": "artifacts/hypothesis_summary.json",
+}
+ABSTRACT_L2_OPTIONAL_ARTIFACTS = {
+    "l2_abstract_observations": "artifacts/l2_abstract_observations.json",
+    "l2_graph_observations": "artifacts/l2_graph_observations.jsonl",
+    "merged_evidence_graph_summary": "artifacts/merged_evidence_graph_summary.json",
+    "core_observation_summary": "artifacts/core_observation_summary.json",
+    "core_observations": "artifacts/core_observations.jsonl",
+    "formal_graph_backfill_summary": "artifacts/formal_graph_backfill_summary.json",
+    "run_paper_manifest": "artifacts/run_paper_manifest.jsonl",
+    "context_compatibility_audit": "artifacts/context_compatibility_audit.jsonl",
 }
 
 SUPPORTED_ARTIFACT_SCHEMAS = {
@@ -130,8 +157,28 @@ def _artifact_schema_version(logical_name: str, path: Path) -> str | None:
             return SOURCE_UNIT_SCHEMA_VERSION
         return versions.pop() if len(versions) == 1 else "mixed" if versions else None
     if path.suffix == ".json":
-        return str(_json(path).get("schema_version") or "") or None
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise HandoffError("malformed_json", f"cannot read {path.name}: {error}") from error
+        return str(value.get("schema_version") or "") or None if isinstance(value, dict) else None
     return None
+
+
+def _artifact_spec(run: Path, logical_name: str, relative: str, required: bool) -> dict[str, Any] | None:
+    path = resolve_artifact(run, relative)
+    if not path.is_file():
+        if required:
+            raise HandoffError("missing_required_artifact", relative)
+        return None
+    return {
+        "relative_path": relative,
+        "sha256": sha256_file(path),
+        "size_bytes": path.stat().st_size,
+        "record_count": _jsonl_count(path) if path.suffix == ".jsonl" else None,
+        "required": required,
+        "schema_version": _artifact_schema_version(logical_name, path),
+    }
 
 
 def _nonempty(value: Any) -> bool:
@@ -533,11 +580,136 @@ def build_handoff_manifest(
     return manifest
 
 
+def build_abstract_l2_handoff_manifest(
+    run_dir: str | Path,
+    *,
+    runs_root: str | Path = "runs",
+    schema_version: str = HANDOFF_SCHEMA_VERSION,
+) -> dict[str, Any]:
+    run = Path(run_dir).resolve()
+    root = Path(runs_root).resolve()
+    try:
+        run_relative = run.relative_to(root).as_posix()
+    except ValueError as error:
+        raise HandoffError("run_outside_root", f"run {run} is outside allowed root {root}") from error
+    if schema_version not in SUPPORTED_HANDOFF_SCHEMA_VERSIONS:
+        raise HandoffError("unsupported_schema", schema_version)
+    artifacts_dir = run / "artifacts"
+    replay = _json(artifacts_dir / "replay_manifest.json")
+    terminal = _json(artifacts_dir / "replay_terminal_state_audit.json") if (artifacts_dir / "replay_terminal_state_audit.json").is_file() else {}
+    scientific_status = terminal.get("final_status") or replay.get("final_status") or replay.get("scientific_status") or "completed"
+    if scientific_status != "completed":
+        raise HandoffError("run_not_completed", str(scientific_status))
+    profile = _json(artifacts_dir / "case_domain_profile.json")
+    case_id = str(profile.get("case_id") or replay.get("case_id") or "")
+    if not case_id:
+        raise HandoffError("missing_case_id", "case profile has no case_id")
+    specs: dict[str, dict[str, Any]] = {}
+    for required, mapping in ((True, ABSTRACT_L2_REQUIRED_ARTIFACTS), (False, ABSTRACT_L2_OPTIONAL_ARTIFACTS)):
+        for logical_name, relative in mapping.items():
+            spec = _artifact_spec(run, logical_name, relative, required)
+            if spec:
+                specs[logical_name] = spec
+    core_count = specs["l2_core_graph_observations"]["record_count"] or 0
+    graph_count = (specs.get("l2_graph_observations") or {}).get("record_count") or 0
+    conflict_summary = _json(artifacts_dir / "graph_conflict_summary.json")
+    hypothesis_summary = _json(artifacts_dir / "hypothesis_summary.json")
+    summary = {
+        "formal_core_observation_count": core_count,
+        "graph_observation_count": graph_count,
+        "conflict_eligible_observation_count": sum(
+            bool(row.get("conflict_eligible"))
+            for row in _jsonl_rows(artifacts_dir / "l2_core_graph_observations.jsonl")
+        ),
+        "true_graph_conflict_count": int(conflict_summary.get("true_graph_conflict_count", 0) or 0),
+        "formal_hypothesis_count": int(hypothesis_summary.get("formal_hypothesis_count", 0) or 0),
+    }
+    content_material = {
+        "handoff_profile": ABSTRACT_L2_PROFILE,
+        "case_id": case_id,
+        "scientific_run_id": run.name,
+        "schema_version": schema_version,
+        "artifacts": {key: value["sha256"] for key, value in sorted(specs.items())},
+        "scientific_summary": summary,
+    }
+    content_hash = hashlib.sha256(canonical_json(content_material)).hexdigest()
+    projection_id = "projection_" + hashlib.sha256(canonical_json({
+        "case_id": case_id,
+        "scientific_run_id": run.name,
+        "handoff_profile": ABSTRACT_L2_PROFILE,
+        "content_hash": content_hash,
+        "schema_version": schema_version,
+    })).hexdigest()[:24]
+    compatibility = {
+        "evidence_scope": "abstract_only",
+        "abstract_l1_reused": True,
+        "fulltext_evidence_available": False,
+        "fulltext_reentry_applied": False,
+        "entity_network_lookup_used": bool(replay.get("entity_network_lookup_enabled")),
+        "entity_llm_cleaner_calls": int(replay.get("entity_llm_cleaner_calls_made", 0) or 0),
+        "formal_graph_generated": True,
+    }
+    domain = _legacy_domain(case_id)
+    capabilities = {
+        "schema_version": CAPABILITY_SCHEMA_VERSION,
+        "abstract_l2": {"status": "available", "record_count": core_count, "usable_record_count": core_count, "coverage": 1.0 if core_count else 0.0},
+        "fulltext_l1": {"status": "artifact_missing", "record_count": 0, "usable_record_count": 0, "coverage": 0.0},
+        "reasoning_trace": {"status": "artifact_missing", "record_count": 0, "usable_record_count": 0, "coverage": 0.0},
+        "context_consolidation": {"status": "artifact_missing", "record_count": 0, "usable_record_count": 0, "coverage": 0.0},
+        "reentry": {"status": "not_applicable", "record_count": 0},
+        "formal_conflict": {"declared": True, "count": summary["true_graph_conflict_count"], "status": "available" if summary["true_graph_conflict_count"] else "available_no_records"},
+    }
+    manifest = {
+        "schema_version": schema_version,
+        "handoff_profile": ABSTRACT_L2_PROFILE,
+        "case_id": case_id,
+        "scientific_run_id": run.name,
+        "source_run_id": run.name,
+        "source_run_relative_path": run_relative,
+        "projection_id": projection_id,
+        "bundle_id": f"{case_id}__{run.name}",
+        "content_hash": content_hash,
+        "run_status": "completed",
+        "scientific_stage": "l2_plus_downstream",
+        "prediction_version": "abstract_l2_projection_v1",
+        "pipeline_profile": "abstract_l2_projection_v1",
+        "adapter_hint": ABSTRACT_L2_PROFILE,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": terminal.get("completed_at") or replay.get("created_at"),
+        "artifacts": dict(sorted(specs.items())),
+        "artifact_manifest": dict(sorted(specs.items())),
+        "counts": {
+            "input_fulltext_claim_count": 0,
+            "exploratory_graph_eligible_count": graph_count,
+            "conflict_eligible_count": summary["conflict_eligible_observation_count"],
+            **summary,
+        },
+        "scientific_summary": summary,
+        "provenance": {
+            "abstract_l1_reused": True,
+            "source_run": replay.get("source_run") or replay.get("replay_source_run"),
+            "current_run_calls": replay.get("current_run_calls") or {},
+        },
+        "compatibility": compatibility,
+        "domain_classification": domain,
+        "domain_classification_snapshot_hash": hashlib.sha256(canonical_json(domain)).hexdigest(),
+        "capabilities": capabilities,
+        "available_capabilities": ["abstract_l2_projection", "formal_core_graph"],
+        "system_a_git_commit": _git_commit(),
+        "configuration_hash": hashlib.sha256(canonical_json(content_material)).hexdigest(),
+    }
+    return manifest
+
+
 def validate_handoff(manifest_path: str | Path, *, runs_root: str | Path = "runs", verify_hashes: bool = True) -> dict[str, Any]:
     path = Path(manifest_path).resolve()
     manifest = _json(path)
     if manifest.get("schema_version") not in SUPPORTED_HANDOFF_SCHEMA_VERSIONS:
         raise HandoffError("unsupported_schema", str(manifest.get("schema_version")))
+    profile = manifest.get("handoff_profile") or FULLTEXT_REENTRY_PROFILE
+    if profile not in SUPPORTED_HANDOFF_PROFILES:
+        raise HandoffError("unsupported_handoff_profile", str(profile))
     if manifest.get("run_status") != "completed":
         raise HandoffError("run_not_completed", str(manifest.get("run_status")))
     root = Path(runs_root).resolve()
@@ -568,6 +740,15 @@ def validate_handoff(manifest_path: str | Path, *, runs_root: str | Path = "runs
         supported = SUPPORTED_ARTIFACT_SCHEMAS.get(logical_name)
         if schema and supported and schema not in supported:
             raise HandoffError("unsupported_artifact_schema", f"{logical_name}:{schema}")
+    if profile == ABSTRACT_L2_PROFILE:
+        for field in ("content_hash", "scientific_summary", "compatibility", "artifact_manifest"):
+            if not manifest.get(field):
+                raise HandoffError("missing_abstract_l2_field", field)
+        if manifest.get("compatibility", {}).get("evidence_scope") != "abstract_only":
+            raise HandoffError("invalid_abstract_l2_scope", str(manifest.get("compatibility", {}).get("evidence_scope")))
+        for logical_name in ABSTRACT_L2_REQUIRED_ARTIFACTS:
+            if logical_name not in artifacts:
+                raise HandoffError("missing_required_artifact", logical_name)
     if manifest.get("schema_version") == HANDOFF_SCHEMA_VERSION:
         if not isinstance(manifest.get("capabilities"), dict):
             raise HandoffError("missing_capabilities", CAPABILITY_SCHEMA_VERSION)
@@ -578,9 +759,10 @@ def validate_handoff(manifest_path: str | Path, *, runs_root: str | Path = "runs
         identity_hash = transport_hash
     else:
         material = {
-            "handoff_schema_version": manifest.get("schema_version"), "case_id": manifest.get("case_id"),
+            "handoff_schema_version": manifest.get("schema_version"), "handoff_profile": profile, "case_id": manifest.get("case_id"),
             "artifact_hashes": {key: value.get("sha256") for key, value in sorted(artifacts.items())},
             "artifact_schemas": {key: value.get("schema_version") for key, value in sorted(artifacts.items())},
+            "content_hash": manifest.get("content_hash"),
             "domain_classification_snapshot_hash": manifest.get("domain_classification_snapshot_hash"),
             "capability_summary_schema_version": (manifest.get("capabilities") or {}).get("schema_version"),
         }
@@ -590,13 +772,18 @@ def validate_handoff(manifest_path: str | Path, *, runs_root: str | Path = "runs
 
 def publish_atlas_handoff(run_dir: str | Path, **kwargs: Any) -> dict[str, Any]:
     run = Path(run_dir).resolve()
-    schema_version = kwargs.get("schema_version", HANDOFF_SCHEMA_VERSION)
-    if schema_version == HANDOFF_SCHEMA_VERSION:
+    schema_version = kwargs.pop("schema_version", HANDOFF_SCHEMA_VERSION)
+    handoff_profile = kwargs.pop("handoff_profile", kwargs.pop("profile", FULLTEXT_REENTRY_PROFILE))
+    if schema_version == HANDOFF_SCHEMA_VERSION and handoff_profile == FULLTEXT_REENTRY_PROFILE:
         _ensure_source_text_units(run, Path(kwargs.get("runs_root", "runs")).resolve(), kwargs.get("lineage"))
     artifacts = run / "artifacts"
     manifest_path = artifacts / MANIFEST_NAME
     ready_path = artifacts / READY_NAME
-    manifest = build_handoff_manifest(run, **kwargs)
+    manifest = (
+        build_abstract_l2_handoff_manifest(run, schema_version=schema_version, **kwargs)
+        if handoff_profile == ABSTRACT_L2_PROFILE
+        else build_handoff_manifest(run, schema_version=schema_version, **kwargs)
+    )
     payload = canonical_json(manifest)
     digest = hashlib.sha256(payload).hexdigest()
     marker = canonical_json({"schema_version": schema_version, "manifest_sha256": digest})

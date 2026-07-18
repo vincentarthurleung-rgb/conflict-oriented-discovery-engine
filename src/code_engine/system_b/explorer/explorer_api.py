@@ -97,6 +97,8 @@ class ExplorerAPI:
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])}|set(self.case_metadata))
         self.graph=GraphProjection(self);self.dossiers=DossierProjection(self)
         self.projection_manifest=_json(self.root/"projection_manifest.json")
+        self.current_projection_registry=_json(self.configured_root/"current_projection.json") if self.registry_path else {}
+        self.active_projection_registry=_json(self.configured_root/"active_projections_by_case.json") if self.registry_path else {}
 
     def _root_from_registry(self,configured):
         registry=_json(configured/"current_projection.json");relative=registry.get("projection_relative_path")
@@ -176,6 +178,7 @@ class ExplorerAPI:
             try:return 201,self._create_claim_pilot_sample(body or {})
             except ValueError as error:return 400,{"error":"invalid_claim_sample_request","detail":str(error)}
         if path=="/api/cases":return 200,{"items":[self._case_summary(x) for x in self.cases],"total":len(self.cases)}
+        if path=="/api/active-projections":return 200,{"items":list((self.active_projection_registry.get("cases") or {}).values()),"current_projection_id":self.current_projection_registry.get("projection_id"),"total":len(self.active_projection_registry.get("cases") or {})}
         if path.startswith("/api/case/"):
             case=unquote(path.removeprefix("/api/case/")); return (200,self._case(case)) if case in self.cases else (404,{"error":"case_not_found"})
         if path=="/api/entities":return 200,_page(self._entities(params),params)
@@ -603,8 +606,16 @@ class ExplorerAPI:
         fallback_reasoning="available" if traces and any((x.get("reasoning_steps") or []) for x in traces) else "produced_but_unusable" if traces else "artifact_missing"
         fallback_context="available" if contexts else "artifact_missing"
         domain=self._domain_for_case(case)
+        active_projection=(self.active_projection_registry.get("cases") or {}).get(case,{})
         return {
             "case_id":case,"short_name":short_name,"display_name":title,"research_question":question,
+            "active_projection_id":active_projection.get("active_projection_id") or self.current_projection_registry.get("projection_id"),
+            "previous_projection_id":active_projection.get("previous_projection_id"),
+            "scientific_run_id":active_projection.get("scientific_run_id"),
+            "activated_at":active_projection.get("activated_at"),
+            "handoff_profile":active_projection.get("handoff_profile") or metadata.get("handoff_profile"),
+            "evidence_scope":active_projection.get("evidence_scope") or (metadata.get("compatibility") or {}).get("evidence_scope"),
+            "projection_compatibility":metadata.get("compatibility") or {},
             "display_triples_count":len(triples),"display_chains_count":len(chains),
             "evidence_count":len(evidence),"fulltext_evidence_count":sum("full" in str(x.get("source_scope","")).casefold() for x in evidence),
             "paper_count":len({x.get("pmid") or x.get("pmcid") or x.get("paper_title") for x in evidence if x.get("pmid") or x.get("pmcid") or x.get("paper_title")}),

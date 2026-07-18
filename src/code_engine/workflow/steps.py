@@ -998,14 +998,55 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "l2_review_observations": run_dir / "artifacts/l2_review_observations.jsonl",
         "l2_excluded_observations": run_dir / "artifacts/l2_excluded_observations.jsonl",
     }
+    from code_engine.normalization.core_eligibility import core_graph_eligibility
+    gate_audit = []
+    for item in observations:
+        gate = core_graph_eligibility(item)
+        item["core_gate"] = gate
+        item["formal_core_graph_eligible"] = bool(gate["eligible"])
+        item["conflict_eligible"] = bool(gate["conflict_eligible"])
+        item["conflict_reasoning_eligible"] = bool(gate["eligible"])
+        if gate["eligible"]:
+            item["relation_raw"] = item.get("relation_raw")
+            item["relation_normalized"] = item.get("relation_raw") or item.get("relation_family")
+            item["formal_relation"] = gate["formal_relation"]
+            item["formal_relation_family"] = gate["relation_family"]
+            item["measurement_dimension"] = gate["measurement_dimension"]
+            item["relation_sign"] = gate["sign"]
+            item["graph_layer"] = "core_canonical_graph"
+            item["canonical_graph_eligible"] = True
+            item["allow_high_confidence_graph_use"] = True
+            item["exclude_from_high_confidence_conflict"] = False
+            item["excluded_from_core_reason"] = None
+        else:
+            item["excluded_from_core_reason"] = item.get("excluded_from_core_reason") or gate["reason"]
+        gate_audit.append({
+            "observation_id": item.get("observation_id"),
+            "paper_id": item.get("paper_id"),
+            **gate,
+        })
+    def _formal_row(item):
+        gate = item["core_gate"]
+        return {
+            **item,
+            "subject_canonical_id": gate["subject_effective_canonical_id"],
+            "subject_canonical_name": gate["subject_effective_canonical_name"] or item.get("subject_canonical_name"),
+            "object_canonical_id": gate["object_effective_canonical_id"],
+            "object_canonical_name": gate["object_effective_canonical_name"] or item.get("object_canonical_name"),
+            "relation_family": gate["relation_family"],
+            "formal_relation": gate["formal_relation"],
+            "relation_sign": gate["sign"],
+            "measurement_dimension": gate["measurement_dimension"],
+        }
     graph_observations=[item for item in retained if item.get("graph_observation_eligible")]
-    conflict_observations=[item for item in retained if item.get("conflict_reasoning_eligible")]
+    conflict_observations=[_formal_row(item) for item in retained if item.get("formal_core_graph_eligible")]
     review_observations=[item for item in retained if item.get("requires_review")]
     for key, values in (("l2_retained_observations", retained), ("l2_core_graph_observations", conflict_observations), ("l2_graph_observations", graph_observations),
                         ("l2_cross_context_mechanism_observations", layers["cross_context_mechanism_layer"]),
                         ("l2_mechanism_observations", layers["mechanism_layer"]), ("l2_context_observations", layers["context_layer"]),
                         ("l2_review_observations", review_observations), ("l2_excluded_observations", layers["excluded"])):
         atomic_write_jsonl(layer_paths[key], iter(values))
+    atomic_write_jsonl(run_dir / "artifacts/core_graph_gate_audit.jsonl", iter(gate_audit))
     exclusion_audit = [{"observation_id": item.get("observation_id"), "paper_id": item.get("paper_id"),
                         "graph_layer": item.get("graph_layer"), "excluded_from_core_reason": item.get("excluded_from_core_reason"),
                         "excluded_from_retention_reason": item.get("excluded_from_retention_reason"),
@@ -1137,6 +1178,9 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "retained_observation_count": len(retained),
         "graph_observation_count": len(graph_observations),
         "conflict_reasoning_observation_count": len(conflict_observations),
+        "formal_core_observation_count": len(conflict_observations),
+        "conflict_eligible_formal_observation_count": sum(bool(item.get("conflict_eligible")) for item in conflict_observations),
+        "core_gate_reason_counts": dict(Counter(row["reason"] for row in gate_audit)),
         "excluded_reason_counts": dict(excluded_reasons),
         "runtime_entity_hints_used": bool(hints),
         "run_entity_registry_entity_count": len(hints),

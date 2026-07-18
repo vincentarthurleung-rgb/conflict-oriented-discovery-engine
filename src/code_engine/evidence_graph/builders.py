@@ -120,7 +120,7 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
     return EvidenceEdge(
         evidence_edge_id=stable_id("evidence_edge", canonical, identity, source, target),
         source_entity_id=str(source) if source else None, target_entity_id=str(target) if target else None,
-        relation_family=str(projection_relation or _first(item, "relation_family", "relation_type", "predicate") or "unknown"),
+        relation_family=str(projection_relation or _first(item, "formal_relation", "relation_family", "relation_type", "predicate") or "unknown"),
         polarity_type=str(_first(item, "polarity_type", "polarity") or "unknown"), direction=direction,
         direction_polarity=direction_polarity(direction),
         context_variables=_first(item, "context_variables", "context_slots", "context", "conditions") or {},
