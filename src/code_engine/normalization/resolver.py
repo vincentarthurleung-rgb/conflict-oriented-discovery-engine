@@ -19,6 +19,7 @@ from code_engine.normalization.providers.local_curated import LocalCuratedProvid
 from code_engine.normalization.providers.mygene import MyGeneCandidateProvider
 from code_engine.normalization.providers.null import NullProvider
 from code_engine.normalization.providers.ontology import OLSOntologyCandidateProvider
+from code_engine.normalization.providers.patient_execution import L2ProviderExecutionManager
 from code_engine.normalization.providers.pubchem import PubChemCandidateProvider
 from code_engine.normalization.providers.uniprot import UniProtCandidateProvider
 from code_engine.normalization.registry import DEFAULT_REGISTRY_PATH, LocalBiomedicalRegistry
@@ -115,6 +116,7 @@ class ResolverCascade:
             from code_engine.normalization.clients import create_default_clients
             external_clients = create_default_clients()
         clients = external_clients or {}
+        execution_manager = L2ProviderExecutionManager(run_dir) if run_dir and execute and network_enabled and entity_network_lookup else None
         providers = []
         if registry is not None:
             providers.append(LocalCuratedProvider(registry=registry))
@@ -130,7 +132,13 @@ class ResolverCascade:
         # the provider trace will not show these providers at all, and the
         # caller's manifest/report can record the skip reason.
         if entity_network_lookup:
-            providers.extend([PubChemCandidateProvider(clients.get("pubchem")), ChEMBLCandidateProvider(clients.get("chembl")), MyGeneCandidateProvider(clients.get("mygene")), UniProtCandidateProvider(clients.get("uniprot")), OLSOntologyCandidateProvider(clients.get("ols"))])
+            providers.extend([
+                PubChemCandidateProvider(clients.get("pubchem"), execution_manager=execution_manager),
+                ChEMBLCandidateProvider(clients.get("chembl"), execution_manager=execution_manager),
+                MyGeneCandidateProvider(clients.get("mygene"), execution_manager=execution_manager),
+                UniProtCandidateProvider(clients.get("uniprot"), execution_manager=execution_manager),
+                OLSOntologyCandidateProvider(clients.get("ols"), execution_manager=execution_manager),
+            ])
         if entity_llm_proposer:
             providers.append(LLMCandidateProposerProvider(llm_client))
         providers.append(NullProvider())

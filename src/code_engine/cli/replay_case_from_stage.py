@@ -143,6 +143,7 @@ def _current_call_accounting(target: Path, *, source: Path, reused: list[str], r
     source_artifacts = source / "artifacts"
     historical = _historical_call_counts(source_artifacts)
     run_papers = _count_lines(source_artifacts / "run_paper_manifest.jsonl")
+    provider_ledger_summary = _read_json(artifacts / "l2_provider_query_ledger_summary.json", {})
     current = {
         "abstract_retrieval_http_calls": 0,
         "abstract_documents_downloaded": 0,
@@ -155,8 +156,16 @@ def _current_call_accounting(target: Path, *, source: Path, reused: list[str], r
         "local_artifacts_reused": raw_l1_claims_reused,
         "local_artifacts_copied": len(reused),
         "abstract_documents_reused_from_source": run_papers,
-        "cache_hits": 0,
-        "negative_cache_hits": 0,
+        "cache_hits": int(provider_ledger_summary.get("persistent_cache_hits", 0) or 0),
+        "negative_cache_hits": int(provider_ledger_summary.get("negative_cache_hits", 0) or 0),
+        "provider_query_ledger": {
+            "raw_provider_query_requests": int(provider_ledger_summary.get("raw_provider_query_requests", 0) or 0),
+            "unique_provider_query_keys": int(provider_ledger_summary.get("unique_provider_query_keys", 0) or 0),
+            "deduplicated_requests": int(provider_ledger_summary.get("deduplicated_requests", 0) or 0),
+            "network_attempts": int(provider_ledger_summary.get("network_attempts", 0) or 0),
+            "retryable_failures": int(provider_ledger_summary.get("retryable_failures", 0) or 0),
+            "status_counts": provider_ledger_summary.get("status_counts", {}),
+        },
     }
     accounting = {
         "schema_version": "replay_stage_call_accounting.v1",
@@ -243,6 +252,9 @@ def _write_preflight_call_accounting(target: Path, *, source: Path, reused: list
 
 
 def _write_replay_terminal_state(target: Path, manifest: dict, call_accounting: dict, *, status: str = "completed") -> dict:
+    current_calls = call_accounting["current_run_calls"]
+    def _int(value: Any) -> int:
+        return int(value or 0)
     terminal = {
         "schema_version": "replay_terminal_state_audit.v1",
         "run_id": target.name,
@@ -268,17 +280,17 @@ def _write_replay_terminal_state(target: Path, manifest: dict, call_accounting: 
         "failed_step": None,
         "final_status": status,
         "api_calls_made": (
-            call_accounting["current_run_calls"]["abstract_l1_provider_calls"]
-            + call_accounting["current_run_calls"]["l2_entity_llm_cleaner_calls"]
-            + call_accounting["current_run_calls"]["l2_entity_llm_proposer_calls"]
-            + call_accounting["current_run_calls"]["fulltext_claim_provider_calls"]
+            _int(current_calls.get("abstract_l1_provider_calls"))
+            + _int(current_calls.get("l2_entity_llm_cleaner_calls"))
+            + _int(current_calls.get("l2_entity_llm_proposer_calls"))
+            + _int(current_calls.get("fulltext_claim_provider_calls"))
         ),
         "network_calls_made": (
-            call_accounting["current_run_calls"]["abstract_retrieval_http_calls"]
-            + sum(call_accounting["current_run_calls"]["entity_network_calls"].values())
-            + call_accounting["current_run_calls"]["fulltext_download_calls"]
+            _int(current_calls.get("abstract_retrieval_http_calls"))
+            + sum(_int(value) for value in current_calls.get("entity_network_calls", {}).values())
+            + _int(current_calls.get("fulltext_download_calls"))
         ),
-        "current_run_calls": call_accounting["current_run_calls"],
+        "current_run_calls": current_calls,
         "historical_calls": {
             "historical_abstract_l1_calls": call_accounting["historical_abstract_l1_calls"],
             "historical_abstract_retrieval_http_calls": call_accounting["historical_abstract_retrieval_http_calls"],

@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-import requests
+from code_engine.normalization.clients.http import get_json
 
 _BASE = "https://www.ebi.ac.uk/chembl/api/data"
 _LAST_CALL: float = 0.0
@@ -30,19 +30,15 @@ class ChEMBLClient:
             time.sleep(0.25 - since_last)
         _LAST_CALL = time.monotonic()
 
-        try:
-            resp = requests.get(
-                f"{_BASE}/molecule.json",
-                params={
-                    "q": surface,
-                    "limit": 10,
-                },
-                headers={"Accept": "application/json"},
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception:
+        status_code, data = get_json(
+            f"{_BASE}/molecule.json",
+            params={
+                "q": surface,
+                "limit": 10,
+            },
+            headers={"Accept": "application/json"},
+        )
+        if status_code != 200:
             return []
 
         results: list[dict[str, Any]] = []

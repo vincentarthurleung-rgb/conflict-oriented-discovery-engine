@@ -1571,6 +1571,7 @@ def run_l1_5_step(*, run_dir: Path, execute: bool, repository_root: Path, l1_mod
 
 def run_l2_step(*, run_dir: Path, execute: bool, network: bool = False, api: bool = False,
                 entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
+                entity_llm_cleaner: bool = False,
                 entity_resolution_policy=None, entity_external_clients=None,
                 entity_llm_client=None, l1_mode: str = "legacy", **_: Any) -> StepResult:
     if l1_mode != "legacy":
@@ -1596,8 +1597,10 @@ def run_l2_step(*, run_dir: Path, execute: bool, network: bool = False, api: boo
         from code_engine.graph.ontology_alignment import extract_normalized_observations
         from code_engine.normalization.resolver import ResolverCascade
         profile = _read(run_dir, "domain_profile.json", {})
-        resolver = ResolverCascade(domain_id=profile.get("domain_id", "general_biomedical"), entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"), resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"), run_dir=run_dir, execute=execute, network_enabled=network, api_enabled=api, entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer, external_clients=entity_external_clients, llm_client=entity_llm_client, adjudicator_policy=policy)
+        resolver = ResolverCascade(domain_id=profile.get("domain_id", "general_biomedical"), entity_registry_profile=profile.get("entity_registry_profile", "general_entity_resolution_hub"), resolver_policy_id=profile.get("resolver_policy_id", "conservative_resolver_v2"), run_dir=run_dir, execute=execute, network_enabled=network, api_enabled=api, entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer, entity_llm_cleaner=entity_llm_cleaner, external_clients=entity_external_clients, llm_client=entity_llm_client, adjudicator_policy=policy)
         observations, audit = extract_normalized_observations(str(refined_dir), None, [], resolver=resolver)
+        if resolver._llm_cleaner is not None:
+            resolver._llm_cleaner.write_audit_files(run_dir / "artifacts")
     candidates_path.touch(exist_ok=True)
     decisions_path.touch(exist_ok=True)
     if not entity_audit_path.exists():

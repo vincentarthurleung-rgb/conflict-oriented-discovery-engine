@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-import requests
+from code_engine.normalization.clients.http import get_json
 
 _BASE = "https://www.ebi.ac.uk/ols4/api/search"
 _LAST_CALL: float = 0.0
@@ -36,12 +36,8 @@ class OLSClient:
         }
         if ontologies:
             params["ontology"] = ",".join(ontologies)
-        try:
-            resp = requests.get(_BASE, params=params, timeout=12)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception:
+        status_code, data = get_json(_BASE, params=params)
+        if status_code != 200:
             return []
         docs = ((data.get("response") or {}).get("docs") or [])
         return [item for item in docs if item.get("obo_id") and item.get("label")]
-

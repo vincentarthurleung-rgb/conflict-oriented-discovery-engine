@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-import requests
+from code_engine.normalization.clients.http import get_json
 
 _BASE = "https://mygene.info/v3"
 _LAST_CALL: float = 0.0
@@ -31,20 +31,16 @@ class MyGeneClient:
             time.sleep(0.3 - since_last)
         _LAST_CALL = time.monotonic()
 
-        try:
-            resp = requests.get(
-                f"{_BASE}/query",
-                params={
-                    "q": surface,
-                    "fields": "symbol,name,alias,entrezgene,uniprot,type_of_gene",
-                    "species": "human",
-                    "size": 10,
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception:
+        status_code, data = get_json(
+            f"{_BASE}/query",
+            params={
+                "q": surface,
+                "fields": "symbol,name,alias,entrezgene,uniprot,type_of_gene",
+                "species": "human",
+                "size": 10,
+            },
+        )
+        if status_code != 200:
             return []
 
         results: list[dict[str, Any]] = []

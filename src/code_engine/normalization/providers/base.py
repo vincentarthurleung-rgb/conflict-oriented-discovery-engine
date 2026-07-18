@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from typing import Any
+
 from code_engine.normalization.candidates import EntityCandidate, EntityResolutionRequest
 from code_engine.normalization.entity_type import canonical_entity_type, compatible_entity_types
+from code_engine.normalization.providers.patient_execution import L2ProviderExecutionManager
 
 
 class CandidateProvider(ABC):
@@ -37,9 +40,10 @@ class ExternalCandidateProvider(CandidateProvider):
     resource_name = "External"
     source_reliability = 0.9
 
-    def __init__(self, client=None):
+    def __init__(self, client=None, execution_manager: L2ProviderExecutionManager | None = None):
         super().__init__()
         self.client = client
+        self.execution_manager = execution_manager
         self._query_cache: dict[tuple[str, str, tuple[str, ...]], list[EntityCandidate]] = {}
 
     def cache_key(self, request: EntityResolutionRequest) -> tuple[str, str, tuple[str, ...], str, str]:
@@ -63,12 +67,41 @@ class ExternalCandidateProvider(CandidateProvider):
             self.last_warnings = [self.last_status]
             return []
         key = self.cache_key(request)
-        if key in self._query_cache:
+        if self.execution_manager is None and key in self._query_cache:
             self.last_status = "cache_hit"
             self.last_warnings = ["provider_query_cache_hit"]
             return [item.model_copy(deep=True) for item in self._query_cache[key]]
-        records = self.client.search(request.surface, request=request)
-        self.last_network_calls = int(getattr(self.client, "network_call_cost", 0))
+        if self.execution_manager is not None:
+            status, records, warnings = self.execution_manager.execute(
+                self.name,
+                request,
+                key,
+                lambda: self.client.search(request.surface, request=request),
+            )
+            self.last_warnings.extend(warnings)
+            if status in {"completed_cache_hit", "negative_cache_hit", "retry_pending"}:
+                self.last_network_calls = 0
+            elif status in {"retryable_failed"}:
+                self.last_network_calls = 0
+                self.last_status = status
+                return []
+            else:
+                self.last_network_calls = int(getattr(self.client, "network_call_cost", 0))
+            if status == "negative_terminal":
+                self.last_status = "no_candidates"
+                self._query_cache[key] = []
+                return []
+            if status == "negative_cache_hit":
+                self.last_status = "negative_cache_hit"
+                self._query_cache[key] = []
+                return []
+            if status == "retry_pending":
+                self.last_status = "retry_pending"
+                return []
+        else:
+            records = self.client.search(request.surface, request=request)
+            self.last_network_calls = int(getattr(self.client, "network_call_cost", 0))
+        records = list(records or [])
         result = []
         for index, item in enumerate(records or []):
             record_id = str(item.get("provider_record_id") or item.get("id") or item.get("canonical_id") or index)

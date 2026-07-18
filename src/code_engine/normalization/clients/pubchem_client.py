@@ -11,6 +11,8 @@ from typing import Any
 
 import requests
 
+from code_engine.normalization.clients.http import get_json
+
 _BASE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
 _LAST_CALL: float = 0.0
 
@@ -31,15 +33,10 @@ class PubChemClient:
         _LAST_CALL = time.monotonic()
 
         # Step 1: name → CID
-        try:
-            resp = requests.get(
-                f"{_BASE}/compound/name/{requests.utils.quote(surface)}/cids/JSON",
-                timeout=10,
-            )
-            if resp.status_code != 200:
-                return []
-            cid_data = resp.json()
-        except Exception:
+        status_code, cid_data = get_json(
+            f"{_BASE}/compound/name/{requests.utils.quote(surface)}/cids/JSON",
+        )
+        if status_code != 200:
             return []
 
         cid_list = cid_data.get("IdentifierList", {}).get("CID", [])
@@ -49,15 +46,11 @@ class PubChemClient:
 
         # Step 2: CID → details
         cid_str = ",".join(str(c) for c in cids)
-        try:
-            det_resp = requests.get(
-                f"{_BASE}/compound/cid/{cid_str}/JSON",
-                params={"record_type": "2d"},
-                timeout=10,
-            )
-            det_resp.raise_for_status()
-            det_data = det_resp.json()
-        except Exception:
+        status_code, det_data = get_json(
+            f"{_BASE}/compound/cid/{cid_str}/JSON",
+            params={"record_type": "2d"},
+        )
+        if status_code != 200:
             return []
 
         results: list[dict[str, Any]] = []
