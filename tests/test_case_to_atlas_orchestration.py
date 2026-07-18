@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from pathlib import Path
 
@@ -112,6 +113,33 @@ class CaseToAtlasOrchestrationTests(unittest.TestCase):
         offline=CaseToAtlasRequest(**{**self.request.__dict__,"api_enabled":False,"network_enabled":False}).resolved()
         online=CaseToAtlasRequest(**{**self.request.__dict__,"api_enabled":True,"network_enabled":True}).resolved()
         self.assertEqual(orch._input_hash("base_run",offline,{"stages":{}}),orch._input_hash("base_run",online,{"stages":{}}))
+
+    def test_entity_llm_cleaner_changes_base_run_fingerprint(self):
+        orch=CaseToAtlasOrchestrator()
+        disabled=CaseToAtlasRequest(**{**self.request.__dict__,"entity_llm_cleaner_enabled":False}).resolved()
+        enabled=CaseToAtlasRequest(**{**self.request.__dict__,"entity_llm_cleaner_enabled":True}).resolved()
+        self.assertNotEqual(orch._input_hash("base_run",disabled,{"stages":{}}),orch._input_hash("base_run",enabled,{"stages":{}}))
+
+    def test_base_run_injects_entity_cleaner_client_without_api_flag(self):
+        orch=CaseToAtlasOrchestrator()
+        request=CaseToAtlasRequest(**{**self.request.__dict__,"network_enabled":True,"api_enabled":False,"entity_llm_cleaner_enabled":True}).resolved()
+        state={"stages":{}}
+        record={"output_run":str(orch._output_path(request, orch.orchestration_id(request), "base_run", 1))}
+        client=object()
+
+        def fake_workflow(**kwargs):
+            self.assertFalse(kwargs["api"])
+            self.assertTrue(kwargs["entity_llm_cleaner"])
+            self.assertIs(kwargs["entity_llm_client"], client)
+            write_valid_base_run(Path(record["output_run"]), request, legacy_status="completed")
+            return SimpleNamespace(api_calls_made=0, network_calls_made=0, final_status="completed")
+
+        with patch("code_engine.extraction.client_factory.diagnose_entity_cleaner_provider", return_value={"provider_available":True}), \
+             patch("code_engine.extraction.client_factory.build_entity_cleaner_client_from_config", return_value=client), \
+             patch("code_engine.workflow.orchestrator.run_workflow", side_effect=fake_workflow):
+            result=orch._execute("base_run",request,state,record)
+
+        self.assertEqual(result["api_calls"],0)
 
     def test_output_path_attempt_and_timestamp_do_not_change_output_identity(self):
         orch=CaseToAtlasOrchestrator()

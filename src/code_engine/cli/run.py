@@ -66,6 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
     entity_llm = parser.add_mutually_exclusive_group()
     entity_llm.add_argument("--entity-llm-proposer", action="store_true")
     entity_llm.add_argument("--no-entity-llm-proposer", action="store_true")
+    entity_cleaner = parser.add_mutually_exclusive_group()
+    entity_cleaner.add_argument("--entity-llm-cleaner", action="store_true")
+    entity_cleaner.add_argument("--no-entity-llm-cleaner", action="store_true")
     parser.add_argument("--entity-resolution-policy")
     parser.add_argument("--entity-registry-path", type=Path)
     parser.add_argument("--pilot-profile", choices=("ketamine",))
@@ -194,6 +197,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.execute and args.api:
         from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
         l1_client = build_l1_client_from_env_or_config(args.l1_provider, args.l1_model, **l1_timeout_config)
+    entity_llm_client = None
+    if args.execute and args.entity_llm_cleaner and not args.no_entity_llm_cleaner:
+        from code_engine.extraction.client_factory import build_entity_cleaner_client_from_config, diagnose_entity_cleaner_provider
+        diagnostic = diagnose_entity_cleaner_provider(network_enabled=args.network)
+        if not diagnostic.get("provider_available"):
+            build_parser().error(f"entity_llm_cleaner_requested_but_unavailable:{diagnostic.get('provider_error') or 'provider_unavailable'}")
+        entity_llm_client = build_entity_cleaner_client_from_config(**l1_timeout_config)
+        if entity_llm_client is None:
+            build_parser().error("entity_llm_cleaner_requested_but_unavailable:client_creation_failed")
     if args.build_paper_artifact_cache_from_runs:
         from code_engine.corpus.paper_artifact_cache import build_paper_artifact_cache_index_from_runs
         build_paper_artifact_cache_index_from_runs(
@@ -229,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
         semantic_confidence_threshold=args.semantic_confidence_threshold,
         entity_network_lookup=args.entity_network_lookup,
         entity_llm_proposer=args.entity_llm_proposer,
+        entity_llm_cleaner=args.entity_llm_cleaner and not args.no_entity_llm_cleaner,
+        entity_llm_client=entity_llm_client,
         entity_resolution_policy=args.entity_resolution_policy,
         entity_registry_path=args.entity_registry_path,
         pilot_profile=args.pilot_profile,

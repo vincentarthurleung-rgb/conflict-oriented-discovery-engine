@@ -29,6 +29,7 @@ def build_parser():
     p.add_argument("--pipeline",choices=("case-to-atlas","base-only"),default="case-to-atlas",
         help="case-to-atlas runs the current System A -> Atlas DAG; base-only preserves the legacy run_case bundle path.")
     p.add_argument("--api",action=argparse.BooleanOptionalAction,default=False); p.add_argument("--network",action=argparse.BooleanOptionalAction,default=False)
+    p.add_argument("--entity-llm-cleaner",action=argparse.BooleanOptionalAction,default=False)
     p.add_argument("--database-url",default="sqlite:///data/code_atlas.db"); p.add_argument("--runs-root",type=Path,default=Path("runs"))
     p.add_argument("--system-b-output-root",type=Path,default=Path("system_b_outputs/system_a_sync"))
     p.add_argument("--reuse-only",action="store_true"); p.add_argument("--force-stage",action="append",default=[])
@@ -125,6 +126,7 @@ def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)-
                 "--system-b-output-root",str(getattr(args,"system_b_output_root",Path("system_b_outputs/system_a_sync"))),"--external-data-root",str(args.external_data_root),
                 "--json"]
             command += ["--api"] if args.api else ["--no-api"]; command += ["--network"] if args.network else ["--no-network"]
+            command += ["--entity-llm-cleaner"] if args.entity_llm_cleaner else ["--no-entity-llm-cleaner"]
             command += ["--reuse-only"] if getattr(args,"reuse_only",False) else []
             for stage in getattr(args,"force_stage",[]) or []: command += ["--force-stage",stage]
             command += ["--from-stage",args.from_stage] if getattr(args,"from_stage",None) else []

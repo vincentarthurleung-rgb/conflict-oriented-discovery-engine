@@ -137,6 +137,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                                    execute: bool = False, network: bool = False, api: bool = False,
                                    entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
                                    entity_llm_cleaner: bool = False,
+                                   entity_llm_client: Any | None = None,
                                    resolver_mode: str = "provider_route",
                                    entity_external_clients=None,
                                    entity_resolution_policy: dict | None = None,
@@ -177,6 +178,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         registry=registry, execute=execute, network_enabled=network, api_enabled=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
         entity_llm_cleaner=entity_llm_cleaner,
+        llm_client=entity_llm_client,
         external_clients=entity_external_clients,
         adjudicator_policy=entity_resolution_policy,
     )
@@ -357,6 +359,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
                 entity_network_lookup=entity_network_lookup,
                 entity_llm_proposer=entity_llm_proposer,
                 entity_llm_cleaner=entity_llm_cleaner,
+                entity_llm_client=entity_llm_client,
                 resolver_mode=resolver_mode,
                 entity_external_clients=entity_external_clients,
                 entity_resolution_policy=entity_resolution_policy,
@@ -964,6 +967,7 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                          entity_registry_path: str | Path | None = None, execute: bool = False,
                          network: bool = False, api: bool = False, entity_network_lookup: bool = False,
                          entity_llm_proposer: bool = False, entity_llm_cleaner: bool = False,
+                         entity_llm_client: Any | None = None,
                          entity_external_clients=None,
                          resolver_mode: str = "provider_route",
                          entity_resolution_policy=None,
@@ -978,6 +982,7 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         entity_registry_path=entity_registry_path, execute=execute, network=network, api=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
         entity_llm_cleaner=entity_llm_cleaner,
+        entity_llm_client=entity_llm_client,
         entity_external_clients=entity_external_clients,
         resolver_mode=resolver_mode,
         entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
@@ -1540,13 +1545,16 @@ def run_fulltext_l1_step(
 def run_l2_fulltext_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
                          entity_registry_path: str | Path | None = None, execute: bool = False,
                          network: bool = False, api: bool = False, entity_network_lookup: bool = False,
-                         entity_llm_proposer: bool = False, entity_resolution_policy=None, **_: Any) -> StepResult:
+                         entity_llm_proposer: bool = False, entity_llm_cleaner: bool = False,
+                         entity_llm_client: Any | None = None, entity_resolution_policy=None, **_: Any) -> StepResult:
     enabled = l1_mode in {"progressive_fulltext", "fulltext_oracle"}
     evidence = _read_jsonl(run_dir / "artifacts" / "fulltext_evidence_records.jsonl") if enabled else []
     observations = _normalize_progressive_records(
         evidence, _read(run_dir, "domain_profile.json", {}), run_dir,
         entity_registry_path=entity_registry_path, execute=execute, network=network, api=api,
         entity_network_lookup=entity_network_lookup, entity_llm_proposer=entity_llm_proposer,
+        entity_llm_cleaner=entity_llm_cleaner,
+        entity_llm_client=entity_llm_client,
         entity_resolution_policy=entity_resolution_policy if isinstance(entity_resolution_policy, dict) else None,
     )
     path = _write(run_dir, "l2_fulltext_observations.json", observations)

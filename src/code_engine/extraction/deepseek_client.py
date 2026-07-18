@@ -29,11 +29,12 @@ class DeepSeekClient:
         self.read_timeout_seconds = float(read_timeout_seconds)
         self.sleep_fn = sleep_fn
 
-    def extract_json(self, prompt: str, model: str = "deepseek-v4-pro", temperature: float = 0.0, top_p: float = 1.0, **_: Any) -> dict[str, Any]:
+    def extract_json(self, prompt: Any, model: str = "deepseek-v4-pro", temperature: float = 0.0, top_p: float = 1.0, **_: Any) -> dict[str, Any]:
         from code_engine.extraction.l1_response import GenericJSONResponseError, parse_json_object_response
+        messages = prompt if isinstance(prompt, list) else [{"role": "system", "content": prompt}]
         body = json.dumps({
             "model": model,
-            "messages": [{"role": "system", "content": prompt}],
+            "messages": messages,
             "response_format": {"type": "json_object"},
             "temperature": temperature,
             "top_p": top_p,

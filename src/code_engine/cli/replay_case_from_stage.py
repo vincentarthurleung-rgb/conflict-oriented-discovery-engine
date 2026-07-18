@@ -80,6 +80,21 @@ def _validate_replay_checkpoint(source: Path, from_stage: str, no_l1: bool) -> N
         raise ValueError("L1 replay is not implemented; use the normal case runner")
 
 
+def _build_requested_entity_cleaner_client(*, network: bool):
+    from code_engine.extraction.client_factory import (
+        build_entity_cleaner_client_from_config,
+        diagnose_entity_cleaner_provider,
+    )
+    diagnostic = diagnose_entity_cleaner_provider(network_enabled=network)
+    if not diagnostic.get("provider_available"):
+        reason = diagnostic.get("provider_error") or "provider_unavailable"
+        raise RuntimeError(f"entity_llm_cleaner_requested_but_unavailable:{reason}")
+    client = build_entity_cleaner_client_from_config()
+    if client is None:
+        raise RuntimeError("entity_llm_cleaner_requested_but_unavailable:client_creation_failed")
+    return client
+
+
 def _historical_call_counts(source_artifacts: Path) -> dict:
     l1 = _read_json(source_artifacts / "abstract_l1_summary.json")
     acquisition = _read_json(source_artifacts / "acquisition_report.json")
@@ -343,11 +358,12 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     rerun=[]
     if from_stage=="l2":
         from code_engine.workflow.steps import run_l2_abstract_step,run_abstract_conflict_screening_step
+        entity_llm_client = _build_requested_entity_cleaner_client(network=network) if entity_llm_cleaner else None
         if network and entity_network_lookup:
             from code_engine.normalization.providers.patient_execution import L2ProviderExecutionManager
             L2ProviderExecutionManager(target, install_signal_handlers=False)
         _clear_current_run_resolver_artifacts(artifacts)
-        run_l2_abstract_step(run_dir=target,l1_mode="abstract_screening",execute=True,network=network,api=api,entity_network_lookup=entity_network_lookup,entity_llm_cleaner=entity_llm_cleaner)
+        run_l2_abstract_step(run_dir=target,l1_mode="abstract_screening",execute=True,network=network,api=api,entity_network_lookup=entity_network_lookup,entity_llm_cleaner=entity_llm_cleaner,entity_llm_client=entity_llm_client)
         rerun.append("l2")
         run_abstract_conflict_screening_step(run_dir=target,l1_mode="abstract_screening");rerun.append("l3")
     if from_stage in {"l2","l3"}:
@@ -438,10 +454,11 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     )
     (artifacts/"replay_stage_call_accounting.json").write_text(json.dumps(call_accounting,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     (artifacts/"replay_external_call_ledger.json").write_text(json.dumps({"records": external_call_ledger},indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
-    manifest={"schema_version":"case_stage_replay_v1","source_run":str(source),"new_run":str(target.resolve()),"case_id":profile.case_id,"from_stage":from_stage,"reused_artifacts":reused,"rerun_stages":rerun,"skipped_stages":["acquisition","l1"]+(["fulltext_network_and_l1"] if skip_fulltext else [])+(["l7"] if skip_l7 else []),"network_used":network,"api_used":api,"llm_used":False,"entity_network_lookup_enabled":entity_network_lookup,"entity_llm_proposer_enabled":False,"entity_network_calls_made":entity_network_calls,"entity_external_lookup_skipped_reason":entity_audit_skipped_reason,"created_at":datetime.now(timezone.utc).isoformat(),"reason":"downstream_replay_from_checkpoint","replay_source_run":str(source),"replay_from_stage":from_stage,"upstream_artifacts_reused":True,"raw_l1_claims_reused":raw_l1_claims_reused,"current_run_calls":call_accounting["current_run_calls"],"historical_abstract_l1_calls":call_accounting["historical_abstract_l1_calls"],"historical_abstract_documents_downloaded":call_accounting["historical_abstract_documents_downloaded"],"graph_observation_count":graph_count,"core_observation_count":core_count,"true_graph_conflict_count":0,"formal_hypothesis_count":0,**{k:discovery[k] for k in ("l2_retained_observation_count","seed_neighborhood_observation_count","reviewable_graph_observation_count","weak_conflict_candidate_count","fulltext_escalation_candidate_count")},**seed_provenance,**llm_cleaner_fields}
+    current_l2_cleaner_calls = call_accounting["current_run_calls"]["l2_entity_llm_cleaner_calls"]
+    manifest={"schema_version":"case_stage_replay_v1","source_run":str(source),"new_run":str(target.resolve()),"case_id":profile.case_id,"from_stage":from_stage,"reused_artifacts":reused,"rerun_stages":rerun,"skipped_stages":["acquisition","l1"]+(["fulltext_network_and_l1"] if skip_fulltext else [])+(["l7"] if skip_l7 else []),"network_used":network,"api_used":bool(api or current_l2_cleaner_calls),"llm_used":bool(current_l2_cleaner_calls),"entity_network_lookup_enabled":entity_network_lookup,"entity_llm_proposer_enabled":False,"entity_network_calls_made":entity_network_calls,"entity_external_lookup_skipped_reason":entity_audit_skipped_reason,"created_at":datetime.now(timezone.utc).isoformat(),"reason":"downstream_replay_from_checkpoint","replay_source_run":str(source),"replay_from_stage":from_stage,"upstream_artifacts_reused":True,"raw_l1_claims_reused":raw_l1_claims_reused,"current_run_calls":call_accounting["current_run_calls"],"historical_abstract_l1_calls":call_accounting["historical_abstract_l1_calls"],"historical_abstract_documents_downloaded":call_accounting["historical_abstract_documents_downloaded"],"graph_observation_count":graph_count,"core_observation_count":core_count,"true_graph_conflict_count":0,"formal_hypothesis_count":0,**{k:discovery[k] for k in ("l2_retained_observation_count","seed_neighborhood_observation_count","reviewable_graph_observation_count","weak_conflict_candidate_count","fulltext_escalation_candidate_count")},**seed_provenance,**llm_cleaner_fields}
     (target/"replay_manifest.json").write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n");(artifacts/"replay_manifest.json").write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n")
     network_status_line = f"- Network used: {network}" + (f" (entity external lookup skipped: {entity_audit_skipped_reason})" if entity_audit_skipped_reason else f" (entity network calls: {entity_network_calls})")
-    report=f"# Stage Replay Report\n\n- Source: `{source}`\n- New run: `{target}`\n- From stage: `{from_stage}`\n- LLM used: false\n{network_status_line}\n- Current Abstract L1 calls: {call_accounting['current_run_calls']['abstract_l1_provider_calls']}\n- Current abstract retrieval HTTP calls: {call_accounting['current_run_calls']['abstract_retrieval_http_calls']}\n- Current abstract documents downloaded: {call_accounting['current_run_calls']['abstract_documents_downloaded']}\n- Current L2 cleaner calls: {call_accounting['current_run_calls']['l2_entity_llm_cleaner_calls']}\n- Current entity network calls: {sum(call_accounting['current_run_calls']['entity_network_calls'].values())}\n- Historical Abstract L1 calls in source artifacts: {call_accounting['historical_abstract_l1_calls']}\n- Historical abstract documents downloaded in source artifacts: {call_accounting['historical_abstract_documents_downloaded']}\n- L1 claims reused: {manifest['raw_l1_claims_reused']}\n- Graph observations: {graph_count}\n- Conflict observations: {core_count}\n"
+    report=f"# Stage Replay Report\n\n- Source: `{source}`\n- New run: `{target}`\n- From stage: `{from_stage}`\n- LLM used: {manifest['llm_used']}\n{network_status_line}\n- Current Abstract L1 calls: {call_accounting['current_run_calls']['abstract_l1_provider_calls']}\n- Current abstract retrieval HTTP calls: {call_accounting['current_run_calls']['abstract_retrieval_http_calls']}\n- Current abstract documents downloaded: {call_accounting['current_run_calls']['abstract_documents_downloaded']}\n- Current L2 cleaner calls: {call_accounting['current_run_calls']['l2_entity_llm_cleaner_calls']}\n- Current entity network calls: {sum(call_accounting['current_run_calls']['entity_network_calls'].values())}\n- Historical Abstract L1 calls in source artifacts: {call_accounting['historical_abstract_l1_calls']}\n- Historical abstract documents downloaded in source artifacts: {call_accounting['historical_abstract_documents_downloaded']}\n- L1 claims reused: {manifest['raw_l1_claims_reused']}\n- Graph observations: {graph_count}\n- Conflict observations: {core_count}\n"
     (target/"replay_report.md").write_text(report);(artifacts/"replay_report.md").write_text(report)
     pipeline={"case_id":profile.case_id,"status":"completed","is_replay_run":True,"replay_from_stage":from_stage,"stage_counts":{"raw_l1_claims_reused":manifest["raw_l1_claims_reused"],"graph_observations":graph_count,"core_observations":core_count,"conflicts":0,"hypotheses":0},"warnings":[]};(artifacts/"pipeline_stage_summary.json").write_text(json.dumps(pipeline,indent=2)+"\n")
     provenance={"replay_source_run":str(source),"replay_from_stage":from_stage,"upstream_artifacts_reused":True}
@@ -451,7 +468,7 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
             try:value=json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:continue
             if isinstance(value,dict):value.update(provenance);path.write_text(json.dumps(value,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
-    version=case_version or f"v2_replay_{from_stage}";bundle,case_manifest=export_case_bundle(target,case_profile,bundle_root,bundle_id_suffix=bundle_id_suffix,overwrite_bundle=overwrite_bundle,manifest_overrides={"case_version":version,"is_replay_run":True,"is_replay":True,"replay_from_stage":from_stage,"source_run":str(source),"source_case_version":"v1_zero_claim","llm_used":False,"network_used":network,"api_used":api,"entity_network_lookup_enabled":entity_network_lookup,"entity_llm_proposer_enabled":False,"entity_llm_cleaner_enabled":entity_llm_cleaner,"entity_network_calls_made":entity_network_calls,"entity_external_lookup_skipped_reason":entity_audit_skipped_reason,"replay_source_run":str(source)})
+    version=case_version or f"v2_replay_{from_stage}";bundle,case_manifest=export_case_bundle(target,case_profile,bundle_root,bundle_id_suffix=bundle_id_suffix,overwrite_bundle=overwrite_bundle,manifest_overrides={"case_version":version,"is_replay_run":True,"is_replay":True,"replay_from_stage":from_stage,"source_run":str(source),"source_case_version":"v1_zero_claim","llm_used":manifest["llm_used"],"network_used":network,"api_used":manifest["api_used"],"entity_network_lookup_enabled":entity_network_lookup,"entity_llm_proposer_enabled":False,"entity_llm_cleaner_enabled":entity_llm_cleaner,"entity_network_calls_made":entity_network_calls,"entity_external_lookup_skipped_reason":entity_audit_skipped_reason,"replay_source_run":str(source)})
     manifest.update({"bundle":str(bundle),"case_version":version,"scientific_output_class":case_manifest["scientific_output_class"]})
     terminal = _write_replay_terminal_state(target, manifest, call_accounting, status="completed")
     manifest.update({"final_status": terminal["final_status"], "exit_code": terminal["exit_code"]})
@@ -504,6 +521,8 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     return manifest
 
 def main(argv=None):
+ from code_engine.validation.external_api_smoke import load_dotenv
+ load_dotenv()
  p=argparse.ArgumentParser();p.add_argument("--case-profile",required=True);p.add_argument("--search-plan-file",required=True);p.add_argument("--source-run",required=True);p.add_argument("--from-stage",choices=("l2","l3","l6","bundle"),required=True);p.add_argument("--output-root",default="runs");p.add_argument("--output-suffix",required=True);p.add_argument("--bundle-id-suffix",required=True);p.add_argument("--no-l1",action="store_true");p.add_argument("--network",action="store_true",help="Enable external entity database lookups (PubChem, ChEMBL, MyGene, UniProt) during entity normalization.");p.add_argument("--no-network",action="store_true",help="Explicitly disable external entity lookups (default behavior).");p.add_argument("--api",action="store_true",help="Enable API-based services alongside network lookups.");p.add_argument("--entity-network-lookup",action="store_true",help="Enable external entity database candidate generation (PubChem, ChEMBL, MyGene, UniProt). Requires --network.");p.add_argument("--no-entity-network-lookup",action="store_true",help="Explicitly disable external entity database lookups (default).");p.add_argument("--entity-llm-cleaner",action="store_true",help="Enable LLM-assisted entity surface cleaning before external lookup.");p.add_argument("--no-entity-llm-cleaner",action="store_true",help="Explicitly disable LLM entity surface cleaner (default).");p.add_argument("--skip-fulltext",action="store_true");p.add_argument("--skip-l7",action="store_true");p.add_argument("--overwrite-bundle",action="store_true");p.add_argument("--atlas-output-root",default="system_b_outputs/system_a_sync");p.add_argument("--atlas-database-url");p.add_argument("--no-atlas-publish",action="store_true");a=p.parse_args(argv)
  network_enabled = a.network and not a.no_network
  api_enabled = a.api and not a.no_network

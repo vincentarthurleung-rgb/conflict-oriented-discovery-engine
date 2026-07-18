@@ -29,6 +29,7 @@ class CaseToAtlasRequest:
     external_data_root: Path = Path("data/external")
     network_enabled: bool = False
     api_enabled: bool = False
+    entity_llm_cleaner_enabled: bool = False
     resume: bool = True
     force_stages: frozenset[str] = frozenset()
     from_stage: str | None = None

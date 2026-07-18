@@ -82,6 +82,61 @@ def test_replay_records_current_l2_entity_network_calls_by_provider():
         assert {row["component"] for row in ledger["records"]} == {"entity_network_provider"}
 
 
+def test_replay_entity_llm_cleaner_builds_and_injects_l2_client_without_l1_api_flag():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        profile, plan, source = fixture(root)
+        client = object()
+
+        def fake_l2(run_dir, **kwargs):
+            assert kwargs["api"] is False
+            assert kwargs["entity_llm_cleaner"] is True
+            assert kwargs["entity_llm_client"] is client
+            target_artifacts = Path(run_dir) / "artifacts"
+            (target_artifacts / "entity_llm_cleaner_summary.json").write_text(json.dumps({
+                "entity_llm_cleaner_calls_made": 2,
+                "cleaner_actual_calls": 2,
+                "cleaner_eligible_mentions": 3,
+                "cleaner_cache_hits": 1,
+            }))
+            (target_artifacts / "entity_resolution_audit.json").write_text(json.dumps({"network_calls_made": 0}))
+            for name in ("l2_graph_observations.jsonl", "l2_core_graph_observations.jsonl"):
+                (target_artifacts / name).write_text("")
+
+        from code_engine.cli.replay_case_from_stage import replay
+
+        with patch("code_engine.extraction.client_factory.diagnose_entity_cleaner_provider", return_value={"provider_available": True}), \
+             patch("code_engine.extraction.client_factory.build_entity_cleaner_client_from_config", return_value=client), \
+             patch("code_engine.workflow.steps.run_l2_abstract_step", side_effect=fake_l2):
+            result = replay(
+                profile, plan, source, "l2", root / "runs", "replay", "r2",
+                network=True, api=False, entity_llm_cleaner=True, bundle_root=root / "bundles",
+            )
+
+        accounting = json.loads((Path(result["new_run"]) / "artifacts" / "replay_stage_call_accounting.json").read_text())
+        assert accounting["current_run_calls"]["abstract_l1_provider_calls"] == 0
+        assert accounting["current_run_calls"]["l2_entity_llm_cleaner_calls"] == 2
+        assert result["llm_used"] is True
+        assert result["api_used"] is True
+
+
+def test_replay_entity_llm_cleaner_fail_fast_when_client_unavailable():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        profile, plan, source = fixture(root)
+
+        from code_engine.cli.replay_case_from_stage import replay
+
+        with patch("code_engine.extraction.client_factory.diagnose_entity_cleaner_provider", return_value={"provider_available": False, "provider_error": "credential_missing"}), \
+             patch("code_engine.workflow.steps.run_l2_abstract_step") as l2:
+            with pytest.raises(RuntimeError, match="entity_llm_cleaner_requested_but_unavailable:credential_missing"):
+                replay(
+                    profile, plan, source, "l2", root / "runs", "replay", "r2",
+                    network=True, api=False, entity_llm_cleaner=True, bundle_root=root / "bundles",
+                )
+            l2.assert_not_called()
+
+
 def test_replay_source_l1_missing_fails_before_l2_initialization():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

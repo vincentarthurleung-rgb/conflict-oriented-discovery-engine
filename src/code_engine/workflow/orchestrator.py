@@ -108,6 +108,7 @@ def run_workflow(
     allow_deterministic_search_fallback: bool = False, disable_llm_search_intent: bool = False,
     semantic_llm_client=None,
     entity_network_lookup: bool = False, entity_llm_proposer: bool = False,
+    entity_llm_cleaner: bool = False, entity_llm_client=None,
     entity_resolution_policy=None, entity_registry_path: str | Path | None = None,
     pilot_profile: str | None = None,
     l1_mode: str = "legacy", enable_fulltext_escalation: bool = False,
@@ -249,6 +250,7 @@ def run_workflow(
     state.summary["external_calls_enabled"] = {"api": bool(execute and api), "network": bool(execute and network)}
     state.entity_network_lookup_enabled = bool(execute and network and entity_network_lookup)
     state.entity_llm_proposer_enabled = bool(execute and api and entity_llm_proposer)
+    state.entity_llm_cleaner_enabled = bool(execute and entity_llm_cleaner and entity_llm_client is not None)
     state.entity_resolution_policy = str(entity_resolution_policy) if entity_resolution_policy else None
     state.l1_mode = l1_mode
     state.fulltext_escalation_enabled = bool(enable_fulltext_escalation)
@@ -513,6 +515,8 @@ def run_workflow(
                     semantic_llm_client=semantic_llm_client,
                     entity_network_lookup=entity_network_lookup,
                     entity_llm_proposer=entity_llm_proposer,
+                    entity_llm_cleaner=entity_llm_cleaner,
+                    entity_llm_client=entity_llm_client,
                     entity_resolution_policy=entity_resolution_policy,
                     entity_registry_path=effective_entity_registry_path,
                     pilot_profile=pilot_profile,

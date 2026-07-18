@@ -572,7 +572,7 @@ class CaseToAtlasOrchestrator:
         provider={"provider":os.getenv("L1_PROVIDER") or "","model":os.getenv("MODEL_NAME") or ""}
         scientific_config = self._scientific_config()
         stages=state.get("stages",{})
-        if stage=="base_run": material={"case_id":request.case_id,"case_profile_sha256":_file_hash(request.case_profile_path),"search_plan_sha256":_file_hash(request.search_plan_path),"abstract_l1_config":scientific_config["abstract_l1"],**provider}
+        if stage=="base_run": material={"case_id":request.case_id,"case_profile_sha256":_file_hash(request.case_profile_path),"search_plan_sha256":_file_hash(request.search_plan_path),"abstract_l1_config":scientific_config["abstract_l1"],"entity_llm_cleaner_enabled":request.entity_llm_cleaner_enabled,**provider}
         elif stage=="pmcid_repair": material={"case_id":request.case_id,"base":self._output_identity(stages.get("base_run",{})),"pmcid_repair_schema":"pmcid_repair_v1"}
         elif stage=="fulltext_l1": material={"case_id":request.case_id,"repair":self._output_identity(stages.get("pmcid_repair",{})),"case_profile_sha256":_file_hash(request.case_profile_path),"fulltext_l1_config":scientific_config["fulltext_l1"],"chunker_config_hash":_hash({"max_sections_per_paper":12,"max_chunks_per_paper":24,"max_chars_per_chunk":6000,"max_total_chunks":200}),**provider}
         elif stage=="fulltext_reasoning_trace": material={"case_id":request.case_id,"fulltext":self._output_identity(stages.get("fulltext_l1",{})),"reasoning_config":scientific_config.get("fulltext_reasoning_trace","legacy_missing_reasoning_config"),**provider}
@@ -592,7 +592,7 @@ class CaseToAtlasOrchestrator:
         provider={"provider":os.getenv("L1_PROVIDER") or "","model":os.getenv("MODEL_NAME") or ""}
         scientific_config = self._scientific_config()
         stages=state.get("stages",{})
-        if stage=="base_run": material={"profile":_file_hash(request.case_profile_path),"plan":_file_hash(request.search_plan_path),"api":request.api_enabled,"network":request.network_enabled,"abstract_l1_config":scientific_config["abstract_l1"],**provider}
+        if stage=="base_run": material={"profile":_file_hash(request.case_profile_path),"plan":_file_hash(request.search_plan_path),"api":request.api_enabled,"network":request.network_enabled,"entity_llm_cleaner_enabled":request.entity_llm_cleaner_enabled,"abstract_l1_config":scientific_config["abstract_l1"],**provider}
         elif stage=="pmcid_repair": material={"base":self._legacy_output_identity(stages.get("base_run",{})),"network":request.network_enabled}
         elif stage=="fulltext_l1": material={"repair":self._legacy_output_identity(stages.get("pmcid_repair",{})),"profile":_file_hash(request.case_profile_path),"api":request.api_enabled,"network":request.network_enabled,"fulltext_l1_config":scientific_config["fulltext_l1"],**provider}
         elif stage=="fulltext_reasoning_trace": material={"fulltext":self._legacy_output_identity(stages.get("fulltext_l1",{})),"api":request.api_enabled,"network":request.network_enabled,"reasoning_config":scientific_config.get("fulltext_reasoning_trace","legacy_missing_reasoning_config"),**provider}
@@ -828,11 +828,23 @@ class CaseToAtlasOrchestrator:
             raise OrchestrationError("REUSE_ONLY_STAGE_INVALID", f"reuse-only forbids executing {name}", stage=name, resume_from=name)
         profile=_read(request.case_profile_path);plan=_read(request.search_plan_path)
         if name=="base_run":
-            from code_engine.extraction.client_factory import build_l1_client_from_env_or_config
+            from code_engine.extraction.client_factory import (
+                build_entity_cleaner_client_from_config,
+                build_l1_client_from_env_or_config,
+                diagnose_entity_cleaner_provider,
+            )
             from code_engine.workflow.orchestrator import run_workflow
             output=Path(record["output_run"]);resume=output if (output/"run_state.json").is_file() else None
             client=build_l1_client_from_env_or_config(os.getenv("L1_PROVIDER"),os.getenv("MODEL_NAME")) if request.api_enabled else None
-            run_state=run_workflow(query=profile["query"],run_dir=output,until="fulltext_escalation",execute=True,api=request.api_enabled,network=request.network_enabled,max_papers=60,diversify_acquisition=True,paper_year_from=plan.get("paper_year_from"),paper_year_to=plan.get("paper_year_to"),temporal_role=(plan.get("paper_year_filter") or {}).get("temporal_role","discovery"),search_plan_file=request.search_plan_path,fail_if_search_plan_drift=True,resume=resume,allow_uncertain_intake=True,l1_mode="abstract_screening",enable_fulltext_escalation=True,l1_llm_client=client,semantic_llm_client=client,seed_triple=plan.get("seed_triple"),allow_compatible_l1_task_reuse=True)
+            entity_client=None
+            if request.entity_llm_cleaner_enabled:
+                diagnostic=diagnose_entity_cleaner_provider(network_enabled=request.network_enabled)
+                if not diagnostic.get("provider_available"):
+                    raise OrchestrationError("ENTITY_LLM_CLEANER_UNAVAILABLE", f"entity_llm_cleaner_requested_but_unavailable:{diagnostic.get('provider_error') or 'provider_unavailable'}", stage=name, resume_from=name)
+                entity_client=build_entity_cleaner_client_from_config()
+                if entity_client is None:
+                    raise OrchestrationError("ENTITY_LLM_CLEANER_UNAVAILABLE", "entity_llm_cleaner_requested_but_unavailable:client_creation_failed", stage=name, resume_from=name)
+            run_state=run_workflow(query=profile["query"],run_dir=output,until="fulltext_escalation",execute=True,api=request.api_enabled,network=request.network_enabled,max_papers=60,diversify_acquisition=True,paper_year_from=plan.get("paper_year_from"),paper_year_to=plan.get("paper_year_to"),temporal_role=(plan.get("paper_year_filter") or {}).get("temporal_role","discovery"),search_plan_file=request.search_plan_path,fail_if_search_plan_drift=True,resume=resume,allow_uncertain_intake=True,l1_mode="abstract_screening",enable_fulltext_escalation=True,l1_llm_client=client,semantic_llm_client=client,entity_llm_cleaner=request.entity_llm_cleaner_enabled,entity_llm_client=entity_client,seed_triple=plan.get("seed_triple"),allow_compatible_l1_task_reuse=True)
             validation=validate_base_run_for_downstream(output, request=request, expected_input_hash=record.get("input_hash"), orchestration_id=self.orchestration_id(request))
             if not validation.valid:
                 raise OrchestrationError(validation.code or "BASE_RUN_VALIDATION_FAILED", validation.summary or "base run validation failed", stage=name, resume_from=name)

@@ -86,6 +86,7 @@ class RunState:
     requires_manual_review: bool = False
     entity_network_lookup_enabled: bool = False
     entity_llm_proposer_enabled: bool = False
+    entity_llm_cleaner_enabled: bool = False
     entity_resolution_policy: str | None = None
     l1_mode: str = "legacy"
     fulltext_escalation_enabled: bool = False
