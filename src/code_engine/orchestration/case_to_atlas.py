@@ -21,7 +21,8 @@ from code_engine.fulltext.reasoning_trace import (
     run_fulltext_context_consolidation_stage,
     run_fulltext_reasoning_trace_stage,
 )
-from code_engine.integration.atlas_handoff import publish_atlas_handoff, sha256_file, validate_handoff
+from code_engine.integration.atlas_handoff import sha256_file
+from code_engine.integration.atlas_publish import publish_completed_scientific_run
 from code_engine.orchestration.models import STAGES, CaseToAtlasRequest, CaseToAtlasResult
 from code_engine.orchestration.state_store import OrchestrationStateStore, canonical_bytes, utcnow
 from code_engine.orchestration.verification import current_projection, evaluation_counts, verify_case_to_atlas
@@ -854,8 +855,10 @@ class CaseToAtlasOrchestrator:
             result=run_replay(case_id=request.case_id,base_run=Path(state["stages"]["base_run"]["output_run"]),fulltext_run=Path(state["stages"]["fulltext_l1"]["output_run"]),output_root=request.runs_root,output_suffix="case_to_atlas_v5",output_run=Path(record["output_run"]),network=False,api=False,publish_atlas=False)
             return {"result":result,"claim_count":result.get("input_fulltext_claim_count",0)}
         if name=="handoff":
-            reentry=Path(state["stages"]["reentry"]["output_run"]);result=publish_atlas_handoff(reentry,runs_root=request.runs_root,lineage={"base_run":state["stages"]["base_run"]["output_run"],"pmcid_repair_run":state["stages"]["pmcid_repair"]["output_run"],"fulltext_l1_run":state["stages"]["fulltext_l1"]["output_run"],"reentry_run":reentry})
-            validate_handoff(result["manifest_path"],runs_root=request.runs_root);return {"manifest_path":result["manifest_path"],"manifest_hash":result["manifest_hash"],"operation_status":result["status"]}
+            reentry=Path(state["stages"]["reentry"]["output_run"])
+            result=publish_completed_scientific_run(reentry,atlas_config={"runs_root":request.runs_root,"output_root":request.system_b_output_root,"database_url":request.database_url,"no_database_write":False,"lineage":{"base_run":state["stages"]["base_run"]["output_run"],"pmcid_repair_run":state["stages"]["pmcid_repair"]["output_run"],"fulltext_l1_run":state["stages"]["fulltext_l1"]["output_run"],"reentry_run":reentry}},publication_source="run_case_to_atlas")
+            if result.get("atlas_sync_status") not in {"completed","no_op"}: raise ValueError(json.dumps(result,ensure_ascii=False))
+            return {"manifest_path":result.get("handoff_manifest"),"manifest_hash":result.get("handoff_manifest_hash"),"operation_status":result.get("sync_status") or result.get("atlas_sync_status"),"publication_result":result}
         if name=="atlas_sync":
             result=sync_system_a(runs_root=request.runs_root,database_url=request.database_url,output_root=request.system_b_output_root,refresh_current_projection=True,manifest=state["stages"]["handoff"].get("manifest_path"))
             if result.get("status") not in {"completed","no_op"} or result.get("rejected"): raise ValueError(json.dumps(result,ensure_ascii=False))

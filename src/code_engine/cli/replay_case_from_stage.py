@@ -325,7 +325,7 @@ def _write_replay_terminal_state(target: Path, manifest: dict, call_accounting: 
     (target / "artifacts" / "replay_terminal_state_audit.json").write_text(json.dumps(terminal, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return terminal
 
-def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suffix,bundle_id_suffix,*,no_l1=True,network=False,api=False,entity_network_lookup=False,entity_llm_cleaner=False,skip_fulltext=True,skip_l7=True,overwrite_bundle=False,bundle_root="case_bundles",case_version=None):
+def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suffix,bundle_id_suffix,*,no_l1=True,network=False,api=False,entity_network_lookup=False,entity_llm_cleaner=False,skip_fulltext=True,skip_l7=True,overwrite_bundle=False,bundle_root="case_bundles",case_version=None,atlas_output_root="system_b_outputs/system_a_sync",atlas_database_url=None,publish_atlas=True):
     source=Path(source_run).resolve();profile=load_case_domain_profile(case_profile);stamp=datetime.now().strftime("%Y%m%d_%H%M%S")
     _validate_replay_checkpoint(source, from_stage, no_l1)
     target=Path(output_root)/f"{stamp}_{profile.case_id}_{output_suffix}"
@@ -455,15 +455,59 @@ def replay(case_profile,search_plan,source_run,from_stage,output_root,output_suf
     manifest.update({"bundle":str(bundle),"case_version":version,"scientific_output_class":case_manifest["scientific_output_class"]})
     terminal = _write_replay_terminal_state(target, manifest, call_accounting, status="completed")
     manifest.update({"final_status": terminal["final_status"], "exit_code": terminal["exit_code"]})
+    if publish_atlas:
+        from code_engine.integration.atlas_publish import publish_completed_scientific_run
+        publication = publish_completed_scientific_run(
+            target,
+            case_profile,
+            {
+                "runs_root": output_root,
+                "output_root": atlas_output_root,
+                "database_url": atlas_database_url,
+                "no_database_write": atlas_database_url is None,
+            } if atlas_output_root else None,
+            publication_source="replay_case_from_stage",
+        )
+    else:
+        publication = {
+            "schema_version": "atlas_publication_result_v1",
+            "scientific_run_id": target.name,
+            "case_id": profile.case_id,
+            "publication_source": "replay_case_from_stage",
+            "handoff_status": "skipped",
+            "atlas_sync_status": "skipped",
+            "atlas_sync_reason": "atlas_not_configured",
+            "atlas_activation_status": "not_active",
+            "aggregate_projection_changed": False,
+            "error": None,
+        }
+        (artifacts/"atlas_publication_result.json").write_text(json.dumps(publication,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+    manifest.update({
+        "scientific_status": "completed",
+        "handoff_status": publication.get("handoff_status"),
+        "handoff_profile": publication.get("handoff_profile"),
+        "handoff_manifest": publication.get("handoff_manifest"),
+        "handoff_content_hash": publication.get("handoff_content_hash") or publication.get("case_content_hash"),
+        "atlas_sync_status": publication.get("atlas_sync_status"),
+        "atlas_sync_reason": publication.get("atlas_sync_reason"),
+        "atlas_activation_status": publication.get("atlas_activation_status"),
+        "atlas_sync_retryable": publication.get("atlas_sync_retryable", False),
+        "projection_id": publication.get("projection_id"),
+        "previous_projection_id": publication.get("previous_projection_id"),
+        "active_projection_id": publication.get("active_projection_id"),
+        "aggregate_projection_changed": publication.get("aggregate_projection_changed"),
+        "atlas_publication_result": str(artifacts/"atlas_publication_result.json"),
+        "atlas_sync_error": publication.get("error"),
+    })
     (target/"replay_manifest.json").write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n")
     (artifacts/"replay_manifest.json").write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n")
     return manifest
 
 def main(argv=None):
- p=argparse.ArgumentParser();p.add_argument("--case-profile",required=True);p.add_argument("--search-plan-file",required=True);p.add_argument("--source-run",required=True);p.add_argument("--from-stage",choices=("l2","l3","l6","bundle"),required=True);p.add_argument("--output-root",default="runs");p.add_argument("--output-suffix",required=True);p.add_argument("--bundle-id-suffix",required=True);p.add_argument("--no-l1",action="store_true");p.add_argument("--network",action="store_true",help="Enable external entity database lookups (PubChem, ChEMBL, MyGene, UniProt) during entity normalization.");p.add_argument("--no-network",action="store_true",help="Explicitly disable external entity lookups (default behavior).");p.add_argument("--api",action="store_true",help="Enable API-based services alongside network lookups.");p.add_argument("--entity-network-lookup",action="store_true",help="Enable external entity database candidate generation (PubChem, ChEMBL, MyGene, UniProt). Requires --network.");p.add_argument("--no-entity-network-lookup",action="store_true",help="Explicitly disable external entity database lookups (default).");p.add_argument("--entity-llm-cleaner",action="store_true",help="Enable LLM-assisted entity surface cleaning before external lookup.");p.add_argument("--no-entity-llm-cleaner",action="store_true",help="Explicitly disable LLM entity surface cleaner (default).");p.add_argument("--skip-fulltext",action="store_true");p.add_argument("--skip-l7",action="store_true");p.add_argument("--overwrite-bundle",action="store_true");a=p.parse_args(argv)
+ p=argparse.ArgumentParser();p.add_argument("--case-profile",required=True);p.add_argument("--search-plan-file",required=True);p.add_argument("--source-run",required=True);p.add_argument("--from-stage",choices=("l2","l3","l6","bundle"),required=True);p.add_argument("--output-root",default="runs");p.add_argument("--output-suffix",required=True);p.add_argument("--bundle-id-suffix",required=True);p.add_argument("--no-l1",action="store_true");p.add_argument("--network",action="store_true",help="Enable external entity database lookups (PubChem, ChEMBL, MyGene, UniProt) during entity normalization.");p.add_argument("--no-network",action="store_true",help="Explicitly disable external entity lookups (default behavior).");p.add_argument("--api",action="store_true",help="Enable API-based services alongside network lookups.");p.add_argument("--entity-network-lookup",action="store_true",help="Enable external entity database candidate generation (PubChem, ChEMBL, MyGene, UniProt). Requires --network.");p.add_argument("--no-entity-network-lookup",action="store_true",help="Explicitly disable external entity database lookups (default).");p.add_argument("--entity-llm-cleaner",action="store_true",help="Enable LLM-assisted entity surface cleaning before external lookup.");p.add_argument("--no-entity-llm-cleaner",action="store_true",help="Explicitly disable LLM entity surface cleaner (default).");p.add_argument("--skip-fulltext",action="store_true");p.add_argument("--skip-l7",action="store_true");p.add_argument("--overwrite-bundle",action="store_true");p.add_argument("--atlas-output-root",default="system_b_outputs/system_a_sync");p.add_argument("--atlas-database-url");p.add_argument("--no-atlas-publish",action="store_true");a=p.parse_args(argv)
  network_enabled = a.network and not a.no_network
  api_enabled = a.api and not a.no_network
  entity_network_lookup = a.entity_network_lookup and not a.no_entity_network_lookup
  entity_llm_cleaner = a.entity_llm_cleaner and not a.no_entity_llm_cleaner
- result=replay(a.case_profile,a.search_plan_file,a.source_run,a.from_stage,a.output_root,a.output_suffix,a.bundle_id_suffix,no_l1=a.no_l1,network=network_enabled,api=api_enabled,entity_network_lookup=entity_network_lookup,entity_llm_cleaner=entity_llm_cleaner,skip_fulltext=a.skip_fulltext,skip_l7=a.skip_l7,overwrite_bundle=a.overwrite_bundle);print(json.dumps(result,indent=2,ensure_ascii=False));return int(result.get("exit_code", 0))
+ result=replay(a.case_profile,a.search_plan_file,a.source_run,a.from_stage,a.output_root,a.output_suffix,a.bundle_id_suffix,no_l1=a.no_l1,network=network_enabled,api=api_enabled,entity_network_lookup=entity_network_lookup,entity_llm_cleaner=entity_llm_cleaner,skip_fulltext=a.skip_fulltext,skip_l7=a.skip_l7,overwrite_bundle=a.overwrite_bundle,atlas_output_root=a.atlas_output_root,atlas_database_url=a.atlas_database_url,publish_atlas=not a.no_atlas_publish);print(json.dumps(result,indent=2,ensure_ascii=False));return int(result.get("exit_code", 0))
 if __name__=="__main__":raise SystemExit(main())

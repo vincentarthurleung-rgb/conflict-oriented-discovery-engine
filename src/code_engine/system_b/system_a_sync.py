@@ -239,11 +239,13 @@ def sync_system_a(
     *, runs_root: str | Path = "runs", database_url: str | None = None, output_root: str | Path = "system_b_outputs/system_a_sync",
     manifest: str | Path | None = None, batch_id: str | None = None, adapter_version: str = ADAPTER_VERSION, dry_run: bool = False,
     quarantine_root: str | Path | None = None, no_database_write: bool = False, refresh_current_projection: bool = True,
+    allow_evidence_scope_downgrade: bool = False,
 ) -> dict[str, Any]:
     paths = discover_handoffs(runs_root, manifest)
     if batch_id:
         paths = [path for path in paths if batch_id in path.parts[-3]]
     current_hashes = {}
+    current_profiles = {}
     registry_path = Path(output_root) / "current_projection.json"
     if registry_path.is_file():
         try:
@@ -251,10 +253,11 @@ def sync_system_a(
             projection_manifest = json.loads((Path(output_root) / registry["projection_relative_path"] / "projection_manifest.json").read_text(encoding="utf-8"))
             for source in projection_manifest.get("source_manifests", []):
                 current_hashes[source["case_id"]] = source["manifest_hash"]
+                current_profiles[source["case_id"]] = source.get("handoff_profile") or FULLTEXT_REENTRY_PROFILE
                 source_path = Path(runs_root) / source["source_run_id"] / "artifacts/atlas_handoff_manifest.json"
                 if source_path.is_file() and source_path.resolve() not in {item.resolve() for item in paths}: paths.append(source_path.resolve())
         except (OSError, KeyError, json.JSONDecodeError):
-            current_hashes = {}
+            current_hashes = {}; current_profiles = {}
     paths = sorted(paths)
     quarantine = Path(quarantine_root or Path(output_root) / "quarantine")
     valid = []; rejected = []
@@ -288,18 +291,33 @@ def sync_system_a(
         raise HandoffError("current_projection_source_missing", summary)
     selected = []
     for case_id, candidates in sorted(grouped.items()):
-        fresh = [item for item in candidates if (case_id, item.get("identity_hash") or item["manifest_hash"], _adapter_version_for(item, adapter_version)) not in existing_keys and current_hashes.get(case_id) != (item.get("identity_hash") or item["manifest_hash"])]
-        if len(fresh) > 1:
-            current_fresh = [item for item in fresh if (item.get("identity_hash") or item["manifest_hash"]) == current_hashes.get(case_id)]
-            if len(current_fresh) == 1:
-                selected.append(current_fresh[0])
-                continue
-            raise HandoffError("ambiguous_new_case_runs", f"{case_id} has {len(fresh)} un-ingested ready handoffs")
-        if fresh: selected.append(fresh[0]); continue
+        profile_priority = {FULLTEXT_REENTRY_PROFILE: 2, ABSTRACT_L2_PROFILE: 1}
+        def candidate_sort_key(item: dict[str, Any]) -> tuple:
+            manifest_value = item["manifest"]
+            return (
+                profile_priority.get(_profile(item), 0),
+                str(manifest_value.get("completed_at") or manifest_value.get("generated_at") or manifest_value.get("created_at") or ""),
+                str(manifest_value.get("source_run_id") or ""),
+                item.get("identity_hash") or item["manifest_hash"],
+            )
         current = [item for item in candidates if (item.get("identity_hash") or item["manifest_hash"]) == current_hashes.get(case_id)]
+        fresh = [item for item in candidates if (case_id, item.get("identity_hash") or item["manifest_hash"], _adapter_version_for(item, adapter_version)) not in existing_keys and current_hashes.get(case_id) != (item.get("identity_hash") or item["manifest_hash"])]
+        if (
+            not allow_evidence_scope_downgrade
+            and current_profiles.get(case_id) == FULLTEXT_REENTRY_PROFILE
+            and current
+            and fresh
+            and all(_profile(item) == ABSTRACT_L2_PROFILE for item in fresh)
+        ):
+            selected.append(sorted(current, key=candidate_sort_key)[-1])
+            continue
+        if len(fresh) > 1:
+            selected.append(sorted(fresh, key=candidate_sort_key)[-1])
+            continue
+        if fresh: selected.append(fresh[0]); continue
         if len(current) == 1: selected.append(current[0]); continue
-        if len(candidates) == 1: selected.append(candidates[0]); continue
-        raise HandoffError("ambiguous_current_case_run", f"{case_id} has no unique current handoff")
+        if candidates: selected.append(sorted(candidates, key=candidate_sort_key)[-1]); continue
+        raise HandoffError("ambiguous_current_case_run", f"{case_id} has no selectable handoff")
     valid = selected
     new = [item for item in valid if (item["manifest"]["case_id"], item.get("identity_hash") or item["manifest_hash"], _adapter_version_for(item, adapter_version)) not in existing_keys and current_hashes.get(item["manifest"]["case_id"]) != (item.get("identity_hash") or item["manifest_hash"])]
     adapters = {FULLTEXT_REENTRY_PROFILE: FulltextReentryV5Adapter(), ABSTRACT_L2_PROFILE: AbstractL2ProjectionAdapter()}

@@ -110,45 +110,39 @@ def backfill_run(run_dir: str | Path) -> dict[str, Any]:
 
 def publish_and_sync_run(run_dir: str | Path, *, runs_root: str | Path, output_root: str | Path,
                          dry_run: bool = False, no_database_write: bool = True) -> dict[str, Any]:
-    from code_engine.integration.atlas_handoff import ABSTRACT_L2_PROFILE, publish_atlas_handoff, validate_handoff
-    from code_engine.system_b.system_a_sync import sync_system_a
+    from code_engine.integration.atlas_handoff import ABSTRACT_L2_PROFILE
+    from code_engine.integration.atlas_publish import publish_completed_scientific_run
     run = Path(run_dir)
     summary = backfill_run(run)
     if dry_run:
         return {**summary, "handoff_status": "would_publish", "sync_status": "dry_run", "activation_status": "not_active"}
-    published = publish_atlas_handoff(run, runs_root=runs_root, handoff_profile=ABSTRACT_L2_PROFILE)
-    validated = validate_handoff(published["manifest_path"], runs_root=runs_root)
-    sync = sync_system_a(runs_root=runs_root, manifest=published["manifest_path"], output_root=output_root, no_database_write=no_database_write)
-    activation = next((row for row in sync.get("case_activations", []) if row.get("case_id") == summary.get("case_id")), {})
+    publication = publish_completed_scientific_run(
+        run,
+        atlas_config={"runs_root": runs_root, "output_root": output_root, "no_database_write": no_database_write},
+        publication_source="backfill_formal_graph",
+    )
     result = {
         **summary,
-        "handoff_status": "completed",
-        "handoff_profile": ABSTRACT_L2_PROFILE,
-        "handoff_manifest": published["manifest_path"],
-        "handoff_identity_hash": validated.get("identity_hash"),
-        "projection_id": sync.get("current_projection_id"),
-        "previous_projection_id": activation.get("previous_projection_id"),
-        "active_projection_id": activation.get("active_projection_id"),
-        "sync_status": sync.get("status"),
-        "atlas_sync_status": "completed" if sync.get("status") in {"completed", "no_op"} else sync.get("status"),
-        "atlas_activation_status": sync.get("atlas_activation_status"),
-        "atlas_sync_error": None if sync.get("status") in {"completed", "no_op"} else sync.get("error_summary"),
-        "activation_status": sync.get("atlas_activation_status"),
-        "idempotency_status": "no_op" if sync.get("status") == "no_op" else "created_or_refreshed",
+        **publication,
+        "handoff_profile": publication.get("handoff_profile") or ABSTRACT_L2_PROFILE,
+        "sync_status": publication.get("sync_status") or publication.get("atlas_sync_status"),
+        "activation_status": publication.get("atlas_activation_status"),
+        "atlas_sync_error": None if publication.get("atlas_sync_status") in {"completed", "no_op"} else publication.get("error"),
+        "idempotency_status": "no_op" if publication.get("sync_status") == "no_op" else "created_or_refreshed",
         "review_preservation_status": "preserved_no_database_write_no_review_root_mutation" if no_database_write else "preserved_projection_activation_only",
     }
     manifest_path = run / "artifacts" / "replay_manifest.json"
     replay = _json(manifest_path, {}) or {}
     replay.update({
         "scientific_status": "completed",
-        "handoff_status": "completed",
-        "handoff_profile": ABSTRACT_L2_PROFILE,
-        "handoff_manifest": published["manifest_path"],
-        "atlas_sync_status": "completed" if sync.get("status") in {"completed", "no_op"} else sync.get("status"),
-        "atlas_activation_status": sync.get("atlas_activation_status"),
+        "handoff_status": result.get("handoff_status"),
+        "handoff_profile": result.get("handoff_profile"),
+        "handoff_manifest": result.get("handoff_manifest"),
+        "atlas_sync_status": result.get("atlas_sync_status"),
+        "atlas_activation_status": result.get("atlas_activation_status"),
         "projection_id": result["projection_id"],
         "previous_projection_id": result["previous_projection_id"],
-        "atlas_sync_error": None,
+        "atlas_sync_error": result.get("atlas_sync_error"),
         "exit_code": 0,
     })
     atomic_write_json(manifest_path, replay)

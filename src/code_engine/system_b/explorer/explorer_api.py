@@ -600,6 +600,7 @@ class ExplorerAPI:
         context_declared=declared.get("context_consolidation") or {}
         fulltext_declared=declared.get("fulltext_l1") or {}
         reentry_declared=declared.get("reentry") or {}
+        abstract_l2_declared=declared.get("abstract_l2") or {}
         def status(value,fallback):
             raw=value.get("status")
             return raw if raw else fallback
@@ -615,8 +616,13 @@ class ExplorerAPI:
             "activated_at":active_projection.get("activated_at"),
             "handoff_profile":active_projection.get("handoff_profile") or metadata.get("handoff_profile"),
             "evidence_scope":active_projection.get("evidence_scope") or (metadata.get("compatibility") or {}).get("evidence_scope"),
+            "case_content_hash":active_projection.get("content_hash"),
             "projection_compatibility":metadata.get("compatibility") or {},
             "display_triples_count":len(triples),"display_chains_count":len(chains),
+            "formal_observation_count":abstract_l2_declared.get("record_count"),
+            "unique_formal_triple_count":len(triples) if (active_projection.get("handoff_profile") or metadata.get("handoff_profile"))=="abstract_l2_projection" else None,
+            "exploratory_triple_count":sum(1 for x in self.triples if case in x.get("case_ids",[])),
+            "display_triple_count":len(triples),
             "evidence_count":len(evidence),"fulltext_evidence_count":sum("full" in str(x.get("source_scope","")).casefold() for x in evidence),
             "paper_count":len({x.get("pmid") or x.get("pmcid") or x.get("paper_title") for x in evidence if x.get("pmid") or x.get("pmcid") or x.get("paper_title")}),
             "non_comparable_records":sum(x.get("record_type")=="non_comparable_direction_pair" for x in conflicts),
