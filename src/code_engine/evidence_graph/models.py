@@ -80,6 +80,17 @@ class EvidenceEdge(Serializable):
     source_scope: str | None = None
     evidence_tier: str | None = None
     graph_layer: str | None = None
+    scientific_edge_layer: str | None = None
+    evidence_design: str | None = None
+    inference_type: str | None = None
+    causal_direction_provenance: str | None = None
+    core_exclusion_reasons: list[str] = field(default_factory=list)
+    measurement_dimension: str | None = None
+    measured_entity: str | None = None
+    sample_context: str | None = None
+    intervention_target: str | None = None
+    intervention_type: str | None = None
+    evidence_semantics: dict[str, Any] = field(default_factory=dict)
     canonical_graph_eligible: bool | None = None
     allow_high_confidence_graph_use: bool | None = None
     context_compatibility_status: str | None = None

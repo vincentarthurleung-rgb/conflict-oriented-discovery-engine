@@ -127,6 +127,17 @@ def normalize_observation_to_evidence_edge(item: dict[str, Any], manifest: dict[
         evidence_span=span, evidence_text=_first(item, "evidence_text", "evidence_sentence", "text", "sentence"),
         source_scope=_first(item, "source_scope", "scope"), evidence_tier=_first(item, "evidence_tier", "tier"),
         graph_layer=_first(item, "graph_layer"),
+        scientific_edge_layer=_first(item, "scientific_edge_layer", "retained_layer"),
+        evidence_design=_first(item, "evidence_design", "evidence_semantics.evidence_design"),
+        inference_type=_first(item, "inference_type", "evidence_semantics.inference_type"),
+        causal_direction_provenance=_first(item, "causal_direction_provenance", "direction_source", "evidence_semantics.causal_direction_provenance"),
+        core_exclusion_reasons=list(_first(item, "core_exclusion_reasons", "core_gate.reasons", "evidence_semantics.semantic_hard_exclusions") or []),
+        measurement_dimension=_first(item, "measurement_dimension", "object_endpoint.measurement_dimension", "subject_endpoint.measurement_dimension"),
+        measured_entity=_first(item, "measured_entity", "object_endpoint.measured_entity_canonical_name", "object_endpoint.measured_entity_cleaned", "subject_endpoint.measured_entity_canonical_name", "subject_endpoint.measured_entity_cleaned"),
+        sample_context=_first(item, "sample_context", "evidence_semantics.sample_context"),
+        intervention_target=_first(item, "intervention_target", "evidence_semantics.intervention_target"),
+        intervention_type=_first(item, "intervention_type", "evidence_semantics.intervention_type"),
+        evidence_semantics=_first(item, "evidence_semantics", "scientific_semantics_decision") or {},
         canonical_graph_eligible=item.get("canonical_graph_eligible"),
         allow_high_confidence_graph_use=item.get("allow_high_confidence_graph_use"),
         context_compatibility_status=_first(item, "context_compatibility_status", "context_compatibility.status"),
@@ -238,9 +249,11 @@ def _observation_provenance(edge: EvidenceEdge) -> dict[str, Any]:
     value = {key: getattr(edge, key) for key in (
         "observation_id", "claim_id", "paper_id", "canonical_paper_id", "title", "publication_year",
         "subject_name", "object_name", "relation_family", "direction", "direction_polarity", "graph_layer",
+        "scientific_edge_layer", "evidence_design", "inference_type", "causal_direction_provenance",
+        "measurement_dimension", "measured_entity", "sample_context", "intervention_target", "intervention_type",
         "canonical_graph_eligible", "allow_high_confidence_graph_use", "context_compatibility_status",
         "strong_context_match", "query_context_only", "core_context_eligible", "excluded_from_core_reason",
-        "evidence_text")}
+        "core_exclusion_reasons", "evidence_text")}
     value["evidence_sentence"] = edge.evidence_text or edge.evidence_span
     return value
 
@@ -399,6 +412,13 @@ def build_merged_evidence_graph_from_run_artifacts(
                          "original_object_canonical_id": item.original_object_canonical_id,
                          "original_relation_family": item.original_relation_family,
                          "relation_raw": item.relation_raw,
+                         "scientific_edge_layer": item.scientific_edge_layer,
+                         "evidence_design": item.evidence_design,
+                         "inference_type": item.inference_type,
+                         "causal_direction_provenance": item.causal_direction_provenance,
+                         "measurement_dimension": item.measurement_dimension,
+                         "measured_entity": item.measured_entity,
+                         "core_exclusion_reasons": item.core_exclusion_reasons,
                          "subject_endpoint": item.subject_endpoint,
                          "object_endpoint": item.object_endpoint,
                          "observation_id": item.observation_id,

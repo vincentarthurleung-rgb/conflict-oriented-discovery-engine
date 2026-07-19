@@ -160,6 +160,7 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
         decompose_endpoint,
         endpoint_with_resolution,
     )
+    from code_engine.normalization.intervention_semantics import apply_evidence_semantics
     from code_engine.normalization.models import NormalizationDecision
     if resolver_mode not in {"provider_route", "hint_only"}:
         raise ValueError(f"unsupported resolver_mode: {resolver_mode}")
@@ -301,11 +302,13 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             observation["object_canonical_id"] = ""
             observation["object_canonical_source"] = None
             observation["object_external_mapping_status"] = None
+        observation = apply_evidence_semantics(observation)
+        strict_semantics = observation.get("scientific_edge_layer") == "strict_causal_core"
         observation["canonical_graph_eligible"]=observation["conflict_reasoning_eligible"]
         observation["allow_high_confidence_graph_use"]=bool(observation.get("allow_high_confidence_graph_use") and observation["conflict_reasoning_eligible"])
         observation["exclude_from_high_confidence_conflict"]=not observation["allow_high_confidence_graph_use"]
-        observation["subject_endpoint"] = apply_core_projection(observation, "subject", subject_endpoint, claim_graph_eligible=usable)
-        observation["object_endpoint"] = apply_core_projection(observation, "object", object_endpoint, claim_graph_eligible=usable)
+        observation["subject_endpoint"] = apply_core_projection(observation, "subject", subject_endpoint, claim_graph_eligible=bool(usable and strict_semantics))
+        observation["object_endpoint"] = apply_core_projection(observation, "object", object_endpoint, claim_graph_eligible=bool(usable and strict_semantics))
         projected_roles = [role for role in ("subject", "object") if (observation.get(f"{role}_endpoint") or {}).get("core_projection_status") == "projected"]
         if len(projected_roles) == 1:
             projected_role = projected_roles[0]
@@ -316,13 +319,16 @@ def _normalize_progressive_records(records: list[dict[str, Any]], profile: dict[
             observation["core_projection_reason"] = endpoint.get("core_projection_reason")
             observation["projected_object_canonical_id" if projected_role == "object" else "projected_subject_canonical_id"] = endpoint.get("measured_entity_canonical_id")
             observation["projected_object_canonical_name" if projected_role == "object" else "projected_subject_canonical_name"] = endpoint.get("measured_entity_canonical_name")
-            observation["graph_observation_eligible"] = True
-            observation["conflict_reasoning_eligible"] = True
-            observation["canonical_graph_eligible"] = True
-            observation["allow_high_confidence_graph_use"] = True
-            observation["exclude_from_high_confidence_conflict"] = False
-            observation["graph_layer"] = "core_canonical_graph"
-            observation["excluded_from_core_reason"] = None
+            observation["graph_observation_eligible"] = bool(strict_semantics)
+            observation["conflict_reasoning_eligible"] = bool(strict_semantics and observation.get("conflict_reasoning_eligible"))
+            observation["canonical_graph_eligible"] = bool(strict_semantics and observation.get("canonical_graph_eligible"))
+            observation["allow_high_confidence_graph_use"] = bool(strict_semantics and observation.get("allow_high_confidence_graph_use"))
+            observation["exclude_from_high_confidence_conflict"] = not observation["allow_high_confidence_graph_use"]
+            if strict_semantics:
+                observation["graph_layer"] = "core_canonical_graph"
+                observation["excluded_from_core_reason"] = None
+            else:
+                observation["excluded_from_core_reason"] = (observation.get("core_exclusion_reasons") or ["scientific_semantics_not_strict_core"])[0]
         elif projected_roles:
             observation["core_projection_status"] = "excluded"
             observation["core_projection_reason"] = "multiple_composite_endpoint_projection_not_supported"
@@ -1018,13 +1024,22 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
             item["formal_relation_family"] = gate["relation_family"]
             item["measurement_dimension"] = gate["measurement_dimension"]
             item["relation_sign"] = gate["sign"]
+            item["direction"] = "positive" if gate["sign"] == 1 else "negative" if gate["sign"] == -1 else item.get("direction")
+            item["direction_source"] = gate.get("direction_provenance")
             item["graph_layer"] = "core_canonical_graph"
+            item["scientific_edge_layer"] = "strict_causal_core"
+            item["retained_layer"] = "strict_causal_core"
             item["canonical_graph_eligible"] = True
             item["allow_high_confidence_graph_use"] = True
             item["exclude_from_high_confidence_conflict"] = False
             item["excluded_from_core_reason"] = None
         else:
             item["excluded_from_core_reason"] = item.get("excluded_from_core_reason") or gate["reason"]
+            if item.get("graph_layer") == "core_canonical_graph":
+                item["graph_layer"] = "review_layer"
+            item["canonical_graph_eligible"] = False
+            item["allow_high_confidence_graph_use"] = False
+            item["exclude_from_high_confidence_conflict"] = True
         gate_audit.append({
             "observation_id": item.get("observation_id"),
             "paper_id": item.get("paper_id"),
@@ -1042,8 +1057,17 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
             "formal_relation": gate["formal_relation"],
             "relation_sign": gate["sign"],
             "measurement_dimension": gate["measurement_dimension"],
+            "direction_source": gate.get("direction_provenance"),
+            "scientific_edge_layer": gate.get("scientific_edge_layer"),
+            "retained_layer": gate.get("scientific_edge_layer"),
+            "core_exclusion_reasons": gate.get("core_exclusion_reasons") or [],
+            "evidence_design": gate.get("evidence_design"),
+            "inference_type": gate.get("inference_type"),
         }
-    graph_observations=[item for item in retained if item.get("graph_observation_eligible")]
+    graph_observations=[
+        item for item in retained
+        if item.get("available_for_display", True) and item.get("scientific_edge_layer") != "audit_rejected"
+    ]
     conflict_observations=[_formal_row(item) for item in retained if item.get("formal_core_graph_eligible")]
     review_observations=[item for item in retained if item.get("requires_review")]
     for key, values in (("l2_retained_observations", retained), ("l2_core_graph_observations", conflict_observations), ("l2_graph_observations", graph_observations),
@@ -1145,6 +1169,10 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
     projected_endpoints = [(item, role, endpoint) for item, role, endpoint in composite_endpoints
                            if endpoint.get("core_projection_status") == "projected"]
     endpoint_reason_counts = Counter(endpoint.get("core_projection_reason") or "unknown" for _, _, endpoint in composite_endpoints)
+    scientific_layer_counts = Counter(item.get("scientific_edge_layer") or item.get("retained_layer") or "unknown" for item in observations)
+    core_items_for_safety = [item for item in observations if item.get("formal_core_graph_eligible")]
+    def _core_has_reason(reason: str) -> int:
+        return sum(reason in (item.get("core_exclusion_reasons") or (item.get("core_gate") or {}).get("reasons") or []) for item in core_items_for_safety)
     decision_to_observation_failures = [
         {"observation_id": item.get("observation_id"), "endpoint_role": role, "canonical_id": norm.get("canonical_id")}
         for item, role, norm in resolved_graph_endpoints
@@ -1186,6 +1214,21 @@ def run_l2_abstract_step(*, run_dir: Path, l1_mode: str = "abstract_screening",
         "formal_core_observation_count": len(conflict_observations),
         "conflict_eligible_formal_observation_count": sum(bool(item.get("conflict_eligible")) for item in conflict_observations),
         "core_gate_reason_counts": dict(Counter(row["reason"] for row in gate_audit)),
+        "strict_causal_core_count": scientific_layer_counts["strict_causal_core"],
+        "causal_reviewable_count": scientific_layer_counts["causal_reviewable"],
+        "intervention_observation_count": scientific_layer_counts["intervention_observation"],
+        "rescue_supported_count": scientific_layer_counts["rescue_supported"],
+        "association_count": scientific_layer_counts["association"],
+        "differential_expression_count": scientific_layer_counts["differential_expression"],
+        "context_only_count": scientific_layer_counts["context_only"],
+        "audit_rejected_count": scientific_layer_counts["audit_rejected"],
+        "unresolved_fallback_in_core_count": _core_has_reason("endpoint_unresolved_fallback"),
+        "sample_context_in_core_count": _core_has_reason("sample_context_endpoint"),
+        "association_in_causal_core_count": _core_has_reason("association_projected_as_regulation") + _core_has_reason("non_causal_evidence_design"),
+        "measurement_missing_in_core_count": _core_has_reason("measurement_projection_missing"),
+        "direction_conflict_in_core_count": _core_has_reason("direction_provenance_inconsistent"),
+        "unresolved_intervention_in_core_count": _core_has_reason("intervention_semantics_unresolved") + _core_has_reason("rescue_semantics_unresolved"),
+        "unsupported_isoform_projection_in_core_count": _core_has_reason("unsupported_isoform_projection"),
         "excluded_reason_counts": dict(excluded_reasons),
         "runtime_entity_hints_used": bool(hints),
         "run_entity_registry_entity_count": len(hints),

@@ -74,7 +74,14 @@ class AbstractL2ProjectionAdapter:
         artifact_hash = manifest["artifacts"]["l2_core_graph_observations"]["sha256"]
         core_rows = _rows(validated, "l2_core_graph_observations")
         graph_rows = _rows(validated, "l2_graph_observations")
-        evidence_rows = core_rows if core_rows else graph_rows
+        seen_core = {str(_value(row, "observation_id", "claim_id", "evidence_id", "triple_id") or _canonical_hash(row)) for row in core_rows}
+        display_graph_rows = [
+            row for row in graph_rows
+            if str(_value(row, "observation_id", "claim_id", "evidence_id", "triple_id") or _canonical_hash(row)) not in seen_core
+            and row.get("available_for_display", True)
+            and row.get("scientific_edge_layer") != "audit_rejected"
+        ]
+        evidence_rows = core_rows + display_graph_rows
         dossier_evidence = []
         context_rows = []
         claim_candidates = []
@@ -108,6 +115,16 @@ class AbstractL2ProjectionAdapter:
                 "dossier_id": dossier_id,
                 "triple_id": f"dossier:{dossier_id}",
                 "evidence_lane": "abstract_l2_core" if row in core_rows else "abstract_l2_graph",
+                "scientific_edge_layer": row.get("scientific_edge_layer") or row.get("retained_layer") or ("strict_causal_core" if row in core_rows else None),
+                "evidence_design": row.get("evidence_design") or (row.get("evidence_semantics") or {}).get("evidence_design"),
+                "inference_type": row.get("inference_type") or (row.get("evidence_semantics") or {}).get("inference_type"),
+                "direction_provenance": row.get("causal_direction_provenance") or row.get("direction_source") or (row.get("evidence_semantics") or {}).get("causal_direction_provenance"),
+                "core_exclusion_reasons": row.get("core_exclusion_reasons") or (row.get("core_gate") or {}).get("reasons", []),
+                "measurement_dimension": row.get("measurement_dimension") or (row.get("object_endpoint") or {}).get("measurement_dimension") or (row.get("subject_endpoint") or {}).get("measurement_dimension"),
+                "measured_entity": row.get("measured_entity") or (row.get("object_endpoint") or {}).get("measured_entity_canonical_name") or (row.get("subject_endpoint") or {}).get("measured_entity_canonical_name"),
+                "sample_context": row.get("sample_context") or (row.get("evidence_semantics") or {}).get("sample_context"),
+                "intervention_target": row.get("intervention_target") or (row.get("evidence_semantics") or {}).get("intervention_target"),
+                "intervention_type": row.get("intervention_type") or (row.get("evidence_semantics") or {}).get("intervention_type"),
                 "relation_class": row.get("formal_relation_family") or row.get("relation_family"),
                 "seed_distance": None,
                 "exploratory_graph_eligible": bool(row.get("graph_observation_eligible", True)),
@@ -169,7 +186,7 @@ class AbstractL2ProjectionAdapter:
                 "prediction_run_id": prediction_run_id,
             })
             if subject_id and object_id and relation != "unknown":
-                graph_records.append({**evidence, "subject_id": subject_id, "subject_entity_type": subject_type, "object_id": object_id, "object_entity_type": object_type, "prediction_run_id": prediction_run_id, "edge_scope": "formal" if row.get("conflict_eligible") else "exploratory"})
+                graph_records.append({**evidence, "subject_id": subject_id, "subject_entity_type": subject_type, "object_id": object_id, "object_entity_type": object_type, "prediction_run_id": prediction_run_id, "edge_scope": "formal" if row.get("conflict_eligible") is True else "exploratory"})
         exploratory, display = self._display_projection(graph_records, prediction_run_id)
         return {
             "dossier_evidence": sorted(dossier_evidence, key=lambda row: (row["dossier_id"], row["source_record_hash"])),
@@ -203,7 +220,7 @@ class AbstractL2ProjectionAdapter:
                 entities.setdefault(entity_id, {"entity_id": entity_id, "display_label": first[side], "label": first[side], "entity_type": first.get(f"{side}_entity_type") or "unknown", "source_case_ids": sorted({row["case_id"] for row in evidence}), "degree": 0, "evidence_count": len(evidence), "display_priority_score": len(evidence)})
             entities[first["subject_id"]]["degree"] += 1
             entities[first["object_id"]]["degree"] += 1
-            triple = {"triple_id": triple_id, "subject_id": first["subject_id"], "subject_display_label": first["subject"], "relation_normalized": first["relation"], "object_id": first["object_id"], "object_display_label": first["object"], "direction": first.get("direction"), "prediction_run_id": prediction_run_id, "evidence_lane": sorted({str(row.get("evidence_lane")) for row in evidence}), "edge_scope": "formal" if any(row.get("conflict_eligible") for row in evidence) else "exploratory", "exploratory_graph_eligible": True, "conflict_eligible": any(row.get("conflict_eligible") for row in evidence), "evidence_count": len(evidence), "fulltext_evidence_count": 0, "related_dossier_ids": sorted({row["dossier_id"] for row in evidence}), "case_ids": sorted({row["case_id"] for row in evidence}), "display_priority_score_v2": len(evidence)}
+            triple = {"triple_id": triple_id, "subject_id": first["subject_id"], "subject_display_label": first["subject"], "relation_normalized": first["relation"], "object_id": first["object_id"], "object_display_label": first["object"], "direction": first.get("direction"), "prediction_run_id": prediction_run_id, "evidence_lane": sorted({str(row.get("evidence_lane")) for row in evidence}), "scientific_edge_layers": sorted({str(row.get("scientific_edge_layer")) for row in evidence if row.get("scientific_edge_layer")}), "evidence_designs": sorted({str(row.get("evidence_design")) for row in evidence if row.get("evidence_design")}), "inference_types": sorted({str(row.get("inference_type")) for row in evidence if row.get("inference_type")}), "direction_provenance": sorted({str(row.get("direction_provenance")) for row in evidence if row.get("direction_provenance")}), "core_exclusion_reasons": sorted({reason for row in evidence for reason in (row.get("core_exclusion_reasons") or [])}), "measurement_dimension": first.get("measurement_dimension"), "sample_context": first.get("sample_context"), "intervention_target": first.get("intervention_target"), "intervention_type": first.get("intervention_type"), "edge_scope": "formal" if any(row.get("conflict_eligible") is True for row in evidence) else "exploratory", "exploratory_graph_eligible": True, "conflict_eligible": any(row.get("conflict_eligible") is True for row in evidence), "evidence_count": len(evidence), "fulltext_evidence_count": 0, "related_dossier_ids": sorted({row["dossier_id"] for row in evidence}), "case_ids": sorted({row["case_id"] for row in evidence}), "display_priority_score_v2": len(evidence)}
             triples.append(triple)
             exploratory.append({**triple, "supporting_evidence_count": len(evidence), "case_coverage": len(triple["case_ids"])})
             for row in evidence:

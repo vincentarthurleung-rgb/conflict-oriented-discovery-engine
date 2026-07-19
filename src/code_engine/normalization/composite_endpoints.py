@@ -97,6 +97,7 @@ def decompose_endpoint(raw: str, endpoint_type: str | None = None) -> EndpointDe
         (re.compile(r"^(.+?)\s+abundance$", re.I), "abundance", None, None),
         (re.compile(r"^(.+?)\s+phosphorylation$", re.I), "phosphorylation", None, None),
         (re.compile(r"^phosphorylated\s+(.+?)$", re.I), "phosphorylation", "phosphorylated", None),
+        (re.compile(r"^p[-\s]?(.+?)$", re.I), "phosphorylation", "phosphorylated", None),
         (re.compile(r"^(.+?)\s+activation$", re.I), "activity", "activated", None),
         (re.compile(r"^(.+?)\s+activity$", re.I), "activity", None, None),
         (re.compile(r"^(.+?)\s+localization$", re.I), "localization", None, None),
@@ -126,6 +127,11 @@ NEGATIVE_RELATIONS = {"decrease", "decreases", "decreased", "downregulate", "dow
 
 
 def relation_direction(item: dict[str, Any]) -> str | None:
+    derived_sign = item.get("derived_causal_sign")
+    if derived_sign in (1, "+1", "1", "positive"):
+        return "positive"
+    if derived_sign in (-1, "-1", "negative"):
+        return "negative"
     values = [item.get("direction"), item.get("relation_raw"), item.get("relation_family"), item.get("polarity_type")]
     text = " ".join(str(value or "").casefold().replace("_", " ") for value in values)
     tokens = set(re.findall(r"[a-z]+", text))
