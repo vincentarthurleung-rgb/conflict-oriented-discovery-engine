@@ -175,7 +175,7 @@ class ResolverCascade:
         expected_type = canonical_entity_type(context.get("expected_entity_type") or context.get("l1_entity_type_hint"))
         species_value, species_status = _species_context(context)
         measurement_dimension = None
-        request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), endpoint_role=context.get("mention_role"), species_context=species_value, species_context_status=species_status, mention_granularity=_mention_granularity(lexical.raw_text, expected_type), assay_context=context.get("assay_context"), measurement_dimension=measurement_dimension, network_enabled=bool(self.execute and self.network_enabled), api_enabled=bool(self.execute and self.api_enabled), execute=self.execute)
+        request = EntityResolutionRequest(surface=lexical.raw_text, context_text=context.get("context_text"), domain_id=self.domain_id, entity_registry_profile=self.entity_registry_profile, resolver_policy_id=self.resolver_policy_id, allowed_entity_types=list(context.get("allowed_entity_types") or []), l1_entity_type_hint=context.get("expected_entity_type") or context.get("l1_entity_type_hint"), paper_id=context.get("paper_id"), claim_id=context.get("claim_id"), observation_id=context.get("observation_id"), endpoint_role=context.get("mention_role"), relation=context.get("relation") or context.get("relation_raw") or context.get("predicate"), species_context=species_value, species_context_status=species_status, mention_granularity=_mention_granularity(lexical.raw_text, expected_type), assay_context=context.get("assay_context"), measurement_dimension=measurement_dimension, network_enabled=bool(self.execute and self.network_enabled), api_enabled=bool(self.execute and self.api_enabled), execute=self.execute)
         request.l1_entity_type_hint = expected_type
         result = self.hub.resolve(request)
         selected = result.selected_candidate
@@ -184,7 +184,7 @@ class ResolverCascade:
         # --- LLM-assisted entity cleaning (only when unresolved/ambiguous) ---
         llm_cleaner_result = None
         if self.entity_llm_cleaner_enabled and result.normalization_status not in {
-            "resolved_curated", "resolved_external_grounded", "resolved_cache",
+            "accepted_external_grounded", "resolved_curated", "resolved_external_grounded", "resolved_cache",
         }:
             cleaner = self._get_llm_cleaner()
             if cleaner is not None:
@@ -234,6 +234,7 @@ class ResolverCascade:
                                 claim_id=context.get("claim_id"),
                                 observation_id=context.get("observation_id"),
                                 endpoint_role=context.get("mention_role"),
+                                relation=context.get("relation") or context.get("relation_raw") or context.get("predicate"),
                                 species_context=species_value,
                                 species_context_status=species_status,
                                 mention_granularity=_mention_granularity(head.surface, final_type),
@@ -262,7 +263,7 @@ class ResolverCascade:
                         all_candidates = list(result.candidates) + verified_candidates
                         re_result = adjudicate_entity_candidates(request, all_candidates, self.hub.adjudicator_policy)
                         # If re-adjudication produced a verified result, use it
-                        if re_result.normalization_status in {"resolved_external_grounded", "resolved_curated", "resolved_cache"}:
+                        if re_result.normalization_status in {"accepted_external_grounded", "resolved_external_grounded", "resolved_curated", "resolved_cache"}:
                             result = re_result
                             if cleaner:
                                 cleaner.update_verification_status(
@@ -304,15 +305,15 @@ class ResolverCascade:
                             )
 
         # --- Build legacy decision ---
-        if result.normalization_status in {"resolved_curated", "resolved_external_grounded", "resolved_cache"} and result.selected_candidate:
+        if result.normalization_status in {"accepted_external_grounded", "resolved_curated", "resolved_external_grounded", "resolved_cache"} and result.selected_candidate:
             legacy_status = "resolved"
-        elif result.normalization_status == "ambiguous" or (result.normalization_status == "manual_review_required" and result.candidates):
+        elif result.normalization_status in {"ambiguous", "ambiguous_external_candidate"} or (result.normalization_status == "manual_review_required" and result.candidates):
             legacy_status = "ambiguous"
         elif result.normalization_status == "llm_suggestion_ungrounded":
             legacy_status = "unresolved_fallback"
         else:
             legacy_status = "unresolved_fallback"
-        selected = result.selected_candidate
+        selected = None if result.normalization_status == "rejected_external_candidate" else result.selected_candidate
         canonical_name = str(selected.canonical_name or "") if selected else (lexical.normalized_surface.upper() if legacy_status == "unresolved_fallback" else "")
         selected_legacy = _legacy_candidate(selected) if selected else None
         # Fall back to best candidate when adjudicator cannot decide (ambiguous margin).
@@ -376,7 +377,7 @@ class ResolverCascade:
             rejection_reason = llm_cleaner_result.rejection_reason or ""
         elif result.normalization_status == "resolved_curated":
             selected_source = "curated"
-        elif result.normalization_status == "resolved_external_grounded":
+        elif result.normalization_status in {"accepted_external_grounded", "resolved_external_grounded"}:
             selected_source = "external_direct"
         elif result.normalization_status == "resolved_cache":
             selected_source = "cache"

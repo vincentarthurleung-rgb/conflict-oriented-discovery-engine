@@ -74,7 +74,7 @@ def build_mechanism_edges_from_observations(observations: list[dict], evidence_r
             continue
         generic_status = str(observation.get("normalization_status", "resolved"))
         statuses = {str(observation.get("subject_normalization_status", generic_status)), str(observation.get("object_normalization_status", generic_status))}
-        bad_statuses = {"ambiguous", "unresolved", "unresolved_fallback", "empty_or_invalid", "low_confidence"}
+        bad_statuses = {"ambiguous", "ambiguous_external_candidate", "rejected_external_candidate", "unresolved", "unresolved_fallback", "empty_or_invalid", "low_confidence"}
         low_quality = str(observation.get("normalization_quality", "")).casefold() in {"low_confidence", "ambiguous", "unresolved"}
         usable = bool(observation.get("allow_high_confidence_graph_use", not observation.get("exclude_from_high_confidence_conflict", False))) and not statuses.intersection(bad_statuses) and not low_quality
         if not usable and not include_low_confidence:

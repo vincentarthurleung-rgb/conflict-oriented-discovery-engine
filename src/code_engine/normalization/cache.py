@@ -40,7 +40,7 @@ class EntityCache:
                 handle.write(item.model_dump_json() + "\n")
 
     def record_accepted(self, result: EntityResolutionResult) -> bool:
-        if not self.accepted_writes_enabled or result.normalization_status not in {"resolved_curated", "resolved_external_grounded"} or not result.selected_candidate:
+        if not self.accepted_writes_enabled or result.normalization_status not in {"resolved_curated", "resolved_external_grounded", "accepted_external_grounded"} or not result.selected_candidate:
             return False
         self.root.mkdir(parents=True, exist_ok=True)
         payload = {**result.selected_candidate.model_dump(), "normalization_status": result.normalization_status, "confidence": result.confidence}

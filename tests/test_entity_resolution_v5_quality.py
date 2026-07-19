@@ -74,12 +74,12 @@ def test_species_and_granularity_fail_closed():
         canonical_name="IL6_HUMAN", entity_type="protein", source="external", provider_name="UniProtCandidateProvider",
         is_grounded=True, overall_score=0.85, candidate_species="human",
     )
-    assert adjudicate_entity_candidates(human_request, [human]).normalization_status == "resolved_external_grounded"
+    assert adjudicate_entity_candidates(human_request, [human]).normalization_status == "accepted_external_grounded"
 
     bovine = human.model_copy(update={"candidate_id": "B", "canonical_id": "UniProt:P26895", "canonical_name": "IL6_BOVIN", "candidate_species": "bovine"})
     rejected = adjudicate_entity_candidates(human_request, [bovine])
-    assert rejected.normalization_status == "manual_review_required"
-    assert rejected.selected_candidate.species_match_status == "conflicting"
+    assert rejected.normalization_status == "rejected_external_candidate"
+    assert rejected.selected_candidate.species_match_status == "incompatible"
 
     tgfb_request = EntityResolutionRequest(surface="TGF-β", l1_entity_type_hint="protein_family", mention_granularity="protein_family")
     tgfb1 = EntityCandidate(
@@ -88,8 +88,8 @@ def test_species_and_granularity_fail_closed():
         is_grounded=True, overall_score=0.95,
     )
     tgfb_result = adjudicate_entity_candidates(tgfb_request, [tgfb1])
-    assert tgfb_result.normalization_status == "manual_review_required"
-    assert tgfb_result.selected_candidate.granularity_status == "too_specific"
+    assert tgfb_result.normalization_status == "ambiguous_external_candidate"
+    assert tgfb_result.selected_candidate.granularity_status == "narrower"
 
 
 def test_resolved_endpoint_propagates_to_observation_and_merged_graph():

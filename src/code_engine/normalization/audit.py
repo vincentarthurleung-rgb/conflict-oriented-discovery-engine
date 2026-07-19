@@ -142,15 +142,15 @@ class EntityResolutionAuditWriter:
                     top_unresolved_eligible.append({"surface": surface, "entity_type": entity_type})
                 elif not has_active_external_provider and len(top_unresolved_ineligible) < 20:
                     top_unresolved_ineligible.append({"surface": surface, "entity_type": entity_type})
-            elif status == "ambiguous":
+            elif status in {"ambiguous", "ambiguous_external_candidate"}:
                 provider_ambiguous_count += 1
-            elif status in {"resolved_external_grounded", "resolved_curated", "resolved_cache"}:
+            elif status in {"accepted_external_grounded", "resolved_external_grounded", "resolved_curated", "resolved_cache"}:
                 provider_resolved_count += 1
                 selected = item.get("selected_candidate") or {}
                 pname = selected.get("provider_name")
                 if pname:
                     provider_final_accept_by_provider[pname] = provider_final_accept_by_provider.get(pname, 0) + 1
-            elif status == "manual_review_required":
+            elif status in {"manual_review_required", "rejected_external_candidate"}:
                 adjudicator_rejected_count += 1
 
             # Track LLM cleaned but unverified
@@ -160,7 +160,7 @@ class EntityResolutionAuditWriter:
             # Track cleaner verified-but-rejected decisions
             decision_reason = item.get("decision_reason", "")
             if "llm_cleaned" in decision_reason and status not in {
-                "resolved_external_grounded", "resolved_curated", "resolved_cache",
+                "accepted_external_grounded", "resolved_external_grounded", "resolved_curated", "resolved_cache",
             }:
                 cleaner_verified_but_rejected_count += 1
                 if len(top_cleaner_verified_but_rejected) < 20:
@@ -223,6 +223,13 @@ class EntityResolutionAuditWriter:
         self.summary_path.write_text(json.dumps({
             "total_mentions": len(decisions),
             "status_counts": statuses,
+            "three_state_status_counts": {
+                "external_candidate_mentions": sum(1 for item in decisions if item.get("candidates")),
+                "accepted_external_grounded": statuses.get("accepted_external_grounded", 0) + statuses.get("resolved_external_grounded", 0) + statuses.get("resolved_curated", 0) + statuses.get("resolved_cache", 0),
+                "ambiguous_external_candidate": statuses.get("ambiguous_external_candidate", 0) + statuses.get("ambiguous", 0),
+                "rejected_external_candidate": statuses.get("rejected_external_candidate", 0) + statuses.get("manual_review_required", 0),
+            },
+            "reason_distribution": dict(Counter(reason for item in decisions for reason in item.get("decision_reasons", []))),
             "provider_usage_counts": providers,
             "network_calls_made": network_calls,
             "api_calls_made": api_calls,

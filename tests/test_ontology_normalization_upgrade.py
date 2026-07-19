@@ -102,5 +102,5 @@ def test_external_candidate_without_surface_match_fails_closed():
         external_clients={"uniprot": NoisyUniProt()},
     )
     decision = resolver.resolve_entity("NOISYFAKE", {"expected_entity_type": "protein"})
-    assert decision.entity_resolution_status == "manual_review_required"
+    assert decision.entity_resolution_status == "ambiguous_external_candidate"
     assert not decision.allow_high_confidence_graph_use

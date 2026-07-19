@@ -12,7 +12,7 @@ from typing import Any
 from code_engine.extraction.evidence_tiers import EvidenceTier, FULLTEXT_ELIGIBLE_STATUSES
 
 
-BAD_NORMALIZATION_STATUSES = {"ambiguous", "unresolved", "unresolved_fallback", "empty_or_invalid", "low_confidence", "manual_review_required"}
+BAD_NORMALIZATION_STATUSES = {"ambiguous", "ambiguous_external_candidate", "rejected_external_candidate", "unresolved", "unresolved_fallback", "empty_or_invalid", "low_confidence", "manual_review_required"}
 
 
 def shannon_entropy(distribution: dict[str, int]) -> float:

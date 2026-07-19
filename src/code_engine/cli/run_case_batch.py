@@ -126,7 +126,7 @@ def run_case_batch(args, *, subprocess_runner:Callable[...,Any]=subprocess.run)-
                 "--system-b-output-root",str(getattr(args,"system_b_output_root",Path("system_b_outputs/system_a_sync"))),"--external-data-root",str(args.external_data_root),
                 "--json"]
             command += ["--api"] if args.api else ["--no-api"]; command += ["--network"] if args.network else ["--no-network"]
-            command += ["--entity-llm-cleaner"] if args.entity_llm_cleaner else ["--no-entity-llm-cleaner"]
+            command += ["--entity-llm-cleaner"] if getattr(args, "entity_llm_cleaner", False) else ["--no-entity-llm-cleaner"]
             command += ["--reuse-only"] if getattr(args,"reuse_only",False) else []
             for stage in getattr(args,"force_stage",[]) or []: command += ["--force-stage",stage]
             command += ["--from-stage",args.from_stage] if getattr(args,"from_stage",None) else []

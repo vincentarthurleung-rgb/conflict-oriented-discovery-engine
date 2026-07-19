@@ -57,7 +57,7 @@ def confirm_conflicts_with_fulltext_evidence(
         str(item.get("evidence_id"))
         for item in normalized_fulltext_observations
         if item.get("evidence_id") and item.get("allow_high_confidence_graph_use", not item.get("exclude_from_high_confidence_conflict", False))
-        and str(item.get("normalization_status", "resolved")) not in {"ambiguous", "unresolved", "unresolved_fallback", "low_confidence"}
+        and str(item.get("normalization_status", "resolved")) not in {"ambiguous", "ambiguous_external_candidate", "rejected_external_candidate", "unresolved", "unresolved_fallback", "low_confidence"}
     }
     confirmations = []
     for candidate in abstract_conflict_candidates:

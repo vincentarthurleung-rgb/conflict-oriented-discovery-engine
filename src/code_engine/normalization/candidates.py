@@ -9,7 +9,7 @@ from pydantic import Field, model_validator
 from code_engine.schemas.models import CODEBaseModel
 
 
-EntityResolutionStatus = Literal["resolved_curated", "resolved_external_grounded", "resolved_cache", "ambiguous", "unresolved", "external_resolution_pending", "manual_review_required", "external_lookup_not_enabled", "external_provider_not_configured", "llm_suggestion_ungrounded", "error"]
+EntityResolutionStatus = Literal["accepted_external_grounded", "ambiguous_external_candidate", "rejected_external_candidate", "resolved_curated", "resolved_external_grounded", "resolved_cache", "ambiguous", "unresolved", "external_resolution_pending", "manual_review_required", "external_lookup_not_enabled", "external_provider_not_configured", "llm_suggestion_ungrounded", "error"]
 
 
 class EntityCandidate(CODEBaseModel):
@@ -54,6 +54,20 @@ class EntityCandidate(CODEBaseModel):
     source_priority_score: float = Field(default=0.0, ge=0.0, le=1.0)
     obsolete_penalty: float = Field(default=0.0, ge=0.0, le=1.0)
     final_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    provider_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    provider_rank: int | None = None
+    provider_exact_match: bool = False
+    type_compatibility: str = "unknown"
+    species_compatibility: str = "unspecified"
+    ortholog_provenance: dict[str, Any] | None = None
+    granularity_compatibility: str = "unknown"
+    relation_type_compatibility: str = "unknown"
+    provider_agreement_count: int = 1
+    curated_registry_support: bool = False
+    evidence_components: dict[str, Any] = Field(default_factory=dict)
+    hard_exclusions: list[str] = Field(default_factory=list)
+    decision: str = ""
+    decision_reasons: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def enforce_llm_boundary(self):
@@ -79,6 +93,7 @@ class EntityResolutionRequest(CODEBaseModel):
     claim_id: str | None = None
     observation_id: str | None = None
     endpoint_role: str | None = None
+    relation: str | None = None
     species_context: str | None = None
     species_context_status: str = "unknown"
     mention_granularity: str | None = None
@@ -100,3 +115,19 @@ class EntityResolutionResult(CODEBaseModel):
     requires_manual_review: bool = False
     warnings: list[str] = Field(default_factory=list)
     audit_ref: str | None = None
+    decision: str = "rejected"
+    score_components: dict[str, Any] = Field(default_factory=dict)
+    hard_exclusions: list[str] = Field(default_factory=list)
+    decision_reasons: list[str] = Field(default_factory=list)
+    alternative_candidates: list[EntityCandidate] = Field(default_factory=list)
+    accepted_for_formal_graph: bool = False
+    accepted_for_reviewable_graph: bool = False
+    accepted_for_conflict: bool = False
+    available_for_review: bool = False
+    available_for_exploratory_graph: bool = False
+    conflict_reasoning_eligible: bool = False
+    formal_hypothesis_eligible: bool = False
+    top_candidate_score: float = 0.0
+    second_candidate_score: float = 0.0
+    score_margin: float = 0.0
+    candidate_entropy: float = 0.0
