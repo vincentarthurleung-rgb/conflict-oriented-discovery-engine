@@ -153,6 +153,69 @@ class ExperimentalEvidenceChain(CODEBaseModel):
         return self
 
 
+class EvidenceReasoningChain(CODEBaseModel):
+    """Canonical, projection-ready representation of a fulltext experiment.
+
+    V1 experimental chains remain readable.  This V2 record is deliberately
+    additive: it captures the causal calculation and the observation lineage
+    that must not be reconstructed later from a display triple.
+    """
+
+    schema_version: Literal["evidence_reasoning_chain_v2"] = "evidence_reasoning_chain_v2"
+    chain_id: str
+    paper_id: str = ""
+    pmid: str | None = None
+    pmcid: str | None = None
+    research_question: str | None = None
+    author_claim: str | None = None
+    experimental_design: dict[str, Any] = Field(default_factory=dict)
+    experiment_id: str
+    evidence_family_id: str
+    interventions: list[dict[str, Any]] = Field(default_factory=list)
+    intervention_target: str | None = None
+    intervention_type: str | None = None
+    intervention_sign: int | None = None
+    comparison_arm: list[dict[str, Any]] = Field(default_factory=list)
+    measurements: list[dict[str, Any]] = Field(default_factory=list)
+    measured_entity: str | None = None
+    measurement_dimension: str | None = None
+    observed_results: list[dict[str, Any]] = Field(default_factory=list)
+    observed_outcome_sign: int | None = None
+    lexical_direction: str | None = None
+    derived_causal_sign: int | None = None
+    derived_relation: str | None = None
+    final_formal_polarity: Literal["positive", "negative", "unknown"] = "unknown"
+    direction_provenance: str = "unresolved"
+    author_interpretation: dict[str, Any] = Field(default_factory=dict)
+    system_interpretation: str | None = None
+    conclusion_scope: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+    provenance: list[dict[str, Any]] = Field(default_factory=list)
+    supporting_evidence_ids: list[str] = Field(default_factory=list)
+    contradictory_evidence_ids: list[str] = Field(default_factory=list)
+    uncertainty: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    chain_complete: bool = False
+
+    @model_validator(mode="after")
+    def validate_authoritative_direction(self):
+        if self.derived_causal_sign not in (None, -1, 1):
+            raise ValueError("derived_causal_sign must be -1, 1, or null")
+        if self.chain_complete:
+            missing = []
+            if not self.provenance:
+                missing.append("provenance")
+            if not self.supporting_evidence_ids:
+                missing.append("supporting_evidence_ids")
+            if self.derived_causal_sign not in {-1, 1}:
+                missing.append("derived_causal_sign")
+            if not self.measurement_dimension:
+                missing.append("measurement_dimension")
+            if missing:
+                raise ValueError(f"complete reasoning chain missing: {', '.join(missing)}")
+        return self
+
+
 class ClaimEvidenceLink(CODEBaseModel):
     schema_version: Literal["claim_evidence_link_v1"] = "claim_evidence_link_v1"
     link_id: str

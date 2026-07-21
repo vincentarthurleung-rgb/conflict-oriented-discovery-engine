@@ -62,13 +62,17 @@ RELATION_REGISTRY: dict[str, FormalRelation] = {
 
 
 def normalize_formal_relation(observation: dict[str, Any]) -> FormalRelation | None:
-    if observation.get("core_projection_relation"):
-        return RELATION_REGISTRY.get(str(observation.get("core_projection_relation")))
+    # The derived sign is authoritative whenever intervention semantics is
+    # complete.  A lexical/core projection relation is only a fallback.  This
+    # ordering prevents a downstream last-writer from turning "silencing X
+    # decreases Y" into a negative X->Y edge.
     derived_sign = observation.get("derived_causal_sign")
     if derived_sign in (1, "+1", "1", "positive"):
         return RELATION_REGISTRY["increases"]
     if derived_sign in (-1, "-1", "negative"):
         return RELATION_REGISTRY["decreases"]
+    if observation.get("core_projection_relation"):
+        return RELATION_REGISTRY.get(str(observation.get("core_projection_relation")))
     relation = str(
         observation.get("relation_family")
         or observation.get("relation_raw")

@@ -40,6 +40,9 @@ OPTIONAL_ARTIFACTS = {
     "fulltext_reasoning_traces": "artifacts/fulltext_reasoning_traces.jsonl",
     "fulltext_reasoning_trace_summary": "artifacts/fulltext_reasoning_trace_summary.json",
     "experimental_evidence_chains": "artifacts/experimental_evidence_chains.jsonl",
+    "evidence_reasoning_chains": "artifacts/evidence_reasoning_chains.jsonl",
+    "fulltext_entity_upgrade_audit": "artifacts/fulltext_entity_upgrade_audit.jsonl",
+    "canonical_edge_evidence_families": "artifacts/canonical_edge_evidence_families.jsonl",
     "claim_evidence_links": "artifacts/claim_evidence_links.jsonl",
     "unlinked_claim_reasons": "artifacts/unlinked_claim_reasons.jsonl",
     "experimental_evidence_chain_summary": "artifacts/experimental_evidence_chain_summary.json",
@@ -76,6 +79,7 @@ SUPPORTED_ARTIFACT_SCHEMAS = {
     "input_fulltext_claims": {"fulltext_l1_claim_v1_legacy", "fulltext_l1_claim_v1", "fulltext_l1_claim_v2"},
     "fulltext_reasoning_traces": {"fulltext_reasoning_trace_v1", "fulltext_reasoning_trace_v2"},
     "fulltext_context_consolidations": {"fulltext_context_consolidation_v1", "fulltext_context_consolidation_v2"},
+    "evidence_reasoning_chains": {"evidence_reasoning_chain_v2"},
     "source_text_units": {SOURCE_UNIT_SCHEMA_VERSION},
 }
 

@@ -181,9 +181,14 @@ def _sentence_intervention(sentence: str) -> tuple[str | None, str | None]:
         (r"\bknockdown\s+of\s+(?P<target>[A-Za-z0-9-]+)", "knockdown"),
         (r"\bknockout\s+of\s+(?P<target>[A-Za-z0-9-]+)", "knockout"),
         (r"\bsilencing\s+of\s+(?P<target>[A-Za-z0-9-]+)", "silencing"),
+        (r"\bsilencing\s+(?P<target>[A-Za-z0-9-]+)", "silencing"),
+        (r"\bsilenced\s+(?P<target>[A-Za-z0-9-]+)", "silencing"),
+        (r"\b(?P<target>[A-Za-z0-9-]+)\s+silencing\b", "silencing"),
+        (r"\b(?P<target>[A-Za-z0-9-]+)\s+knockdown\b", "knockdown"),
         (r"\bdepletion\s+of\s+(?P<target>[A-Za-z0-9-]+)", "depletion"),
         (r"\boverexpression\s+of\s+(?P<target>[A-Za-z0-9-]+)", "overexpression"),
         (r"\boverexpressed\s+(?P<target>[A-Za-z0-9-]+)", "overexpression"),
+        (r"\b(?P<target>[A-Za-z0-9-]+)\s+overexpression\b", "overexpression"),
         (r"\bactivation\s+of\s+(?P<target>[A-Za-z0-9-]+)", "activation"),
     )
     for pattern, intervention_type in patterns:

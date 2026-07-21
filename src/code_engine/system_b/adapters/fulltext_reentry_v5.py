@@ -10,7 +10,7 @@ from typing import Any
 from code_engine.integration.atlas_handoff import LANE_FILES, canonical_json, resolve_artifact
 from code_engine.system_b.explorer.dossier_projection import dossier_id_for
 
-ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v4"
+ADAPTER_VERSION = "fulltext_reentry_v5_adapter_v5"
 CONTEXT_ALIASES = {
     "species": ("species",),
     "cell_type": ("cell_type", "cell_line"),
@@ -57,7 +57,9 @@ def _entity(row: dict, side: str) -> tuple[str | None, str | None, str | None]:
 
 
 def _relation(row: dict) -> str | None:
-    value = _value(row, "predicate", "relation", "relation_raw")
+    # Formal/derived semantics are authoritative; raw lexical direction is a
+    # display fallback only.
+    value = _value(row, "formal_relation", "derived_relation", "predicate", "relation", "relation_raw")
     return str(value).strip().casefold().replace(" ", "_") if value else None
 
 
@@ -160,6 +162,7 @@ class FulltextReentryV5Adapter:
         reasoning_traces = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_reasoning_traces")}
         consolidations = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "fulltext_context_consolidations")}
         chains = {str(row.get("chain_id")): row for row in _optional_jsonl(validated, "experimental_evidence_chains")}
+        reasoning_chains = {str(row.get("chain_id")): row for row in _optional_jsonl(validated, "evidence_reasoning_chains")}
         unlinked_reasons = {str(row.get("claim_id")): row for row in _optional_jsonl(validated, "unlinked_claim_reasons")}
         links_by_claim: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for link in _optional_jsonl(validated, "claim_evidence_links"):
@@ -202,6 +205,7 @@ class FulltextReentryV5Adapter:
                 chain = chains.get(str(link.get("chain_id")))
                 if chain:
                     linked_chains.append({"link": link, "chain": chain})
+            projected_reasoning_chain = reasoning_chains.get(str(row.get("reasoning_chain_id")))
             combined_context = {**_context(row), **reasoning_context}
             evidence = {
                 **provenance,
@@ -231,11 +235,26 @@ class FulltextReentryV5Adapter:
                 "context": combined_context,
                 "reasoning_trace": reasoning_traces.get(str(row.get("claim_id"))),
                 "evidence_chains": linked_chains,
+                "evidence_reasoning_chain": projected_reasoning_chain,
                 "evidence_chain_status": "available" if linked_chains else "unavailable",
                 "evidence_chain_missing_message": None if linked_chains else "Experimental evidence chain not linked for this claim.",
                 "unlinked_reason": unlinked_reasons.get(str(row.get("claim_id"))),
                 "source_scope": row.get("source_scope"),
-                "direction": row.get("direction"),
+                "evidence_scope": row.get("evidence_scope") or "fulltext",
+                "active_scientific_profile": row.get("active_scientific_profile") or "fulltext_evidence_projection",
+                "fulltext_readjudication_status": row.get("fulltext_readjudication_status"),
+                "entity_upgrade_lineage": row.get("entity_upgrade_lineage") or [],
+                "source_observation_id": row.get("source_observation_id"),
+                "effective_formal_observation_id": row.get("effective_formal_observation_id"),
+                "primary_layer": row.get("primary_layer") or row.get("scientific_edge_layer"),
+                "semantic_tags": row.get("semantic_tags") or [],
+                "evidence_family_id": row.get("evidence_family_id"),
+                "canonical_edge_id": row.get("canonical_edge_id"),
+                "direction_provenance": row.get("direction_source") or row.get("causal_direction_provenance"),
+                "derived_causal_sign": row.get("derived_causal_sign"),
+                "final_formal_polarity": row.get("final_formal_polarity"),
+                "core_exclusion_reasons": row.get("core_exclusion_reasons") or row.get("core_gate_failures") or [],
+                "direction": row.get("final_formal_polarity") or row.get("causal_direction") or row.get("direction"),
             }
             dossier_evidence.append(evidence)
             group = dossier_groups.setdefault(dossier_id, {
