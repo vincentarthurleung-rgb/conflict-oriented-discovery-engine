@@ -14,6 +14,7 @@ FULLTEXT_REUSED_ARTIFACTS = (
     "fulltext_experiment_observations.jsonl",
     "fulltext_context_binding_audit.jsonl",
     "fulltext_l1_v2_execution_records.jsonl",
+    "fulltext_l1_v2_parser_normalization_audit.jsonl",
     "fulltext_l1_v2_summary.json",
     "fulltext_l1_schema_coverage.json",
     "l35_fulltext_l1_claims.jsonl",

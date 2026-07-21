@@ -4,13 +4,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+import code_engine.fulltext.fulltext_l1_v2 as l1_v2
 from code_engine.fulltext.fulltext_l1_extractor import fulltext_l1_cache_key
 from code_engine.fulltext.fulltext_l1_v2 import (
-    SCHEMA_VERSION, cache_key, observation_as_legacy_claim, parse_response,
+    SCHEMA_VERSION, build_prompt, cache_key, observation_as_legacy_claim, parse_response,
     run_fulltext_l1_v2_extraction,
 )
 from code_engine.fulltext.input_preparation import execute_missing_only, prepare_fulltext_inputs
 from code_engine.fulltext.reasoning_trace import evidence_chains_from_v2_observations, run_fulltext_reasoning_trace_stage
+from code_engine.schemas.fulltext_observation import measurement_dimension_values
 
 
 def span(text, kind="observation"):
@@ -71,6 +73,50 @@ def test_two_experiments_and_multiple_endpoints_retain_identity():
     assert parsed[0]["experiment"]["species"] != parsed[2]["experiment"]["species"]
 
 
+def test_prompt_lists_schema_measurement_dimensions_from_single_source():
+    prompt = build_prompt({}, {"paper_metadata": {}, "text": "fixture"})
+    for value in measurement_dimension_values():
+        assert f'"{value}"' in prompt
+    assert 'output "unknown"' in prompt
+    assert "Never invent a new measurement_dimension label" in prompt
+    assert "do not put an assay name, unit, or measured entity" in prompt
+
+
+@pytest.mark.parametrize(("raw", "canonical"), [
+    ("protein_level", "abundance_expression"),
+    ("protein_expression", "abundance_expression"),
+    ("mrna_expression", "abundance_expression"),
+    ("mRNA_level", "abundance_expression"),
+    ("gene_expression", "abundance_expression"),
+    ("phosphorylation_level", "phosphorylation"),
+    ("phospho_status", "phosphorylation"),
+    ("phosphorylated", "phosphorylation"),
+    ("activation_level", "activation_activity"),
+    ("pathway_activation", "activation_activity"),
+    ("cell_survival", "viability"),
+    ("proliferative_capacity", "proliferation"),
+])
+def test_measurement_dimension_aliases_are_whitelist_canonicalized(raw, canonical):
+    row = observation(dimension=raw); audit = []
+    parsed = parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]}, normalization_audit=audit)
+    assert parsed[0]["measurement"]["measurement_dimension"] == canonical
+    assert audit == [{
+        "observation_id": "o1", "observation_index": 0, "measurement_dimension_raw": raw,
+        "measurement_dimension_normalized": canonical, "status": "canonicalized",
+        "mapping_rule": f"measurement_dimension_aliases_v1:{l1_v2._alias_key(raw)}", "reason": "whitelisted_alias",
+    }]
+
+
+def test_unknown_measurement_dimension_is_not_fuzzily_mapped_and_audit_survives():
+    row = observation(dimension="protein_abundance_score"); audit = []
+    with pytest.raises(ValidationError):
+        parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]}, normalization_audit=audit)
+    assert audit[0]["measurement_dimension_raw"] == "protein_abundance_score"
+    assert audit[0]["measurement_dimension_normalized"] is None
+    assert audit[0]["reason"] == "measurement_dimension_alias_not_whitelisted"
+    assert row["measurement"]["measurement_dimension"] == "protein_abundance_score"
+
+
 def test_missing_span_and_extra_formal_decision_fail_closed():
     row = observation(); row["provenance"]["evidence_spans"] = []
     with pytest.raises(ValidationError): parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]})
@@ -84,6 +130,16 @@ def test_v1_and_v2_cache_keys_are_isolated_and_prompt_config_sensitive():
     v2 = cache_key(**base)
     assert v1 != v2
     assert v2 != cache_key(**{**base, "config_hash": "changed"})
+
+
+def test_prompt_and_parser_versions_change_cache_identity(monkeypatch):
+    args = dict(source_fulltext_hash="source", chunk_hash="chunk", provider="p", model="m", config_hash="c", candidate_prior_hash="prior")
+    current = cache_key(**args)
+    monkeypatch.setattr(l1_v2, "PROMPT_VERSION", "incompatible_prompt")
+    prompt_changed = cache_key(**args)
+    assert prompt_changed != current
+    monkeypatch.setattr(l1_v2, "PARSER_VERSION", "incompatible_parser")
+    assert cache_key(**args) != prompt_changed
 
 
 def test_v2_extractor_fixture_then_reasoning_chain_without_network(tmp_path):
@@ -115,6 +171,41 @@ def test_parse_failure_caches_raw_response_but_emits_no_observation(tmp_path):
     result = run_fulltext_l1_v2_extraction(run_dir=tmp_path / "run", fulltext_candidates_path=artifacts / "candidates.jsonl", parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture", api_enabled=True, network_enabled=True, client=BadClient())
     assert not result["observations"] and result["summary"]["parse_errors"] == 1
     assert list((artifacts / "cache/fulltext_l1_v2").glob("*.raw_error.json"))
+
+
+def test_unknown_dimension_failure_preserves_raw_and_reason_in_parser_audit(tmp_path):
+    artifacts = tmp_path / "run/artifacts"; article = artifacts / "fulltext/pmc_oa/PMC1"; article.mkdir(parents=True)
+    (artifacts / "candidates.jsonl").write_text(json.dumps({"paper_id": "P1", "pmcid": "PMC1"}) + "\n")
+    (article / "article_text.json").write_text(json.dumps({"sections": [{"section_title": "Results", "text": "result"}]}))
+    class Client:
+        def extract_json(self, *_args, **_kwargs):
+            return {"schema_version": SCHEMA_VERSION, "experimental_observations": [observation(dimension="protein_abundance_score")]}
+    result = run_fulltext_l1_v2_extraction(run_dir=tmp_path / "run", fulltext_candidates_path=artifacts / "candidates.jsonl", parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture", api_enabled=True, network_enabled=True, client=Client())
+    assert result["observations"] == []
+    assert result["summary"]["parse_errors"] == 1
+    audit = result["parser_normalization_audit"][0]
+    assert audit["measurement_dimension_raw"] == "protein_abundance_score"
+    assert audit["reason"] == "measurement_dimension_alias_not_whitelisted"
+    raw_error = json.loads(next((artifacts / "cache/fulltext_l1_v2").glob("*.raw_error.json")).read_text())
+    assert raw_error["raw_response"]["experimental_observations"][0]["measurement"]["measurement_dimension"] == "protein_abundance_score"
+    assert raw_error["parser_normalization_audit"][0]["measurement_dimension_normalized"] is None
+
+
+def test_successful_alias_block_recovers_from_new_v2_cache(tmp_path):
+    artifacts = tmp_path / "run/artifacts"; article = artifacts / "fulltext/pmc_oa/PMC1"; article.mkdir(parents=True)
+    candidates = artifacts / "candidates.jsonl"
+    candidates.write_text(json.dumps({"paper_id": "P1", "pmcid": "PMC1"}) + "\n")
+    (article / "article_text.json").write_text(json.dumps({"sections": [{"section_title": "Results", "text": "result"}]}))
+    class First:
+        def extract_json(self, *_args, **_kwargs): return {"schema_version": SCHEMA_VERSION, "experimental_observations": [observation(dimension="protein_level")]}
+    args = dict(run_dir=tmp_path / "run", fulltext_candidates_path=candidates, parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture", api_enabled=True, network_enabled=True)
+    first = run_fulltext_l1_v2_extraction(**args, client=First())
+    class MustNotCall:
+        def extract_json(self, *_args, **_kwargs): raise AssertionError("successful block should be recovered")
+    second = run_fulltext_l1_v2_extraction(**args, client=MustNotCall())
+    assert first["observations"][0]["measurement"]["measurement_dimension"] == "abundance_expression"
+    assert second["summary"]["cache_hits"] == 1 and second["summary"]["api_calls_made"] == 0
+    assert second["parser_normalization_audit"][0]["measurement_dimension_raw"] == "protein_level"
 
 
 def test_cached_and_missing_input_plan_and_retry_ledger(tmp_path):
