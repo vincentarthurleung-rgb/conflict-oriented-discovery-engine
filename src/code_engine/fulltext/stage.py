@@ -218,8 +218,8 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
                 availability_summary_from_bridge(classified, bridge_audit, enabled=enabled, retrieval_results=results))
     l1_summary = {"fulltext_l1_status": "skipped", "api_calls_made": 0, "limit_hit": False}
     if extractor is None and executable:
-        from code_engine.fulltext.fulltext_l1_extractor import run_fulltext_l1_extraction
-        l1 = run_fulltext_l1_extraction(run_dir=run, fulltext_candidates_path=artifacts / "l35_fulltext_oa_candidate_papers.jsonl",
+        from code_engine.fulltext.fulltext_l1_v2 import run_fulltext_l1_v2_extraction
+        l1 = run_fulltext_l1_v2_extraction(run_dir=run, fulltext_candidates_path=artifacts / "l35_fulltext_oa_candidate_papers.jsonl",
             parsed_articles_dir=fulltext_root, l1_provider=l1_provider or os.getenv("L1_PROVIDER", ""), l1_model=l1_model or os.getenv("MODEL_NAME", ""),
             api_enabled=api_enabled, network_enabled=network_enabled, max_papers=max_papers, max_sections_per_paper=max_sections_per_paper,
             max_chunks_per_paper=max_chunks_per_paper, max_chars_per_chunk=max_chars_per_chunk, max_total_chunks=max_total_chunks,
@@ -242,7 +242,7 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     if selected_without_attempt:execution_warnings.append("selected_oa_without_download_attempt")
     if not counts["relevant_oa_candidate_count"]:
         stage_status = "completed_no_relevant_oa"
-    elif l1_summary.get("fulltext_l1_status") == "blocked":
+    elif l1_summary.get("fulltext_l1_status") in {"blocked", "skipped_provider_unavailable"}:
         stage_status = "partially_completed_fulltext_l1_not_run"
     else:
         stage_status = "completed" if downloaded == len(executable) and l1_summary.get("fulltext_l1_status") == "completed" else "partially_completed"

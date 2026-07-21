@@ -545,6 +545,13 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
     root = Path(output_root).resolve() if output_root else source.parent
     output = root / f"{source.name}__fulltext_evidence_projection_{digest}"
     out = output / "artifacts"
+    manifest_path = output / "projection_manifest.json"
+    existing_summary_path = out / "fulltext_l2_readjudication_summary.json"
+    if manifest_path.is_file() and existing_summary_path.is_file():
+        manifest = _json(manifest_path)
+        if manifest.get("status") == "completed" and manifest.get("content_identity") == digest:
+            existing = _json(existing_summary_path)
+            return {**existing, "output_run": str(output), "reused_completed_projection": True}
     out.mkdir(parents=True, exist_ok=True)
 
     projected = []
@@ -556,7 +563,8 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
         claim_id = str(original.get("claim_id") or original.get("observation_id") or "")
         linked_chain = chains.get(links.get(claim_id, [""])[0]) if links.get(claim_id) else None
         context, context_rows = bind_observation_context(original, consolidations.get(claim_id), linked_chain)
-        previous_id = str(original.get("matched_abstract_observation_id") or "")
+        linked_abstract_ids = original.get("linked_abstract_observation_ids") or []
+        previous_id = str(original.get("matched_abstract_observation_id") or (linked_abstract_ids[0] if linked_abstract_ids else ""))
         previous = abstract_by_id.get(previous_id)
         row = dict(original)
         lineages = []
@@ -631,10 +639,48 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
         "missing_measurement_projection_in_strict_core": sum(not x.get("measurement_dimension") for x in core),
         "strict_core_bypassing_conflict_bundle": sum(not any(x.get("canonical_edge_id") in b["canonical_edge_ids"] for b in bundles) for x in core),
     }
+    l1_account = _json(artifacts / "fulltext_l1_v2_summary.json")
+    retrieval_account = _json(artifacts / "l35_fulltext_retrieval_summary.json")
     calls = {
-        "current_abstract_l1_calls": 0, "current_fulltext_l1_calls": 0, "retrieval_calls": 0,
-        "download_calls": 0, "llm_cleaner_calls": 0, "provider_network_calls": 0,
+        "schema_version": "fulltext_stage_call_accounting_v1",
+        "current_abstract_l1_calls": 0,
+        "fulltext_l1_calls_in_source_run": int(l1_account.get("api_calls_made") or 0),
+        "current_projection_fulltext_l1_calls": 0,
+        "retrieval_calls_in_source_run": int(retrieval_account.get("download_attempted_count") or 0),
+        "current_projection_retrieval_calls": 0,
+        "download_calls_in_source_run": int(retrieval_account.get("download_attempted_count") or 0),
+        "current_projection_download_calls": 0,
+        "llm_cleaner_calls": 0, "provider_network_calls": 0,
     }
+    linkage = []
+    abstract_link_counts = Counter(str(x.get("source_observation_id") or "") for x in projected if x.get("source_observation_id"))
+    for row in projected:
+        abstract_id = row.get("source_observation_id")
+        changed = any(x.get("fulltext_observation_id") == (row.get("observation_id") or row.get("claim_id")) and x.get("changed") for x in entity_audit)
+        abstract_row = abstract_by_id.get(str(abstract_id or "")) or {}
+        old_direction = str(abstract_row.get("direction") or abstract_row.get("polarity") or "").casefold()
+        new_direction = str(row.get("final_formal_polarity") or row.get("direction") or "").casefold()
+        if not abstract_id:
+            linkage_type = "fulltext_only"
+        elif abstract_link_counts[str(abstract_id)] > 1:
+            linkage_type = "split_by_fulltext"
+        elif not row.get("formal_core_graph_eligible"):
+            linkage_type = "unsupported_by_fulltext"
+        elif {old_direction, new_direction} == {"positive", "negative"}:
+            linkage_type = "contradicted_by_fulltext"
+        elif changed:
+            linkage_type = "corrected_by_fulltext"
+        elif row.get("context"):
+            linkage_type = "refined_by_fulltext"
+        else:
+            linkage_type = "confirmed_by_fulltext"
+        linkage.append({
+            "schema_version": "abstract_fulltext_linkage_v1", "parent_abstract_run_id": row.get("parent_abstract_run_id"),
+            "source_abstract_observation_id": abstract_id, "source_paper_id": row.get("paper_id"),
+            "linkage_type": linkage_type, "linkage_reason": "deterministic_fulltext_re_adjudication",
+            "abstract_prior_candidates": row.get("abstract_prior_candidates") or [],
+            "fulltext_effective_observation_id": row.get("observation_id") or row.get("claim_id"),
+        })
     summary = {
         "schema_version": "fulltext_l2_readjudication_summary_v1", "source_run": str(source),
         "projection_run": str(output), "adjudication_profile": FULLTEXT_EVIDENCE_PROJECTION.profile_id,
@@ -669,6 +715,8 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
     atomic_write_jsonl(out / "fulltext_species_compatibility_audit.jsonl", species_audit)
     atomic_write_jsonl(out / "canonical_edge_evidence_families.jsonl", edges)
     atomic_write_jsonl(out / "fulltext_conflict_bundle_audit.jsonl", bundles)
+    atomic_write_jsonl(out / "abstract_fulltext_linkage_audit.jsonl", linkage)
+    atomic_write_jsonl(out / "experimental_evidence_chains.jsonl", reasoning)
     atomic_write_json(out / "fulltext_l2_readjudication_summary.json", summary)
     atomic_write_json(out / "fulltext_core_projection_summary.json", {
         "schema_version": "fulltext_core_projection_summary_v1", "primary_layer_count": dict(Counter(x["primary_layer"] for x in projected)),
@@ -678,23 +726,25 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
     })
     atomic_write_json(out / "abstract_fulltext_upgrade_summary.json", upgrade_summary)
     atomic_write_json(out / "offline_call_accounting.json", calls)
+    atomic_write_json(out / "fulltext_stage_call_accounting.json", calls)
     report = [
         "# Fulltext pipeline consistency report", "", f"- Schema: `{SCHEMA_VERSION}`",
         f"- Source run immutable: `{source}`", f"- Active profile: `{FULLTEXT_EVIDENCE_PROJECTION.profile_id}`",
         f"- Evidence records: {len(projected)}", f"- Formal core observations: {len(core)}",
         f"- Canonical edges: {len(edges)}", f"- Reviewable observations: {len(reviewable)}",
         f"- Conflict candidates: {summary['conflict_candidates_after']}",
-        f"- Paid/network calls: {sum(calls.values())}", "", "## Safety", "",
+        f"- Calls made by this projection stage: 0", "", "## Safety", "",
         *[f"- {key}: {value}" for key, value in safety.items()], "",
         "No source artifact or active Atlas projection was modified.",
     ]
     (out / "fulltext_pipeline_consistency_report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
+    (out / "fulltext_end_to_end_consistency_report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     atomic_write_json(output / "projection_manifest.json", {
         "schema_version": SCHEMA_VERSION, "status": "completed", "source_run": str(source),
         "content_identity": digest, "immutable": True, "network_used": False, "api_used": False,
         "atlas_published": False, "active_projection_changed": False,
     })
-    return summary
+    return {**summary, "output_run": str(output), "linkage_count": len(linkage)}
 
 
 __all__ = [

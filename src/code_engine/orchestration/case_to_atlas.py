@@ -868,7 +868,9 @@ class CaseToAtlasOrchestrator:
             return {"result":result,"claim_count":result.get("input_fulltext_claim_count",0)}
         if name=="handoff":
             reentry=Path(state["stages"]["reentry"]["output_run"])
-            result=publish_completed_scientific_run(reentry,atlas_config={"runs_root":request.runs_root,"output_root":request.system_b_output_root,"database_url":request.database_url,"no_database_write":False,"lineage":{"base_run":state["stages"]["base_run"]["output_run"],"pmcid_repair_run":state["stages"]["pmcid_repair"]["output_run"],"fulltext_l1_run":state["stages"]["fulltext_l1"]["output_run"],"reentry_run":reentry}},publication_source="run_case_to_atlas")
+            projection_run=(state["stages"]["reentry"].get("result") or {}).get("projection_run")
+            publication_source_run=Path(projection_run) if projection_run else reentry
+            result=publish_completed_scientific_run(publication_source_run,atlas_config={"runs_root":request.runs_root,"output_root":request.system_b_output_root,"database_url":request.database_url,"no_database_write":False,"lineage":{"base_run":state["stages"]["base_run"]["output_run"],"pmcid_repair_run":state["stages"]["pmcid_repair"]["output_run"],"fulltext_l1_run":state["stages"]["fulltext_l1"]["output_run"],"reentry_run":reentry,"fulltext_evidence_projection_run":projection_run}},publication_source="run_case_to_atlas")
             if result.get("atlas_sync_status") not in {"completed","no_op"}: raise ValueError(json.dumps(result,ensure_ascii=False))
             return {"manifest_path":result.get("handoff_manifest"),"manifest_hash":result.get("handoff_manifest_hash"),"operation_status":result.get("sync_status") or result.get("atlas_sync_status"),"publication_result":result}
         if name=="atlas_sync":

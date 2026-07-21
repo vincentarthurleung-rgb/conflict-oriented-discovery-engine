@@ -96,10 +96,11 @@ def test_cops8_gof_and_lof_share_authoritative_positive_edge():
     assert gof["final_formal_polarity"] == lof["final_formal_polarity"] == "positive"
     assert gof_chain["chain_complete"] and lof_chain["chain_complete"]
     for row in (gof, lof):
-        row.update(formal_core_graph_eligible=True, conflict_eligible=True)
+        row.update(formal_core_graph_eligible=True, conflict_eligible=True, evidence_family_id="cops8_fixture_family")
     edges, _ = aggregate_canonical_edges([gof, lof])
     assert len(edges) == 1
     assert edges[0]["evidence_count"] == 2
+    assert edges[0]["experiment_family_count"] == 1
     bundles = build_conflict_bundles(edges)
     assert bundles[0]["adjudication"] == "concordant_support"
 

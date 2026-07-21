@@ -11,6 +11,11 @@ from typing import Any
 from code_engine.fulltext.reentry import reenter_fulltext_l1_claims
 
 FULLTEXT_REUSED_ARTIFACTS = (
+    "fulltext_experiment_observations.jsonl",
+    "fulltext_context_binding_audit.jsonl",
+    "fulltext_l1_v2_execution_records.jsonl",
+    "fulltext_l1_v2_summary.json",
+    "fulltext_l1_schema_coverage.json",
     "l35_fulltext_l1_claims.jsonl",
     "l35_fulltext_l1_execution_records.jsonl",
     "l35_fulltext_discovery_selected_chunks.jsonl",
@@ -72,7 +77,7 @@ def run_replay(
     entity_network_lookup: bool = False,
     entity_llm_cleaner: bool = False,
     overwrite: bool = False,
-    publish_atlas: bool = True,
+    publish_atlas: bool = False,
     output_run: Path | None = None,
 ) -> dict[str, Any]:
     source = base_run.resolve()
@@ -100,6 +105,8 @@ def run_replay(
     )
     if summary.get("fulltext_l1_api_calls") != 0:
         raise RuntimeError("fulltext re-entry must not invoke fulltext L1 API calls")
+    from code_engine.fulltext.evidence_projection import project_fulltext_run
+    projection = project_fulltext_run(target, output_root=target.parent)
     manifest = {
         "schema_version": "fulltext_reentry_replay_manifest_v1",
         "case_id": case_id,
@@ -117,6 +124,9 @@ def run_replay(
         "fulltext_l1_reused": True,
         "fulltext_l1_api_calls": 0,
         "source_fulltext_claim_count": source_count,
+        "evidence_projection_auto_triggered": True,
+        "projection_run": projection.get("output_run"),
+        "atlas_activated": False,
         **summary,
     }
     (target / "fulltext_reentry_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -148,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--entity-network-lookup", action="store_true")
     parser.add_argument("--entity-llm-cleaner", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--no-publish-atlas-handoff", action="store_true")
+    parser.add_argument("--publish-atlas-handoff", action="store_true", help="Explicitly publish a validated handoff; default is no publication or activation.")
     args = parser.parse_args(argv)
     result = run_replay(
         case_id=args.case_id,
@@ -161,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
         entity_network_lookup=args.entity_network_lookup,
         entity_llm_cleaner=args.entity_llm_cleaner,
         overwrite=args.overwrite,
-        publish_atlas=not args.no_publish_atlas_handoff,
+        publish_atlas=args.publish_atlas_handoff,
         output_run=args.output_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
