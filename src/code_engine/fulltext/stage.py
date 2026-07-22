@@ -120,6 +120,7 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
                          l1_client=None, l1_provider: str | None = None, l1_model: str | None = None,
                          max_sections_per_paper: int = 12, max_chunks_per_paper: int = 24, max_chars_per_chunk: int = 6000,
                          max_total_chunks: int = 200, l1_read_timeout_seconds: float = 240, l1_max_retries: int = 1,
+                         fulltext_l1_max_tokens: int | None = None,
                          id_transport=None, oa_transport=None, download_transport=None) -> dict:
     run = Path(run_dir); artifacts = run / "artifacts"; artifacts.mkdir(parents=True, exist_ok=True)
     selection = select_conflict_related_papers(artifacts, include_near_conflicts=include_near_conflicts, max_papers=max_papers) if enabled else {
@@ -223,7 +224,8 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
             parsed_articles_dir=fulltext_root, l1_provider=l1_provider or os.getenv("L1_PROVIDER", ""), l1_model=l1_model or os.getenv("MODEL_NAME", ""),
             api_enabled=api_enabled, network_enabled=network_enabled, max_papers=max_papers, max_sections_per_paper=max_sections_per_paper,
             max_chunks_per_paper=max_chunks_per_paper, max_chars_per_chunk=max_chars_per_chunk, max_total_chunks=max_total_chunks,
-            client=l1_client, read_timeout_seconds=l1_read_timeout_seconds, max_retries=l1_max_retries)
+            client=l1_client, read_timeout_seconds=l1_read_timeout_seconds, max_retries=l1_max_retries,
+            max_tokens=fulltext_l1_max_tokens)
         claims = l1["claims"]; l1_summary = l1["summary"]
     conflict_map = {}
     for paper in executable:

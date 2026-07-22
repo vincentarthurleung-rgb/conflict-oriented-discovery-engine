@@ -6,6 +6,18 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+MEASUREMENT_DIMENSIONS = (
+    "abundance_expression", "phosphorylation", "activation_activity", "localization",
+    "viability", "proliferation", "migration", "invasion", "apoptosis", "metastasis",
+    "drug_response_resistance", "pathway_output", "morphology_marker_panel", "unknown",
+)
+
+
+def measurement_dimension_values() -> tuple[str, ...]:
+    """Single runtime/prompt source for the controlled measurement vocabulary."""
+    return MEASUREMENT_DIMENSIONS
+
+
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -143,4 +155,3 @@ class ExperimentalObservationV2(StrictModel):
 class FulltextL1V2Response(StrictModel):
     schema_version: Literal["fulltext_l1_experimental_observation_schema_v2"]
     experimental_observations: list[ExperimentalObservationV2]
-

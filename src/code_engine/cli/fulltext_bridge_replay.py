@@ -88,6 +88,7 @@ def replay_fulltext_bridge_from_run(
     max_total_chunks: int = 200,
     l1_read_timeout_seconds: float = 240,
     l1_max_retries: int = 1,
+    fulltext_l1_max_tokens: int | None = None,
 ) -> dict:
     source_artifacts = _resolve_source_artifacts(Path(source_run))
     target = _resolve_output_run(
@@ -130,6 +131,7 @@ def replay_fulltext_bridge_from_run(
         max_total_chunks=max_total_chunks,
         l1_read_timeout_seconds=l1_read_timeout_seconds,
         l1_max_retries=l1_max_retries,
+        fulltext_l1_max_tokens=fulltext_l1_max_tokens,
     )
 
     availability_path = artifacts / "fulltext_availability_summary.json"
@@ -206,6 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fulltext-max-total-chunks", type=int, default=200)
     parser.add_argument("--fulltext-l1-read-timeout-seconds", type=float, default=240)
     parser.add_argument("--fulltext-l1-max-retries", type=int, default=1)
+    parser.add_argument("--fulltext-l1-max-tokens", type=int)
     return parser
 
 
@@ -228,6 +231,7 @@ def main(argv: list[str] | None = None) -> int:
         max_total_chunks=args.fulltext_max_total_chunks,
         l1_read_timeout_seconds=args.fulltext_l1_read_timeout_seconds,
         l1_max_retries=args.fulltext_l1_max_retries,
+        fulltext_l1_max_tokens=args.fulltext_l1_max_tokens,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

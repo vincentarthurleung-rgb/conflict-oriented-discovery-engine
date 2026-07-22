@@ -46,13 +46,17 @@ class OpenAIJSONClient:
     def __init__(self, api_key: str, model_name: str = "gpt-4.1-mini"):
         self.api_key, self.model_name = api_key, model_name
 
-    def extract_json(self, prompt: Any, **kwargs: Any) -> dict[str, Any]:
+    def extract_json_result(self, prompt: Any, **kwargs: Any) -> Any:
         from code_engine.extraction.l1_response import parse_json_object_response
-        body = json.dumps({
+        from code_engine.extraction.deepseek_client import JSONExtractionResult
+        request_payload = {
             "model": kwargs.get("model") or self.model_name,
             "messages": _chat_messages(prompt),
             "response_format": {"type": "json_object"}, "temperature": 0,
-        }).encode("utf-8")
+        }
+        if kwargs.get("max_tokens") is not None:
+            request_payload["max_tokens"] = int(kwargs["max_tokens"])
+        body = json.dumps(request_payload).encode("utf-8")
         request = urllib.request.Request(self.endpoint, data=body, method="POST", headers={
             "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json",
         })
@@ -60,9 +64,14 @@ class OpenAIJSONClient:
             payload = json.loads(response.read().decode("utf-8"))
         content = payload["choices"][0]["message"]["content"]
         parsed, warnings = parse_json_object_response(content)
-        parsed["__json_warnings"] = warnings
-        parsed["__json_raw_response"] = content
-        return parsed
+        return JSONExtractionResult(payload=parsed, raw_response=content, warnings=list(warnings),
+            finish_reason=payload["choices"][0].get("finish_reason"), usage=dict(payload.get("usage") or {}),
+            provider_metadata={"provider": "openai", "model": request_payload["model"],
+                "response_format": {"type": "json_object"}, "json_output_enabled": True,
+                "max_tokens": kwargs.get("max_tokens"), "http_status": getattr(response, "status", 200)})
+
+    def extract_json(self, prompt: Any, **kwargs: Any) -> dict[str, Any]:
+        return self.extract_json_result(prompt, **kwargs).payload
 
 
 class ConfiguredJSONClient:
@@ -73,6 +82,16 @@ class ConfiguredJSONClient:
         if self.model_name:
             kwargs["model"] = self.model_name
         return self.client.extract_json(prompt, **kwargs)
+
+    def extract_json_result(self, prompt: str, **kwargs: Any) -> Any:
+        if self.model_name:
+            kwargs["model"] = self.model_name
+        method = getattr(self.client, "extract_json_result", None)
+        if method is None:
+            payload = self.client.extract_json(prompt, **kwargs)
+            from code_engine.extraction.deepseek_client import JSONExtractionResult
+            return JSONExtractionResult(payload=payload, raw_response=json.dumps(payload, ensure_ascii=False))
+        return method(prompt, **kwargs)
 
 
 def _select_json_provider(provider: str | None = None) -> str:
