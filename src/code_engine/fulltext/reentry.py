@@ -649,11 +649,97 @@ def _classify_lane(claim: dict[str, Any], observation: dict[str, Any] | None, *,
 
 
 def _fulltext_record_from_claim(claim: dict[str, Any], source_run: Path) -> dict[str, Any]:
+    """Adapt an L1 claim without erasing the Formal v3 experiment contract.
+
+    Formal v3 deliberately remains one observation per experiment outcome.  In
+    particular, interventions are retained as a group and are never fanned out
+    into synthetic scalar claims.  The old scalar mapping is kept only for
+    genuinely legacy records.
+    """
+    schema = str(claim.get("schema_version") or "")
+    if schema == "fulltext_l1_experimental_observation_schema_v3":
+        formal = claim.get("fulltext_l1_v2_observation")
+        if not isinstance(formal, dict) or formal.get("schema_version") != schema:
+            raise ValueError("Formal v3 claim is missing its authoritative fulltext_l1_v2_observation")
+        provenance = formal.get("provenance") if isinstance(formal.get("provenance"), dict) else {}
+        experiment = formal.get("experiment") if isinstance(formal.get("experiment"), dict) else {}
+        measurement = formal.get("measurement") if isinstance(formal.get("measurement"), dict) else {}
+        observation = formal.get("observation") if isinstance(formal.get("observation"), dict) else {}
+        candidate = formal.get("candidate_relation") if isinstance(formal.get("candidate_relation"), dict) else {}
+        eligibility = formal.get("eligibility") if isinstance(formal.get("eligibility"), dict) else {}
+        spans = list(provenance.get("evidence_spans") or [])
+        anchor_ids = list(dict.fromkeys(str(x.get("anchor_id")) for x in spans if isinstance(x, dict) and x.get("anchor_id")))
+        interventions = [dict(x) for x in formal.get("interventions") or [] if isinstance(x, dict)]
+        context = dict(claim.get("context") or {})
+        context.update({
+            key: experiment.get(key)
+            for key in (
+                "species_raw", "model_system_raw", "experimental_unit_raw", "tissue_raw",
+                "disease_model_raw", "genotype_raw", "cohort_raw", "sample_raw",
+                "comparison_arm_raw", "control_arm_raw",
+            )
+            if experiment.get(key) is not None
+        })
+        direction = str(candidate.get("lexical_direction") or claim.get("direction") or "unknown").casefold()
+        if direction not in {"positive", "negative", "neutral", "unknown", "unclear"}:
+            direction = "unknown"
+        return {
+            **claim,
+            "adapter_mode": "formal_v3_native",
+            "adapter_source_schema": schema,
+            "source_scope": "full_text",
+            "evidence_source": "fulltext",
+            "source_fulltext_run": str(source_run),
+            "claim_id": str(claim.get("claim_id") or formal.get("observation_id") or ""),
+            "observation_id": str(claim.get("observation_id") or formal.get("observation_id") or claim.get("claim_id") or ""),
+            "evidence_id": str(claim.get("claim_id") or formal.get("observation_id") or ""),
+            "experiment_id": experiment.get("experiment_id") or claim.get("experiment_id"),
+            "evidence_family_id": experiment.get("evidence_family_id") or claim.get("evidence_family_id"),
+            "paper_id": provenance.get("paper_id") or claim.get("paper_id"),
+            "pmid": provenance.get("pmid") or claim.get("pmid"),
+            "pmcid": provenance.get("pmcid") or claim.get("pmcid"),
+            "source_document_id": provenance.get("source_document_id"),
+            "source_block_id": provenance.get("child_block_id") or provenance.get("parent_block_id"),
+            "parent_block_id": provenance.get("parent_block_id"),
+            "child_block_id": provenance.get("child_block_id"),
+            "evidence_anchor_ids": anchor_ids,
+            "evidence_span_ids": list(formal.get("evidence_span_ids") or []),
+            "authoritative_evidence_spans": spans,
+            "subject_raw": candidate.get("subject_mention") or claim.get("subject_raw") or claim.get("subject"),
+            "object_raw": candidate.get("object_mention") or claim.get("object_raw") or claim.get("object"),
+            "relation_raw": candidate.get("relation_raw") or claim.get("relation_raw") or claim.get("predicate"),
+            "predicate": claim.get("predicate") or candidate.get("relation_raw"),
+            "direction": direction,
+            "observed_outcome_sign": claim.get("observed_outcome_sign"),
+            "observed_result": observation.get("observed_result") or claim.get("observed_result"),
+            "interventions": interventions,
+            "combination_mode": formal.get("combination_mode"),
+            "combination_mode_raw": formal.get("combination_mode_raw"),
+            "evidence_design": candidate.get("evidence_design_raw") or claim.get("evidence_design"),
+            "causal_design": experiment.get("design_type"),
+            "measurement_dimension": measurement.get("measurement_dimension") or claim.get("measurement_dimension"),
+            "measured_entity": measurement.get("measured_entity_mention") or claim.get("measured_entity"),
+            "comparison_raw": observation.get("comparison_raw"),
+            "context_slots": context,
+            "normalization_status": formal.get("normalization_status"),
+            "review_reasons": list(formal.get("review_reasons") or []),
+            "extraction_warnings": list(dict.fromkeys([*(claim.get("extraction_warnings") or []), *(formal.get("extraction_warnings") or [])])),
+            "formal_v3_eligibility": dict(eligibility),
+            "formal_v3_native_payload": formal,
+            "section_provenance": {
+                "section_title": claim.get("section_title"), "section_type": claim.get("section_type"),
+                "source_document_id": provenance.get("source_document_id"),
+                "parent_block_id": provenance.get("parent_block_id"), "child_block_id": provenance.get("child_block_id"),
+                "evidence_anchor_ids": anchor_ids, "evidence_spans": spans,
+            },
+        }
     direction = str(claim.get("polarity") or claim.get("direction") or "").casefold()
     if direction not in {"positive", "negative", "neutral", "unknown", "unclear"}:
         direction = "unknown"
     return {
         **claim,
+        "adapter_mode": "legacy_compatibility",
+        "adapter_source_schema": schema or "unversioned_legacy",
         "source_scope": "full_text",
         "evidence_source": "fulltext",
         "source_fulltext_run": str(source_run),
@@ -710,6 +796,11 @@ def _audit_row(claim: dict[str, Any], observation: dict[str, Any] | None, *, sou
             "chunk_hash": claim.get("chunk_hash"),
         },
         "source_fulltext_run": str(source_run),
+        "adapter_mode": (observation or {}).get("adapter_mode") or ("formal_v3_native" if claim.get("schema_version") == "fulltext_l1_experimental_observation_schema_v3" else "legacy_compatibility"),
+        "experiment_id": (observation or {}).get("experiment_id") or claim.get("experiment_id"),
+        "source_block_id": (observation or {}).get("source_block_id"),
+        "evidence_anchor_ids": list((observation or {}).get("evidence_anchor_ids") or []),
+        "intervention_count": len((observation or {}).get("interventions") or []),
         "normalization_status": (observation or {}).get("normalization_status") or "not_attempted",
         **lane,
         "graph_eligibility": bool(lane["structural_graph_eligible"]),
@@ -867,6 +958,13 @@ def reenter_fulltext_l1_claims(
             merged_retained.append(row)
             abstract_retained_keys.add(key)
 
+    # Reentry owns the exploratory/context overlay.  Projection, not this
+    # collection, remains authoritative for formal strict core.
+    context_graph = [
+        {**row, "edge_layer": "context_reentry", "graph_observation_eligible": True}
+        for row in annotated_observations
+        if row.get("exploratory_graph_eligible")
+    ]
     merged_graph = list(abstract_graph)
     for row in reentered:
         key = _source_key(row)
@@ -886,6 +984,7 @@ def reenter_fulltext_l1_claims(
     atomic_write_jsonl(artifacts / "l2_retained_observations.jsonl", merged_retained)
     atomic_write_jsonl(artifacts / "l2_graph_observations.jsonl", merged_graph)
     atomic_write_jsonl(artifacts / "merged_l2_graph_observations.jsonl", merged_graph)
+    atomic_write_jsonl(artifacts / "fulltext_context_graph_observations.jsonl", sorted(context_graph, key=_stable_row_sort_key))
     atomic_write_jsonl(artifacts / "fulltext_reentry_audit.jsonl", audit)
 
     shared = _json(artifacts / "l35_fulltext_conflict_confirmation_summary.json", {})
@@ -964,7 +1063,20 @@ def reenter_fulltext_l1_claims(
         "l6_mechanism_edge_count": int(l6.get("mechanism_edge_count", 0) or 0),
         "status": "completed",
     }
+    formal_native = [row for row in records if row.get("adapter_mode") == "formal_v3_native"]
+    summary.update({
+        "formal_v3_native_adapter_count": len(formal_native),
+        "legacy_adapter_count": sum(row.get("adapter_mode") == "legacy_compatibility" for row in records),
+        "interventions_preserved_count": sum(bool(row.get("interventions")) for row in formal_native),
+        "multi_intervention_preserved_count": sum(len(row.get("interventions") or []) > 1 for row in formal_native),
+        "measurement_dimension_preserved_count": sum(bool(row.get("measurement_dimension")) for row in formal_native),
+        "evidence_design_preserved_count": sum(bool(row.get("evidence_design")) for row in formal_native),
+        "anchor_provenance_preserved_count": sum(bool(row.get("evidence_anchor_ids")) and bool(row.get("authoritative_evidence_spans")) for row in formal_native),
+        "mechanism_graph_fulltext_observation_count": len(context_graph),
+    })
     atomic_write_json(artifacts / "fulltext_reentry_summary.json", summary)
+    atomic_write_json(artifacts / "fulltext_formal_v3_reentry_summary.json", summary)
+    atomic_write_jsonl(artifacts / "fulltext_formal_v3_reentry_audit.jsonl", audit)
     return summary
 
 

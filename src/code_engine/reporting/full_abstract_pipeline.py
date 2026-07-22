@@ -141,6 +141,11 @@ def _id(prefix:str,value:str)->str: return prefix+"_"+hashlib.sha256(value.encod
 
 def build_l6_mechanism_graph(run_dir: str | Path) -> dict[str, Any]:
     run=Path(run_dir); artifacts=run/"artifacts"; observations,resolution=resolve_l2_observations(run)
+    # Reentry context is a separate exploratory overlay.  Reading it here keeps
+    # it visible to the mechanism graph without promoting it into formal core.
+    context_overlay=_jsonl(artifacts/"fulltext_context_graph_observations.jsonl")
+    known={str(x.get("observation_id") or x.get("claim_id") or x.get("triple_id")) for x in observations}
+    observations=[*observations,*[x for x in context_overlay if str(x.get("observation_id") or x.get("claim_id") or x.get("triple_id")) not in known]]
     mechanism=[item for item in observations if item.get("graph_observation_eligible", item.get("canonical_graph_eligible", item.get("graph_layer") in {"core_canonical_graph","mechanism_layer","cross_context_mechanism_layer"}))]
     nodes_by_id={};edges=[]
     for item in mechanism:
@@ -149,12 +154,12 @@ def build_l6_mechanism_graph(run_dir: str | Path) -> dict[str, Any]:
         if not all((source_id,target_id,relation)):continue
         for role,node_id in (("subject",source_id),("object",target_id)):
             nodes_by_id[node_id]={"node_id":node_id,"label":item.get(f"{role}_canonical_name") or item.get(f"{role}_raw"),"node_type":item.get(f"{role}_entity_type") or "entity","canonical_source":item.get(f"{role}_canonical_source") or ("external" if item.get(f"{role}_canonical_id") else "legacy_unresolved_display_only"),"requires_review":bool(item.get(f"{role}_requires_review") or not item.get(f"{role}_canonical_id"))}
-        oid=str(item.get("observation_id") or item.get("triple_id")); edges.append({"edge_id":_id("mechanism_edge",f"{source_id}|{relation}|{target_id}|{oid}"),"source":source_id,"target":target_id,"relation":relation,"direction":item.get("direction"),"source_observation_ids":[oid],"evidence_level":"abstract","requires_review":bool(item.get("requires_review")),"conflict_reasoning_eligible":bool(item.get("conflict_reasoning_eligible"))})
+        oid=str(item.get("observation_id") or item.get("triple_id") or item.get("claim_id")); edges.append({"edge_id":_id("mechanism_edge",f"{source_id}|{relation}|{target_id}|{oid}"),"source":source_id,"target":target_id,"relation":relation,"direction":item.get("direction"),"source_observation_ids":[oid],"evidence_level":"fulltext" if item.get("edge_layer")=="context_reentry" else "abstract","edge_layer":item.get("edge_layer") or "abstract_prior","requires_review":bool(item.get("requires_review") or item.get("edge_layer")=="context_reentry"),"conflict_reasoning_eligible":bool(item.get("conflict_reasoning_eligible") and item.get("edge_layer")!="context_reentry")})
     nodes=list(nodes_by_id.values());paths=[]
-    summary={"status":"completed" if observations else "blocked","mode":"abstract_level_mechanism_graph","source_observation_count":len(observations),
+    summary={"status":"completed" if observations else "blocked","mode":"layered_abstract_and_fulltext_context_mechanism_graph" if context_overlay else "abstract_level_mechanism_graph","source_observation_count":len(observations),
         "core_observation_count":sum(bool(x.get("conflict_reasoning_eligible")) for x in mechanism),"graph_observation_count":len(mechanism),"mechanism_observation_count":len(mechanism),"node_count":len(nodes),"edge_count":len(edges),"path_count":len(paths),
         "core_paths":[],"mechanism_terms":sorted({str(x.get("subject_canonical_name") or x.get("subject_raw")) for x in mechanism}|{str(x.get("object_canonical_name") or x.get("object_raw")) for x in mechanism}),"fulltext_required":False,
-        "evidence_level":"abstract","requires_fulltext_confirmation_for_mechanistic_detail":True,"artifact_resolution":resolution,
+        "evidence_level":"layered" if context_overlay else "abstract","fulltext_context_observation_count":len(context_overlay),"requires_fulltext_confirmation_for_mechanistic_detail":True,"artifact_resolution":resolution,
         "warnings":[] if observations else ["l2_observation_artifacts_not_found"]}
     _write_json(artifacts/"l6_mechanism_graph_summary.json",summary); _write_jsonl(artifacts/"l6_mechanism_nodes.jsonl",nodes); _write_jsonl(artifacts/"l6_mechanism_edges.jsonl",edges); _write_jsonl(artifacts/"l6_mechanism_paths.jsonl",paths)
     (artifacts/"l6_mechanism_graph.md").write_text("# Abstract-Level Mechanism Graph\n\n"+"".join(f"- {e['source']} --{e['relation']}--> {e['target']}\n" for e in edges)+"\nMechanistic detail requires full-text confirmation.\n",encoding="utf-8")
