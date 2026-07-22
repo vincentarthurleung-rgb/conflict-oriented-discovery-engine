@@ -129,6 +129,28 @@ def publish_completed_scientific_run(
         "published_at": _now(),
         "error": None,
     }
+    l1_summary = _read_json(run / "artifacts" / "fulltext_l1_v2_summary.json", {})
+    unresolved_block_failures = bool(
+        isinstance(l1_summary, dict)
+        and (l1_summary.get("partial_block_failures") or l1_summary.get("scientific_input_complete") is False)
+    )
+    if unresolved_block_failures:
+        output_root = Path(output_root_value) if output_root_value else None
+        prior = _prior_activation(output_root, case_id) if output_root is not None else {}
+        result = {
+            **base,
+            "handoff_status": "blocked",
+            "atlas_sync_status": "blocked",
+            "atlas_sync_reason": "unresolved_fulltext_l1_block_failures",
+            "atlas_activation_status": "not_active",
+            "previous_projection_id": prior.get("active_projection_id"),
+            "active_projection_id": prior.get("active_projection_id"),
+            "aggregate_projection_changed": False,
+            "atlas_sync_retryable": True,
+            "error": {"code": "scientific_input_incomplete", "summary": "failed fulltext blocks must be recovered before publication"},
+        }
+        _atomic_json(run / "artifacts" / "atlas_publication_result.json", result)
+        return result
     if not output_root_value:
         return {
             **base,

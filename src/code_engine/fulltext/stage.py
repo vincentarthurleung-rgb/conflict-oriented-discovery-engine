@@ -236,6 +236,8 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
     execution_records=_execution_records(classified,results,claims,artifacts,l1_summary)
     _write_jsonl(artifacts / "l35_fulltext_discovery_execution_records.jsonl",execution_records)
     execution_warnings=[]
+    if l1_summary.get("partial_block_failures"):
+        execution_warnings.append("fulltext_l1_v2_unresolved_block_failures")
     if counts["selected_fulltext_count"]!=len(execution_records):execution_warnings.append("selected_fulltext_count_mismatch")
     if downloaded!=sum(x.get("download_status")=="success" for x in execution_records):execution_warnings.append("downloaded_fulltext_count_mismatch")
     selected_without_attempt=sum(x.get("oa_available") and not x.get("download_attempted") for x in execution_records)
@@ -264,6 +266,9 @@ def run_l35_pmc_oa_stage(run_dir: str | Path, *, enabled: bool, network_enabled:
         "unsupported_pdf_only_count":sum(x.get("blocking_reason")=="only_pdf_resources_available" for x in execution_records),
         "archive_contains_no_xml_count":sum(x.get("blocking_reason")=="archive_contains_no_xml" for x in execution_records),
         "xml_parse_failed_count":sum(x.get("blocking_reason") in {"xml_parse_failed","jats_parse_failed"} for x in execution_records),
+        "scientific_input_complete": l1_summary.get("scientific_input_complete", True),
+        "partial_block_failures": l1_summary.get("partial_block_failures", False),
+        "fulltext_l1_consistency_report": l1_summary.get("consistency_report"),
         "fulltext_execution_consistent":not execution_warnings,"fulltext_execution_consistency_warnings":execution_warnings,
         "warnings": execution_warnings + ([] if stage_status != "partially_completed_fulltext_l1_not_run" else ["fulltext_l1_not_run_api_network_or_client_unavailable"]), **handoff}
     _write_jsonl(artifacts / "l35_fulltext_retrieval_results.jsonl", results); _write_jsonl(artifacts / "l35_fulltext_l1_claims.jsonl", claims)

@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
 
+from code_engine.extraction.deepseek_client import DeepSeekExtractionError
 from code_engine.fulltext.fulltext_l1_extractor import (
     CHUNKER_VERSION, SECTION_WEIGHTS, _jsonl, _shared_cache_enabled_for_run,
     chunk_text, classify_section, select_sections,
@@ -32,6 +35,61 @@ PROMPT_RULES = (
     "Species/model/method context may only bind from this experiment block; Methods context from another experiment must not be imported.",
     "Required nested objects are provenance, experiment, intervention, measurement, observation, author_interpretation, and candidate_relation.",
 )
+
+_BLOCK_RESPONSE_ERROR_KINDS = {"malformed_json", "schema_parse_failure"}
+
+
+def _cause_chain(exc: BaseException) -> list[BaseException]:
+    chain: list[BaseException] = []
+    current: BaseException | None = exc
+    while current is not None and current not in chain:
+        chain.append(current)
+        current = getattr(current, "cause", None) or current.__cause__
+    return chain
+
+
+def _deepseek_block_error_kind(exc: DeepSeekExtractionError) -> str | None:
+    """Return only safely recoverable, response-local classifications."""
+    explicit = str(getattr(exc, "error_kind", "") or "")
+    if explicit in _BLOCK_RESPONSE_ERROR_KINDS:
+        return explicit
+    if explicit not in {"", "unknown"}:
+        return None
+    chain = _cause_chain(exc)
+    if any(isinstance(item, json.JSONDecodeError) for item in chain):
+        return "malformed_json"
+    for item in chain:
+        error_type = str(getattr(item, "error_type", "") or "")
+        if error_type == "json_parse_failed":
+            return "malformed_json"
+        if error_type in {"response_not_object", "schema_parse_failed", "schema_validation_failed"}:
+            return "schema_parse_failure"
+    # Compatibility for older serialized/wrapped DeepSeek failures. Keep this
+    # deliberately narrow; auth/configuration wording never qualifies.
+    message = str(exc)
+    if re.search(r"Unterminated string starting at:|Expecting (?:value|property name|',' delimiter)|JSONDecodeError|unexpected (?:end of (?:JSON|input)|EOF)", message, re.IGNORECASE):
+        return "malformed_json"
+    return None
+
+
+def _json_position(exc: BaseException) -> dict[str, int | None]:
+    for item in _cause_chain(exc):
+        if isinstance(item, json.JSONDecodeError):
+            return {"json_line": item.lineno, "json_column": item.colno, "json_character_position": item.pos}
+    match = re.search(r"line\s+(\d+)\s+column\s+(\d+)\s+\(char\s+(\d+)\)", str(exc), re.IGNORECASE)
+    return {"json_line": int(match.group(1)), "json_column": int(match.group(2)), "json_character_position": int(match.group(3))} if match else {"json_line": None, "json_column": None, "json_character_position": None}
+
+
+def _response_text(value: Any) -> str:
+    return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _redact(value: Any) -> str:
+    text = _response_text(value)
+    text = re.sub(r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s\"']+", r"\1[REDACTED]", text)
+    text = re.sub(r"(?i)((?:api[_-]?key|token|secret)\s*[:=]\s*[\"']?)[^\s,\"'}]+", r"\1[REDACTED]", text)
+    text = re.sub(r"\bsk-[A-Za-z0-9_-]{8,}\b", "[REDACTED]", text)
+    return text
 
 
 def _hash(value: Any) -> str:
@@ -150,37 +208,108 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
     if shared_enabled: shared.mkdir(parents=True, exist_ok=True)
     config = {"max_sections": max_sections_per_paper, "max_chunks_per_paper": max_chunks_per_paper, "max_chars": max_chars_per_chunk, "max_total_chunks": max_total_chunks}
     config_hash = _hash(config); observations: list[dict[str, Any]] = []; executions = []; bindings = []
-    api_calls = cache_hits = parse_errors = 0; total_blocks = 0
+    api_calls = actual_llm_calls = cache_hits = parse_errors = retryable_exhausted = 0
+    total_blocks = completed_blocks = skipped_blocks = 0
+    failed_block_ids: list[str] = []; affected_paper_ids: set[str] = set()
+    recovered_block_ids: list[str] = []; newly_failed: list[str] = []; still_failed: list[str] = []
     for paper in _jsonl(Path(fulltext_candidates_path))[:max_papers]:
         article_path = Path(parsed_articles_dir) / str(paper.get("pmcid")) / "article_text.json"
         if not article_path.is_file(): continue
         source_hash = hashlib.sha256(article_path.read_bytes()).hexdigest(); article = json.loads(article_path.read_text(encoding="utf-8"))
         blocks = build_experiment_blocks(article, paper, max_sections=max_sections_per_paper, max_chars=max_chars_per_chunk, max_chunks=max_chunks_per_paper)
-        for block in blocks:
+        for block_index, block in enumerate(blocks):
             if total_blocks >= max_total_chunks: break
             total_blocks += 1
             block["paper_metadata"]["fulltext_source_hash"] = source_hash
             key = cache_key(source_fulltext_hash=source_hash, chunk_hash=block["chunk_hash"], provider=l1_provider, model=l1_model, config_hash=config_hash, candidate_prior_hash=_hash({k: paper.get(k) for k in ("subject", "object", "abstract_observation_ids")}))
             paths = [cache / f"{key}.json"] + ([shared / f"{key}.json"] if shared_enabled else [])
+            prior_failures = sorted(cache.glob(f"{key}.*.raw_error.json")) + sorted(cache.glob(f"{key}.raw_error.json"))
             hit = next((p for p in paths if p.is_file()), None); raw_rows = []
             if hit:
                 payload = json.loads(hit.read_text(encoding="utf-8"))
                 if payload.get("schema_version") != SCHEMA_VERSION: continue
-                raw_rows = parse_response(payload.get("response")); cache_hits += 1; status = "cache_hit"
+                raw_rows = parse_response(payload.get("response")); cache_hits += 1; completed_blocks += 1; status = "cache_hit"
             elif dry_run or not (api_enabled and network_enabled and client is not None):
+                skipped_blocks += 1
                 executions.append({"block_id": block["block_id"], "status": "planned" if dry_run else "blocked", "api_called": False, "cache_key": key}); continue
             else:
                 response = None
+                response_received = False
                 try:
                     response = client.extract_json(build_prompt(paper, block), model=l1_model, temperature=0, top_p=1, timeout=read_timeout_seconds, max_retries=max_retries)
-                    api_calls += 1; raw_rows = parse_response(response); status = "completed"
+                    response_received = True
+                    api_calls += 1; actual_llm_calls += 1; raw_rows = parse_response(response); status = "completed"; completed_blocks += 1
                     payload = {"schema_version": SCHEMA_VERSION, "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(), "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION, "source_fulltext_hash": source_hash, "response": response}
                     paths[0].write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                     if len(paths) > 1: paths[1].write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                except DeepSeekExtractionError as exc:
+                    api_calls += 1; actual_llm_calls += int(getattr(exc, "attempts", 1) or 1)
+                    error_kind = _deepseek_block_error_kind(exc)
+                    if error_kind is None:
+                        raise
+                    response = getattr(exc, "raw_response", None)
+                    parse_errors += 1; retryable_exhausted += 1
+                    timestamp = datetime.now(timezone.utc).isoformat()
+                    stamp = timestamp.replace(":", "").replace("+", "_").replace(".", "_")
+                    raw_response_path = cache / f"{key}.{stamp}.raw_response.txt"
+                    if response not in (None, ""):
+                        raw_response_path.write_text(_redact(response), encoding="utf-8")
+                    else:
+                        raw_response_path = None
+                    raw_text = _response_text(response) if response not in (None, "") else ""
+                    cause = (_cause_chain(exc)[1:] or [None])[0]
+                    record = {
+                        "paper_id": paper.get("paper_id"), "pmid": paper.get("pmid"), "pmcid": paper.get("pmcid"),
+                        "block_id": block["block_id"], "experiment_block_index": block_index,
+                        "input_character_count": len(block["text"]), "prompt_hash": prompt_hash(),
+                        "schema_version": SCHEMA_VERSION, "parser_version": PARSER_VERSION,
+                        "extractor_version": EXTRACTOR_VERSION, "cache_key": key,
+                        "provider": getattr(exc, "provider", None) or l1_provider,
+                        "model": getattr(exc, "model", None) or l1_model,
+                        "attempt_count": int(getattr(exc, "attempts", 1) or 1),
+                        "exception_class": type(exc).__name__, "error_kind": error_kind,
+                        "error_message": _redact(str(exc)),
+                        "underlying_cause": None if cause is None else {"class": type(cause).__name__, "message": _redact(str(cause))},
+                        "raw_response_path": str(raw_response_path) if raw_response_path else None,
+                        "raw_response_character_count": len(raw_text),
+                        "finish_reason": getattr(exc, "finish_reason", None),
+                        "possible_output_truncation": getattr(exc, "finish_reason", None) == "length" or "unterminated string" in str(exc).casefold() or "unexpected eof" in str(exc).casefold(),
+                        "retryable": True, "failure_timestamp": timestamp, **_json_position(exc),
+                    }
+                    raw_path = cache / f"{key}.{stamp}.raw_error.json"
+                    raw_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                    failed_block_ids.append(block["block_id"]); affected_paper_ids.add(str(paper.get("paper_id") or paper.get("pmid") or paper.get("pmcid")))
+                    (still_failed if prior_failures else newly_failed).append(block["block_id"])
+                    executions.append({**record, "status": "parse_error", "api_called": True, "raw_error_artifact": str(raw_path), "raw_response_artifact": str(raw_response_path) if raw_response_path else None})
+                    continue
                 except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as exc:
-                    parse_errors += 1; raw_path = cache / f"{key}.raw_error.json"
-                    raw_path.write_text(json.dumps({"raw_response": response, "error": str(exc), "retryable": True}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-                    executions.append({"block_id": block["block_id"], "status": "parse_error", "api_called": True, "cache_key": key, "raw_response_artifact": str(raw_path)}); continue
+                    if not response_received:
+                        raise
+                    parse_errors += 1
+                    timestamp = datetime.now(timezone.utc).isoformat()
+                    stamp = timestamp.replace(":", "").replace("+", "_").replace(".", "_")
+                    raw_response_path = cache / f"{key}.{stamp}.raw_response.txt"
+                    raw_response_path.write_text(_redact(response), encoding="utf-8")
+                    record = {
+                        "paper_id": paper.get("paper_id"), "pmid": paper.get("pmid"), "pmcid": paper.get("pmcid"),
+                        "block_id": block["block_id"], "experiment_block_index": block_index,
+                        "input_character_count": len(block["text"]), "prompt_hash": prompt_hash(),
+                        "schema_version": SCHEMA_VERSION, "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION,
+                        "cache_key": key, "provider": l1_provider, "model": l1_model, "attempt_count": 1,
+                        "exception_class": type(exc).__name__, "error_kind": "schema_parse_failure" if isinstance(exc, ValidationError) else "malformed_json",
+                        "error_message": _redact(str(exc)), "underlying_cause": None,
+                        "raw_response_path": str(raw_response_path), "raw_response_character_count": len(_response_text(response)),
+                        "finish_reason": None, "possible_output_truncation": False, "retryable": True,
+                        "failure_timestamp": timestamp, **_json_position(exc),
+                    }
+                    raw_path = cache / f"{key}.{stamp}.raw_error.json"
+                    raw_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                    failed_block_ids.append(block["block_id"]); affected_paper_ids.add(str(paper.get("paper_id") or paper.get("pmid") or paper.get("pmcid")))
+                    (still_failed if prior_failures else newly_failed).append(block["block_id"])
+                    executions.append({**record, "status": "parse_error", "api_called": True, "raw_error_artifact": str(raw_path), "raw_response_artifact": str(raw_response_path)})
+                    continue
+                if prior_failures:
+                    recovered_block_ids.append(block["block_id"])
             for row in raw_rows:
                 row["parent_abstract_run_id"] = row.get("parent_abstract_run_id") or parent_abstract_run_id
                 row["provenance"]["fulltext_source_hash"] = source_hash
@@ -196,7 +325,23 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
     coverage = {"schema_version": "fulltext_l1_schema_coverage_v1", "v1_record_count": 0, "v2_record_count": len(observations), "experiment_count": len({x["experiment"]["experiment_id"] for x in observations}), "observation_count": len(observations), "context_binding_coverage": sum(bool(x.get("context_source")) for x in bindings) / len(bindings) if bindings else 0.0}
     coverage.update({f"{name}_coverage": sum(bool((x["experiment"] if name in {"species", "comparison"} else x[name]).get(field)) and (x["measurement"].get(field) != "unknown" if name == "measurement" else True) for x in observations) / len(observations) if observations else 0.0 for name, field in fields.items()})
     statuses = {str(x.get("status")) for x in executions}
-    l1_status = "completed" if observations else "planned" if dry_run else "skipped_provider_unavailable" if statuses and statuses <= {"blocked"} else "failed" if parse_errors and statuses <= {"parse_error"} else "completed_no_observations"
-    summary = {"schema_version": SCHEMA_VERSION, "fulltext_l1_status": l1_status, "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(), "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION, "source_document_count": len({x["provenance"]["source_document_id"] for x in observations}), "experiment_count": coverage["experiment_count"], "observation_count": len(observations), "api_calls_made": api_calls, "cache_hits": cache_hits, "parse_errors": parse_errors, "paid_call_count": api_calls, "network_call_count": api_calls, "download_call_count": 0, "config_hash": config_hash}
+    l1_status = "completed_with_block_failures" if parse_errors else "completed" if observations else "planned" if dry_run else "skipped_provider_unavailable" if statuses and statuses <= {"blocked"} else "completed_no_observations"
+    partial = bool(parse_errors)
+    summary = {"schema_version": SCHEMA_VERSION, "fulltext_l1_status": l1_status, "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(), "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION, "source_document_count": len({x["provenance"]["source_document_id"] for x in observations}), "experiment_count": coverage["experiment_count"], "observation_count": len(observations), "api_calls_made": api_calls, "cache_hits": cache_hits, "parse_errors": parse_errors, "paid_call_count": actual_llm_calls, "network_call_count": actual_llm_calls, "download_call_count": 0, "config_hash": config_hash,
+        "planned_block_count": total_blocks, "attempted_block_count": total_blocks - skipped_blocks,
+        "completed_block_count": completed_blocks, "cache_hit_block_count": cache_hits,
+        "actual_llm_call_count": actual_llm_calls, "parse_error_block_count": parse_errors,
+        "retryable_exhausted_block_count": retryable_exhausted, "fatal_error_count": 0,
+        "skipped_block_count": skipped_blocks, "generated_observation_count": len(observations),
+        "failed_block_ids": failed_block_ids, "affected_paper_ids": sorted(affected_paper_ids),
+        "previously_failed_now_recovered": recovered_block_ids, "still_failed": still_failed,
+        "newly_failed": newly_failed, "scientific_input_complete": not partial,
+        "partial_block_failures": partial,
+        "consistency_report": {
+            "projection_may_continue_for_diagnosis": partial,
+            "complete_scientific_run": not partial,
+            "publication_allowed": not partial,
+            "message": "failed blocks must be resumed/recovered before publication" if partial else "all planned scientific inputs completed",
+        }}
     (artifacts / "fulltext_l1_v2_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"); (artifacts / "fulltext_l1_schema_coverage.json").write_text(json.dumps(coverage, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return {"summary": summary, "observations": observations, "claims": claims, "executions": executions}
