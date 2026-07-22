@@ -25,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.execute and not args.api:
         parser.error("real provider smoke requires --execute --api")
     result = execute_smoke(args.run_dir, api_authorized=True) if args.execute else write_plan_artifacts(args.run_dir)
+    result.setdefault("smoke_profile", "historical_fulltext_l1_v2_v4_12_block_smoke")
+    result.setdefault("deprecation_notice", "This command executes the historical v2/v4 12-block smoke profile. Use fulltext_l1_v3_provider_smoke_test for Prompt v6/Formal v3.")
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
