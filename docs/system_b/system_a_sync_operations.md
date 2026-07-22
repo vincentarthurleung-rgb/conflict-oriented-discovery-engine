@@ -1,12 +1,21 @@
 # System A Sync Operations
 
-For normal case execution, use the single orchestrated command:
+Start with the single orchestrator's offline reuse/plan mode:
 
 ```bash
-PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas --case-id <case_id> --api --network
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
+  --case-id <case_id> --offline --reuse-only --dry-run
 ```
 
-The manual sync commands below are recovery and developer diagnostics. The one-command service always performs a global ready-handoff sync so adding one case cannot replace the current projection with a single-case projection.
+`--api --network` can incur provider cost. A non-dry-run Atlas sync changes the
+active projection and is a high-risk operation requiring explicit authorization,
+backup, completeness checks, and staging validation.
+
+The manual sync commands below are historical recovery/developer diagnostics.
+In the current checkout their CLI import fails because of a circular import, so
+they are not verified operational commands. Do not bypass the failure by calling
+internal activation functions or editing registry JSON. See
+`docs/atlas_operations.md`.
 
 The importer performs discover → ready/manifest validation → path/hash/count verification → v5 adaptation → temporary projection → projection validation → one database transaction → immutable-directory finalize → atomic current-registry switch. A failure before the last step cannot change `current_projection.json`; a rejected source receives a structured report under `quarantine/`.
 
@@ -26,17 +35,20 @@ This mode validates local handoff/projection no-op state without refreshing Atla
 # Preview all ready runs
 PYTHONPATH=src python -m code_engine.cli.system_b_sync_system_a --runs-root runs --database-url sqlite:///data/code_atlas.db --output-root system_b_outputs/system_a_sync --once --dry-run
 
-# Synchronize all new runs
+# HIGH RISK / currently unverified: synchronizes and activates new runs
 PYTHONPATH=src python -m code_engine.cli.system_b_sync_system_a --runs-root runs --database-url sqlite:///data/code_atlas.db --output-root system_b_outputs/system_a_sync --once
 
-# Synchronize one manifest
+# HIGH RISK / currently unverified: synchronizes and activates one manifest
 PYTHONPATH=src python -m code_engine.cli.system_b_sync_system_a --manifest runs/RUN/artifacts/atlas_handoff_manifest.json --runs-root runs --database-url sqlite:///data/code_atlas.db --output-root system_b_outputs/system_a_sync --once
 
 # Inspect quarantine
 find system_b_outputs/system_a_sync/quarantine -type f -name '*.json' -print
 ```
 
-Before migration, run `atlas_db_backup`; then `atlas_db_migrate upgrade` (or Alembic under the repository's normal policy) and `atlas_db_check`. Recovery consists of retaining the failed/quarantined source, correcting the source or adapter, and rerunning. Never delete old projections.
+Before migration, run `atlas_db_backup`; then
+`python -m code_engine.cli.atlas_db_migrate --revision head` and
+`atlas_db_check`. Recovery consists of retaining the failed/quarantined source,
+correcting the source or adapter, and rerunning. Never delete old projections.
 
 When historical duplicate projections exist for the same logical case request, keep them as immutable audit records. The current registry should remain on the latest valid projection unless an operator explicitly performs a scientific rollback.
 

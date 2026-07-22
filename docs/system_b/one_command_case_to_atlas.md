@@ -1,13 +1,19 @@
 # One-command System A → Atlas
 
-The recommended production entry is:
+The safe first entry is a read-only plan/reuse audit:
 
 ```bash
 PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
   --case-id <case_id> \
-  --api \
-  --network
+  --offline \
+  --reuse-only \
+  --dry-run
 ```
+
+An actual `--api --network` execution may incur provider charges and the
+downstream Atlas sync may activate a projection. Run it only after the
+scientific completeness, backup, staging, and explicit-authorization checklist
+in `docs/pipeline_runbook.md` and `docs/atlas_operations.md`.
 
 It resolves the generated case profile and frozen search plan, runs the abstract base pipeline through candidate selection, performs authoritative PMID→PMCID repair, retrieves PMC OA fulltext, runs Fulltext L1, extracts fulltext claim-centered reasoning traces, consolidates experimental context, performs v5 re-entry, publishes `atlas_handoff_v1`, globally synchronizes all current cases, refreshes Atlas, verifies evaluation-state safety, and confirms a second sync is a no-op.
 
@@ -25,7 +31,8 @@ An interrupted command can be repeated exactly. A failed Atlas sync resumes at s
 
 If an older orchestration marked `base_run` failed only because it expected legacy `fulltext_escalation=completed`, resume validates the existing output run before doing any work. When validation passes, the stage is marked `recovered_existing_output`, the original `stage_failed` event is retained, a `stage_recovered` event is appended, and Abstract L1 is not called again.
 
-Force a stage and all downstream stages with repeatable options:
+**High risk — provider/network may be used and downstream Atlas sync may
+activate.** Force a stage and all downstream stages with repeatable options:
 
 ```bash
 PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
@@ -48,7 +55,8 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
 
 `--reuse-only` allows local artifact validation, semantic hash checks, reuse metadata upgrades, and required state reconciliation. It forbids new scientific stage execution, new run directory allocation, API calls, and network calls. If any stage cannot be reused, the command fails instead of rerunning. `--reuse-only` takes precedence over `--api` and `--network`, and it cannot be combined with `--force-stage`.
 
-Run reasoning and downstream stages without re-running Fulltext L1:
+**High risk — explicit API/network permissions are present.** Run reasoning and
+downstream stages without re-running Fulltext L1:
 
 ```bash
 PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
@@ -70,6 +78,10 @@ PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
 ```
 
 ## Read-only planning
+
+The following includes API/network permission flags only so the planner can
+report expected calls; `--dry-run` prevents those calls. Remove ambiguity by
+using the earlier `--offline --reuse-only --dry-run` form for onboarding.
 
 ```bash
 PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \

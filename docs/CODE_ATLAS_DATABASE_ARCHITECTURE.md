@@ -19,5 +19,7 @@ busy_timeout=10000
 synchronous=NORMAL
 ```
 
-All schema changes go through Alembic. The current migration head is `0005_metrics_and_audit`.
-
+All schema changes go through Alembic. The current migration head is
+`0010_role_workspaces` (see `ATLAS_SCHEMA_HEAD` in
+`src/code_engine/system_b/persistence/database.py`). Use `atlas_db_check` rather
+than relying on this prose when operating a database.

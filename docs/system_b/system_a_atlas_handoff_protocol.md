@@ -1,12 +1,18 @@
 # System A → C.O.D.E. Atlas Handoff Protocol
 
-Recommended end-to-end use:
+Safe first step (offline plan/reuse audit; no provider, network, database write,
+or activation):
 
 ```bash
-PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas --case-id <case_id> --api --network
+PYTHONPATH=src python -m code_engine.cli.run_case_to_atlas \
+  --case-id <case_id> --offline --reuse-only --dry-run
 ```
 
-The lower-level publisher described below is normally invoked by this orchestration service.
+An actual `--api --network` run can incur provider cost, publish a handoff, sync
+Atlas, and activate a projection. It is therefore not a default onboarding
+command. Follow `../pipeline_runbook.md` and `../atlas_operations.md` before
+authorizing it. The lower-level publisher described below is normally invoked by
+the orchestration service.
 
 `atlas_handoff_v1` is the file boundary between the scientific pipeline and Atlas. System A owns scientific artifacts and never writes Atlas SQLite or calls Flask. Atlas is an offline, read-only consumer and never calls an LLM during ingestion.
 

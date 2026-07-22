@@ -13,15 +13,17 @@ alembic upgrade head
 alembic current
 ```
 
-Create the only enabled owner:
+Create the only enabled owner. Read the password without echoing it; do not put
+the real value in shell history or this file:
 
 ```bash
-ATLAS_OWNER_PASSWORD='change-this' \
+read -s ATLAS_OWNER_PASSWORD && export ATLAS_OWNER_PASSWORD
 python -m code_engine.cli.atlas_user_admin create-owner \
   --database-url sqlite:///data/code_atlas.db \
   --username vincent \
   --display-name "Vincent" \
   --password-env ATLAS_OWNER_PASSWORD
+unset ATLAS_OWNER_PASSWORD
 ```
 
 Start with the database required:
@@ -37,4 +39,3 @@ python -m code_engine.cli.system_b_serve_knowledge_explorer \
 ```
 
 Do not place the SQLite file under `static/`. Do not expose the database URL to the browser.
-
