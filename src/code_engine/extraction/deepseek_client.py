@@ -6,23 +6,32 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, TypeAlias, cast
 
 import httpx
 
 
 DEEPSEEK_JSON_RESPONSE_FORMAT = {"type": "json_object"}
+ThinkingMode: TypeAlias = Literal["enabled", "disabled", "provider_default"]
+THINKING_MODES = frozenset({"enabled", "disabled", "provider_default"})
+
+
+def validate_thinking_mode(value: str) -> ThinkingMode:
+    if value not in THINKING_MODES:
+        raise ValueError(f"invalid DeepSeek thinking_mode: {value!r}")
+    return cast(ThinkingMode, value)
 
 
 def build_deepseek_request_payload(prompt: Any, *, model: str, temperature: float = 0.0,
                                    top_p: float = 1.0,
-                                   max_tokens: int | None = None) -> dict[str, Any]:
+                                   max_tokens: int | None = None,
+                                   thinking_mode: ThinkingMode = "provider_default") -> dict[str, Any]:
     """Build the exact request body used by :class:`DeepSeekClient`.
 
-    Thinking is intentionally not accepted here.  The repository has no
-    provider-verified DeepSeek field/value pair for disabling it; callers that
-    require disabled thinking must fail closed before transport.
+    ``provider_default`` preserves legacy behavior by omitting the provider
+    field. Enabled and disabled are explicit, mutually exclusive body values.
     """
+    effective_mode = validate_thinking_mode(thinking_mode)
     messages = prompt if isinstance(prompt, list) else [{"role": "system", "content": prompt}]
     payload: dict[str, Any] = {
         "model": model,
@@ -33,20 +42,30 @@ def build_deepseek_request_payload(prompt: Any, *, model: str, temperature: floa
     }
     if max_tokens is not None:
         payload["max_tokens"] = int(max_tokens)
+    if effective_mode != "provider_default":
+        payload["thinking"] = {"type": effective_mode}
     return payload
 
 
-def deepseek_thinking_mode_audit() -> dict[str, Any]:
-    """Describe the locally provable thinking-mode transport behavior."""
+def deepseek_thinking_mode_audit(thinking_mode: ThinkingMode = "provider_default") -> dict[str, Any]:
+    """Verify the exact safe thinking fields emitted by the request builder."""
+    mode = validate_thinking_mode(thinking_mode)
+    payload = build_deepseek_request_payload("audit", model="deepseek-audit", thinking_mode=mode)
+    sent = "thinking" in payload
+    request_value = payload.get("thinking")
+    verified = mode == "disabled" and request_value == {"type": "disabled"}
     return {
-        "requested_mode": "disabled",
-        "effective_mode": "unverified",
-        "thinking_mode_verified": False,
-        "request_field": None,
-        "request_value": None,
-        "configuration_source": "no_provider_verified_local_configuration",
-        "reason": "DeepSeek request builder sends no thinking field; omission does not prove disabled thinking",
-        "execution_allowed": False,
+        "configured_thinking_mode": mode,
+        "effective_mode": mode,
+        "effective_thinking_mode": mode,
+        "thinking_mode_verified": verified,
+        "thinking_parameter_sent": sent,
+        "thinking_request_payload": request_value,
+        "request_field": "thinking" if sent else None,
+        "request_value": request_value,
+        "configuration_source": "explicit_call_argument" if mode != "provider_default" else "provider_default_omission",
+        "verification_scope": "request_parameter_sent_not_provider_compliance",
+        "execution_allowed": verified,
     }
 
 
@@ -135,11 +154,11 @@ class DeepSeekClient:
     def extract_json_result(self, prompt: Any, model: str = "deepseek-v4-pro",
                             temperature: float = 0.0, top_p: float = 1.0,
                             max_tokens: int | None = None, retry_on_length: bool = False,
-                            **_: Any) -> JSONExtractionResult:
+                            thinking_mode: ThinkingMode = "provider_default", **_: Any) -> JSONExtractionResult:
         from code_engine.extraction.l1_response import GenericJSONResponseError, parse_json_object_response
         request_payload = build_deepseek_request_payload(
             prompt, model=model, temperature=temperature, top_p=top_p,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens, thinking_mode=thinking_mode,
         )
         body = json.dumps(request_payload).encode("utf-8")
         last_error = "unknown_error"
@@ -161,7 +180,9 @@ class DeepSeekClient:
                 }, timeout=timeout)
                 response.raise_for_status()
                 payload = response.json()
-                content = payload["choices"][0]["message"]["content"]
+                message = payload["choices"][0]["message"]
+                content = message["content"]
+                reasoning_content = message.get("reasoning_content")
                 last_raw_response = content
                 last_finish_reason = payload["choices"][0].get("finish_reason")
                 last_usage = dict(payload.get("usage") or {})
@@ -171,6 +192,9 @@ class DeepSeekClient:
                     "json_output_enabled": True, "max_tokens": max_tokens,
                     "http_status": getattr(response, "status_code", 200),
                     "latency_seconds": time.monotonic() - started,
+                    "reasoning_content_present": reasoning_content not in (None, ""),
+                    "reasoning_content_characters": len(str(reasoning_content or "")),
+                    **deepseek_thinking_mode_audit(thinking_mode),
                 }
                 if content is None or not str(content).strip():
                     empty = ValueError("empty_json_content")
@@ -234,5 +258,6 @@ class DeepSeekClient:
 
 __all__ = [
     "DeepSeekClient", "DeepSeekExtractionError", "JSONExtractionResult",
-    "build_deepseek_request_payload", "deepseek_thinking_mode_audit",
+    "ThinkingMode", "build_deepseek_request_payload", "deepseek_thinking_mode_audit",
+    "validate_thinking_mode",
 ]

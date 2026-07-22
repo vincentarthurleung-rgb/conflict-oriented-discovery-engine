@@ -14,7 +14,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from code_engine.extraction.deepseek_client import DeepSeekExtractionError, JSONExtractionResult
+from code_engine.extraction.deepseek_client import (
+    DeepSeekExtractionError, JSONExtractionResult, ThinkingMode,
+    deepseek_thinking_mode_audit, validate_thinking_mode,
+)
 from code_engine.fulltext.fulltext_l1_extractor import (
     CHUNKER_VERSION, SECTION_WEIGHTS, _jsonl, _shared_cache_enabled_for_run,
     chunk_text, classify_section, select_sections,
@@ -40,6 +43,8 @@ DEFAULT_OBSERVATION_LIMIT = 40
 MAX_CHILDREN_PER_PARENT = 48
 MINIMUM_CHILD_INPUT_TOKENS = 80
 TOKEN_ESTIMATOR_VERSION = "conservative_unicode_chars_v1"
+CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v2_thinking_mode"
+DEFAULT_THINKING_MODE: ThinkingMode = "disabled"
 PROMPT_RULES = (
     "Use only the supplied full-text block. External biological knowledge is forbidden.",
     "Seeds locate text only; never confirm them merely because they were supplied.",
@@ -127,6 +132,13 @@ def _cached_tokens(usage: dict[str, Any]) -> Any:
     return _usage_value(usage, "cached_tokens", "prompt_cache_hit_tokens") or (usage.get("prompt_tokens_details") or {}).get("cached_tokens")
 
 
+def _reasoning_tokens(usage: dict[str, Any]) -> int | str:
+    value = _usage_value(usage, "reasoning_tokens")
+    if value is None:
+        value = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+    return int(value) if value is not None else "unavailable"
+
+
 def _redact(value: Any) -> str:
     text = _response_text(value)
     text = re.sub(r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s\"']+", r"\1[REDACTED]", text)
@@ -147,6 +159,10 @@ def prompt_hash() -> str:
                   "empty_example": empty_example, "nonempty_example": nonempty_example,
                   "measurement_dimensions": measurement_dimension_values(), "rules": PROMPT_RULES,
                   "context_binding_order": "evidence_span>experiment_result_block>figure_or_table>linked_methods>subsection>paper_metadata>abstract_prior"})
+
+
+def schema_hash() -> str:
+    return _hash(FulltextL1V2Response.model_json_schema())
 
 
 def build_prompt(candidate: dict[str, Any], block: dict[str, Any]) -> str:
@@ -361,13 +377,17 @@ def parse_response(response: Any, *, normalization_audit: list[dict[str, Any]] |
 
 
 def cache_key(*, source_fulltext_hash: str, chunk_hash: str, provider: str, model: str,
-              config_hash: str, candidate_prior_hash: str) -> str:
+              config_hash: str, candidate_prior_hash: str,
+              thinking_mode: ThinkingMode = DEFAULT_THINKING_MODE) -> str:
+    mode = validate_thinking_mode(thinking_mode)
     return _hash({
+        "cache_identity_version": CACHE_IDENTITY_VERSION,
         "source_fulltext_hash": source_fulltext_hash, "chunk_hash": chunk_hash,
         "prompt_hash": prompt_hash(), "schema_version": SCHEMA_VERSION,
         "extractor_version": EXTRACTOR_VERSION, "parser_version": PARSER_VERSION,
         "chunker_version": CHUNKER_VERSION, "relevant_config_hash": config_hash,
         "provider": provider, "model": model, "candidate_prior_hash": candidate_prior_hash,
+        "thinking_mode": mode,
     })
 
 
@@ -455,18 +475,23 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                                   max_tokens: int | None = None,
                                   observation_limit: int = DEFAULT_OBSERVATION_LIMIT,
                                   safe_input_tokens: int = DEFAULT_SAFE_INPUT_TOKENS,
-                                  max_split_depth: int = MAX_SPLIT_DEPTH) -> dict[str, Any]:
+                                  max_split_depth: int = MAX_SPLIT_DEPTH,
+                                  thinking_mode: ThinkingMode = DEFAULT_THINKING_MODE) -> dict[str, Any]:
     run = Path(run_dir); artifacts = run / "artifacts"; cache = artifacts / "cache/fulltext_l1_v2"; cache.mkdir(parents=True, exist_ok=True)
     shared = Path("data/interim/cache/fulltext_l1_v2"); shared_enabled = _shared_cache_enabled_for_run(run)
     if shared_enabled: shared.mkdir(parents=True, exist_ok=True)
     effective_max_tokens = resolve_max_tokens(max_tokens)
+    configured_thinking_mode = validate_thinking_mode(thinking_mode)
+    thinking_audit = deepseek_thinking_mode_audit(configured_thinking_mode)
     budget = FulltextTokenBudget(max_tokens=effective_max_tokens, observation_limit=int(observation_limit),
                                  safe_input_tokens=int(safe_input_tokens), max_split_depth=int(max_split_depth))
     config = {"max_sections": max_sections_per_paper, "max_chunks_per_paper": max_chunks_per_paper,
               "max_chars": max_chars_per_chunk, "max_total_chunks": max_total_chunks,
               "max_tokens": effective_max_tokens, "observation_limit": observation_limit,
               "safe_input_tokens": safe_input_tokens, "max_split_depth": max_split_depth,
-              "split_version": SPLIT_VERSION, "duplicate_rule_version": DUPLICATE_RULE_VERSION}
+              "split_version": SPLIT_VERSION, "duplicate_rule_version": DUPLICATE_RULE_VERSION,
+              "cache_identity_version": CACHE_IDENTITY_VERSION,
+              "thinking_mode": configured_thinking_mode}
     config_hash = _hash(config); observations: list[dict[str, Any]] = []; executions = []; bindings = []
     parser_normalization_audit: list[dict[str, Any]] = []; preflight_records: list[dict[str, Any]] = []
     duplicate_audit: list[dict[str, Any]] = []
@@ -500,7 +525,7 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
             if total_blocks >= max_total_chunks: break
             total_blocks += 1
             block["paper_metadata"]["fulltext_source_hash"] = source_hash
-            key = cache_key(source_fulltext_hash=source_hash, chunk_hash=block["chunk_hash"], provider=l1_provider, model=l1_model, config_hash=config_hash, candidate_prior_hash=_hash({k: paper.get(k) for k in ("subject", "object", "abstract_observation_ids")}))
+            key = cache_key(source_fulltext_hash=source_hash, chunk_hash=block["chunk_hash"], provider=l1_provider, model=l1_model, config_hash=config_hash, candidate_prior_hash=_hash({k: paper.get(k) for k in ("subject", "object", "abstract_observation_ids")}), thinking_mode=configured_thinking_mode)
             paths = [cache / f"{key}.json"] + ([shared / f"{key}.json"] if shared_enabled else [])
             prior_failures = sorted(cache.glob(f"{key}.*.raw_error.json")) + sorted(cache.glob(f"{key}.raw_error.json"))
             hit = next((p for p in paths if p.is_file()), None)
@@ -540,7 +565,8 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                 executions.append({"block_id": block["block_id"], "parent_block_id": block.get("parent_block_id"),
                                    "status": "planned" if dry_run else "blocked", "api_called": False,
                                    "cache_key": key, "max_tokens": effective_max_tokens,
-                                   "response_format": {"type": "json_object"}})
+                                   "response_format": {"type": "json_object"}, "cache_status": "miss",
+                                   **thinking_audit})
                 block_index += 1; continue
             else:
                 response = None
@@ -549,7 +575,7 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                     call = getattr(client, "extract_json_result", client.extract_json)
                     response = call(build_prompt(paper, block), model=l1_model, temperature=0, top_p=1,
                                     timeout=read_timeout_seconds, max_retries=max_retries,
-                                    max_tokens=effective_max_tokens)
+                                    max_tokens=effective_max_tokens, thinking_mode=configured_thinking_mode)
                     response_received = True
                     scientific_payload, transport = split_transport_metadata(response)
                     api_calls += 1; actual_llm_calls += int(transport.get("attempt_count") or 1)
@@ -558,10 +584,14 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                         raise OverflowError(f"observation_overflow:{len(raw_rows)}>{observation_limit}")
                     status = "completed"; completed_blocks += 1
                     payload = {"schema_version": SCHEMA_VERSION, "prompt_version": PROMPT_VERSION,
-                               "prompt_hash": prompt_hash(), "parser_version": PARSER_VERSION,
+                               "schema_hash": schema_hash(), "prompt_hash": prompt_hash(), "parser_version": PARSER_VERSION,
                                "extractor_version": EXTRACTOR_VERSION, "source_fulltext_hash": source_hash,
                                "response": scientific_payload, "transport_metadata": transport,
                                "parser_normalization_audit": block_audit, "config": config,
+                               "configured_thinking_mode": configured_thinking_mode,
+                               "effective_thinking_mode": thinking_audit["effective_thinking_mode"],
+                               "thinking_parameter_sent": thinking_audit["thinking_parameter_sent"],
+                               "thinking_request_payload": thinking_audit["thinking_request_payload"],
                                "block_provenance": {k: block.get(k) for k in ("block_id", "parent_block_id", "child_block_id", "split_index", "split_count", "split_reason", "split_strategy", "split_strategy_version")}}
                     paths[0].write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                     if len(paths) > 1: paths[1].write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -584,8 +614,9 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                     record = {
                         "paper_id": paper.get("paper_id"), "pmid": paper.get("pmid"), "pmcid": paper.get("pmcid"),
                         "block_id": block["block_id"], "experiment_block_index": block_index,
-                        "input_character_count": len(block["text"]), "prompt_hash": prompt_hash(),
-                        "schema_version": SCHEMA_VERSION, "parser_version": PARSER_VERSION,
+                        "input_character_count": len(block["text"]), "prompt_version": PROMPT_VERSION,
+                        "prompt_hash": prompt_hash(), "schema_version": SCHEMA_VERSION,
+                        "schema_hash": schema_hash(), "parser_version": PARSER_VERSION,
                         "extractor_version": EXTRACTOR_VERSION, "cache_key": key,
                         "provider": getattr(exc, "provider", None) or l1_provider,
                         "model": getattr(exc, "model", None) or l1_model,
@@ -596,10 +627,14 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                         "raw_response_path": str(raw_response_path) if raw_response_path else None,
                         "raw_response_character_count": len(raw_text),
                         "finish_reason": getattr(exc, "finish_reason", None),
-                        "usage": getattr(exc, "usage", {}) or {}, "max_tokens": effective_max_tokens,
+                        "usage": getattr(exc, "usage", {}) or {},
+                        "reasoning_tokens": _reasoning_tokens(getattr(exc, "usage", {}) or {}),
+                        "max_tokens": effective_max_tokens,
                         "configured_max_tokens": effective_max_tokens, "effective_max_tokens": effective_max_tokens,
                         "max_tokens_parameter_source": "argument" if max_tokens is not None else "env" if os.getenv("FULLTEXT_L1_V2_MAX_TOKENS") else "default_constant",
                         "response_format": {"type": "json_object"}, "json_output_enabled": True,
+                        "cache_status": "miss",
+                        **thinking_audit,
                         "possible_output_truncation": getattr(exc, "finish_reason", None) == "length" or "unterminated string" in str(exc).casefold() or "unexpected eof" in str(exc).casefold(),
                         "output_truncated": error_kind == "output_truncated", "retryable": error_kind != "output_truncated",
                         "failure_timestamp": timestamp, **_json_position(exc),
@@ -627,15 +662,21 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                     record = {
                         "paper_id": paper.get("paper_id"), "pmid": paper.get("pmid"), "pmcid": paper.get("pmcid"),
                         "block_id": block["block_id"], "experiment_block_index": block_index,
-                        "input_character_count": len(block["text"]), "prompt_hash": prompt_hash(),
-                        "schema_version": SCHEMA_VERSION, "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION,
+                        "input_character_count": len(block["text"]), "prompt_version": PROMPT_VERSION,
+                        "prompt_hash": prompt_hash(), "schema_version": SCHEMA_VERSION,
+                        "schema_hash": schema_hash(), "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION,
                         "cache_key": key, "provider": l1_provider, "model": l1_model, "attempt_count": 1,
                         "exception_class": type(exc).__name__, "error_kind": error_kind,
                         "error_message": _redact(str(exc)), "underlying_cause": None,
                         "raw_response_path": str(raw_response_path), "raw_response_character_count": len(_response_text(transport.get("raw_response") or scientific_payload)),
                         "raw_response": scientific_payload, "parser_normalization_audit": block_audit,
                         "finish_reason": transport.get("finish_reason"), "usage": transport.get("usage") or {},
-                        "max_tokens": effective_max_tokens, "response_format": {"type": "json_object"},
+                        "reasoning_tokens": _reasoning_tokens(transport.get("usage") or {}),
+                        "max_tokens": effective_max_tokens, "configured_max_tokens": effective_max_tokens,
+                        "effective_max_tokens": effective_max_tokens,
+                        "response_format": {"type": "json_object"}, "json_output_enabled": True,
+                        "cache_status": "miss",
+                        **thinking_audit,
                         "possible_output_truncation": False, "observation_overflow": isinstance(exc, OverflowError),
                         "retryable": True, "failure_timestamp": timestamp, **_json_position(exc),
                     }
@@ -668,15 +709,20 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
             usage = transport.get("usage") or {}
             executions.append({"block_id": block["block_id"], "parent_block_id": block.get("parent_block_id"),
                 "status": status, "api_called": hit is None and status in {"completed", "completed_empty"}, "cache_key": key,
+                "cache_status": "hit" if hit is not None else "miss",
                 "observation_count": len(raw_rows), "finish_reason": transport.get("finish_reason"),
                 "usage": usage, "input_tokens": _usage_value(usage, "prompt_tokens", "input_tokens"),
                 "output_tokens": _usage_value(usage, "completion_tokens", "output_tokens"), "total_tokens": usage.get("total_tokens"),
+                "reasoning_tokens": _reasoning_tokens(usage),
                 "cached_tokens": _cached_tokens(usage),
                 "raw_response_character_count": len(str(transport.get("raw_response") or "")),
                 "parsed_json_character_count": len(json.dumps(scientific_payload, ensure_ascii=False)),
                 "max_tokens": effective_max_tokens, "configured_max_tokens": effective_max_tokens,
                 "effective_max_tokens": effective_max_tokens, "response_format": {"type": "json_object"},
                 "json_output_enabled": True, "provider": l1_provider, "model": l1_model,
+                "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
+                "schema_version": SCHEMA_VERSION, "schema_hash": schema_hash(),
+                **thinking_audit,
                 "attempt_number": transport.get("attempt_count", 0 if status == "cache_hit" else 1),
                 "http_status": transport.get("http_status"), "latency_seconds": transport.get("latency_seconds")})
             block_index += 1
@@ -708,6 +754,7 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
         "finish_reason_distribution": dict(Counter(str(x.get("finish_reason") or "unknown") for x in executions)),
         "max_tokens_distribution": dict(Counter(str(x.get("max_tokens")) for x in executions if x.get("max_tokens") is not None)),
         "configured_max_tokens": effective_max_tokens, "effective_max_tokens": effective_max_tokens,
+        **thinking_audit,
         "max_tokens_parameter_source": "argument" if max_tokens is not None else "env" if os.getenv("FULLTEXT_L1_V2_MAX_TOKENS") else "default_constant",
         "token_budget": asdict(budget), "token_estimator": TOKEN_ESTIMATOR_VERSION,
         "consistency_report": {

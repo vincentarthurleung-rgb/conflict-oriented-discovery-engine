@@ -1,4 +1,5 @@
 import json
+import inspect
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,6 +8,9 @@ import pytest
 from code_engine.cli.fulltext_l1_v2_provider_smoke_test import main
 from code_engine.extraction.deepseek_client import build_deepseek_request_payload, deepseek_thinking_mode_audit
 from code_engine.extraction.deepseek_client import JSONExtractionResult
+from code_engine.extraction.client_factory import ConfiguredJSONClient
+from code_engine.fulltext.stage import run_l35_pmc_oa_stage
+from code_engine.fulltext.fulltext_l1_v2 import run_fulltext_l1_v2_extraction
 from code_engine.fulltext.fulltext_l1_v2 import DEFAULT_MAX_TOKENS, PROMPT_VERSION, build_prompt, prompt_hash
 from code_engine.fulltext.fulltext_l1_v2_smoke import (
     _fresh_cache_status,
@@ -29,12 +33,36 @@ def test_v4_prompt_and_exact_deepseek_http_body_contract():
     _, nonempty = fulltext_l1_v2_prompt_examples()
     assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v4_schema_examples"
     assert json.dumps(nonempty, ensure_ascii=False, separators=(",", ":")) in prompt
-    body = build_deepseek_request_payload(prompt, model="deepseek-v4-pro", max_tokens=DEFAULT_MAX_TOKENS)
+    body = build_deepseek_request_payload(prompt, model="deepseek-v4-pro", max_tokens=DEFAULT_MAX_TOKENS,
+                                          thinking_mode="disabled")
     assert body["messages"] == [{"role": "system", "content": prompt}]
     assert body["response_format"] == {"type": "json_object"}
     assert body["max_tokens"] == 32768
-    assert "thinking" not in body
-    assert deepseek_thinking_mode_audit()["thinking_mode_verified"] is False
+    assert body["thinking"] == {"type": "disabled"}
+    audit = deepseek_thinking_mode_audit("disabled")
+    assert audit["thinking_mode_verified"] is True and audit["thinking_parameter_sent"] is True
+
+
+def test_thinking_mode_variants_and_invalid_value():
+    disabled = build_deepseek_request_payload("p", model="m", thinking_mode="disabled")
+    enabled = build_deepseek_request_payload("p", model="m", thinking_mode="enabled")
+    default = build_deepseek_request_payload("p", model="m", thinking_mode="provider_default")
+    assert disabled["thinking"] == {"type": "disabled"}
+    assert enabled["thinking"] == {"type": "enabled"}
+    assert "thinking" not in default
+    with pytest.raises(ValueError, match="invalid DeepSeek thinking_mode"):
+        build_deepseek_request_payload("p", model="m", thinking_mode="sometimes")  # type: ignore[arg-type]
+
+
+def test_fulltext_defaults_disabled_and_configured_adapter_forwards_mode():
+    assert inspect.signature(run_fulltext_l1_v2_extraction).parameters["thinking_mode"].default == "disabled"
+    assert inspect.signature(run_l35_pmc_oa_stage).parameters["fulltext_l1_thinking_mode"].default == "disabled"
+    captured = {}
+    class Inner:
+        def extract_json_result(self, prompt, **kwargs):
+            captured.update(kwargs); return JSONExtractionResult(payload={}, raw_response="{}")
+    ConfiguredJSONClient(Inner(), "deepseek-v4-pro").extract_json_result("p", thinking_mode="disabled")
+    assert captured["thinking_mode"] == "disabled" and captured["model"] == "deepseek-v4-pro"
 
 
 def test_cli_defaults_to_plan_only_and_requires_double_authorization(tmp_path):
@@ -89,7 +117,9 @@ def test_cache_identity_rejects_historical_prompt_and_accepts_native_v4(tmp_path
             "response": empty, "block_provenance": {"block_id": "block"}}
     path.write_text(json.dumps({**base, "prompt_version": "fulltext_experimental_observation_prompt_v3_json_bounded", "prompt_hash": "old"}))
     assert _fresh_cache_status(tmp_path, "key", "block", "source")[0] is False
-    path.write_text(json.dumps({**base, "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(), "origin": "fresh_v4_provider_smoke"}))
+    path.write_text(json.dumps({**base, "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
+                                "origin": "fresh_v4_provider_smoke", "configured_thinking_mode": "disabled",
+                                "effective_thinking_mode": "disabled", "thinking_parameter_sent": True}))
     assert _fresh_cache_status(tmp_path, "key", "block", "source")[0] is True
 
 
@@ -114,7 +144,8 @@ def test_thinking_unverified_blocks_before_client_or_filesystem(tmp_path):
         def extract_json_result(self, *_args, **_kwargs):
             raise AssertionError("provider called")
     with pytest.raises(RuntimeError, match="thinking_mode_unverified"):
-        execute_smoke(tmp_path, api_authorized=True, client=NeverClient())
+        execute_smoke(tmp_path, api_authorized=True, client=NeverClient(),
+                      _thinking_audit={"thinking_mode_verified": False, "effective_mode": "unverified"})
 
 
 def test_manifest_call_limit_blocks_oversized_manifest(tmp_path):
@@ -156,10 +187,45 @@ def test_execution_calls_only_manifest_and_writes_fresh_v4_cache(tmp_path):
                                _thinking_audit={"thinking_mode_verified": True, "effective_mode": "disabled"})
     assert result["api_calls"] == 2 and len(calls) == 2
     assert all(call[1]["max_tokens"] == 32768 and call[1]["retry_on_length"] is False for call in calls)
+    assert all(call[1]["thinking_mode"] == "disabled" for call in calls)
     assert sorted(path.name for path in cache.glob("*.json")) == ["key0.json", "key1.json"]
     payload = json.loads((cache / "key0.json").read_text())
     assert payload["prompt_version"] == PROMPT_VERSION and payload["schema_hash"] == schema_hash()
     assert payload["transport_metadata"]["thinking_mode"]["effective_mode"] == "disabled"
+    assert result["scientific_input_complete_changed"] is False and result["publication_attempted"] is False
+
+
+def test_positive_reasoning_tokens_stop_remaining_smoke_calls_fail_closed(tmp_path):
+    artifacts = tmp_path / "artifacts"; cache = artifacts / "cache" / "fulltext_l1_v2"; cache.mkdir(parents=True)
+    samples = []
+    inventory = {}
+    for index in range(3):
+        block_id = f"b{index}"
+        samples.append({"block_id": block_id, "sample_group": "historical_nonempty_schema_failure",
+                        "fresh_v4_success_cache_hit": False, "expected_cache_identity": f"key{index}",
+                        "rendered_system_prompt_hash": f"rendered{index}", "parent_block_id": block_id,
+                        "child_block_id": None})
+        inventory[block_id] = {"paper": {"abstract_observation_ids": []}, "block": {**_block(), "block_id": block_id},
+                               "source_fulltext_hash": "source"}
+    (artifacts / "fulltext_l1_v2_smoke_manifest.json").write_text(json.dumps({"samples": samples}))
+    calls = []
+    class Client:
+        def extract_json_result(self, prompt, **kwargs):
+            calls.append((prompt, kwargs)); empty, _ = fulltext_l1_v2_prompt_examples()
+            return JSONExtractionResult(payload=empty, raw_response=json.dumps(empty), finish_reason="stop",
+                                        usage={"completion_tokens": 20, "completion_tokens_details": {"reasoning_tokens": 7}},
+                                        provider_metadata={"reasoning_content_present": False})
+    with patch("code_engine.fulltext.fulltext_l1_v2_smoke._jsonl", return_value=[{"block_id": "old", "status": "parse_error"}]), \
+         patch("code_engine.fulltext.fulltext_l1_v2_smoke._historical_config", return_value={"max_tokens": 32768}), \
+         patch("code_engine.fulltext.fulltext_l1_v2_smoke._block_inventory", return_value=inventory), \
+         patch("code_engine.fulltext.fulltext_l1_v2_smoke.build_compatibility_report", return_value={"compatibility_decision": "empty_results_semantically_compatible"}), \
+         patch("code_engine.fulltext.fulltext_l1_v2_smoke.build_request_chain_audit", return_value={"thinking": {}}):
+        result = execute_smoke(tmp_path, api_authorized=True, client=Client(),
+                               _thinking_audit={"thinking_mode_verified": True, "effective_mode": "disabled"})
+    assert len(calls) == result["api_calls"] == 1
+    assert result["provider_thinking_disable_not_honored"] is True and result["stopped_early"] is True
+    assert result["rerun_decision"] == "insufficient_evidence_do_not_rerun"
+    assert not list(cache.glob("key*.json"))
     assert result["scientific_input_complete_changed"] is False and result["publication_attempted"] is False
 
 

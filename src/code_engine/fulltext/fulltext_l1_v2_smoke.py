@@ -23,9 +23,11 @@ from code_engine.extraction.deepseek_client import (
     deepseek_thinking_mode_audit,
 )
 from code_engine.fulltext.fulltext_l1_v2 import (
+    CACHE_IDENTITY_VERSION,
     DEFAULT_MAX_TOKENS,
     DEFAULT_OBSERVATION_LIMIT,
     DEFAULT_SAFE_INPUT_TOKENS,
+    DEFAULT_THINKING_MODE,
     DUPLICATE_RULE_VERSION,
     EXTRACTOR_VERSION,
     FulltextTokenBudget,
@@ -42,6 +44,7 @@ from code_engine.fulltext.fulltext_l1_v2 import (
     estimate_tokens,
     parse_response,
     prompt_hash,
+    schema_hash,
     split_transport_metadata,
 )
 from code_engine.fulltext.fulltext_l1_extractor import CHUNKER_VERSION
@@ -113,10 +116,6 @@ def _sha(value: str | bytes | Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def schema_hash() -> str:
-    return _sha(FulltextL1V2Response.model_json_schema())
-
-
 def _write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -170,13 +169,17 @@ def _historical_config(artifacts: Path, records: list[dict[str, Any]]) -> dict[s
     for record in records:
         _, cached = _historical_cache(artifacts, record)
         if cached.get("config"):
-            return dict(cached["config"])
+            config = dict(cached["config"])
+            config.setdefault("thinking_mode", DEFAULT_THINKING_MODE)
+            config.setdefault("cache_identity_version", CACHE_IDENTITY_VERSION)
+            return config
     return {
         "max_sections": 12, "max_chunks_per_paper": 24, "max_chars": 6000,
         "max_total_chunks": 200, "max_tokens": DEFAULT_MAX_TOKENS,
         "observation_limit": DEFAULT_OBSERVATION_LIMIT,
         "safe_input_tokens": DEFAULT_SAFE_INPUT_TOKENS, "max_split_depth": 1,
         "split_version": SPLIT_VERSION, "duplicate_rule_version": DUPLICATE_RULE_VERSION,
+        "thinking_mode": DEFAULT_THINKING_MODE, "cache_identity_version": CACHE_IDENTITY_VERSION,
     }
 
 
@@ -292,6 +295,8 @@ def _config_hash(config: dict[str, Any]) -> str:
         "safe_input_tokens": config.get("safe_input_tokens", DEFAULT_SAFE_INPUT_TOKENS),
         "max_split_depth": config.get("max_split_depth", 1), "split_version": config.get("split_version", SPLIT_VERSION),
         "duplicate_rule_version": config.get("duplicate_rule_version", DUPLICATE_RULE_VERSION),
+        "thinking_mode": config.get("thinking_mode", DEFAULT_THINKING_MODE),
+        "cache_identity_version": config.get("cache_identity_version", CACHE_IDENTITY_VERSION),
     }
     return _hash(identity_config)
 
@@ -299,7 +304,8 @@ def _config_hash(config: dict[str, Any]) -> str:
 def build_request_chain_audit(run_dir: Path, inventory: dict[str, dict[str, Any]], config: dict[str, Any]) -> dict[str, Any]:
     sample = inventory[sorted(inventory)[0]]
     rendered = build_prompt(sample["paper"], sample["block"])
-    body = build_deepseek_request_payload(rendered, model="deepseek-v4-pro", max_tokens=int(config["max_tokens"]))
+    body = build_deepseek_request_payload(rendered, model="deepseek-v4-pro", max_tokens=int(config["max_tokens"]),
+                                          thinking_mode=DEFAULT_THINKING_MODE)
     _, nonempty = fulltext_l1_v2_prompt_examples()
     historical_reasoning = []
     for item in inventory.values():
@@ -307,7 +313,7 @@ def build_request_chain_audit(run_dir: Path, inventory: dict[str, dict[str, Any]
         reasoning = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
         if reasoning is not None:
             historical_reasoning.append(int(reasoning))
-    thinking = deepseek_thinking_mode_audit()
+    thinking = deepseek_thinking_mode_audit(DEFAULT_THINKING_MODE)
     return {
         "schema_version": "fulltext_l1_v2_request_chain_audit_v1",
         "run_dir": str(run_dir),
@@ -321,19 +327,21 @@ def build_request_chain_audit(run_dir: Path, inventory: dict[str, dict[str, Any]
         "response_format_in_http_body": body.get("response_format"),
         "configured_max_tokens": int(config["max_tokens"]), "effective_max_tokens": body.get("max_tokens"),
         "thinking": thinking,
+        "conflicting_reasoning_parameters": [],
         "historical_reasoning_token_evidence": {
             "records_with_reasoning_token_field": len(historical_reasoning),
             "records_with_positive_reasoning_tokens": sum(value > 0 for value in historical_reasoning),
             "reasoning_tokens_total": sum(historical_reasoning),
         },
         "execution_record_audit": {
-            "prompt_version": False, "prompt_hash": "failures_only; success cache only",
-            "schema_version": "failures_only; success cache only", "schema_hash": False,
+            "prompt_version": True, "prompt_hash": True,
+            "schema_version": True, "schema_hash": True,
             "response_format": True, "configured_effective_max_tokens": True,
-            "thinking_mode": False, "finish_reason": True, "usage": True,
+            "thinking_mode": True, "finish_reason": True, "usage": True,
             "raw_response_characters": True, "observation_count": True,
         },
-        "http_body_field_audit": {"response_format": True, "max_tokens": True, "thinking": False},
+        "http_body_field_audit": {"response_format": True, "max_tokens": True,
+                                  "thinking": body.get("thinking") == {"type": "disabled"}},
     }
 
 
@@ -410,6 +418,9 @@ def _fresh_cache_status(artifacts: Path, expected_key: str, block_id: str, sourc
     valid = (
         payload.get("prompt_version") == PROMPT_VERSION and payload.get("prompt_hash") == prompt_hash()
         and payload.get("schema_version") == SCHEMA_VERSION and payload.get("source_fulltext_hash") == source_hash
+        and payload.get("configured_thinking_mode") == DEFAULT_THINKING_MODE
+        and payload.get("effective_thinking_mode") == DEFAULT_THINKING_MODE
+        and payload.get("thinking_parameter_sent") is True
         and (payload.get("block_provenance") or {}).get("block_id") == block_id
         and not str(payload.get("origin") or "").startswith("recovered_from_historical")
     )
@@ -429,7 +440,7 @@ def build_manifest(run_dir: Path, records: list[dict[str, Any]], inventory: dict
         key = cache_key(
             source_fulltext_hash=item["source_fulltext_hash"], chunk_hash=block["chunk_hash"],
             provider="deepseek", model="deepseek-v4-pro", config_hash=config_hash,
-            candidate_prior_hash=prior_hash,
+            candidate_prior_hash=prior_hash, thinking_mode=DEFAULT_THINKING_MODE,
         )
         fresh, fresh_path = _fresh_cache_status(artifacts, key, str(block["block_id"]), item["source_fulltext_hash"])
         rows.append({
@@ -489,6 +500,10 @@ def build_preflight(manifest: dict[str, Any], request_audit: dict[str, Any]) -> 
         "schema_version": "fulltext_l1_v2_smoke_preflight_v1", "mode": "plan_only",
         "api_calls": 0, "network_calls": 0, "downloads": 0,
         "planned_provider_calls": calls, "maximum_provider_calls": MANIFEST_SIZE,
+        "configured_thinking_mode": request_audit["thinking"]["configured_thinking_mode"],
+        "effective_request_mode": request_audit["thinking"]["effective_thinking_mode"],
+        "thinking_parameter_sent": request_audit["thinking"]["thinking_parameter_sent"],
+        "thinking_mode_verified": request_audit["thinking"]["thinking_mode_verified"],
         "estimated_total_input_tokens": sum(row["estimated_input_tokens"] for row in manifest["samples"] if not row["fresh_v4_success_cache_hit"]),
         "max_possible_output_tokens": calls * DEFAULT_MAX_TOKENS,
         "provider_cost_estimate": {"status": "not_computed", "reason": "no locally versioned provider pricing configuration"},
@@ -503,6 +518,8 @@ def decide_rerun_scope(compatibility: str, request_audit: dict[str, Any], smoke_
         return "insufficient_evidence_do_not_rerun", ["fresh v4 provider smoke has not been executed"]
     if not request_audit["thinking"]["thinking_mode_verified"]:
         return "insufficient_evidence_do_not_rerun", ["thinking mode is unverified"]
+    if smoke_results.get("provider_thinking_disable_not_honored"):
+        return "insufficient_evidence_do_not_rerun", ["provider did not honor explicit thinking disabled; smoke stopped fail closed"]
     nonempty = smoke_results.get("nonempty_failures") or {}
     empty = smoke_results.get("legacy_empty") or {}
     if nonempty.get("systematic_schema_drift") or nonempty.get("direct_strict_schema_success_count", 0) / 6 < SMOKE_SCHEMA_SUCCESS_THRESHOLD:
@@ -537,6 +554,7 @@ def build_rerun_plan(run_dir: Path, records: list[dict[str, Any]], inventory: di
         "expected_cache_location": str(run_dir / "artifacts" / "cache" / "fulltext_l1_v2"),
         "expected_run_state_transition": "none during smoke; completeness may be recomputed only after an approved complete rerun scope",
         "publication_remains_blocked": True, "exact_future_smoke_command": command,
+        "thinking_mode_verified_for_request": request_audit["thinking"]["thinking_mode_verified"],
         "bulk_rerun_executed": False,
     }
 
@@ -607,6 +625,8 @@ def write_plan_artifacts(run_dir: Path) -> dict[str, Any]:
         "mode": "plan_only", "api_calls": 0, "network_calls": 0, "downloads": 0,
         "planned_provider_calls": preflight["planned_provider_calls"], "manifest_blocks": [row["block_id"] for row in manifest["samples"]],
         "thinking_mode": request_audit["thinking"]["effective_mode"], "execution_blocked": preflight["execution_blocked"],
+        "thinking_mode_verified": request_audit["thinking"]["thinking_mode_verified"],
+        "thinking_parameter_sent": request_audit["thinking"]["thinking_parameter_sent"],
         "compatibility_decision": compatibility["compatibility_decision"], "rerun_decision": rerun["decision"],
         "protected_state_hashes_unchanged": True,
     }
@@ -617,7 +637,7 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
     """Execute only a preplanned manifest, after every hard safety gate passes."""
     if not api_authorized:
         raise PermissionError("smoke execution requires both --execute and --api")
-    thinking = _thinking_audit or deepseek_thinking_mode_audit()
+    thinking = _thinking_audit or deepseek_thinking_mode_audit(DEFAULT_THINKING_MODE)
     if not thinking.get("thinking_mode_verified") or thinking.get("effective_mode") != "disabled":
         raise RuntimeError("thinking_mode_unverified")
     run_dir = Path(run_dir); artifacts = run_dir / "artifacts"
@@ -644,18 +664,47 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
         if calls >= MANIFEST_SIZE:
             raise RuntimeError("smoke provider call bound exceeded")
         item = inventory[block_id]; raw = None; transport: dict[str, Any] = {}
+        request_record = {
+            "provider": "deepseek", "model": "deepseek-v4-pro",
+            "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
+            "schema_version": SCHEMA_VERSION, "schema_hash": schema_hash(),
+            "response_format": {"type": "json_object"},
+            "configured_max_tokens": DEFAULT_MAX_TOKENS, "effective_max_tokens": DEFAULT_MAX_TOKENS,
+            "cache_identity": sample["expected_cache_identity"], "cache_status": "miss",
+            "configured_thinking_mode": DEFAULT_THINKING_MODE,
+            "effective_thinking_mode": DEFAULT_THINKING_MODE,
+            "thinking_parameter_sent": True, "thinking_request_payload": {"type": "disabled"},
+        }
         try:
             method = getattr(client, "extract_json_result", None) or getattr(client, "extract_json")
             calls += 1
             response = method(build_prompt(item["paper"], item["block"]), model="deepseek-v4-pro", temperature=0,
-                              top_p=1, max_tokens=DEFAULT_MAX_TOKENS, retry_on_length=False)
+                              top_p=1, max_tokens=DEFAULT_MAX_TOKENS, retry_on_length=False,
+                              thinking_mode=DEFAULT_THINKING_MODE)
             payload, transport = split_transport_metadata(response); raw = transport.get("raw_response")
+            usage = transport.get("usage") or {}
+            reasoning_value = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+            if reasoning_value is None:
+                reasoning_value = usage.get("reasoning_tokens")
+            reasoning_tokens: int | str = int(reasoning_value) if reasoning_value is not None else "unavailable"
+            if (isinstance(reasoning_tokens, int) and reasoning_tokens > 0) or transport.get("reasoning_content_present"):
+                result = {**request_record, "block_id": block_id, "status": "provider_thinking_disable_not_honored",
+                          "api_called": True, "reasoning_tokens": reasoning_tokens,
+                          "reasoning_content_present": bool(transport.get("reasoning_content_present")),
+                          "finish_reason": transport.get("finish_reason"),
+                          "raw_response_characters": len(str(raw or ""))}
+                if raw not in (None, ""):
+                    raw_path = cache_root / f"smoke_{sample['expected_cache_identity']}.raw_response.txt"
+                    raw_path.write_text(str(raw), encoding="utf-8"); result["raw_response_path"] = str(raw_path)
+                results.append(result)
+                break
             validated = FulltextL1V2Response.model_validate(payload)
             observations = [row.model_dump(mode="json") for row in validated.experimental_observations]
             evidence_valid = all(all(str(span.get("text") or "") in item["block"]["text"] for span in (row.get("provenance") or {}).get("evidence_spans", [])) for row in observations)
             result = {"block_id": block_id, "status": "strict_schema_success", "api_called": True,
                       "observation_count": len(observations), "evidence_span_exactness": evidence_valid,
                       "finish_reason": transport.get("finish_reason"), "usage": transport.get("usage") or {},
+                      "reasoning_tokens": reasoning_tokens,
                       "raw_response_characters": len(str(raw or "")), "legacy_empty_false_negative_candidate": sample["sample_group"] == "historical_completed_empty" and bool(observations)}
             cache_payload = {
                 "schema_version": SCHEMA_VERSION, "schema_hash": schema_hash(),
@@ -669,14 +718,33 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                 "block_provenance": {"block_id": block_id, "parent_block_id": sample.get("parent_block_id"),
                     "child_block_id": sample.get("child_block_id")},
                 "origin": "fresh_v4_provider_smoke",
+                "configured_thinking_mode": DEFAULT_THINKING_MODE,
+                "effective_thinking_mode": DEFAULT_THINKING_MODE,
+                "thinking_parameter_sent": True,
+                "thinking_request_payload": {"type": "disabled"},
             }
             cache_path = cache_root / f"{sample['expected_cache_identity']}.json"
             _write_json(cache_path, cache_payload); result["fresh_v4_cache_path"] = str(cache_path)
         except DeepSeekExtractionError as exc:
-            result = {"block_id": block_id, "status": "provider_or_parse_failure", "api_called": True,
-                      "error_kind": exc.error_kind, "finish_reason": exc.finish_reason,
-                      "raw_response_characters": len(str(exc.raw_response or ""))}
             raw = exc.raw_response
+            error_reasoning = (exc.usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+            if error_reasoning is None:
+                error_reasoning = exc.usage.get("reasoning_tokens")
+            error_reasoning_value: int | str = int(error_reasoning) if error_reasoning is not None else "unavailable"
+            mismatch = ((isinstance(error_reasoning_value, int) and error_reasoning_value > 0)
+                        or bool(exc.provider_metadata.get("reasoning_content_present")))
+            result = {**request_record, "block_id": block_id,
+                      "status": "provider_thinking_disable_not_honored" if mismatch else "provider_or_parse_failure",
+                      "api_called": True, "reasoning_tokens": error_reasoning_value,
+                      "reasoning_content_present": bool(exc.provider_metadata.get("reasoning_content_present")),
+                      "error_kind": exc.error_kind, "finish_reason": exc.finish_reason,
+                      "raw_response_characters": len(str(raw or ""))}
+            if mismatch:
+                if raw not in (None, ""):
+                    raw_path = cache_root / f"smoke_{sample['expected_cache_identity']}.raw_response.txt"
+                    raw_path.write_text(str(raw), encoding="utf-8"); result["raw_response_path"] = str(raw_path)
+                results.append(result)
+                break
         except (ValidationError, json.JSONDecodeError) as exc:
             unknown_extra_paths = []
             if isinstance(exc, ValidationError):
@@ -688,6 +756,7 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
         if raw not in (None, ""):
             raw_path = cache_root / f"smoke_{sample['expected_cache_identity']}.raw_response.txt"
             raw_path.write_text(str(raw), encoding="utf-8"); result["raw_response_path"] = str(raw_path)
+        result = {**request_record, **result}
         results.append(result)
     nonempty_results = [row for row in results if next(x for x in samples if x["block_id"] == row["block_id"])["sample_group"] == "historical_nonempty_schema_failure"]
     empty_results = [row for row in results if next(x for x in samples if x["block_id"] == row["block_id"])["sample_group"] == "historical_completed_empty"]
@@ -708,6 +777,8 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                   "high_risk_valid_nonempty_count": sum(row["block_id"] in high_ids and row["status"] == "strict_schema_success" and row.get("observation_count", 0) > 0 for row in empty_results),
               },
               "scientific_input_complete_changed": False, "publication_attempted": False}
+    output["provider_thinking_disable_not_honored"] = any(row["status"] == "provider_thinking_disable_not_honored" for row in results)
+    output["stopped_early"] = output["provider_thinking_disable_not_honored"]
     _write_json(artifacts / "fulltext_l1_v2_provider_smoke_results.json", output)
     compatibility = build_compatibility_report(artifacts, records, config)
     request_audit = build_request_chain_audit(run_dir, inventory, config)

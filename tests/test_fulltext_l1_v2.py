@@ -130,6 +130,8 @@ def test_v1_and_v2_cache_keys_are_isolated_and_prompt_config_sensitive():
     v2 = cache_key(**base)
     assert v1 != v2
     assert v2 != cache_key(**{**base, "config_hash": "changed"})
+    assert cache_key(**base, thinking_mode="disabled") != cache_key(**base, thinking_mode="enabled")
+    assert cache_key(**base, thinking_mode="disabled") != cache_key(**base, thinking_mode="provider_default")
 
 
 def test_prompt_and_parser_versions_change_cache_identity(monkeypatch):
@@ -206,6 +208,10 @@ def test_successful_alias_block_recovers_from_new_v2_cache(tmp_path):
     assert first["observations"][0]["measurement"]["measurement_dimension"] == "abundance_expression"
     assert second["summary"]["cache_hits"] == 1 and second["summary"]["api_calls_made"] == 0
     assert second["parser_normalization_audit"][0]["measurement_dimension_raw"] == "protein_level"
+    cached = json.loads(next((artifacts / "cache/fulltext_l1_v2").glob("*.json")).read_text())
+    assert cached["configured_thinking_mode"] == "disabled"
+    assert cached["effective_thinking_mode"] == "disabled"
+    assert cached["thinking_parameter_sent"] is True
 
 
 def test_cached_and_missing_input_plan_and_retry_ledger(tmp_path):

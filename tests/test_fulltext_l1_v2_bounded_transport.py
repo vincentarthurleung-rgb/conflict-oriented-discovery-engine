@@ -33,11 +33,22 @@ def test_deepseek_real_body_has_json_output_and_bounded_max_tokens():
     response = httpx.Response(200, request=httpx.Request("POST", "https://api.deepseek.com"), json={
         "choices": [{"message": {"content": '{"ok":true}'}, "finish_reason": "stop"}], "usage": {}})
     with patch("httpx.post", return_value=response) as post:
-        DeepSeekClient("fake", max_retries=0).extract_json_result("return json", max_tokens=DEFAULT_MAX_TOKENS)
+        DeepSeekClient("fake", max_retries=0).extract_json_result(
+            "return json", max_tokens=DEFAULT_MAX_TOKENS, thinking_mode="disabled")
     body = json.loads(post.call_args.kwargs["content"])
     assert body["response_format"] == {"type": "json_object"}
     assert body["max_tokens"] == DEFAULT_MAX_TOKENS
+    assert body["thinking"] == {"type": "disabled"}
     assert body["max_tokens"] != 384_000
+    assert "fake" not in json.dumps(body)
+
+
+def test_other_deepseek_calls_keep_provider_default_omission():
+    response = httpx.Response(200, request=httpx.Request("POST", "https://api.deepseek.com"), json={
+        "choices": [{"message": {"content": '{"ok":true}'}, "finish_reason": "stop"}], "usage": {}})
+    with patch("httpx.post", return_value=response) as post:
+        DeepSeekClient("fake", max_retries=0).extract_json_result("return json", max_tokens=1024)
+    assert "thinking" not in json.loads(post.call_args.kwargs["content"])
 
 
 def test_length_does_not_retry_identical_result_request():
@@ -64,13 +75,19 @@ def test_provider_never_receives_unsplit_parent(tmp_path, monkeypatch):
         def extract_json(self, prompt, **kwargs):
             self.prompts.append(prompt)
             assert kwargs["max_tokens"] == DEFAULT_MAX_TOKENS
+            assert kwargs["thinking_mode"] == "disabled"
             return {"schema_version": "fulltext_l1_experimental_observation_schema_v2", "experimental_observations": []}
     client = Client()
-    run_fulltext_l1_v2_extraction(run_dir=tmp_path / "run", fulltext_candidates_path=candidates,
+    result = run_fulltext_l1_v2_extraction(run_dir=tmp_path / "run", fulltext_candidates_path=candidates,
         parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture",
         api_enabled=True, network_enabled=True, client=client, safe_input_tokens=10)
     assert len(client.prompts) >= 2
     assert all("Human cells" not in prompt or "Murine tumors" not in prompt for prompt in client.prompts)
+    assert all(row["configured_thinking_mode"] == "disabled" for row in result["executions"])
+    assert all(row["effective_thinking_mode"] == "disabled" for row in result["executions"])
+    assert all(row["thinking_parameter_sent"] is True for row in result["executions"])
+    assert all(row["thinking_request_payload"] == {"type": "disabled"} for row in result["executions"])
+    assert all(row["reasoning_tokens"] == "unavailable" for row in result["executions"])
 
 
 def test_child_merge_requires_all_children_and_keeps_distinct_endpoints():
