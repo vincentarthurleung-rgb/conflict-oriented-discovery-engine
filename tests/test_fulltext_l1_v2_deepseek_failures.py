@@ -73,7 +73,7 @@ def test_malformed_json_fails_closed_audits_and_continues(tmp_path, monkeypatch)
 
     assert client.calls == 2
     assert result["observations"] == []
-    assert [row["status"] for row in result["executions"]] == ["parse_error", "completed"]
+    assert [row["status"] for row in result["executions"]] == ["parse_error", "completed_empty"]
     summary = result["summary"]
     assert summary["fulltext_l1_status"] == "completed_with_block_failures"
     assert summary["planned_block_count"] == 2
@@ -114,7 +114,7 @@ def test_unterminated_string_compatibility_fallback_records_real_position(tmp_pa
     failed = result["executions"][0]
     assert failed["error_kind"] == "malformed_json"
     assert (failed["json_line"], failed["json_column"], failed["json_character_position"]) == (4948, 36, 170288)
-    assert result["executions"][1]["status"] == "completed"
+    assert result["executions"][1]["status"] == "completed_empty"
 
 
 @pytest.mark.parametrize("kind", ["authentication", "authorization", "configuration", "unknown"])

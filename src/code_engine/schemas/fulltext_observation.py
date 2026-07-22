@@ -155,3 +155,82 @@ class ExperimentalObservationV2(StrictModel):
 class FulltextL1V2Response(StrictModel):
     schema_version: Literal["fulltext_l1_experimental_observation_schema_v2"]
     experimental_observations: list[ExperimentalObservationV2]
+
+
+def fulltext_l1_v2_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return schema-validated empty and non-empty prompt examples.
+
+    Constructing the example with the models themselves makes field renames,
+    required-field changes, and Literal changes fail here instead of silently
+    leaving a stale hand-written JSON contract in the provider prompt.
+    """
+    span = EvidenceSpan(
+        text="HIF1A knockdown decreased target-gene expression versus control.",
+        span_type="observation",
+        section="Results",
+        paragraph_id="p1",
+        sentence_id="s1",
+        char_start=0,
+        char_end=64,
+    )
+    observation = ExperimentalObservationV2(
+        observation_id="obs_example_001",
+        provenance=DocumentProvenance(
+            paper_id="paper_example",
+            pmid=None,
+            pmcid=None,
+            source_document_id="source_document_example",
+            section="Results",
+            evidence_spans=[span],
+            fulltext_source_hash="sha256_example_source_text",
+        ),
+        experiment=ExperimentContext(
+            experiment_id="experiment_example_001",
+            evidence_family_id="evidence_family_example_001",
+            experimental_design="Target knockdown compared with control",
+            design_type="in_vitro",
+            model_system="cultured cells",
+            species="Homo sapiens",
+            comparison_arm="HIF1A knockdown",
+            control_arm="non-targeting control",
+        ),
+        intervention=InterventionDetail(
+            intervention_target_mention="HIF1A",
+            intervention_type="knockdown",
+            intervention_sign=None,
+            intervention_span=span,
+        ),
+        measurement=MeasurementDetail(
+            outcome_mention="target-gene expression",
+            measured_entity_mention="target gene",
+            measurement_dimension="abundance_expression",
+            measurement_span=span,
+        ),
+        observation=ObservationDetail(
+            observed_result="decreased versus control",
+            observed_outcome_sign=None,
+            comparison_relation="versus non-targeting control",
+            observation_span=span,
+        ),
+        author_interpretation=AuthorInterpretationDetail(
+            author_interpretation=None,
+            interpretation_span=None,
+        ),
+        candidate_relation=CandidateRelation(
+            subject_mention="HIF1A",
+            object_mention="target-gene expression",
+            relation_raw="decreased",
+            lexical_direction="negative",
+            evidence_design_candidate="knockdown comparison",
+        ),
+        statement_role="current_study_experiment",
+    )
+    empty = FulltextL1V2Response(
+        schema_version="fulltext_l1_experimental_observation_schema_v2",
+        experimental_observations=[],
+    )
+    nonempty = FulltextL1V2Response(
+        schema_version="fulltext_l1_experimental_observation_schema_v2",
+        experimental_observations=[observation],
+    )
+    return empty.model_dump(mode="json"), nonempty.model_dump(mode="json")

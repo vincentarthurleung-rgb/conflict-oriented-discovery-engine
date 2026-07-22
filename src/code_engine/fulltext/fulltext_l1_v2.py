@@ -19,10 +19,13 @@ from code_engine.fulltext.fulltext_l1_extractor import (
     CHUNKER_VERSION, SECTION_WEIGHTS, _jsonl, _shared_cache_enabled_for_run,
     chunk_text, classify_section, select_sections,
 )
-from code_engine.schemas.fulltext_observation import FulltextL1V2Response, measurement_dimension_values
+from code_engine.schemas.fulltext_observation import (
+    FulltextL1V2Response, fulltext_l1_v2_prompt_examples,
+    measurement_dimension_values,
+)
 
 SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v2"
-PROMPT_VERSION = "fulltext_experimental_observation_prompt_v3_json_bounded"
+PROMPT_VERSION = "fulltext_experimental_observation_prompt_v4_schema_examples"
 PARSER_VERSION = "fulltext_experimental_observation_parser_v3_transport_boundary"
 EXTRACTOR_VERSION = "fulltext_l1_extractor_v2"
 DEFAULT_MAX_TOKENS = 32_768
@@ -54,6 +57,9 @@ PROMPT_RULES = (
     "Use the shortest original supporting span sufficient for the fields; never copy whole Results or Methods sections.",
     "Do not repeat one span in unnecessary fields. Keep distinct endpoints separate without semantic duplication.",
     "If no qualifying observation exists, return a valid JSON object with an empty experimental_observations array.",
+    "Every field name must match the examples character-for-character; never abbreviate or alias a field name.",
+    "Never use legacy aliases such as provenance.evidence_span, experiment.model_organism, experiment.experimental_system, intervention.type, intervention.target, measurement.dimension, measurement.entity, or observation.direction.",
+    "Unknown information must use the null, empty-list, or controlled unknown value shown as permitted by the schema; never omit a required field.",
 )
 
 _BLOCK_RESPONSE_ERROR_KINDS = {"malformed_json", "schema_parse_failure", "empty_json_content", "output_truncated"}
@@ -135,7 +141,11 @@ def _hash(value: Any) -> str:
 
 
 def prompt_hash() -> str:
-    return _hash({"version": PROMPT_VERSION, "schema": SCHEMA_VERSION, "rules": PROMPT_RULES,
+    empty_example, nonempty_example = fulltext_l1_v2_prompt_examples()
+    return _hash({"version": PROMPT_VERSION, "schema": SCHEMA_VERSION,
+                  "response_json_schema": FulltextL1V2Response.model_json_schema(),
+                  "empty_example": empty_example, "nonempty_example": nonempty_example,
+                  "measurement_dimensions": measurement_dimension_values(), "rules": PROMPT_RULES,
                   "context_binding_order": "evidence_span>experiment_result_block>figure_or_table>linked_methods>subsection>paper_metadata>abstract_prior"})
 
 
@@ -149,10 +159,14 @@ def build_prompt(candidate: dict[str, Any], block: dict[str, Any]) -> str:
     }
     rules = "\n".join(f"{index}. {rule}" for index, rule in enumerate(PROMPT_RULES, 1))
     dimensions = json.dumps(list(measurement_dimension_values()), ensure_ascii=False)
-    example = json.dumps({"schema_version": SCHEMA_VERSION, "experimental_observations": []}, ensure_ascii=False)
+    empty_example, nonempty_example = fulltext_l1_v2_prompt_examples()
+    empty_json = json.dumps(empty_example, ensure_ascii=False, separators=(",", ":"))
+    nonempty_json = json.dumps(nonempty_example, ensure_ascii=False, separators=(",", ":"))
     return f"""Extract experimental observations from the supplied full-text block.
 Return exactly one JSON object and nothing else. Do not use Markdown code fences or add text before or after the JSON object.
-Complete minimal JSON output example: {example}
+Valid empty JSON output example: {empty_json}
+Valid complete non-empty JSON output example: {nonempty_json}
+Use the exact, unabbreviated field names in these examples. Do not add aliases or omit required fields.
 Allowed measurement_dimension JSON string values: {dimensions}. If none applies, output "unknown".
 Never invent a new measurement_dimension label, and do not put an assay name, unit, or measured entity in measurement_dimension.
 Rules:
@@ -413,115 +427,10 @@ def observation_as_legacy_claim(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _plain(value: Any) -> str | None:
-    if value in (None, "", [], {}):
-        return None
-    if isinstance(value, str):
-        return value
-    return json.dumps(value, ensure_ascii=False, sort_keys=True)
-
-
-def _first(mapping: Any, *keys: str) -> Any:
-    if not isinstance(mapping, dict):
-        return None
-    return next((mapping[key] for key in keys if mapping.get(key) not in (None, "", [], {})), None)
-
-
-def migrate_historical_observation(row: dict[str, Any], *, record: dict[str, Any],
-                                   source_hash: str, index: int,
-                                   audit: list[dict[str, Any]]) -> dict[str, Any]:
-    """Deterministically project an already-paid legacy-shaped row into v2.
-
-    This migration copies source fields and classifies controlled vocabularies;
-    it performs no provider call and creates no canonical/formal decisions.
-    """
-    prov = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
-    exp = row.get("experiment") if isinstance(row.get("experiment"), dict) else {}
-    intervention = row.get("intervention") if isinstance(row.get("intervention"), dict) else {}
-    measurement = row.get("measurement") if isinstance(row.get("measurement"), dict) else {}
-    observation = row.get("observation") if isinstance(row.get("observation"), dict) else {"observed_outcome": row.get("observation")}
-    interpretation = row.get("author_interpretation") if isinstance(row.get("author_interpretation"), dict) else {"interpretation": row.get("author_interpretation")}
-    relation = row.get("candidate_relation") if isinstance(row.get("candidate_relation"), dict) else {}
-    evidence = _first(prov, "evidence_span", "evidence_span_text", "source_text", "experiment_result_block", "experiment_result_block_text", "text_source")
-    if isinstance(prov.get("evidence_spans"), list) and prov["evidence_spans"]:
-        first_span = prov["evidence_spans"][0]
-        evidence = first_span.get("text") if isinstance(first_span, dict) else first_span
-    evidence = _plain(evidence) or _plain(_first(observation, "observed_outcome", "outcome", "result", "description", "statement", "text", "raw_text")) or _plain(row.get("evidence_span")) or "Historical model response did not isolate a shorter evidence span."
-    raw_dimension = _plain(_first(measurement, "measurement_dimension", "type", "measurement_type", "measure_type", "endpoint_type", "readout_type")) or "unknown"
-    dimension_key = _alias_key(raw_dimension)
-    dimension = _MEASUREMENT_ALIASES.get(dimension_key)
-    if not dimension:
-        rules = (("phosph", "phosphorylation"), ("activ", "activation_activity"), ("local", "localization"),
-                 ("viab", "viability"), ("survival", "viability"), ("prolifer", "proliferation"),
-                 ("migrat", "migration"), ("invas", "invasion"), ("apop", "apoptosis"),
-                 ("metasta", "metastasis"), ("resistan", "drug_response_resistance"),
-                 ("expression", "abundance_expression"), ("abundance", "abundance_expression"),
-                 ("mrna", "abundance_expression"), ("protein", "abundance_expression"),
-                 ("pathway", "pathway_output"), ("marker", "morphology_marker_panel"))
-        dimension = next((canonical for needle, canonical in rules if needle in dimension_key), "unknown")
-    exp_type = (_plain(_first(exp, "design_type", "experiment_type", "type", "study_type")) or "").casefold()
-    design = next((value for needle, value in (("vitro", "in_vitro"), ("vivo", "in_vivo"), ("patient", "patient_sample"), ("clinical", "patient_sample"), ("comput", "computational"), ("review", "review")) if needle in exp_type), "unknown")
-    intervention_text = " ".join(filter(None, [_plain(_first(intervention, "intervention_type", "type")), _plain(_first(intervention, "primary", "primary_intervention", "description", "agent", "target"))])).casefold()
-    intervention_type = next((value for needle, value in (("knockout", "knockout"), ("knockdown", "knockdown"), ("silenc", "silencing"), ("inhibit", "inhibition"), ("deplet", "depletion"), ("mutat", "mutation"), ("overexpress", "overexpression"), ("activat", "activation"), ("agon", "agonism"), ("rescue", "rescue"), ("re-expression", "re_expression"), ("drug", "drug_treatment"), ("compound", "drug_treatment"), ("treat", "drug_treatment")) if needle in intervention_text), "observational_no_intervention" if not intervention_text else "unknown")
-    observed_text = _plain(_first(observation, "observed_result", "observed_outcome", "outcome", "result", "description", "effect", "statement", "text", "raw_text", "material_fact")) or evidence
-    direction_text = (_plain(_first(observation, "direction", "observation_direction", "effect_direction", "change", "observed_change")) or "").casefold()
-    sign = -1 if any(x in direction_text for x in ("decreas", "reduc", "down", "inhibit", "suppress")) else 1 if any(x in direction_text for x in ("increas", "up", "promot", "induc", "enhanc")) else None
-    lexical = "negative" if sign == -1 else "positive" if sign == 1 else "unclear"
-    observation_id = str(row.get("observation_id") or row.get("obs_id") or row.get("id") or f"offline_{record.get('cache_key','unknown')[:16]}_{index:03d}")
-    experiment_id = str(row.get("experiment_id") or exp.get("experiment_id") or exp.get("id") or f"exp_{record.get('block_id')}_{index:03d}")
-    family_id = str(row.get("evidence_family_id") or exp.get("evidence_family_id") or prov.get("evidence_family_id") or f"family_{record.get('block_id')}_{index:03d}")
-    section = _plain(_first(prov, "section", "paper_section", "evidence_section", "source_section"))
-    statement_source = " ".join(filter(None, [_plain(_first(prov, "source_type", "statement_type", "observation_type")), exp_type])).casefold()
-    role = "review" if "review" in statement_source else "background" if "background" in statement_source else "methods_only" if "method" in statement_source else "current_study_experiment"
-    span = {"text": evidence, "span_type": "observation", "section": section}
-    migrated = {
-        "schema_version": SCHEMA_VERSION, "observation_id": observation_id,
-        "provenance": {"paper_id": str(record.get("paper_id") or prov.get("paper_id") or "unknown"),
-            "pmid": str(record.get("pmid")) if record.get("pmid") else None,
-            "pmcid": str(record.get("pmcid")) if record.get("pmcid") else None,
-            "source_document_id": str(record.get("pmcid") or record.get("paper_id") or "unknown"),
-            "section": section, "evidence_spans": [span], "fulltext_source_hash": source_hash},
-        "experiment": {"experiment_id": experiment_id, "evidence_family_id": family_id,
-            "experimental_design": _plain(_first(exp, "experimental_design", "description", "experiment_description", "context")),
-            "design_type": design, "model_system": _plain(_first(exp, "model_system", "model", "experimental_system", "model_name")),
-            "species": _plain(_first(exp, "species", "organism", "model_organism")),
-            "cell_line": _plain(_first(exp, "cell_line", "cell_lines", "cell_line_or_model", "cells")),
-            "cell_type": _plain(exp.get("cell_type")), "tissue": _plain(_first(exp, "tissue", "primary_tissue")),
-            "genotype": _plain(exp.get("genotype")), "treatment": _plain(_first(exp, "treatment", "condition")),
-            "comparison_arm": _plain(_first(exp, "comparison", "comparison_group", "control_group")),
-            "context_source": ["historical_raw_response"], "binding_confidence": 0.5},
-        "intervention": {"intervention_target_mention": _plain(_first(intervention, "target", "target_entity", "target_gene", "agent", "entity", "primary")),
-            "intervention_type": intervention_type, "intervention_sign": -1 if intervention_type in {"knockout", "knockdown", "silencing", "inhibition", "depletion"} else 1 if intervention_type in {"overexpression", "activation", "agonism"} else None,
-            "intervention_method": _plain(_first(intervention, "method", "delivery", "description")),
-            "secondary_intervention": _plain(_first(intervention, "secondary", "secondary_intervention")),
-            "rescue_intervention": _plain(_first(intervention, "rescue", "rescue_intervention"))},
-        "measurement": {"outcome_mention": _plain(_first(measurement, "endpoint", "outcome", "readout", "target", "measured_entity", "entity")),
-            "measured_entity_mention": _plain(_first(measurement, "measured_entity", "target_entity", "entity_measured", "analyte", "target", "endpoint")),
-            "measurement_dimension": dimension, "assay": _plain(_first(measurement, "assay", "assay_type", "technique")),
-            "measurement_method": _plain(_first(measurement, "measurement_method", "method", "assay_method")),
-            "measurement_span": span},
-        "observation": {"observed_result": observed_text, "observed_outcome_sign": sign,
-            "effect_size_or_magnitude": _plain(_first(observation, "effect_size", "magnitude", "quantitative_change", "value")),
-            "statistical_support": _plain(_first(observation, "statistical_support", "p_value", "significance", "statistics", "statistical_significance")),
-            "comparison_relation": _plain(_first(observation, "comparison", "comparator", "compared_to", "group_comparison")),
-            "observation_span": span},
-        "author_interpretation": {"author_interpretation": _plain(_first(interpretation, "author_interpretation", "interpretation", "interpretation_text", "statement", "text", "claim", "description")),
-            "author_conclusion": _plain(_first(interpretation, "author_conclusion", "conclusion", "causal_claim"))},
-        "candidate_relation": {"subject_mention": _plain(_first(relation, "subject_mention", "subject", "subject_entity", "subject_seed")),
-            "object_mention": _plain(_first(relation, "object_mention", "object", "object_entity", "object_seed")),
-            "relation_raw": _plain(_first(relation, "relation_raw", "relation", "relation_type", "predicate", "relation_statement")),
-            "lexical_direction": lexical, "evidence_design_candidate": _plain(_first(relation, "evidence_design_candidate", "evidence_type", "type"))},
-        "statement_role": role, "extraction_warnings": ["offline_historical_shape_migration_v1"],
-    }
-    audit.append({"block_id": record.get("block_id"), "observation_id": observation_id,
-                  "status": "historical_shape_migrated", "migration_version": "fulltext_l1_v2_historical_raw_v1"})
-    return migrated
-
-
 def merge_child_observations(child_results: list[dict[str, Any]], required_child_ids: list[str]) -> dict[str, Any]:
     """Merge only when every required child parsed or explicitly returned empty."""
     by_id = {str(x.get("child_block_id")): x for x in child_results}
-    successful = {"completed", "cache_hit", "recovered_offline_from_raw_response", "completed_empty"}
+    successful = {"completed", "cache_hit", "recovered_offline_success", "completed_empty"}
     missing_or_failed = [child_id for child_id in required_child_ids
                          if child_id not in by_id or by_id[child_id].get("status") not in successful]
     rows: list[dict[str, Any]] = []; seen: set[str] = set()
@@ -596,8 +505,9 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
             prior_failures = sorted(cache.glob(f"{key}.*.raw_error.json")) + sorted(cache.glob(f"{key}.raw_error.json"))
             hit = next((p for p in paths if p.is_file()), None)
             if hit is None:
-                # Run-local offline recovery may have been created from an older
-                # cache identity. Match only exact block/source/provider/model.
+                # Formal same-run offline recovery may have an older prompt
+                # identity. Only explicitly provenance-marked compatible caches
+                # can cross that identity boundary.
                 for recovered in cache.glob("*.json"):
                     if recovered.name.endswith(".raw_error.json"):
                         continue
@@ -606,7 +516,9 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                     except (OSError, json.JSONDecodeError):
                         continue
                     bp = candidate_cache.get("block_provenance") or {}
-                    if (bp.get("block_id") == block["block_id"] and
+                    if (candidate_cache.get("origin") in {"recovered_from_historical_raw_response", "recovered_from_historical_success_cache"} and
+                        bp.get("recovered_offline_compatible") is True and
+                        bp.get("block_id") == block["block_id"] and
                         candidate_cache.get("source_fulltext_hash") == source_hash and
                         candidate_cache.get("provider", l1_provider) == l1_provider and
                         candidate_cache.get("model", l1_model) == l1_model):
@@ -621,7 +533,8 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                 scientific_payload = payload.get("response")
                 raw_rows = parse_response(scientific_payload, normalization_audit=block_audit)
                 transport = dict(payload.get("transport_metadata") or {})
-                cache_hits += 1; completed_blocks += 1; status = "cache_hit"
+                cache_hits += 1; completed_blocks += 1
+                status = "recovered_offline_success" if payload.get("origin", "").startswith("recovered_from_historical") else "cache_hit"
             elif dry_run or not (api_enabled and network_enabled and client is not None):
                 skipped_blocks += 1
                 executions.append({"block_id": block["block_id"], "parent_block_id": block.get("parent_block_id"),
@@ -739,6 +652,8 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                     block_index += 1; continue
                 if prior_failures:
                     recovered_block_ids.append(block["block_id"])
+            if not raw_rows and status in {"completed", "cache_hit"}:
+                status = "completed_empty"
             parser_normalization_audit.extend(block_audit)
             for row in raw_rows:
                 row["parent_abstract_run_id"] = row.get("parent_abstract_run_id") or parent_abstract_run_id
@@ -752,7 +667,7 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                 bindings.append({"observation_id": row["observation_id"], "experiment_id": row["experiment"]["experiment_id"], "context_source": row["experiment"].get("context_source") or block["context_sources"], "binding_confidence": row["experiment"].get("binding_confidence", 0), "source_block_id": block["block_id"], "cross_experiment_binding": False})
             usage = transport.get("usage") or {}
             executions.append({"block_id": block["block_id"], "parent_block_id": block.get("parent_block_id"),
-                "status": status, "api_called": status == "completed", "cache_key": key,
+                "status": status, "api_called": hit is None and status in {"completed", "completed_empty"}, "cache_key": key,
                 "observation_count": len(raw_rows), "finish_reason": transport.get("finish_reason"),
                 "usage": usage, "input_tokens": _usage_value(usage, "prompt_tokens", "input_tokens"),
                 "output_tokens": _usage_value(usage, "completion_tokens", "output_tokens"), "total_tokens": usage.get("total_tokens"),
@@ -828,22 +743,79 @@ def _distribution(observations: list[dict[str, Any]], *, valid_blocks: int,
 
 
 def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | None = None) -> dict[str, Any]:
-    """Reparse paid raw errors in-place with no client/network construction."""
+    """Reparse paid raw errors in-place without constructing any client."""
+    from code_engine.fulltext.fulltext_l1_v2_migration import (
+        FIELD_MAPPINGS, HistoricalMigrationError, SCHEMA_MIGRATION_VERSION,
+        TrustedBlockContext, locate_evidence_span, migrate_historical_response,
+    )
+
     run = Path(run_dir); artifacts = run / "artifacts"; cache = artifacts / "cache/fulltext_l1_v2"
     if not cache.is_dir():
         raise FileNotFoundError(f"Fulltext L1 v2 cache not found: {cache}")
-    effective_max_tokens = resolve_max_tokens(max_tokens)
-    budget = FulltextTokenBudget(max_tokens=effective_max_tokens)
+    if max_tokens is not None:
+        raise ValueError("offline recovery does not accept max_tokens because it makes no provider request")
+    budget = FulltextTokenBudget()
     errors = sorted(cache.glob("*.raw_error.json"))
     existing_exec_path = artifacts / "fulltext_l1_v2_execution_records.jsonl"
     existing_exec = [x for x in (_jsonl(existing_exec_path) if existing_exec_path.is_file() else [])
-                     if x.get("status") != "recovered_offline_from_raw_response"]
+                     if x.get("status") != "recovered_offline_success"]
     observations: list[dict[str, Any]] = []; bindings: list[dict[str, Any]] = []
-    recovered_exec: list[dict[str, Any]] = []; normalization_audit: list[dict[str, Any]] = []
+    recovered_exec: list[dict[str, Any]] = []; normalization_audit: list[dict[str, Any]] = []; migration_audit: list[dict[str, Any]] = []
     recovered_ids: list[str] = []; unresolved_ids: list[str] = []
-    paper_blocks: Counter[str] = Counter(); failures: Counter[str] = Counter()
-    valid_json = schema_direct = schema_valid = empty = nonempty = raw_present = malformed = schema_invalid = 0
+    paper_blocks: Counter[str] = Counter(); paper_observations: Counter[str] = Counter(); failures: Counter[str] = Counter()
+    field_counts: Counter[str] = Counter(); span_counts: Counter[str] = Counter()
+    valid_json = schema_direct = schema_valid = nonempty = raw_present = malformed = schema_invalid = 0
+    scanned_observations = generated_ids = 0
     oversized_records: list[dict[str, Any]] = []
+
+    # Rebuild the exact historical inputs from trusted article/candidate artifacts.
+    candidates = {str(x.get("pmcid")): x for x in _jsonl(artifacts / "l35_fulltext_oa_candidate_papers.jsonl")}
+    trusted_blocks: dict[str, tuple[dict[str, Any], str, str]] = {}
+    for pmcid, paper in candidates.items():
+        article_path = artifacts / "fulltext/pmc_oa" / pmcid / "article_text.json"
+        if not article_path.is_file():
+            continue
+        article = json.loads(article_path.read_text(encoding="utf-8"))
+        source_hash = hashlib.sha256(article_path.read_bytes()).hexdigest()
+        parents = build_experiment_blocks(article, paper, max_sections=12, max_chars=6000, max_chunks=24)
+        for parent in parents:
+            trusted_blocks[parent["block_id"]] = (parent, str(article_path), source_hash)
+            for child in deterministic_child_blocks(parent, reason="historical_input_reconstruction", budget=budget):
+                trusted_blocks[child["block_id"]] = (child, str(article_path), source_hash)
+
+    # Preserve and formally recover the 93 already-valid historical empty blocks.
+    empty_success = 0
+    for old_cache_path in sorted(cache.glob("*.json")):
+        if old_cache_path.name.endswith(".raw_error.json") or ".recovered." in old_cache_path.name:
+            continue
+        try:
+            old_cache = json.loads(old_cache_path.read_text(encoding="utf-8"))
+            parsed_empty = FulltextL1V2Response.model_validate(old_cache.get("response"))
+        except (OSError, json.JSONDecodeError, ValidationError, TypeError):
+            continue
+        if parsed_empty.experimental_observations:
+            continue
+        empty_success += 1
+        bp = old_cache.get("block_provenance") or {}
+        recovered_path = cache / f"{old_cache_path.stem}.recovered.{SCHEMA_MIGRATION_VERSION}.json"
+        prior_recovered = json.loads(recovered_path.read_text(encoding="utf-8")) if recovered_path.is_file() else {}
+        recovered_empty = {
+            **old_cache, "origin": "recovered_from_historical_success_cache",
+            "original_prompt_version": old_cache.get("prompt_version"),
+            "original_prompt_hash": old_cache.get("prompt_hash"),
+            "original_parser_version": old_cache.get("parser_version"),
+            "original_extractor_version": old_cache.get("extractor_version"),
+            "recovery_parser_version": PARSER_VERSION,
+            "schema_migration_version": SCHEMA_MIGRATION_VERSION,
+            "recovered_at": prior_recovered.get("recovered_at") or datetime.now(timezone.utc).isoformat(),
+            "raw_response_hash": _hash(old_cache.get("response")),
+            "source_block_hash": (trusted_blocks.get(str(bp.get("block_id"))) or ({}, None, None))[0].get("chunk_hash"),
+            "transport_metadata": {**(old_cache.get("transport_metadata") or {}),
+                                   "usage_availability": "available" if (old_cache.get("transport_metadata") or {}).get("usage") else "unavailable"},
+            "block_provenance": {**bp, "recovered_offline_compatible": True},
+        }
+        recovered_path.write_text(json.dumps(recovered_empty, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
     for error_path in errors:
         record = json.loads(error_path.read_text(encoding="utf-8"))
         block_id = str(record.get("block_id") or error_path.name); paper_key = str(record.get("pmcid") or record.get("paper_id") or "unknown")
@@ -863,11 +835,8 @@ def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | Non
         valid_json += 1
         payload, legacy_transport = split_transport_metadata(raw_value)
         rows = payload.get("experimental_observations") if isinstance(payload, dict) else None
-        if isinstance(rows, list) and rows: nonempty += 1
-        elif isinstance(rows, list): empty += 1
-        source_hash = "unknown"
-        article_path = artifacts / "fulltext/pmc_oa" / str(record.get("pmcid")) / "article_text.json"
-        if article_path.is_file(): source_hash = hashlib.sha256(article_path.read_bytes()).hexdigest()
+        if isinstance(rows, list) and rows:
+            nonempty += 1; scanned_observations += len(rows); paper_observations[paper_key] += len(rows)
         block_audit: list[dict[str, Any]] = []
         migrated = False
         try:
@@ -875,15 +844,101 @@ def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | Non
         except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as direct_exc:
             if not isinstance(rows, list):
                 schema_invalid += 1; unresolved_ids.append(block_id); failures[type(direct_exc).__name__] += 1; continue
+            trusted_value = trusted_blocks.get(block_id)
+            if trusted_value is None:
+                schema_invalid += 1; unresolved_ids.append(block_id); failures["trusted_block_not_found"] += 1; continue
+            block, source_artifact, source_hash = trusted_value
+            context = TrustedBlockContext(
+                run_id=run.name, block_id=block_id, parent_block_id=block.get("parent_block_id"),
+                text=str(block.get("text") or ""), source_block_hash=str(block.get("chunk_hash") or _hash(block.get("text") or "")),
+                source_document_id=str(record.get("pmcid") or record.get("pmid") or record.get("paper_id")),
+                paper_id=str(record.get("paper_id") or record.get("pmid")),
+                pmid=str(record.get("pmid")) if record.get("pmid") else None,
+                pmcid=str(record.get("pmcid")) if record.get("pmcid") else None,
+                fulltext_source_hash=source_hash, source_artifact=source_artifact,
+            )
+            # Count every observed legacy mapping and verbatim span result even
+            # when a later unknown field correctly makes the block fail strict validation.
+            for row in rows:
+                if not isinstance(row, dict):
+                    span_counts["missing"] += 1
+                    continue
+                detected = []
+                for source, destination, _rule in FIELD_MAPPINGS:
+                    current: Any = row
+                    for part in source:
+                        current = current.get(part) if isinstance(current, dict) else None
+                    parent: Any = row
+                    for part in source[:-1]:
+                        parent = parent.get(part) if isinstance(parent, dict) else None
+                    if isinstance(parent, dict) and source[-1] in parent:
+                        mapping = f"{'.'.join(source)}->{'.'.join(destination)}"
+                        field_counts[mapping] += 1; detected.append(mapping)
+                provenance = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
+                evidence = provenance.get("evidence_span")
+                if "evidence_span" in provenance:
+                    field_counts["provenance.evidence_span->provenance.evidence_spans"] += 1
+                observation_value = row.get("observation") if isinstance(row.get("observation"), dict) else {}
+                if "direction" in observation_value:
+                    field_counts["observation.direction->observation.observed_result"] += 1
+                if evidence is None and isinstance(provenance.get("evidence_spans"), list) and provenance["evidence_spans"]:
+                    item = provenance["evidence_spans"][0]
+                    evidence = item.get("text") if isinstance(item, dict) else item
+                try:
+                    locate_evidence_span(evidence, context.text, section=provenance.get("section") or provenance.get("source_section"))
+                    span_counts["exact"] += 1
+                except HistoricalMigrationError as span_exc:
+                    span_counts["ambiguous" if "ambiguous" in str(span_exc) else "missing"] += 1
             try:
-                migrated_payload = {"schema_version": SCHEMA_VERSION, "experimental_observations": [
-                    migrate_historical_observation(row, record=record, source_hash=source_hash, index=index, audit=block_audit)
-                    for index, row in enumerate(rows) if isinstance(row, dict)]}
+                migrated_payload, block_audit = migrate_historical_response(
+                    payload, context=context, raw_response_path=str(raw_path),
+                    original_prompt_version=record.get("prompt_version"), original_prompt_hash=record.get("prompt_hash"))
                 parsed = parse_response(migrated_payload, normalization_audit=block_audit)
                 payload = migrated_payload; migrated = True
-            except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as exc:
-                schema_invalid += 1; unresolved_ids.append(block_id); failures[type(exc).__name__] += 1; continue
+            except (HistoricalMigrationError, ValidationError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                reason = str(exc)
+                cause = exc.__cause__
+                if isinstance(cause, ValidationError) and cause.errors():
+                    first_error = cause.errors()[0]
+                    key = f"{first_error['type']}:{'.'.join(map(str, first_error.get('loc') or ())) }"
+                else:
+                    key = "evidence_span_ambiguous" if "evidence_span_ambiguous" in reason else "evidence_span_missing" if "evidence_span_missing" in reason else "migration_rule_rejected"
+                schema_invalid += 1; unresolved_ids.append(block_id); failures[key] += 1
+                timestamp = datetime.now(timezone.utc).isoformat()
+                for index, row in enumerate(rows):
+                    row_mappings = []
+                    if isinstance(row, dict):
+                        for source, destination, _rule in FIELD_MAPPINGS:
+                            parent: Any = row
+                            for part in source[:-1]:
+                                parent = parent.get(part) if isinstance(parent, dict) else None
+                            if isinstance(parent, dict) and source[-1] in parent:
+                                row_mappings.append(f"{'.'.join(source)}->{'.'.join(destination)}")
+                    migration_audit.append({"run_id": run.name, "paper_id": record.get("paper_id"), "pmid": record.get("pmid"),
+                        "pmcid": record.get("pmcid"), "block_id": block_id, "observation_index": index,
+                        "raw_response_path": str(raw_path), "original_prompt_version": record.get("prompt_version"),
+                        "original_prompt_hash": record.get("prompt_hash"), "original_schema_version": row.get("schema_version") if isinstance(row, dict) else None,
+                        "migration_version": SCHEMA_MIGRATION_VERSION,
+                        "original_field_path": None, "original_value": None,
+                        "destination_field_path": None, "migrated_value": None,
+                        "migration_rule": "block_strict_validation_failed",
+                        "value_source": "historical_raw_response",
+                        "source_artifact": source_artifact, "source_hash": source_hash,
+                        "generated_observation_id_inputs": None,
+                        "generated_observation_id_inputs_hash": None,
+                        "validation_status": "invalid",
+                        "validation_failure_reason": reason, "detected_field_mappings": row_mappings,
+                        "evidence_span_match_status": key.removeprefix("evidence_span_") if key.startswith("evidence_span_") else "see_block_evidence_accounting",
+                        "timestamp": timestamp})
+                continue
         schema_valid += 1; recovered_ids.append(block_id); normalization_audit.extend(block_audit)
+        for item in block_audit:
+            item.setdefault("evidence_span_match_status", "exact" if item.get("migration_rule") == "verbatim_span_to_singleton_v1" else "not_applicable")
+            item["validation_status"] = "valid"; item["validation_failure_reason"] = None
+            item["timestamp"] = datetime.now(timezone.utc).isoformat()
+            if item.get("migration_rule", "").startswith("fulltext_l1_v2_observation_id"):
+                generated_ids += 1
+        migration_audit.extend(block_audit)
         clean_rows: list[dict[str, Any]] = []; seen: set[str] = set()
         for row in parsed:
             fingerprint = _hash(row)
@@ -893,27 +948,34 @@ def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | Non
                 "context_source": row["experiment"].get("context_source") or ["historical_raw_response"],
                 "binding_confidence": row["experiment"].get("binding_confidence", 0), "source_block_id": block_id,
                 "cross_experiment_binding": False, "recovered_offline_from_raw_response": True})
-        success = {"schema_version": SCHEMA_VERSION, "prompt_version": record.get("prompt_version") or "historical_paid_response",
-            "prompt_hash": record.get("prompt_hash"), "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION,
+        source_hash = context.fulltext_source_hash if migrated else record.get("source_fulltext_hash")
+        recovered_cache_path = cache / f"{record.get('cache_key') or _hash(block_id)}.recovered.{SCHEMA_MIGRATION_VERSION}.json"
+        prior_recovered = json.loads(recovered_cache_path.read_text(encoding="utf-8")) if recovered_cache_path.is_file() else {}
+        success = {"schema_version": SCHEMA_VERSION, "origin": "recovered_from_historical_raw_response",
+            "original_prompt_version": record.get("prompt_version"), "original_prompt_hash": record.get("prompt_hash"),
+            "original_parser_version": record.get("parser_version"), "original_extractor_version": record.get("extractor_version"),
+            "recovery_parser_version": PARSER_VERSION, "schema_migration_version": SCHEMA_MIGRATION_VERSION,
+            "recovered_at": prior_recovered.get("recovered_at") or datetime.now(timezone.utc).isoformat(), "raw_response_hash": _hash(raw_text),
+            "source_block_hash": context.source_block_hash if migrated else None,
             "source_fulltext_hash": source_hash, "provider": record.get("provider"), "model": record.get("model"),
             "response": {"schema_version": SCHEMA_VERSION, "experimental_observations": clean_rows},
             "transport_metadata": {"raw_response_artifact": str(raw_path), "warnings": legacy_transport.get("warnings") or [],
-                "finish_reason": record.get("finish_reason"), "usage": record.get("usage") or {},
+                "finish_reason": record.get("finish_reason"), "usage": record.get("usage") if record.get("usage") else None,
+                "usage_availability": "available" if record.get("usage") else "unavailable",
                 "raw_response_character_count": len(raw_text), "recovered_offline_from_raw_response": True},
             "parser_normalization_audit": block_audit,
             "block_provenance": {"block_id": block_id, "recovered_offline_from_raw_response": True,
-                "historical_raw_error_artifact": str(error_path)},
-            "config": {"max_tokens": effective_max_tokens, "split_version": SPLIT_VERSION,
-                "duplicate_rule_version": DUPLICATE_RULE_VERSION}}
-        (cache / f"{record.get('cache_key') or _hash(block_id)}.json").write_text(json.dumps(success, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                "recovered_offline_compatible": True, "historical_raw_error_artifact": str(error_path)}}
+        recovered_cache_path.write_text(json.dumps(success, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         recovered_exec.append({"block_id": block_id, "paper_id": record.get("paper_id"), "pmid": record.get("pmid"),
-            "pmcid": record.get("pmcid"), "status": "recovered_offline_from_raw_response", "api_called": False,
+            "pmcid": record.get("pmcid"), "status": "recovered_offline_success", "api_called": False,
             "network_called": False, "cache_key": record.get("cache_key"), "observation_count": len(clean_rows),
             "raw_response_character_count": len(raw_text), "finish_reason": record.get("finish_reason"),
-            "usage": record.get("usage") or {}, "max_tokens": None,
-            "historical_request_max_tokens": None, "historical_request_max_tokens_source": "provider_default_unknown",
-            "recovery_cache_identity_max_tokens": effective_max_tokens,
-            "response_format": {"type": "json_object"}, "historical_shape_migrated": migrated,
+            "usage": record.get("usage") if record.get("usage") else None,
+            "usage_availability": "available" if record.get("usage") else "unavailable",
+            "historical_request_max_tokens": record.get("max_tokens"),
+            "historical_response_format": record.get("response_format"), "historical_shape_migrated": migrated,
+            "origin": "recovered_from_historical_raw_response", "schema_migration_version": SCHEMA_MIGRATION_VERSION,
             "historical_raw_error_artifact": str(error_path), "historical_raw_response_artifact": str(raw_path)})
     claims = [observation_as_legacy_claim(x) for x in observations]
     def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -923,23 +985,34 @@ def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | Non
     write_jsonl(artifacts / "fulltext_context_binding_audit.jsonl", bindings)
     write_jsonl(existing_exec_path, [*existing_exec, *recovered_exec])
     write_jsonl(artifacts / "fulltext_l1_v2_parser_normalization_audit.jsonl", normalization_audit)
-    distribution = _distribution(observations, valid_blocks=valid_json, empty_blocks=empty, nonempty_blocks=nonempty,
+    write_jsonl(artifacts / "fulltext_l1_v2_schema_migration_audit.jsonl", migration_audit)
+    distribution = _distribution(observations, valid_blocks=valid_json, empty_blocks=empty_success, nonempty_blocks=nonempty,
                                  paper_block_counts=paper_blocks, validation_failures=failures)
     (artifacts / "fulltext_l1_v2_response_distribution.json").write_text(json.dumps(distribution, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     md = ["# Fulltext L1 v2 Response Distribution", "", f"- Valid JSON blocks: {valid_json}",
-          f"- Empty / non-empty blocks: {empty} / {nonempty}", f"- Recovered observations: {len(observations)}", "",
+          f"- Empty / non-empty blocks: {empty_success} / {nonempty}", f"- Recovered observations: {len(observations)}", "",
           "## Per-paper observations", ""] + [f"- {key}: {value}" for key, value in distribution["per_paper_observation_count"].items()]
     (artifacts / "fulltext_l1_v2_response_distribution.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-    recovery = {"schema_version": "fulltext_l1_v2_offline_recovery_v1", "scanned_error_blocks": len(errors),
+    recovery = {"schema_version": "fulltext_l1_v2_offline_recovery_v2", "scanned_block_count": empty_success + len(errors),
+        "scanned_error_blocks": len(errors), "empty_success_block_count": empty_success,
+        "nonempty_schema_failure_count": nonempty, "successfully_migrated_block_count": len(recovered_ids),
+        "still_invalid_block_count": len(unresolved_ids), "scanned_observation_count": scanned_observations,
+        "migrated_observation_count": len(observations), "rejected_observation_count": scanned_observations - len(observations),
+        "evidence_span_exact_match_count": span_counts["exact"], "evidence_span_ambiguous_count": span_counts["ambiguous"],
+        "evidence_span_missing_count": span_counts["missing"], "generated_observation_id_count": generated_ids,
+        "field_mapping_counts": dict(sorted(field_counts.items())), "validation_failure_reason_counts": dict(sorted(failures.items())),
+        "original_observation_count_by_paper": dict(sorted(paper_observations.items())),
         "raw_response_present": raw_present, "valid_json_count": valid_json, "direct_schema_valid_count": schema_direct,
         "schema_valid_count": schema_valid, "schema_invalid_count": schema_invalid,
-        "empty_observation_response_count": empty, "nonempty_observation_response_count": nonempty,
+        "empty_observation_response_count": empty_success, "nonempty_observation_response_count": nonempty,
         "recovered_observation_count": len(observations), "recovered_legacy_claim_count": len(claims),
         "still_malformed_count": malformed, "still_schema_invalid_count": schema_invalid,
         "api_calls": 0, "network_calls": 0, "provider_clients_constructed": 0,
         "recovered_block_ids": recovered_ids, "unresolved_block_ids": unresolved_ids,
+        "download_calls": 0, "provider_calls": 0,
         "historical_shape_migration_count": sum(bool(x.get("historical_shape_migrated")) for x in recovered_exec)}
     (artifacts / "offline_recovery_summary.json").write_text(json.dumps(recovery, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (artifacts / "fulltext_l1_v2_schema_migration_summary.json").write_text(json.dumps(recovery, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     _write_oversized_recovery_plan(run, oversized_records, budget)
     coverage = {"schema_version": "fulltext_l1_schema_coverage_v1", "v1_record_count": 0,
         "v2_record_count": len(observations), "experiment_count": len({x["experiment"]["experiment_id"] for x in observations}),
@@ -956,14 +1029,11 @@ def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | Non
         "recovered_offline": recovered_ids, "recovered_by_provider_retry": [], "recovered_by_block_split": [],
         "still_failed": unresolved_ids, "newly_failed": [], "scientific_input_complete": not unresolved_ids,
         "partial_block_failures": bool(unresolved_ids), "offline_recovery_api_calls": 0,
-        "offline_recovery_network_calls": 0, "configured_max_tokens": effective_max_tokens,
-        "configured_max_tokens_applies_to_future_calls": True,
-        "historical_request_max_tokens": None, "historical_request_max_tokens_source": "provider_default_unknown",
-        "max_tokens_distribution": {"historical_provider_default_unknown": len(errors)},
+        "offline_recovery_network_calls": 0,
         "json_output_enabled_count": len(errors),
-        "consistency_report": {"projection_may_continue_for_diagnosis": bool(unresolved_ids),
-            "complete_scientific_run": not unresolved_ids, "publication_allowed": not unresolved_ids,
-            "message": "oversized block requires confirmed child recovery" if unresolved_ids else "all planned scientific inputs completed"}}
+        "consistency_report": {"projection_may_continue_for_diagnosis": False,
+            "complete_scientific_run": not unresolved_ids, "publication_allowed": False,
+            "message": "offline recovery never publishes; unresolved blocks require an explicit recovery plan" if unresolved_ids else "scientific inputs complete; publication remains a separate explicit action"}}
     old_summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (artifacts / "l35_fulltext_l1_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for path in (artifacts / "l35_fulltext_retrieval_summary.json", artifacts / "l35_fulltext_conflict_confirmation_summary.json", artifacts / "pipeline_stage_summary.json"):

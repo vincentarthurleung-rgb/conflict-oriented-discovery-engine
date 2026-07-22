@@ -11,6 +11,45 @@ from typing import Any
 import httpx
 
 
+DEEPSEEK_JSON_RESPONSE_FORMAT = {"type": "json_object"}
+
+
+def build_deepseek_request_payload(prompt: Any, *, model: str, temperature: float = 0.0,
+                                   top_p: float = 1.0,
+                                   max_tokens: int | None = None) -> dict[str, Any]:
+    """Build the exact request body used by :class:`DeepSeekClient`.
+
+    Thinking is intentionally not accepted here.  The repository has no
+    provider-verified DeepSeek field/value pair for disabling it; callers that
+    require disabled thinking must fail closed before transport.
+    """
+    messages = prompt if isinstance(prompt, list) else [{"role": "system", "content": prompt}]
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "response_format": dict(DEEPSEEK_JSON_RESPONSE_FORMAT),
+        "temperature": temperature,
+        "top_p": top_p,
+    }
+    if max_tokens is not None:
+        payload["max_tokens"] = int(max_tokens)
+    return payload
+
+
+def deepseek_thinking_mode_audit() -> dict[str, Any]:
+    """Describe the locally provable thinking-mode transport behavior."""
+    return {
+        "requested_mode": "disabled",
+        "effective_mode": "unverified",
+        "thinking_mode_verified": False,
+        "request_field": None,
+        "request_value": None,
+        "configuration_source": "no_provider_verified_local_configuration",
+        "reason": "DeepSeek request builder sends no thinking field; omission does not prove disabled thinking",
+        "execution_allowed": False,
+    }
+
+
 @dataclass(frozen=True)
 class JSONExtractionResult:
     """A provider response whose transport data is kept outside scientific JSON."""
@@ -98,16 +137,10 @@ class DeepSeekClient:
                             max_tokens: int | None = None, retry_on_length: bool = False,
                             **_: Any) -> JSONExtractionResult:
         from code_engine.extraction.l1_response import GenericJSONResponseError, parse_json_object_response
-        messages = prompt if isinstance(prompt, list) else [{"role": "system", "content": prompt}]
-        request_payload = {
-            "model": model,
-            "messages": messages,
-            "response_format": {"type": "json_object"},
-            "temperature": temperature,
-            "top_p": top_p,
-        }
-        if max_tokens is not None:
-            request_payload["max_tokens"] = int(max_tokens)
+        request_payload = build_deepseek_request_payload(
+            prompt, model=model, temperature=temperature, top_p=top_p,
+            max_tokens=max_tokens,
+        )
         body = json.dumps(request_payload).encode("utf-8")
         last_error = "unknown_error"
         last_exception: Exception | None = None
@@ -199,4 +232,7 @@ class DeepSeekClient:
         return self.extract_json_result(prompt, **kwargs).payload
 
 
-__all__ = ["DeepSeekClient", "DeepSeekExtractionError", "JSONExtractionResult"]
+__all__ = [
+    "DeepSeekClient", "DeepSeekExtractionError", "JSONExtractionResult",
+    "build_deepseek_request_payload", "deepseek_thinking_mode_audit",
+]
