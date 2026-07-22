@@ -54,6 +54,8 @@ def adapt_v2_observation_to_v3(row: ExperimentalObservationV2) -> ExperimentalOb
         span_id = f"span_{_hash({'observation': row.observation_id, 'index': index, 'text': span.text})[:20]}"
         spans.append(FormalEvidenceSpanV3(
             evidence_span_id=span_id, block_id=row.provenance.source_document_id,
+            anchor_version="legacy_v2_exact_span_adapter_v1",
+            source_document_id=row.provenance.source_document_id,
             text=span.text, text_hash=_hash(span.text), source_role="current",
             span_type=span.span_type, section=span.section,
             char_start=span.char_start, char_end=span.char_end,

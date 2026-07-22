@@ -56,9 +56,9 @@ def test_draft_is_strict_has_no_pipeline_identity_and_supports_raw_multi_interve
     assert len(parsed.experimental_observations[0].interventions) == 2
 
 
-def test_prompt_v6_is_draft_owned_anchored_and_excludes_pipeline_responsibilities():
+def test_prompt_v7_is_draft_owned_anchored_and_excludes_pipeline_responsibilities():
     prompt = build_prompt({}, {"paper_metadata": {"paper_id": "must-not-appear"}, "text": f"CURRENT_RESULTS: {EVIDENCE}"})
-    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v6_anchor_contract"
+    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v7_anchor_id_authoritative"
     assert DRAFT_SCHEMA_VERSION in prompt
     assert "source_document_id" not in prompt and "observation_id" not in prompt
     assert "char_start" not in prompt and "char_end" not in prompt
@@ -141,7 +141,7 @@ def test_v4_adapter_removes_model_provenance_and_keeps_structured_secondary():
 def test_cache_identity_binds_both_contracts_and_versions():
     key = cache_key(source_fulltext_hash="source", chunk_hash="block", provider="p", model="m",
                     config_hash="config", candidate_prior_hash="prior", thinking_mode="disabled")
-    assert len(key) == 64 and CACHE_IDENTITY_VERSION.endswith("formal_v3_anchors")
+    assert len(key) == 64 and CACHE_IDENTITY_VERSION.endswith("authoritative_anchors")
     assert len(prompt_hash()) == len(schema_hash()) == len(formal_schema_hash()) == 64
 
 

@@ -6,20 +6,27 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-DRAFT_SCHEMA_VERSION = "fulltext_l1_experimental_observation_draft_schema_v2_anchor_ids"
+DRAFT_SCHEMA_VERSION = "fulltext_l1_experimental_observation_draft_schema_v3_anchor_id_authoritative"
 
 
 class DraftStrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class EvidenceTextDraft(DraftStrictModel):
-    text: str = Field(min_length=1)
-    evidence_anchor_ids: list[str] = Field(default_factory=list)
+class EvidenceAnchorReferenceDraft(DraftStrictModel):
+    """Provider-owned anchor selection; source text is never provider-owned."""
+
+    evidence_anchor_ids: list[str] = Field(min_length=1)
     span_type: Literal[
         "setup", "methods", "intervention", "comparison", "measurement",
         "observation", "interpretation", "other",
     ]
+    model_selected_excerpt_raw: str | None = None
+
+
+# Import compatibility only. The v3 JSON contract uses the explicit class name
+# and contains no authoritative-looking ``text`` member.
+EvidenceTextDraft = EvidenceAnchorReferenceDraft
 
 
 class ExperimentDraft(DraftStrictModel):
@@ -49,7 +56,7 @@ class InterventionDraft(DraftStrictModel):
     duration_raw: str | None = None
     route_raw: str | None = None
     condition_raw: str | None = None
-    evidence_text: EvidenceTextDraft | None = None
+    evidence: EvidenceAnchorReferenceDraft | None = None
 
 
 class MeasurementDraft(DraftStrictModel):
@@ -58,7 +65,7 @@ class MeasurementDraft(DraftStrictModel):
     outcome_mention: str | None = None
     assay_or_readout_raw: str | None = None
     endpoint_raw: str | None = None
-    evidence_text: EvidenceTextDraft | None = None
+    evidence: EvidenceAnchorReferenceDraft | None = None
 
 
 class ObservationDraft(DraftStrictModel):
@@ -69,7 +76,7 @@ class ObservationDraft(DraftStrictModel):
     uncertainty_raw: str | None = None
     comparison_raw: str | None = None
     negation: bool = False
-    evidence_text: EvidenceTextDraft
+    evidence: EvidenceAnchorReferenceDraft
 
 
 class CandidateRelationDraft(DraftStrictModel):
@@ -88,12 +95,12 @@ class ExperimentalObservationDraft(DraftStrictModel):
     measurement: MeasurementDraft
     observation: ObservationDraft
     interpretation_raw: str | None = None
-    interpretation_evidence_text: EvidenceTextDraft | None = None
+    interpretation_evidence: EvidenceAnchorReferenceDraft | None = None
     candidate_relation: CandidateRelationDraft
     statement_role: Literal[
         "current_study_experiment", "background", "review", "methods_only", "unknown",
     ]
-    evidence_texts: list[EvidenceTextDraft] = Field(min_length=1)
+    evidence_references: list[EvidenceAnchorReferenceDraft] = Field(min_length=1)
     extraction_warnings_raw: list[str] = Field(default_factory=list)
 
 
@@ -103,10 +110,10 @@ class FulltextL1DraftResponse(DraftStrictModel):
 
 
 def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]:
-    evidence = EvidenceTextDraft(
-        text="HIF1A knockdown decreased target-gene expression versus control.",
+    evidence = EvidenceAnchorReferenceDraft(
         evidence_anchor_ids=["example_block:S0001"],
         span_type="observation",
+        model_selected_excerpt_raw="HIF1A knockdown decreased target-gene expression versus control.",
     )
     row = ExperimentalObservationDraft(
         experiment=ExperimentDraft(
@@ -125,7 +132,7 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
             intervention_type_raw="knockdown",
             intervention_target_mention="HIF1A",
             intervention_method_raw="knockdown",
-            evidence_text=evidence,
+            evidence=evidence.model_copy(update={"span_type": "intervention"}),
         )],
         combination_mode_raw="unknown",
         measurement=MeasurementDraft(
@@ -133,13 +140,13 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
             measured_entity_mention="target gene",
             outcome_mention="target-gene expression",
             endpoint_raw="target-gene expression",
-            evidence_text=evidence,
+            evidence=evidence.model_copy(update={"span_type": "measurement"}),
         ),
         observation=ObservationDraft(
             observed_result="decreased versus control",
             lexical_direction_raw="negative",
             comparison_raw="versus non-targeting control",
-            evidence_text=evidence,
+            evidence=evidence,
         ),
         candidate_relation=CandidateRelationDraft(
             subject_mention="HIF1A",
@@ -149,7 +156,7 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
             evidence_design_raw="knockdown comparison",
         ),
         statement_role="current_study_experiment",
-        evidence_texts=[evidence],
+        evidence_references=[evidence],
     )
     empty = FulltextL1DraftResponse(schema_version=DRAFT_SCHEMA_VERSION, experimental_observations=[])
     nonempty = FulltextL1DraftResponse(schema_version=DRAFT_SCHEMA_VERSION, experimental_observations=[row])
@@ -157,7 +164,7 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
 
 
 __all__ = [
-    "DRAFT_SCHEMA_VERSION", "EvidenceTextDraft", "ExperimentDraft", "InterventionDraft",
+    "DRAFT_SCHEMA_VERSION", "EvidenceAnchorReferenceDraft", "EvidenceTextDraft", "ExperimentDraft", "InterventionDraft",
     "MeasurementDraft", "ObservationDraft", "CandidateRelationDraft",
     "ExperimentalObservationDraft", "FulltextL1DraftResponse",
     "fulltext_l1_draft_prompt_examples",

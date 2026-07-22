@@ -34,7 +34,7 @@ def _block():
 def test_v6_anchored_draft_prompt_and_exact_deepseek_http_body_contract():
     prompt = build_prompt({"abstract_observation_ids": []}, _block())
     _, nonempty = fulltext_l1_draft_prompt_examples()
-    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v6_anchor_contract"
+    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v7_anchor_id_authoritative"
     assert json.dumps(nonempty, ensure_ascii=False, separators=(",", ":")) in prompt
     body = build_deepseek_request_payload(prompt, model="deepseek-v4-pro", max_tokens=DEFAULT_MAX_TOKENS,
                                           thinking_mode="disabled")

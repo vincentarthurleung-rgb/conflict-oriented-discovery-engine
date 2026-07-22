@@ -48,7 +48,8 @@ def observation(observation_id="o1", experiment_id="e1", *, intervention_type="o
     }
 
 
-def draft_payload(*, evidence="COPS8 overexpression induced EMT.", dimension="morphology_marker_panel"):
+def draft_payload(*, evidence="COPS8 overexpression induced EMT.", dimension="morphology_marker_panel",
+                  block_id="PMC1_0_0"):
     _, payload = fulltext_l1_draft_prompt_examples()
     row = payload["experimental_observations"][0]
     row["experiment"].update({"experiment_label_raw": "e1", "evidence_family_label_raw": "ef_e1",
@@ -57,15 +58,10 @@ def draft_payload(*, evidence="COPS8 overexpression induced EMT.", dimension="mo
     row["measurement"].update({"measurement_dimension_raw": dimension, "measured_entity_mention": "EMT", "outcome_mention": "EMT"})
     row["observation"].update({"observed_result": evidence, "lexical_direction_raw": "positive"})
     row["candidate_relation"].update({"subject_mention": "COPS8", "object_mention": "EMT", "lexical_direction_raw": "positive"})
-    for item in row["evidence_texts"]:
-        item["text"] = evidence
-        item["evidence_anchor_ids"] = []
-    row["observation"]["evidence_text"]["text"] = evidence
-    row["observation"]["evidence_text"]["evidence_anchor_ids"] = []
-    row["interventions"][0]["evidence_text"]["text"] = evidence
-    row["interventions"][0]["evidence_text"]["evidence_anchor_ids"] = []
-    row["measurement"]["evidence_text"]["text"] = evidence
-    row["measurement"]["evidence_text"]["evidence_anchor_ids"] = []
+    for item in [*row["evidence_references"], row["observation"]["evidence"],
+                 row["interventions"][0]["evidence"], row["measurement"]["evidence"]]:
+        item["model_selected_excerpt_raw"] = evidence
+        item["evidence_anchor_ids"] = [f"{block_id}:S0001"]
     return payload
 
 

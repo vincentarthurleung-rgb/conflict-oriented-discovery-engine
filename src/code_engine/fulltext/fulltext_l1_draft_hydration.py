@@ -189,16 +189,16 @@ def hydrate_draft_observation(draft: ExperimentalObservationDraft, context: Trus
         raise DraftHydrationError("unsupported_multi_intervention", "Formal v2 cannot losslessly represent structured multiple interventions")
     evidence: list[EvidenceSpan] = []
     seen: set[tuple[str, str]] = set()
-    for item in [*draft.evidence_texts, draft.observation.evidence_text,
-                 draft.measurement.evidence_text, draft.interventions[0].evidence_text,
-                 draft.interpretation_evidence_text]:
-        if item is None or (item.text, item.span_type) in seen:
+    for item in [*draft.evidence_references, draft.observation.evidence,
+                 draft.measurement.evidence, draft.interventions[0].evidence,
+                 draft.interpretation_evidence]:
+        if item is None or item.model_selected_excerpt_raw is None or (item.model_selected_excerpt_raw, item.span_type) in seen:
             continue
-        seen.add((item.text, item.span_type))
-        span, span_audit = locate_exact_evidence(item.text, context, span_type=item.span_type)
+        seen.add((item.model_selected_excerpt_raw, item.span_type))
+        span, span_audit = locate_exact_evidence(item.model_selected_excerpt_raw, context, span_type=item.span_type)
         evidence.append(span); audit["evidence_spans"].append(span_audit)
     observation_span, observation_span_audit = locate_exact_evidence(
-        draft.observation.evidence_text.text, context, span_type="observation")
+        draft.observation.evidence.model_selected_excerpt_raw or "", context, span_type="observation")
     if not any(x.text == observation_span.text and x.char_start == observation_span.char_start for x in evidence):
         evidence.append(observation_span); audit["evidence_spans"].append(observation_span_audit)
 
@@ -212,9 +212,9 @@ def hydrate_draft_observation(draft: ExperimentalObservationDraft, context: Trus
     experiment_hash = _hash({"block": context.block_id, "label": draft.experiment.experiment_label_raw})[:20]
     family_hash = _hash({"block": context.block_id, "label": draft.experiment.evidence_family_label_raw})[:20]
     intervention = draft.interventions[0]
-    measurement_span = next((x for x in evidence if draft.measurement.evidence_text and x.text == draft.measurement.evidence_text.text), None)
-    intervention_span = next((x for x in evidence if intervention.evidence_text and x.text == intervention.evidence_text.text), None)
-    interpretation_span = next((x for x in evidence if draft.interpretation_evidence_text and x.text == draft.interpretation_evidence_text.text), None)
+    measurement_span = next((x for x in evidence if draft.measurement.evidence and x.text == draft.measurement.evidence.model_selected_excerpt_raw), None)
+    intervention_span = next((x for x in evidence if intervention.evidence and x.text == intervention.evidence.model_selected_excerpt_raw), None)
+    interpretation_span = next((x for x in evidence if draft.interpretation_evidence and x.text == draft.interpretation_evidence.model_selected_excerpt_raw), None)
     formal = ExperimentalObservationV2(
         observation_id=observation_id,
         provenance=DocumentProvenance(

@@ -31,7 +31,7 @@ def payload(text, interventions, *, design="unknown", measurement="unknown", dir
             combination="unknown", endpoint="endpoint", comparison="versus comparator"):
     anchor = generate_evidence_anchors(block_id="block", source_document_id="doc",
                                        block_text=f"CURRENT_RESULTS: {text}", section="Results")[0]
-    evidence = {"text": text, "evidence_anchor_ids": [anchor.anchor_id], "span_type": "observation"}
+    evidence = {"model_selected_excerpt_raw": text, "evidence_anchor_ids": [anchor.anchor_id], "span_type": "observation"}
     rows = []
     for index, item in enumerate(interventions):
         rows.append({
@@ -39,7 +39,7 @@ def payload(text, interventions, *, design="unknown", measurement="unknown", dir
             "intervention_target_mention": item[2], "agent_or_drug_mention": item[2],
             "intervention_method_raw": None, "dose_raw": None, "duration_raw": None,
             "route_raw": None, "condition_raw": item[2],
-            "evidence_text": {**evidence, "span_type": "intervention"},
+            "evidence": {**evidence, "span_type": "intervention"},
         })
     return {
         "schema_version": DRAFT_SCHEMA_VERSION,
@@ -52,17 +52,17 @@ def payload(text, interventions, *, design="unknown", measurement="unknown", dir
             "interventions": rows, "combination_mode_raw": combination,
             "measurement": {"measurement_dimension_raw": measurement, "measured_entity_mention": endpoint,
                 "outcome_mention": endpoint, "assay_or_readout_raw": None, "endpoint_raw": endpoint,
-                "evidence_text": {**evidence, "span_type": "measurement"}},
+                "evidence": {**evidence, "span_type": "measurement"}},
             "observation": {"observed_result": text, "lexical_direction_raw": direction,
                 "quantitative_result_raw": None, "statistical_support_raw": None,
                 "uncertainty_raw": None, "comparison_raw": comparison, "negation": False,
-                "evidence_text": evidence},
-            "interpretation_raw": None, "interpretation_evidence_text": None,
+                "evidence": evidence},
+            "interpretation_raw": None, "interpretation_evidence": None,
             "candidate_relation": {"subject_mention": interventions[0][2] if interventions else "cohort",
                 "object_mention": endpoint, "relation_wording_raw": "changed",
                 "lexical_direction_raw": direction, "evidence_design_raw": design,
                 "confidence_or_qualification_raw": None},
-            "statement_role": "current_study_experiment", "evidence_texts": [evidence],
+            "statement_role": "current_study_experiment", "evidence_references": [evidence],
             "extraction_warnings_raw": []
         }],
     }

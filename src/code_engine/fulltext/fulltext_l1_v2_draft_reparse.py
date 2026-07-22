@@ -33,12 +33,12 @@ def _hash(value: Any) -> str:
 
 def _evidence(value: Any, default_type: str) -> dict[str, Any] | None:
     if isinstance(value, str) and value:
-        return {"text": value, "span_type": default_type}
+        return {"model_selected_excerpt_raw": value, "evidence_anchor_ids": ["legacy_exact_text:S0001"], "span_type": default_type}
     if isinstance(value, dict) and isinstance(value.get("text"), str) and value["text"]:
         span_type = str(value.get("span_type") or default_type)
         if span_type not in {"setup", "methods", "intervention", "comparison", "measurement", "observation", "interpretation", "other"}:
             span_type = default_type
-        return {"text": value["text"], "span_type": span_type}
+        return {"model_selected_excerpt_raw": value["text"], "evidence_anchor_ids": ["legacy_exact_text:S0001"], "span_type": span_type}
     return None
 
 
@@ -52,7 +52,7 @@ def _intervention(value: dict[str, Any], fallback_evidence: dict[str, Any] | Non
         "dose_raw": value.get("dose"), "duration_raw": value.get("duration_time"),
         "route_raw": value.get("route"),
         "condition_raw": value.get("condition_raw"),
-        "evidence_text": _evidence(value.get("intervention_span"), "intervention") or fallback_evidence,
+        "evidence": _evidence(value.get("intervention_span"), "intervention") or fallback_evidence,
     }
 
 
@@ -81,7 +81,7 @@ def adapt_v4_formal_direct_to_draft(payload: dict[str, Any]) -> dict[str, Any]:
         if observation_evidence is None:
             observation_evidence = next((x for x in evidence_texts if x["span_type"] == "observation"), None)
         if observation_evidence is None and evidence_texts:
-            observation_evidence = {"text": evidence_texts[0]["text"], "span_type": "observation"}
+            observation_evidence = {**evidence_texts[0], "span_type": "observation"}
         if observation_evidence is None:
             raise ValueError(f"observation {index} has no evidence text")
         if observation_evidence not in evidence_texts:
@@ -96,7 +96,7 @@ def adapt_v4_formal_direct_to_draft(payload: dict[str, Any]) -> dict[str, Any]:
                 "role_raw": "secondary",
                 "intervention_type_raw": "unknown", "intervention_target_mention": secondary,
                 "agent_or_drug_mention": None, "intervention_method_raw": None, "dose_raw": None,
-                "duration_raw": None, "route_raw": None, "condition_raw": secondary, "evidence_text": None,
+                "duration_raw": None, "route_raw": None, "condition_raw": secondary, "evidence": None,
             })
         for combo in intervention.get("combination_intervention") or []:
             if isinstance(combo, str) and combo:
@@ -104,7 +104,7 @@ def adapt_v4_formal_direct_to_draft(payload: dict[str, Any]) -> dict[str, Any]:
                     "role_raw": "co_treatment",
                     "intervention_type_raw": "unknown", "intervention_target_mention": combo,
                     "agent_or_drug_mention": None, "intervention_method_raw": None, "dose_raw": None,
-                    "duration_raw": None, "route_raw": None, "condition_raw": combo, "evidence_text": None,
+                    "duration_raw": None, "route_raw": None, "condition_raw": combo, "evidence": None,
                 })
         measured_evidence = _evidence(measurement.get("measurement_span"), "measurement")
         interpretation_evidence = _evidence(interpretation.get("interpretation_span"), "interpretation")
@@ -128,7 +128,7 @@ def adapt_v4_formal_direct_to_draft(payload: dict[str, Any]) -> dict[str, Any]:
                 "measured_entity_mention": measurement.get("measured_entity_mention"),
                 "outcome_mention": measurement.get("outcome_mention"),
                 "assay_or_readout_raw": measurement.get("assay") or measurement.get("measurement_method"),
-                "endpoint_raw": measurement.get("outcome_mention"), "evidence_text": measured_evidence,
+                "endpoint_raw": measurement.get("outcome_mention"), "evidence": measured_evidence,
             },
             "observation": {
                 "observed_result": observation.get("observed_result"),
@@ -137,10 +137,10 @@ def adapt_v4_formal_direct_to_draft(payload: dict[str, Any]) -> dict[str, Any]:
                 "statistical_support_raw": observation.get("statistical_support"),
                 "uncertainty_raw": observation.get("uncertainty"),
                 "comparison_raw": observation.get("comparison_relation"),
-                "negation": bool(observation.get("negation", False)), "evidence_text": observation_evidence,
+                "negation": bool(observation.get("negation", False)), "evidence": observation_evidence,
             },
             "interpretation_raw": interpretation.get("author_interpretation") or interpretation.get("author_conclusion"),
-            "interpretation_evidence_text": interpretation_evidence,
+            "interpretation_evidence": interpretation_evidence,
             "candidate_relation": {
                 "subject_mention": relation.get("subject_mention"), "object_mention": relation.get("object_mention"),
                 "relation_wording_raw": relation.get("relation_raw"),
@@ -149,7 +149,7 @@ def adapt_v4_formal_direct_to_draft(payload: dict[str, Any]) -> dict[str, Any]:
                 "confidence_or_qualification_raw": observation.get("uncertainty"),
             },
             "statement_role": row.get("statement_role") or "unknown",
-            "evidence_texts": evidence_texts,
+            "evidence_references": evidence_texts,
             "extraction_warnings_raw": list(row.get("extraction_warnings") or []),
         }
         drafts.append(draft)

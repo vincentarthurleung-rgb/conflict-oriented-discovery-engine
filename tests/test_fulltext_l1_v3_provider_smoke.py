@@ -17,8 +17,8 @@ from code_engine.schemas.fulltext_observation_draft import DRAFT_SCHEMA_VERSION,
 
 def _plan():
     return {
-        "schema_version": "fulltext_l1_v3_provider_smoke_plan_v1", "mode": "plan_only",
-        "maximum_provider_calls": 5, "planned_provider_calls": 5,
+        "schema_version": "fulltext_l1_v3_anchor_authoritative_provider_smoke_plan_v2", "mode": "plan_only",
+        "maximum_provider_calls": 2, "planned_provider_calls": 2,
         "entries": [{"block_id": block_id, "validation_role": role,
                      "provider_call_planned": True, "provider_call_executed": False}
                     for block_id, role in smoke.FROZEN_SELECTION],
@@ -58,9 +58,9 @@ def _draft(block_id: str):
                                "comparison_raw": "treated versus control"})
     row["candidate_relation"].update({"subject_mention": "target", "object_mention": "endpoint",
                                       "lexical_direction_raw": "positive"})
-    for item in [*row["evidence_texts"], row["observation"]["evidence_text"],
-                 row["measurement"]["evidence_text"], row["interventions"][0]["evidence_text"]]:
-        item["text"] = evidence; item["evidence_anchor_ids"] = [f"{block_id}:S0001"]
+    for item in [*row["evidence_references"], row["observation"]["evidence"],
+                 row["measurement"]["evidence"], row["interventions"][0]["evidence"]]:
+        item["model_selected_excerpt_raw"] = evidence; item["evidence_anchor_ids"] = [f"{block_id}:S0001"]
     if block_id == "PMC7744182_1_0":
         second = copy.deepcopy(row["interventions"][0]); second["role_raw"] = "secondary"
         second["intervention_target_mention"] = "second target"; row["interventions"].append(second)
@@ -103,8 +103,8 @@ def test_profile_separation_is_explicit_and_v2_cli_is_not_switched(tmp_path, cap
 def test_manifest_is_exactly_frozen_ordered_unique_and_audited(isolated):
     run, _ = isolated; manifest = smoke.build_v3_manifest(run)
     assert [x["block_id"] for x in manifest["entries"]] == [x[0] for x in smoke.FROZEN_SELECTION]
-    assert len({x["block_id"] for x in manifest["entries"]}) == manifest["sample_count"] == 5
-    assert manifest["maximum_calls"] == 5 and manifest["source_plan_hash"]
+    assert len({x["block_id"] for x in manifest["entries"]}) == manifest["sample_count"] == 2
+    assert manifest["maximum_calls"] == 2 and manifest["source_plan_hash"]
     assert all(x["plan_hash"] and x["block_hash"] and x["source_hash"] and x["selection_reason"] for x in manifest["entries"])
 
 
@@ -112,14 +112,14 @@ def test_invalid_plan_and_missing_source_fail_closed_without_replacement(isolate
     run, inventory = isolated; path = run / "artifacts" / smoke.PLAN_ARTIFACT
     broken = _plan(); broken["entries"].append(copy.deepcopy(broken["entries"][0])); path.write_text(json.dumps(broken))
     with pytest.raises(RuntimeError, match="duplicate"): smoke.build_v3_manifest(run)
-    path.write_text(json.dumps(_plan())); inventory.pop(smoke.FROZEN_SELECTION[2][0])
+    path.write_text(json.dumps(_plan())); inventory.pop(smoke.FROZEN_SELECTION[1][0])
     with pytest.raises(RuntimeError, match="cannot be resolved"): smoke.build_v3_manifest(run)
 
 
 def test_plan_only_is_zero_call_versioned_and_preserves_state(isolated):
     run, _ = isolated; protected = (run / "artifacts/fulltext_l1_v2_summary.json").read_bytes()
     result = smoke.write_v3_plan_artifacts(run)
-    assert result["planned_provider_calls"] == result["maximum_calls"] == 5
+    assert result["planned_provider_calls"] == result["maximum_calls"] == 2
     assert result["api_calls"] == result["network_calls"] == result["downloads"] == 0
     assert result["smoke_profile"] == smoke.SMOKE_PROFILE and result["manifest_only"] is True
     assert result["prompt_version"] == PROMPT_VERSION
@@ -135,25 +135,22 @@ def test_plan_only_is_zero_call_versioned_and_preserves_state(isolated):
 def test_cli_defaults_plan_only_and_retains_double_authorization(isolated, capsys):
     run, _ = isolated
     assert v3_main(["--run-dir", str(run)]) == 0
-    assert json.loads(capsys.readouterr().out)["planned_provider_calls"] == 5
+    assert json.loads(capsys.readouterr().out)["planned_provider_calls"] == 2
     with pytest.raises(SystemExit): v3_main(["--run-dir", str(run), "--execute"])
     with pytest.raises(SystemExit): v3_main(["--run-dir", str(run), "--api"])
 
 
-def test_execute_uses_v6_anchors_v3_hydration_and_never_exceeds_five(isolated):
+def test_execute_uses_v7_authoritative_anchors_v3_hydration_and_never_exceeds_two(isolated):
     run, _ = isolated; smoke.write_v3_plan_artifacts(run); client = GoodClient()
     result = smoke.execute_v3_smoke(run, api_authorized=True, client=client)
-    assert result["api_calls"] == result["network_calls"] == 5
-    assert result["maximum_calls"] == 5 and len(client.calls) == 5
+    assert result["api_calls"] == result["network_calls"] == 2
+    assert result["maximum_calls"] == 2 and len(client.calls) == 2
     assert [x[0] for x in client.calls] == [x[0] for x in smoke.FROZEN_SELECTION]
     assert all(kwargs["max_tokens"] == DEFAULT_MAX_TOKENS and kwargs["thinking_mode"] == "disabled"
                and kwargs["retry_on_length"] is False for _, kwargs in client.calls)
-    assert result["draft_valid_blocks"] == 5 and result["formal_valid_observation_count"] == 5
-    assert result["anchor_valid_count"] > 0 and result["anchor_invalid_count"] == 0
-    assert result["multi_intervention_count"] == 1 and result["mixed_direction_count"] == 1
-    assert result["formal_reviewable_count"] >= 2
-    assert result["strict_core_eligible_count"] < result["graph_eligible_count"]
-    assert result["mixed_direction_count"] > result["conflict_eligible_count"] - result["strict_core_eligible_count"]
+    assert result["draft_valid_blocks"] == 2 and result["formal_valid_observation_count"] == 2
+    assert result["anchor_id_valid_reference_count"] > 0 and result["formal_evidence_binding_failure_count"] == 0
+    assert result["multi_intervention_count"] == 1 and result["mixed_direction_count"] == 0
     assert result["scientific_input_complete"] is False and result["publication_allowed"] is False
     assert result["atlas_publication_executed"] is False and result["protected_state_hashes_unchanged"] is True
 
@@ -168,13 +165,13 @@ def test_compatible_cache_reduces_calls_and_old_cache_cannot_hit(isolated):
         "smoke_profile": smoke.SMOKE_PROFILE, "prompt_version": "fulltext_experimental_observation_prompt_v5_draft_contract",
         "draft_response": _draft(first["block_id"]), "formal_response": {"schema_version": "fulltext_l1_experimental_observation_schema_v2", "experimental_observations": []},
     }))
-    assert smoke.build_v3_preflight(smoke.build_v3_manifest(run))["planned_provider_calls"] == 5
+    assert smoke.build_v3_preflight(smoke.build_v3_manifest(run))["planned_provider_calls"] == 2
     smoke.write_v3_plan_artifacts(run); client = GoodClient(); smoke.execute_v3_smoke(run, api_authorized=True, client=client)
     smoke.write_v3_plan_artifacts(run)
     class NeverClient:
         def extract_json_result(self, *_args, **_kwargs): raise AssertionError("compatible cache must avoid provider calls")
     cached = smoke.execute_v3_smoke(run, api_authorized=True, client=NeverClient())
-    assert cached["api_calls"] == 0 and cached["cache_hits"] == 5
+    assert cached["api_calls"] == 0 and cached["cache_hits"] == 2
 
 
 def test_fatal_provider_error_stops_after_one_call(isolated):
@@ -209,14 +206,14 @@ def test_missing_native_anchor_fails_closed_without_exact_text_fallback(isolated
         def extract_json_result(self, prompt, **_kwargs):
             block_id = re.findall(r"\[(PMC[^\]]+):S0001\]", prompt)[0]; payload = _draft(block_id)
             row = payload["experimental_observations"][0]
-            for item in [*row["evidence_texts"], row["observation"]["evidence_text"],
-                         row["measurement"]["evidence_text"], *[x["evidence_text"] for x in row["interventions"]]]:
+            for item in [*row["evidence_references"], row["observation"]["evidence"],
+                         row["measurement"]["evidence"], *[x["evidence"] for x in row["interventions"]]]:
                 item["evidence_anchor_ids"] = []
             return JSONExtractionResult(payload=payload, raw_response=json.dumps(payload), finish_reason="stop")
     result = smoke.execute_v3_smoke(run, api_authorized=True, client=MissingAnchors())
-    assert result["api_calls"] == 5 and result["missing_anchor_count"] > 0
+    assert result["api_calls"] == 2 and result["draft_failed_blocks"] == 2
     assert result["formal_valid_observation_count"] == 0
-    assert result["formal_incomplete_blocks"] == 5 and result["formal_zero_hydrated_blocks"] == 5
+    assert result["formal_incomplete_blocks"] == 2 and result["formal_zero_hydrated_blocks"] == 2
 
 
 def test_result_metrics_keep_raw_nonempty_formal_failure_and_partial_incomplete():

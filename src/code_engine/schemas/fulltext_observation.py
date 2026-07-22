@@ -177,6 +177,8 @@ LexicalDirectionV3 = Literal["positive", "negative", "neutral", "unclear", "mixe
 class FormalEvidenceSpanV3(StrictModel):
     evidence_span_id: str
     anchor_id: str | None = None
+    anchor_version: str
+    source_document_id: str
     block_id: str
     text: str
     text_hash: str

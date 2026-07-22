@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,7 +24,7 @@ from code_engine.schemas.fulltext_observation_draft import (
 )
 
 
-HYDRATOR_VERSION = "fulltext_l1_draft_hydrator_v2_formal_v3_anchors"
+HYDRATOR_VERSION = "fulltext_l1_draft_hydrator_v3_formal_v3_authoritative_anchors"
 COMPLETENESS_POLICY_VERSION = "fulltext_l1_formal_block_completeness_v2"
 OBSERVATION_ID_VERSION = "fulltext_l1_draft_observation_id_sha256_v2_anchor_stable"
 
@@ -69,48 +70,101 @@ def _span_from_anchor(anchor: EvidenceAnchor, span_type: str) -> FormalEvidenceS
     formal_type = "setup" if span_type == "methods" else span_type
     return FormalEvidenceSpanV3(
         evidence_span_id=f"span_{_hash({'anchor': anchor.anchor_id, 'type': formal_type})[:20]}",
-        anchor_id=anchor.anchor_id, block_id=anchor.block_id, text=anchor.text,
+        anchor_id=anchor.anchor_id, anchor_version=EVIDENCE_ANCHOR_VERSION,
+        source_document_id=anchor.source_document_id, block_id=anchor.block_id, text=anchor.text,
         text_hash=anchor.text_hash, source_role=anchor.source_role, span_type=formal_type,
         section=anchor.section, char_start=anchor.char_start, char_end=anchor.char_end,
     )
 
 
-def _exact_text_span(evidence: EvidenceTextDraft, context: TrustedDraftContextV3) -> FormalEvidenceSpanV3:
-    starts: list[int] = []; offset = 0
-    while True:
-        found = context.block_text.find(evidence.text, offset)
-        if found < 0: break
-        starts.append(found); offset = found + 1
-    if not starts:
-        raise DraftHydrationV3Error("evidence_unresolved", "evidence_text_missing")
-    if len(starts) != 1:
-        raise DraftHydrationV3Error("evidence_unresolved", "evidence_text_ambiguous")
-    start = starts[0]
-    line_start = context.block_text.rfind("\n", 0, start) + 1
-    prefix = context.block_text[line_start:start]
-    role = "methods" if "LINKED_METHODS:" in prefix else "setup" if "PRECEDING_SETUP:" in prefix else "current" if "CURRENT_" in prefix else "other"
-    if evidence.span_type == "observation" and role == "methods":
-        raise DraftHydrationV3Error("evidence_unresolved", "results_observation_cannot_bind_methods_only_evidence")
-    span_type = "setup" if evidence.span_type == "methods" else evidence.span_type
-    return FormalEvidenceSpanV3(
-        evidence_span_id=f"span_{_hash({'block': context.block_id, 'start': start, 'text': evidence.text, 'type': span_type})[:20]}",
-        block_id=context.block_id, text=evidence.text, text_hash=_hash(evidence.text),
-        source_role=role, span_type=span_type, section=context.section,
-        char_start=start, char_end=start + len(evidence.text),
-    )
-
-
 def resolve_draft_evidence(evidence: EvidenceTextDraft, context: TrustedDraftContextV3,
                            anchors: list[EvidenceAnchor]) -> tuple[list[FormalEvidenceSpanV3], str]:
-    if evidence.evidence_anchor_ids:
-        spans = []
+    spans = []; seen: set[str] = set()
+    for anchor_id in evidence.evidence_anchor_ids:
+        if anchor_id in seen:
+            continue
+        seen.add(anchor_id)
+        anchor = resolve_anchor(
+            anchor_id, anchors, expected_block_id=context.block_id,
+            source_text=context.block_text, expected_source_document_id=context.source_document_id,
+        )
+        if evidence.span_type == "observation" and anchor.source_role == "methods":
+            raise DraftHydrationV3Error("evidence_unresolved", "results_observation_cannot_bind_methods_only_anchor")
+        spans.append(_span_from_anchor(anchor, evidence.span_type))
+    return spans, "authoritative_anchor"
+
+
+def iter_draft_evidence_references(draft: FulltextL1DraftResponse | ExperimentalObservationDraft):
+    observations = (draft.experimental_observations if isinstance(draft, FulltextL1DraftResponse) else [draft])
+    for oi, observation in enumerate(observations):
+        for ei, evidence in enumerate(observation.evidence_references):
+            yield f"experimental_observations.{oi}.evidence_references.{ei}", evidence
+        yield f"experimental_observations.{oi}.observation.evidence", observation.observation.evidence
+        if observation.measurement.evidence:
+            yield f"experimental_observations.{oi}.measurement.evidence", observation.measurement.evidence
+        if observation.interpretation_evidence:
+            yield f"experimental_observations.{oi}.interpretation_evidence", observation.interpretation_evidence
+        for ii, intervention in enumerate(observation.interventions):
+            if intervention.evidence:
+                yield f"experimental_observations.{oi}.interventions.{ii}.evidence", intervention.evidence
+
+
+def audit_draft_anchor_bindings(draft: FulltextL1DraftResponse | ExperimentalObservationDraft,
+                                context: TrustedDraftContextV3,
+                                anchors: list[EvidenceAnchor] | None = None) -> dict[str, Any]:
+    """Audit identity failures separately from non-authoritative excerpt differences."""
+    anchors = anchors or generate_evidence_anchors(
+        block_id=context.block_id, source_document_id=context.source_document_id,
+        block_text=context.block_text, section=context.section,
+    )
+    counts = Counter(); unique_ids: set[str] = set(); errors = []; warnings = []
+    for path, evidence in iter_draft_evidence_references(draft):
+        resolved: list[EvidenceAnchor] = []
         for anchor_id in evidence.evidence_anchor_ids:
-            anchor = resolve_anchor(anchor_id, anchors, expected_block_id=context.block_id)
+            counts["anchor_reference_count"] += 1; unique_ids.add(anchor_id)
+            if not str(anchor_id).startswith(f"{context.block_id}:"):
+                counts["anchor_id_cross_block_count"] += 1
+                counts["formal_evidence_binding_failure_count"] += 1
+                errors.append({"path": path, "anchor_id": anchor_id, "reason": "evidence_anchor_cross_block"})
+                continue
+            try:
+                anchor = resolve_anchor(
+                    anchor_id, anchors, expected_block_id=context.block_id,
+                    source_text=context.block_text, expected_source_document_id=context.source_document_id,
+                )
+            except ValueError as exc:
+                reason = str(exc)
+                key = ("anchor_id_missing_count" if "not_found" in reason else
+                       "anchor_registry_integrity_failure_count")
+                counts[key] += 1; counts["formal_evidence_binding_failure_count"] += 1
+                errors.append({"path": path, "anchor_id": anchor_id, "reason": reason})
+                continue
             if evidence.span_type == "observation" and anchor.source_role == "methods":
-                raise DraftHydrationV3Error("evidence_unresolved", "results_observation_cannot_bind_methods_only_anchor")
-            spans.append(_span_from_anchor(anchor, evidence.span_type))
-        return spans, "anchor"
-    return [_exact_text_span(evidence, context)], "exact_text"
+                counts["anchor_role_violation_count"] += 1
+                counts["formal_evidence_binding_failure_count"] += 1
+                errors.append({"path": path, "anchor_id": anchor_id,
+                               "reason": "results_observation_cannot_bind_methods_only_anchor"})
+                continue
+            resolved.append(anchor)
+            counts["anchor_id_valid_reference_count"] += 1
+            counts["formal_evidence_binding_success_count"] += 1
+        excerpt = evidence.model_selected_excerpt_raw
+        if excerpt is None:
+            counts["anchor_excerpt_missing_count"] += 1
+        elif resolved and " ".join(item.text for item in resolved) == excerpt:
+            counts["anchor_excerpt_match_count"] += 1
+        elif resolved:
+            counts["anchor_excerpt_mismatch_count"] += 1
+            warnings.append({"path": path, "reason": "anchor_excerpt_mismatch_warning"})
+    metric_keys = (
+        "anchor_reference_count", "anchor_id_valid_reference_count", "anchor_id_missing_count",
+        "anchor_id_cross_block_count", "anchor_registry_integrity_failure_count",
+        "anchor_role_violation_count", "anchor_excerpt_match_count",
+        "anchor_excerpt_mismatch_count", "anchor_excerpt_missing_count",
+        "formal_evidence_binding_success_count", "formal_evidence_binding_failure_count",
+    )
+    return {**{key: counts[key] for key in metric_keys}, "unique_anchor_id_count": len(unique_ids),
+            "valid": not errors, "errors": errors, "warnings": warnings}
 
 
 def _observation_id(draft: ExperimentalObservationDraft, context: TrustedDraftContextV3,
@@ -119,9 +173,9 @@ def _observation_id(draft: ExperimentalObservationDraft, context: TrustedDraftCo
         "version": OBSERVATION_ID_VERSION, "source_document_id": context.source_document_id,
         "parent_block_id": context.parent_block_id, "child_block_id": context.child_block_id or context.block_id,
         "experiment": draft.experiment.model_dump(mode="json"),
-        "interventions": [x.model_dump(mode="json", exclude={"evidence_text"}) for x in draft.interventions],
+        "interventions": [x.model_dump(mode="json", exclude={"evidence"}) for x in draft.interventions],
         "combination_mode_raw": draft.combination_mode_raw,
-        "measurement": draft.measurement.model_dump(mode="json", exclude={"evidence_text"}),
+        "measurement": draft.measurement.model_dump(mode="json", exclude={"evidence"}),
         "comparison": draft.observation.comparison_raw, "observed_result": draft.observation.observed_result,
         "evidence_span_ids": evidence_ids,
     }
@@ -132,9 +186,13 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
                                  *, observation_index: int = 0) -> tuple[dict[str, Any], dict[str, Any]]:
     anchors = generate_evidence_anchors(block_id=context.block_id, source_document_id=context.source_document_id,
                                         block_text=context.block_text, section=context.section)
-    evidence_items = [*draft.evidence_texts, draft.observation.evidence_text,
-                      draft.measurement.evidence_text, draft.interpretation_evidence_text,
-                      *(x.evidence_text for x in draft.interventions)]
+    anchor_audit = audit_draft_anchor_bindings(draft, context, anchors)
+    if not anchor_audit["valid"]:
+        first = anchor_audit["errors"][0]
+        raise DraftHydrationV3Error("evidence_unresolved", str(first["reason"]))
+    evidence_items = [*draft.evidence_references, draft.observation.evidence,
+                      draft.measurement.evidence, draft.interpretation_evidence,
+                      *(x.evidence for x in draft.interventions)]
     spans: list[FormalEvidenceSpanV3] = []; evidence_modes: list[str] = []
     purpose_ids: dict[int, list[str]] = {}
     for item in evidence_items:
@@ -144,7 +202,7 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
         purpose_ids[id(item)] = [x.evidence_span_id for x in resolved]
         for span in resolved:
             if span.evidence_span_id not in {x.evidence_span_id for x in spans}: spans.append(span)
-    observation_ids = purpose_ids.get(id(draft.observation.evidence_text), [])
+    observation_ids = purpose_ids.get(id(draft.observation.evidence), [])
     if not observation_ids:
         raise DraftHydrationV3Error("evidence_unresolved", "observation_evidence_missing")
     design = normalize_semantics("design_type", draft.experiment.design_type_raw, domain_profile=context.domain_profile)
@@ -171,7 +229,7 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
             target_mention=item.intervention_target_mention, agent_mention=item.agent_or_drug_mention,
             method_raw=item.intervention_method_raw, dose_raw=item.dose_raw,
             duration_raw=item.duration_raw, route_raw=item.route_raw, condition_raw=item.condition_raw,
-            evidence_span_ids=purpose_ids.get(id(item.evidence_text), []) if item.evidence_text else [],
+            evidence_span_ids=purpose_ids.get(id(item.evidence), []) if item.evidence else [],
             normalization_status=status, normalization_rule_id=f"{REGISTRY_VERSION}:{category.rule_id}",
             review_reasons=reasons,
         ))
@@ -230,7 +288,7 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
             outcome_mention=draft.measurement.outcome_mention,
             assay_or_readout_raw=draft.measurement.assay_or_readout_raw,
             endpoint_raw=draft.measurement.endpoint_raw,
-            evidence_span_ids=purpose_ids.get(id(draft.measurement.evidence_text), []) if draft.measurement.evidence_text else [],
+            evidence_span_ids=purpose_ids.get(id(draft.measurement.evidence), []) if draft.measurement.evidence else [],
             normalization_status=measurement.status,
             normalization_rule_id=f"{REGISTRY_VERSION}:{measurement.rule_id}",
             review_reasons=list(measurement.review_reasons),
@@ -244,7 +302,7 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
             evidence_span_ids=observation_ids,
         ),
         interpretation_raw=draft.interpretation_raw,
-        interpretation_evidence_span_ids=purpose_ids.get(id(draft.interpretation_evidence_text), []) if draft.interpretation_evidence_text else [],
+        interpretation_evidence_span_ids=purpose_ids.get(id(draft.interpretation_evidence), []) if draft.interpretation_evidence else [],
         candidate_relation=CandidateRelationV3(
             subject_mention=draft.candidate_relation.subject_mention,
             object_mention=draft.candidate_relation.object_mention,
@@ -266,11 +324,12 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
         "eligibility_policy_version": ELIGIBILITY_POLICY_VERSION,
         "block_id": context.block_id, "observation_index": observation_index,
         "evidence_binding_modes": evidence_modes,
-        "evidence_anchor_resolved_count": sum(mode == "anchor" for mode in evidence_modes),
-        "evidence_text_exact_count": sum(mode == "exact_text" for mode in evidence_modes),
+        "evidence_anchor_resolved_count": sum(mode == "authoritative_anchor" for mode in evidence_modes),
+        "evidence_text_exact_count": 0,
         "normalization_audit": normalization_audit,
         "formal_status": "resolved" if not review_reasons and direction.status == "resolved" else "reviewable",
         "eligibility": eligibility.model_dump(mode="json"),
+        "anchor_binding_audit": anchor_audit,
     }
     return formal.model_dump(mode="json"), audit
 
@@ -296,4 +355,5 @@ def hydrate_draft_response_v3(response: FulltextL1DraftResponse, context: Truste
 
 __all__ = ["HYDRATOR_VERSION", "COMPLETENESS_POLICY_VERSION", "OBSERVATION_ID_VERSION",
            "DraftHydrationV3Error", "TrustedDraftContextV3", "HydrationBatchV3",
-           "resolve_draft_evidence", "hydrate_draft_observation_v3", "hydrate_draft_response_v3"]
+           "resolve_draft_evidence", "iter_draft_evidence_references", "audit_draft_anchor_bindings",
+           "hydrate_draft_observation_v3", "hydrate_draft_response_v3"]

@@ -1,4 +1,4 @@
-"""Explicit five-block Prompt v6 / Formal v3 provider smoke profile.
+"""Explicit two-block Prompt v7 / Formal v3 provider smoke profile.
 
 Planning is offline. Execution is available only to the separately gated CLI
 and never mutates the scientific run, downstream stages, or Atlas state.
@@ -9,17 +9,17 @@ import hashlib
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from pydantic import ValidationError
 
 from code_engine.extraction.client_factory import build_json_client_from_config
 from code_engine.extraction.deepseek_client import DeepSeekExtractionError, deepseek_thinking_mode_audit
-from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION, generate_evidence_anchors, resolve_anchor
+from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION
 from code_engine.fulltext.experimental_semantics_registry import REGISTRY_VERSION
 from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import (
     COMPLETENESS_POLICY_VERSION, HYDRATOR_VERSION, TrustedDraftContextV3,
-    hydrate_draft_response_v3,
+    audit_draft_anchor_bindings, hydrate_draft_response_v3,
 )
 from code_engine.fulltext.fulltext_l1_v2 import (
     DEFAULT_MAX_TOKENS, DEFAULT_THINKING_MODE, PROMPT_VERSION, SCHEMA_VERSION,
@@ -34,26 +34,23 @@ from code_engine.schemas.fulltext_observation import FulltextL1V3Response
 from code_engine.schemas.fulltext_observation_draft import DRAFT_SCHEMA_VERSION, FulltextL1DraftResponse
 
 
-SMOKE_PROFILE = "fulltext_l1_v3_provider_smoke_v1"
-MANIFEST_SCHEMA_VERSION = "fulltext_l1_v3_provider_smoke_manifest_v1"
-PREFLIGHT_SCHEMA_VERSION = "fulltext_l1_v3_provider_smoke_preflight_v1"
-RESULTS_SCHEMA_VERSION = "fulltext_l1_v3_provider_smoke_results_v1"
-MAXIMUM_CALLS = 5
+SMOKE_PROFILE = "fulltext_l1_v3_anchor_authoritative_provider_smoke_v2"
+MANIFEST_SCHEMA_VERSION = "fulltext_l1_v3_anchor_authoritative_provider_smoke_manifest_v2"
+PREFLIGHT_SCHEMA_VERSION = "fulltext_l1_v3_anchor_authoritative_provider_smoke_preflight_v2"
+RESULTS_SCHEMA_VERSION = "fulltext_l1_v3_anchor_authoritative_provider_smoke_results_v2"
+MAXIMUM_CALLS = 2
 PROVIDER = "deepseek"
 MODEL = "deepseek-v4-pro"
-PLAN_ARTIFACT = "fulltext_l1_v3_provider_smoke_plan.json"
-MANIFEST_ARTIFACT = "fulltext_l1_v3_provider_smoke_manifest.json"
-PREFLIGHT_ARTIFACT = "fulltext_l1_v3_provider_smoke_preflight.json"
-RESULTS_ARTIFACT = "fulltext_l1_v3_provider_smoke_results.json"
-RESULTS_MARKDOWN_ARTIFACT = "fulltext_l1_v3_provider_smoke_results.md"
-CACHE_DIR = "cache/fulltext_l1_v3_provider_smoke"
+PLAN_ARTIFACT = "fulltext_l1_v3_anchor_authoritative_provider_smoke_plan.json"
+MANIFEST_ARTIFACT = "fulltext_l1_v3_anchor_authoritative_provider_smoke_manifest.json"
+PREFLIGHT_ARTIFACT = "fulltext_l1_v3_anchor_authoritative_provider_smoke_preflight.json"
+RESULTS_ARTIFACT = "fulltext_l1_v3_anchor_authoritative_provider_smoke_results.json"
+RESULTS_MARKDOWN_ARTIFACT = "fulltext_l1_v3_anchor_authoritative_provider_smoke_results.md"
+CACHE_DIR = "cache/fulltext_l1_v3_anchor_authoritative_provider_smoke"
 
 FROZEN_SELECTION: tuple[tuple[str, str], ...] = (
     ("PMC7689016_32_0", "single_intervention_resolved_nonempty"),
     ("PMC7744182_1_0", "multi_intervention"),
-    ("PMC7749157_1_0", "reviewable_raw_category"),
-    ("PMC7269543_4_0", "legacy_empty_high_risk"),
-    ("PMC7708218_12_0", "mixed_or_multi_endpoint"),
 )
 
 PROTECTED_STATE_PATHS = (
@@ -80,7 +77,7 @@ def _load_plan(artifacts: Path) -> tuple[dict[str, Any], str]:
     if not path.is_file():
         raise FileNotFoundError(f"required frozen v3 smoke plan is missing: {path}")
     plan = json.loads(path.read_text(encoding="utf-8"))
-    if plan.get("schema_version") != "fulltext_l1_v3_provider_smoke_plan_v1":
+    if plan.get("schema_version") != "fulltext_l1_v3_anchor_authoritative_provider_smoke_plan_v2":
         raise RuntimeError("invalid v3 smoke plan schema version")
     entries = list(plan.get("entries") or [])
     actual = [(str(x.get("block_id")), str(x.get("validation_role"))) for x in entries]
@@ -137,7 +134,7 @@ def _fresh_cache_status(cache_root: Path, key: str, *, block_id: str, source_has
     valid = (
         payload.get("cache_identity") == key
         and payload.get("smoke_profile") == SMOKE_PROFILE
-        and payload.get("origin") == "native_prompt_v6_formal_v3_provider_smoke"
+        and payload.get("origin") == "native_prompt_v7_anchor_authoritative_formal_v3_provider_smoke"
         and payload.get("provider") == PROVIDER and payload.get("model") == MODEL
         and payload.get("prompt_version") == PROMPT_VERSION and payload.get("prompt_hash") == prompt_hash()
         and payload.get("rendered_prompt_hash") == rendered_prompt_hash
@@ -266,50 +263,16 @@ def write_v3_plan_artifacts(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def _draft_evidence_items(draft: FulltextL1DraftResponse) -> Iterable[tuple[str, Any]]:
-    for oi, observation in enumerate(draft.experimental_observations):
-        for ei, evidence in enumerate(observation.evidence_texts):
-            yield f"experimental_observations.{oi}.evidence_texts.{ei}", evidence
-        yield f"experimental_observations.{oi}.observation.evidence_text", observation.observation.evidence_text
-        yield f"experimental_observations.{oi}.measurement.evidence_text", observation.measurement.evidence_text
-        if observation.interpretation_evidence_text:
-            yield f"experimental_observations.{oi}.interpretation_evidence_text", observation.interpretation_evidence_text
-        for ii, intervention in enumerate(observation.interventions):
-            if intervention.evidence_text:
-                yield f"experimental_observations.{oi}.interventions.{ii}.evidence_text", intervention.evidence_text
-
-
 def _validate_native_anchors(draft: FulltextL1DraftResponse, *, block_id: str, source_document_id: str,
                              block_text: str, section: str | None) -> dict[str, Any]:
-    anchors = generate_evidence_anchors(block_id=block_id, source_document_id=source_document_id,
-                                        block_text=block_text, section=section)
-    counts = Counter(); errors: list[dict[str, str]] = []
-    for path, evidence in _draft_evidence_items(draft):
-        ids = list(evidence.evidence_anchor_ids)
-        if not ids:
-            counts["missing_anchor_count"] += 1
-            errors.append({"path": path, "reason": "missing_anchor_id"}); continue
-        resolved = []
-        for anchor_id in ids:
-            if not str(anchor_id).startswith(f"{block_id}:"):
-                counts["cross_block_anchor_count"] += 1
-                errors.append({"path": path, "reason": f"cross_block_anchor:{anchor_id}"}); continue
-            try:
-                anchor = resolve_anchor(anchor_id, anchors, expected_block_id=block_id)
-            except ValueError as exc:
-                counts["anchor_invalid_count"] += 1
-                errors.append({"path": path, "reason": str(exc)}); continue
-            if evidence.span_type == "observation" and anchor.source_role == "methods":
-                counts["methods_results_role_violation_count"] += 1
-                errors.append({"path": path, "reason": f"methods_results_role_violation:{anchor_id}"}); continue
-            resolved.append(anchor); counts["anchor_valid_count"] += 1
-        if resolved and " ".join(x.text for x in resolved) != evidence.text:
-            counts["anchor_invalid_count"] += 1
-            errors.append({"path": path, "reason": "anchor_text_mismatch"})
-    return {**{key: counts[key] for key in (
-        "anchor_valid_count", "anchor_invalid_count", "cross_block_anchor_count",
-        "methods_results_role_violation_count", "missing_anchor_count",
-    )}, "valid": not errors, "errors": errors}
+    context = TrustedDraftContextV3(
+        run_id="anchor_validation", block_id=block_id, parent_block_id=block_id,
+        child_block_id=None, block_text=block_text, source_block_hash=_sha(block_text),
+        source_document_id=source_document_id, paper_id=source_document_id,
+        pmid=None, pmcid=None, fulltext_source_hash=_sha(block_text),
+        source_artifact="anchor_validation", section=section,
+    )
+    return audit_draft_anchor_bindings(draft, context)
 
 
 def _context(run_dir: Path, item: dict[str, Any]) -> TrustedDraftContextV3:
@@ -378,7 +341,7 @@ def _aggregate_results(results: list[dict[str, Any]], *, calls: int, stopped_rea
     legacy = next((x for x in results if x.get("block_id") == "PMC7269543_4_0"), {})
     return {
         "schema_version": RESULTS_SCHEMA_VERSION, "mode": "executed", "smoke_profile": SMOKE_PROFILE,
-        "origin": "native_prompt_v6_formal_v3_provider_output",
+        "origin": "native_prompt_v7_anchor_authoritative_formal_v3_provider_output",
         "api_calls": calls, "network_calls": calls, "downloads": 0, "maximum_calls": MAXIMUM_CALLS,
         "cache_hits": sum(x.get("cache_hit", False) for x in results),
         "provider_errors": sum(x.get("status") == "provider_error" for x in results),
@@ -390,10 +353,14 @@ def _aggregate_results(results: list[dict[str, Any]], *, calls: int, stopped_rea
         "raw_observation_count": total("raw_observation_count"),
         "unknown_extra_paths": [p for x in results for p in x.get("unknown_extra_paths", [])],
         "draft_failure_reasons": dict(sorted(draft_failures.items())),
-        "anchor_valid_count": total("anchor_valid_count"), "anchor_invalid_count": total("anchor_invalid_count"),
-        "cross_block_anchor_count": total("cross_block_anchor_count"),
-        "methods_results_role_violation_count": total("methods_results_role_violation_count"),
-        "missing_anchor_count": total("missing_anchor_count"),
+        **{key: total(key) for key in (
+            "anchor_reference_count", "unique_anchor_id_count", "anchor_id_valid_reference_count",
+            "anchor_id_missing_count", "anchor_id_cross_block_count",
+            "anchor_registry_integrity_failure_count", "anchor_role_violation_count",
+            "anchor_excerpt_match_count", "anchor_excerpt_mismatch_count",
+            "anchor_excerpt_missing_count", "formal_evidence_binding_success_count",
+            "formal_evidence_binding_failure_count",
+        )},
         **{key: total(key) for key in (
             "formal_valid_observation_count", "formal_resolved_count", "formal_reviewable_count",
             "formal_rejected_count", "multi_intervention_count", "mixed_direction_count",
@@ -530,7 +497,7 @@ def execute_v3_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None 
             result.update(paths)
             cache_payload = {
                 "cache_identity": key, "smoke_profile": SMOKE_PROFILE,
-                "origin": "native_prompt_v6_formal_v3_provider_smoke", "provider": PROVIDER, "model": MODEL,
+                "origin": "native_prompt_v7_anchor_authoritative_formal_v3_provider_smoke", "provider": PROVIDER, "model": MODEL,
                 "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
                 "rendered_prompt_hash": entry["rendered_prompt_hash"],
                 "draft_schema_version": DRAFT_SCHEMA_VERSION, "draft_schema_hash": schema_hash(),

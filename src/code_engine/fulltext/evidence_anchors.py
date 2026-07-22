@@ -7,7 +7,7 @@ from dataclasses import dataclass, asdict
 from typing import Iterable
 
 
-EVIDENCE_ANCHOR_VERSION = "fulltext_evidence_anchor_v1"
+EVIDENCE_ANCHOR_VERSION = "fulltext_evidence_anchor_contract_v2"
 
 
 @dataclass(frozen=True)
@@ -70,12 +70,22 @@ def render_anchored_block(anchors: Iterable[EvidenceAnchor]) -> str:
 
 
 def resolve_anchor(anchor_id: str, anchors: Iterable[EvidenceAnchor], *, expected_block_id: str,
-                   required_source_role: str | None = None) -> EvidenceAnchor:
+                   required_source_role: str | None = None, source_text: str | None = None,
+                   expected_source_document_id: str | None = None) -> EvidenceAnchor:
     match = next((item for item in anchors if item.anchor_id == anchor_id), None)
     if match is None:
         raise ValueError(f"evidence_anchor_not_found:{anchor_id}")
     if match.block_id != expected_block_id:
         raise ValueError(f"evidence_anchor_cross_block:{anchor_id}")
+    if expected_source_document_id is not None and match.source_document_id != expected_source_document_id:
+        raise ValueError(f"evidence_anchor_source_document_mismatch:{anchor_id}")
+    if match.char_start < 0 or match.char_end < match.char_start:
+        raise ValueError(f"evidence_anchor_offset_invalid:{anchor_id}")
+    if source_text is not None:
+        if match.char_end > len(source_text):
+            raise ValueError(f"evidence_anchor_offset_out_of_bounds:{anchor_id}")
+        if source_text[match.char_start:match.char_end] != match.text:
+            raise ValueError(f"evidence_anchor_offset_text_mismatch:{anchor_id}")
     if _hash(match.text) != match.text_hash:
         raise ValueError(f"evidence_anchor_hash_mismatch:{anchor_id}")
     if required_source_role and match.source_role != required_source_role:

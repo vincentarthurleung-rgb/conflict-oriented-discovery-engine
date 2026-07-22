@@ -38,7 +38,7 @@ from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION, gener
 
 V2_SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v2"
 SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v3"
-PROMPT_VERSION = "fulltext_experimental_observation_prompt_v6_anchor_contract"
+PROMPT_VERSION = "fulltext_experimental_observation_prompt_v7_anchor_id_authoritative"
 PARSER_VERSION = "fulltext_experimental_observation_draft_parser_v1"
 EXTRACTOR_VERSION = "fulltext_l1_extractor_v2"
 DEFAULT_MAX_TOKENS = 32_768
@@ -53,14 +53,14 @@ DEFAULT_OBSERVATION_LIMIT = 40
 MAX_CHILDREN_PER_PARENT = 48
 MINIMUM_CHILD_INPUT_TOKENS = 80
 TOKEN_ESTIMATOR_VERSION = "conservative_unicode_chars_v1"
-CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v4_formal_v3_anchors"
+CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v5_authoritative_anchors"
 DEFAULT_THINKING_MODE: ThinkingMode = "disabled"
 PROMPT_RULES = (
     "Use only the supplied full-text block. External biological knowledge is forbidden.",
     "Seeds locate text only; never confirm them merely because they were supplied.",
     "Do not treat experimental group labels, samples, biopsies, or silenced cells as natural-state causal entities.",
     "Keep observed outcome separate from author interpretation and any derived causal interpretation.",
-    "Bind every material fact to exact verbatim evidence text; use null/unknown only where the Draft schema permits it.",
+    "Bind every material fact using only evidence_anchor_ids from the supplied anchored block.",
     "Multiple endpoints from one experiment are separate observations sharing the same raw experiment and evidence-family labels.",
     "Split different experiments or comparisons even when they occur in one sentence or paragraph.",
     "Preserve every rescue, re-expression, secondary, and combination intervention as a separate structured item in interventions.",
@@ -69,8 +69,9 @@ PROMPT_RULES = (
     "Species/model/method context may only bind from this experiment block; Methods context from another experiment must not be imported.",
     "Required Draft objects are experiment, interventions, measurement, observation, and candidate_relation; pipeline provenance is not a model responsibility.",
     "Extract only observations directly supported by this experiment block and never repeat an observation.",
-    "Use the shortest original supporting span sufficient for the fields; never copy whole Results or Methods sections.",
-    "Do not repeat one span in unnecessary fields. Keep distinct endpoints separate without semantic duplication.",
+    "Do not copy or rewrite source text as evidence identity; the pipeline resolves authoritative text, offsets, and hashes from anchor IDs.",
+    "model_selected_excerpt_raw is optional audit context only and is never authoritative evidence.",
+    "Do not repeat one anchor in unnecessary fields. Keep distinct endpoints separate without semantic duplication.",
     "If no qualifying observation exists, return a valid JSON object with an empty experimental_observations array.",
     "Every Draft field name must match the examples character-for-character; never abbreviate or alias a field name.",
     "Do not output paper IDs, document IDs, hashes, block IDs, offsets, observation IDs, experiment IDs, evidence-family IDs, canonical fields, formal relations, core/conflict fields, hypotheses, or Atlas fields.",
@@ -181,7 +182,7 @@ def formal_schema_hash() -> str:
 
 
 def build_prompt(candidate: dict[str, Any], block: dict[str, Any]) -> str:
-    """Strict provider Draft extraction prompt v6 with stable evidence anchors."""
+    """Strict provider Draft extraction prompt v7 with authoritative evidence anchors."""
     seed = {
         "case_id": candidate.get("case_id"),
         "subject_seed": candidate.get("subject"),
@@ -207,8 +208,9 @@ Valid complete non-empty Draft JSON output example: {nonempty_json}
 Use the exact, unabbreviated Draft field names in these examples. Do not add aliases or omit required fields.
 Fields ending in _raw preserve the wording/category supported by the block. The pipeline will normalize them later.
 Pipeline metadata and deterministic identities are deliberately absent from this Draft contract; do not generate them.
-Use evidence_anchor_ids from the anchored block as the primary evidence binding. Never invent an anchor ID.
-Keep evidence text as an audit copy; never paraphrase it.
+Use evidence_anchor_ids from the anchored block as the sole evidence identity. Never invent an anchor ID.
+Do not return source text, offsets, or hashes as authoritative fields. model_selected_excerpt_raw may be null;
+when present it is a non-authoritative audit note and cannot change the registry evidence.
 Rules:
 {rules}
 TARGET_PRIOR (non-authoritative): {json.dumps(seed, ensure_ascii=False)}
