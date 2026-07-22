@@ -737,24 +737,34 @@ def extract_direct_fulltext_evidence_chains(claims: list[dict[str, Any]], candid
 
 
 def evidence_chains_from_v2_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Convert grounded L1 v2 observations to chain inputs without causal completion."""
+    """Convert strict v2/v3 observations without fanning out multi-intervention evidence."""
     chains: list[dict[str, Any]] = []
     for row in observations:
         prov = row.get("provenance") or {}; exp = row.get("experiment") or {}
-        intervention = row.get("intervention") or {}; measurement = row.get("measurement") or {}
+        v3 = str(row.get("schema_version") or "").endswith("schema_v3")
+        legacy_intervention = row.get("intervention") or {}; measurement = row.get("measurement") or {}
+        formal_interventions = row.get("interventions") or ([] if not legacy_intervention else [legacy_intervention])
         observation = row.get("observation") or {}; interpretation = row.get("author_interpretation") or {}
         spans = prov.get("evidence_spans") or []
         anchors = [EvidenceAnchor(
-            anchor_id=f"{row.get('observation_id')}_{index}", section=span.get("section") or prov.get("section"),
+            anchor_id=span.get("anchor_id") or span.get("evidence_span_id") or f"{row.get('observation_id')}_{index}", section=span.get("section") or prov.get("section"),
             paragraph_id=span.get("paragraph_id") or prov.get("paragraph_id"), sentence_id=span.get("sentence_id"),
             sentence_text=span.get("text"), figure=(prov.get("figure_ids") or [None])[0],
             table=(prov.get("table_ids") or [None])[0], supplement=prov.get("supplementary_reference"),
         ) for index, span in enumerate(spans)]
-        itype = str(intervention.get("intervention_type") or "unknown")
+        primary = formal_interventions[0] if len(formal_interventions) == 1 else {}
+        itype = str(primary.get("intervention_type") or "unknown")
+        intervention_sign = None if v3 else primary.get("intervention_sign")
+        multi_or_reviewable = len(formal_interventions) > 1 or not (row.get("eligibility") or {}).get("strict_core_eligible", not v3)
+        comparator_description = ((exp.get("comparison_arm_raw") or exp.get("control_arm_raw")) if v3
+                                  else (exp.get("comparison_arm") or exp.get("control_arm")))
+        formal_direction = {"positive": "increase", "negative": "decrease", "neutral": "no_change",
+                            "unclear": "unknown", "mixed": "mixed"}.get(
+                                (row.get("candidate_relation") or {}).get("lexical_direction"), "unknown")
         causal_strength = (
             "rescue_support" if itype in {"rescue", "re_expression"}
-            else "necessity_support" if intervention.get("intervention_sign") == -1
-            else "sufficiency_support" if intervention.get("intervention_sign") == 1
+            else "necessity_support" if intervention_sign == -1
+            else "sufficiency_support" if intervention_sign == 1
             else "association"
         )
         chain = ExperimentalEvidenceChain(
@@ -762,32 +772,38 @@ def evidence_chains_from_v2_observations(observations: list[dict[str, Any]]) -> 
             paper_id=str(prov.get("paper_id") or prov.get("pmid") or prov.get("pmcid") or ""),
             source_document_id=str(prov.get("source_document_id") or ""),
             experimental_system=ExperimentalSystem(
-                species=exp.get("species"), disease_model=exp.get("disease_model") or exp.get("model_system"),
-                tissue=exp.get("tissue"), cell_type=exp.get("cell_type"), cell_line=exp.get("cell_line"),
-                genotype=exp.get("genotype"), localization=exp.get("localization"),
+                species=exp.get("species_raw") if v3 else exp.get("species"), disease_model=(exp.get("disease_model_raw") or exp.get("model_system_raw")) if v3 else exp.get("disease_model") or exp.get("model_system"),
+                tissue=exp.get("tissue_raw") if v3 else exp.get("tissue"), cell_type=exp.get("experimental_unit_raw") if v3 else exp.get("cell_type"), cell_line=None if v3 else exp.get("cell_line"),
+                genotype=exp.get("genotype_raw") if v3 else exp.get("genotype"), localization=None if v3 else exp.get("localization"),
             ),
             interventions=[Intervention(
-                agent_raw=intervention.get("intervention_target_mention") or "", dose=exp.get("dose"),
-                duration=exp.get("duration_time"), combination=", ".join(intervention.get("combination_intervention") or []) or None,
-            )] if itype != "observational_no_intervention" else [],
-            comparators=[Comparator(comparator_type="other", description=exp.get("comparison_arm") or exp.get("control_arm") or "")] if exp.get("comparison_arm") or exp.get("control_arm") else [],
-            measurements=[Measurement(assay=measurement.get("assay") or measurement.get("measurement_method"), endpoint=measurement.get("measured_entity_mention") or measurement.get("outcome_mention"))],
+                agent_raw=item.get("target_mention") or item.get("agent_mention") or item.get("intervention_target_mention") or item.get("condition_raw") or "",
+                dose=item.get("dose_raw") or exp.get("dose"), duration=item.get("duration_raw") or exp.get("duration_time"),
+                combination=row.get("combination_mode") if v3 and len(formal_interventions) > 1 else None,
+            ) for item in formal_interventions if item.get("intervention_type") != "observational_no_intervention"],
+            comparators=[Comparator(comparator_type="other", description=comparator_description)] if comparator_description else [],
+            measurements=[Measurement(assay=measurement.get("assay_or_readout_raw") if v3 else measurement.get("assay") or measurement.get("measurement_method"), endpoint=measurement.get("measured_entity_mention") or measurement.get("outcome_mention"))],
             observed_results=[ObservedResult(
                 endpoint=measurement.get("outcome_mention") or measurement.get("measured_entity_mention") or "",
-                direction={1: "increase", -1: "decrease", 0: "no_change"}.get(observation.get("observed_outcome_sign"), "unknown"),
-                effect_description=observation.get("observed_result") or "", effect_size=observation.get("effect_size_or_magnitude"),
-                statistical_support=observation.get("statistical_support"),
+                direction=formal_direction if v3 else {1: "increase", -1: "decrease", 0: "no_change"}.get(observation.get("observed_outcome_sign"), "unknown"),
+                effect_description=observation.get("observed_result") or "", effect_size=observation.get("quantitative_result_raw") if v3 else observation.get("effect_size_or_magnitude"),
+                statistical_support=observation.get("statistical_support_raw") if v3 else observation.get("statistical_support"),
             )],
             author_interpretation=AuthorInterpretation(text=interpretation.get("author_interpretation") or interpretation.get("author_conclusion"), certainty="asserted" if interpretation.get("author_conclusion") else "not_stated"),
-            causal_design=CausalDesign(evidence_type="rescue" if itype in {"rescue", "re_expression"} else "intervention" if intervention.get("intervention_sign") in {-1, 1} else "association", causal_strength=causal_strength, classification_basis=["Fulltext L1 v2 structured intervention; causal sign remains downstream"]),
+            causal_design=CausalDesign(
+                evidence_type="association" if multi_or_reviewable else "rescue" if itype in {"rescue", "re_expression"} else "intervention" if intervention_sign in {-1, 1} else "association",
+                causal_strength="association" if multi_or_reviewable else causal_strength,
+                classification_basis=["Formal observation interventions preserved as one group; scalar causal sign is unavailable for multi/reviewable evidence"]
+                if multi_or_reviewable else ["Formal v3 strict eligibility passed; downstream sign algebra remains explicit"],
+            ),
             evidence_anchors=anchors, extraction_confidence=float(exp.get("binding_confidence") or 0),
             validation_status="valid" if anchors and row.get("statement_role") == "current_study_experiment" else "partial" if anchors else "invalid",
-            extraction_origin="fulltext_l1_v2", observation_id=row.get("observation_id"), claim_id=row.get("observation_id"),
+            extraction_origin="fulltext_l1_v3" if v3 else "fulltext_l1_v2", observation_id=row.get("observation_id"), claim_id=row.get("observation_id"),
             experiment_id=exp.get("experiment_id"), evidence_family_id=exp.get("evidence_family_id"),
-            intervention_type=itype, intervention_sign=intervention.get("intervention_sign"),
+            intervention_type=itype, intervention_sign=intervention_sign,
             observed_outcome_sign=observation.get("observed_outcome_sign"), measurement_dimension=measurement.get("measurement_dimension"),
-            context_source=exp.get("context_source") or [], binding_confidence=exp.get("binding_confidence"),
-            extraction_version="fulltext_l1_v2_to_evidence_chain_v1",
+            context_source=[] if v3 else exp.get("context_source") or [], binding_confidence=1.0 if v3 else exp.get("binding_confidence"),
+            extraction_version="fulltext_l1_v3_to_evidence_chain_v1" if v3 else "fulltext_l1_v2_to_evidence_chain_v1",
         )
         chains.append(chain.model_dump(mode="json"))
     return chains
@@ -1323,8 +1339,19 @@ def _not_found_trace(claim: dict[str, Any], paper: dict[str, Any], status: str, 
 
 def _trace_from_v2_observation(row: dict[str, Any]) -> dict[str, Any]:
     prov = row.get("provenance") or {}; exp = row.get("experiment") or {}; intervention = row.get("intervention") or {}
+    v3 = str(row.get("schema_version") or "").endswith("schema_v3")
+    interventions = row.get("interventions") or ([] if not intervention else [intervention])
     measurement = row.get("measurement") or {}; observation = row.get("observation") or {}; interpretation = row.get("author_interpretation") or {}
+    span_by_id = {x.get("evidence_span_id"): x for x in (prov.get("evidence_spans") or [])}
     steps = []
+    if v3:
+        for index, item in enumerate(interventions):
+            for span_id in item.get("evidence_span_ids") or []:
+                value = span_by_id.get(span_id) or {}
+                if value.get("text"):
+                    steps.append({"step_id": f"{row.get('observation_id')}_intervention_{index}_{span_id}",
+                                  "role": "experimental_intervention_group", "text": value["text"],
+                                  "sentence_id": value.get("anchor_id"), "source": "fulltext_l1_v3_grounded_span"})
     for role, value in (
         ("experimental_intervention", intervention.get("intervention_span")),
         ("comparison_or_control", {"text": exp.get("comparison_arm") or exp.get("control_arm")}),
@@ -1342,16 +1369,26 @@ def _trace_from_v2_observation(row: dict[str, Any]) -> dict[str, Any]:
         "measured_endpoint": measurement.get("measured_entity_mention") or measurement.get("outcome_mention"),
         "genotype": exp.get("genotype"), "localization": exp.get("localization"),
     }.items() if value}
+    if v3:
+        context = {
+            "species": [exp.get("species_raw")] if exp.get("species_raw") else [],
+            "model_system": [exp.get("model_system_raw")] if exp.get("model_system_raw") else [],
+            "intervention_group": [[{"role": x.get("role"), "type": x.get("intervention_type"),
+                                      "raw": x.get("intervention_type_raw"), "target": x.get("target_mention"),
+                                      "status": x.get("normalization_status")} for x in interventions]],
+            "combination_mode": [row.get("combination_mode")],
+            "measured_endpoint": [measurement.get("endpoint_raw") or measurement.get("measured_entity_mention")],
+        }
     status = "complete" if steps and row.get("statement_role") == "current_study_experiment" else "partial"
     return {
         "schema_version": SCHEMA_VERSION, "reasoning_trace_id": "rt_" + _hash({"v2_observation": row.get("observation_id")})[:20],
         "claim_id": row.get("observation_id"), "paper_id": prov.get("paper_id"), "pmid": prov.get("pmid"), "pmcid": prov.get("pmcid"),
         "trace_status": status, "source_scope": "fulltext", "claim_identity_hash": _hash(row.get("observation_id")),
-        "reasoning_steps": steps, "author_conclusion": interpretation, "experimental_context": context,
+        "reasoning_steps": steps, "author_conclusion": row.get("interpretation_raw") if v3 else interpretation, "experimental_context": context,
         "strength_profile": strength_profile(steps), "strength_level": "structured_experimental_observation",
         "alternative_explanations": [], "limitations": interpretation.get("limitation_statements") or [], "missing_links": [],
         "retrieved_passage_ids": [], "source_record_hash": _hash(row), "extraction_origin": "fulltext_l1_v2_deterministic",
-        "api_call_made": False,
+        "api_call_made": False, "formal_eligibility": row.get("eligibility") if v3 else None,
     }
 
 

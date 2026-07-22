@@ -42,7 +42,8 @@ from code_engine.fulltext.fulltext_l1_v2 import (
     cache_key,
     deterministic_child_blocks,
     estimate_tokens,
-    parse_response,
+    formal_schema_hash,
+    hydrate_provider_draft,
     prompt_hash,
     schema_hash,
     split_transport_metadata,
@@ -52,11 +53,19 @@ from code_engine.schemas.fulltext_observation import (
     FulltextL1V2Response,
     fulltext_l1_v2_prompt_examples,
 )
+from code_engine.schemas.fulltext_observation_draft import (
+    DRAFT_SCHEMA_VERSION, FulltextL1DraftResponse, fulltext_l1_draft_prompt_examples,
+)
+from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import (
+    COMPLETENESS_POLICY_VERSION, DraftHydrationV3Error, HYDRATOR_VERSION,
+)
+from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION
+from code_engine.fulltext.experimental_semantics_registry import REGISTRY_VERSION
 
 
 SAMPLING_VERSION = "fulltext_l1_v2_provider_smoke_sampling_v1"
 COMPATIBILITY_POLICY_VERSION = "legacy_empty_prompt_compatibility_v1"
-DECISION_POLICY_VERSION = "fulltext_l1_v2_rerun_scope_decision_v1"
+DECISION_POLICY_VERSION = "fulltext_l1_v2_rerun_scope_decision_v2_raw_nonempty_visibility"
 SMOKE_SCHEMA_SUCCESS_THRESHOLD = 5 / 6
 MANIFEST_SIZE = 12
 
@@ -306,7 +315,7 @@ def build_request_chain_audit(run_dir: Path, inventory: dict[str, dict[str, Any]
     rendered = build_prompt(sample["paper"], sample["block"])
     body = build_deepseek_request_payload(rendered, model="deepseek-v4-pro", max_tokens=int(config["max_tokens"]),
                                           thinking_mode=DEFAULT_THINKING_MODE)
-    _, nonempty = fulltext_l1_v2_prompt_examples()
+    _, nonempty = fulltext_l1_draft_prompt_examples()
     historical_reasoning = []
     for item in inventory.values():
         usage = item["record"].get("usage") or {}
@@ -412,12 +421,18 @@ def _fresh_cache_status(artifacts: Path, expected_key: str, block_id: str, sourc
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         response = payload.get("response")
-        FulltextL1V2Response.model_validate(response)
+        FulltextL1DraftResponse.model_validate(response)
     except (OSError, json.JSONDecodeError, ValidationError):
         return False, str(path)
     valid = (
         payload.get("prompt_version") == PROMPT_VERSION and payload.get("prompt_hash") == prompt_hash()
-        and payload.get("schema_version") == SCHEMA_VERSION and payload.get("source_fulltext_hash") == source_hash
+        and payload.get("draft_schema_version") == DRAFT_SCHEMA_VERSION
+        and payload.get("hydrator_version") == HYDRATOR_VERSION
+        and payload.get("semantics_registry_version") == REGISTRY_VERSION
+        and payload.get("evidence_anchor_version") == EVIDENCE_ANCHOR_VERSION
+        and payload.get("completeness_policy_version") == COMPLETENESS_POLICY_VERSION
+        and payload.get("formal_schema_version") == SCHEMA_VERSION
+        and payload.get("source_fulltext_hash") == source_hash
         and payload.get("configured_thinking_mode") == DEFAULT_THINKING_MODE
         and payload.get("effective_thinking_mode") == DEFAULT_THINKING_MODE
         and payload.get("thinking_parameter_sent") is True
@@ -441,6 +456,7 @@ def build_manifest(run_dir: Path, records: list[dict[str, Any]], inventory: dict
             source_fulltext_hash=item["source_fulltext_hash"], chunk_hash=block["chunk_hash"],
             provider="deepseek", model="deepseek-v4-pro", config_hash=config_hash,
             candidate_prior_hash=prior_hash, thinking_mode=DEFAULT_THINKING_MODE,
+            max_tokens=int(config["max_tokens"]),
         )
         fresh, fresh_path = _fresh_cache_status(artifacts, key, str(block["block_id"]), item["source_fulltext_hash"])
         rows.append({
@@ -522,6 +538,8 @@ def decide_rerun_scope(compatibility: str, request_audit: dict[str, Any], smoke_
         return "insufficient_evidence_do_not_rerun", ["provider did not honor explicit thinking disabled; smoke stopped fail closed"]
     nonempty = smoke_results.get("nonempty_failures") or {}
     empty = smoke_results.get("legacy_empty") or {}
+    if empty.get("legacy_empty_nonempty_schema_failure_count", 0) > 0:
+        return "insufficient_evidence_do_not_rerun", ["legacy-empty raw nonempty responses failed Draft/Formal validation and cannot be counted as remained empty"]
     if nonempty.get("systematic_schema_drift") or nonempty.get("direct_strict_schema_success_count", 0) / 6 < SMOKE_SCHEMA_SUCCESS_THRESHOLD:
         return "insufficient_evidence_do_not_rerun", ["v4 strict-schema smoke success is below threshold or field drift remains"]
     if compatibility != "empty_results_semantically_compatible":
@@ -698,8 +716,10 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                     raw_path.write_text(str(raw), encoding="utf-8"); result["raw_response_path"] = str(raw_path)
                 results.append(result)
                 break
-            validated = FulltextL1V2Response.model_validate(payload)
-            observations = [row.model_dump(mode="json") for row in validated.experimental_observations]
+            validated = FulltextL1DraftResponse.model_validate(payload)
+            observations, hydration_audit = hydrate_provider_draft(
+                validated.model_dump(mode="json"), run_id=run_dir.name, paper=item["paper"], block=item["block"],
+                source_hash=item["source_fulltext_hash"], source_artifact=item.get("article_path") or "article_text.json")
             evidence_valid = all(all(str(span.get("text") or "") in item["block"]["text"] for span in (row.get("provenance") or {}).get("evidence_spans", [])) for row in observations)
             result = {"block_id": block_id, "status": "strict_schema_success", "api_called": True,
                       "observation_count": len(observations), "evidence_span_exactness": evidence_valid,
@@ -707,7 +727,12 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                       "reasoning_tokens": reasoning_tokens,
                       "raw_response_characters": len(str(raw or "")), "legacy_empty_false_negative_candidate": sample["sample_group"] == "historical_completed_empty" and bool(observations)}
             cache_payload = {
-                "schema_version": SCHEMA_VERSION, "schema_hash": schema_hash(),
+                "schema_version": DRAFT_SCHEMA_VERSION, "schema_hash": schema_hash(),
+                "draft_schema_version": DRAFT_SCHEMA_VERSION, "draft_schema_hash": schema_hash(),
+                "formal_schema_version": SCHEMA_VERSION, "formal_schema_hash": formal_schema_hash(),
+                "hydrator_version": HYDRATOR_VERSION, "semantics_registry_version": REGISTRY_VERSION,
+                "evidence_anchor_version": EVIDENCE_ANCHOR_VERSION,
+                "completeness_policy_version": COMPLETENESS_POLICY_VERSION,
                 "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
                 "rendered_system_prompt_hash": sample["rendered_system_prompt_hash"], "rendered_user_prompt_hash": None,
                 "parser_version": PARSER_VERSION, "extractor_version": EXTRACTOR_VERSION,
@@ -717,7 +742,7 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                     "thinking_mode": thinking},
                 "block_provenance": {"block_id": block_id, "parent_block_id": sample.get("parent_block_id"),
                     "child_block_id": sample.get("child_block_id")},
-                "origin": "fresh_v4_provider_smoke",
+                "hydration_audit": hydration_audit, "origin": "fresh_v5_draft_provider_smoke",
                 "configured_thinking_mode": DEFAULT_THINKING_MODE,
                 "effective_thinking_mode": DEFAULT_THINKING_MODE,
                 "thinking_parameter_sent": True,
@@ -745,7 +770,7 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                     raw_path.write_text(str(raw), encoding="utf-8"); result["raw_response_path"] = str(raw_path)
                 results.append(result)
                 break
-        except (ValidationError, json.JSONDecodeError) as exc:
+        except (ValidationError, DraftHydrationV3Error, json.JSONDecodeError) as exc:
             unknown_extra_paths = []
             if isinstance(exc, ValidationError):
                 unknown_extra_paths = [".".join(map(str, error["loc"])) for error in exc.errors() if error.get("type") == "extra_forbidden"]
@@ -753,6 +778,12 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                       "error": str(exc), "unknown_extra_paths": unknown_extra_paths,
                       "finish_reason": transport.get("finish_reason"), "usage": transport.get("usage") or {},
                       "raw_response_characters": len(str(raw or ""))}
+            try:
+                raw_payload = json.loads(raw) if isinstance(raw, str) else raw
+                raw_values = raw_payload.get("experimental_observations") if isinstance(raw_payload, dict) else None
+                result["raw_observation_count"] = len(raw_values) if isinstance(raw_values, list) else 0
+            except json.JSONDecodeError:
+                result["raw_observation_count"] = 0
         if raw not in (None, ""):
             raw_path = cache_root / f"smoke_{sample['expected_cache_identity']}.raw_response.txt"
             raw_path.write_text(str(raw), encoding="utf-8"); result["raw_response_path"] = str(raw_path)
@@ -775,6 +806,12 @@ def execute_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None = N
                   "became_nonempty_count": sum(row["status"] == "strict_schema_success" and row.get("observation_count", 0) > 0 for row in empty_results),
                   "nonempty_observation_count": sum(row.get("observation_count", 0) for row in empty_results),
                   "high_risk_valid_nonempty_count": sum(row["block_id"] in high_ids and row["status"] == "strict_schema_success" and row.get("observation_count", 0) > 0 for row in empty_results),
+                  "legacy_empty_raw_empty_count": sum(row.get("raw_observation_count", row.get("observation_count", 0)) == 0 for row in empty_results),
+                  "legacy_empty_raw_nonempty_count": sum(row.get("raw_observation_count", row.get("observation_count", 0)) > 0 for row in empty_results),
+                  "legacy_empty_draft_valid_nonempty_count": sum(row["status"] == "strict_schema_success" and row.get("observation_count", 0) > 0 for row in empty_results),
+                  "legacy_empty_formal_valid_nonempty_count": sum(row["status"] == "strict_schema_success" and row.get("observation_count", 0) > 0 for row in empty_results),
+                  "legacy_empty_nonempty_schema_failure_count": sum(row["status"] == "schema_failure" and row.get("raw_observation_count", 0) > 0 for row in empty_results),
+                  "legacy_empty_false_negative_candidate_count": sum(row.get("raw_observation_count", row.get("observation_count", 0)) > 0 for row in empty_results),
               },
               "scientific_input_complete_changed": False, "publication_attempted": False}
     output["provider_thinking_disable_not_honored"] = any(row["status"] == "provider_thinking_disable_not_honored" for row in results)

@@ -7,12 +7,13 @@ from pydantic import ValidationError
 import code_engine.fulltext.fulltext_l1_v2 as l1_v2
 from code_engine.fulltext.fulltext_l1_extractor import fulltext_l1_cache_key
 from code_engine.fulltext.fulltext_l1_v2 import (
-    SCHEMA_VERSION, build_prompt, cache_key, observation_as_legacy_claim, parse_response,
+    SCHEMA_VERSION, V2_SCHEMA_VERSION, build_prompt, cache_key, observation_as_legacy_claim, parse_response,
     run_fulltext_l1_v2_extraction,
 )
 from code_engine.fulltext.input_preparation import execute_missing_only, prepare_fulltext_inputs
 from code_engine.fulltext.reasoning_trace import evidence_chains_from_v2_observations, run_fulltext_reasoning_trace_stage
 from code_engine.schemas.fulltext_observation import measurement_dimension_values
+from code_engine.schemas.fulltext_observation_draft import DRAFT_SCHEMA_VERSION, fulltext_l1_draft_prompt_examples
 
 
 def span(text, kind="observation"):
@@ -24,7 +25,7 @@ def observation(observation_id="o1", experiment_id="e1", *, intervention_type="o
                 dimension="morphology_marker_panel", role="current_study_experiment", outcome="EMT"):
     sentence = f"COPS8 {intervention_type} changed {outcome}."
     return {
-        "schema_version": SCHEMA_VERSION, "observation_id": observation_id,
+        "schema_version": V2_SCHEMA_VERSION, "observation_id": observation_id,
         "provenance": {"paper_id": "P1", "pmid": "1", "pmcid": "PMC1", "source_document_id": "PMC1",
                        "section": "Results", "sentence_ids": ["s1"], "evidence_spans": [span(sentence)],
                        "fulltext_source_hash": "source"},
@@ -47,6 +48,27 @@ def observation(observation_id="o1", experiment_id="e1", *, intervention_type="o
     }
 
 
+def draft_payload(*, evidence="COPS8 overexpression induced EMT.", dimension="morphology_marker_panel"):
+    _, payload = fulltext_l1_draft_prompt_examples()
+    row = payload["experimental_observations"][0]
+    row["experiment"].update({"experiment_label_raw": "e1", "evidence_family_label_raw": "ef_e1",
+                              "species_raw": "human", "design_type_raw": "in_vitro"})
+    row["interventions"][0].update({"intervention_type_raw": "overexpression", "intervention_target_mention": "COPS8"})
+    row["measurement"].update({"measurement_dimension_raw": dimension, "measured_entity_mention": "EMT", "outcome_mention": "EMT"})
+    row["observation"].update({"observed_result": evidence, "lexical_direction_raw": "positive"})
+    row["candidate_relation"].update({"subject_mention": "COPS8", "object_mention": "EMT", "lexical_direction_raw": "positive"})
+    for item in row["evidence_texts"]:
+        item["text"] = evidence
+        item["evidence_anchor_ids"] = []
+    row["observation"]["evidence_text"]["text"] = evidence
+    row["observation"]["evidence_text"]["evidence_anchor_ids"] = []
+    row["interventions"][0]["evidence_text"]["text"] = evidence
+    row["interventions"][0]["evidence_text"]["evidence_anchor_ids"] = []
+    row["measurement"]["evidence_text"]["text"] = evidence
+    row["measurement"]["evidence_text"]["evidence_anchor_ids"] = []
+    return payload
+
+
 @pytest.mark.parametrize("row", [
     observation("gof"),
     observation("lof", intervention_type="silencing", intervention_sign=-1, outcome_sign=-1),
@@ -60,26 +82,24 @@ def observation(observation_id="o1", experiment_id="e1", *, intervention_type="o
     observation("endpoint2", experiment_id="e1", outcome="migration", dimension="migration"),
 ])
 def test_prompt_parser_fixtures_are_strict_and_grounded(row):
-    parsed = parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]})
+    parsed = parse_response({"schema_version": V2_SCHEMA_VERSION, "experimental_observations": [row]})
     assert parsed[0]["experiment"]["experiment_id"] == row["experiment"]["experiment_id"]
     assert parsed[0]["provenance"]["evidence_spans"]
 
 
 def test_two_experiments_and_multiple_endpoints_retain_identity():
     rows = [observation("a", "e1"), observation("b", "e1", outcome="migration", dimension="migration"), observation("c", "e2", species="mouse", design_type="in_vivo")]
-    parsed = parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": rows})
+    parsed = parse_response({"schema_version": V2_SCHEMA_VERSION, "experimental_observations": rows})
     assert len({x["experiment"]["experiment_id"] for x in parsed}) == 2
     assert parsed[0]["experiment"]["evidence_family_id"] == parsed[1]["experiment"]["evidence_family_id"]
     assert parsed[0]["experiment"]["species"] != parsed[2]["experiment"]["species"]
 
 
-def test_prompt_lists_schema_measurement_dimensions_from_single_source():
+def test_prompt_preserves_raw_measurement_vocabulary_for_later_normalization():
     prompt = build_prompt({}, {"paper_metadata": {}, "text": "fixture"})
-    for value in measurement_dimension_values():
-        assert f'"{value}"' in prompt
-    assert 'output "unknown"' in prompt
-    assert "Never invent a new measurement_dimension label" in prompt
-    assert "do not put an assay name, unit, or measured entity" in prompt
+    assert "measurement_dimension_raw" in prompt
+    assert "Preserve observed raw vocabulary" in prompt
+    assert "do not guess a Formal controlled enum" in prompt
 
 
 @pytest.mark.parametrize(("raw", "canonical"), [
@@ -98,7 +118,7 @@ def test_prompt_lists_schema_measurement_dimensions_from_single_source():
 ])
 def test_measurement_dimension_aliases_are_whitelist_canonicalized(raw, canonical):
     row = observation(dimension=raw); audit = []
-    parsed = parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]}, normalization_audit=audit)
+    parsed = parse_response({"schema_version": V2_SCHEMA_VERSION, "experimental_observations": [row]}, normalization_audit=audit)
     assert parsed[0]["measurement"]["measurement_dimension"] == canonical
     assert audit == [{
         "observation_id": "o1", "observation_index": 0, "measurement_dimension_raw": raw,
@@ -110,7 +130,7 @@ def test_measurement_dimension_aliases_are_whitelist_canonicalized(raw, canonica
 def test_unknown_measurement_dimension_is_not_fuzzily_mapped_and_audit_survives():
     row = observation(dimension="protein_abundance_score"); audit = []
     with pytest.raises(ValidationError):
-        parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]}, normalization_audit=audit)
+        parse_response({"schema_version": V2_SCHEMA_VERSION, "experimental_observations": [row]}, normalization_audit=audit)
     assert audit[0]["measurement_dimension_raw"] == "protein_abundance_score"
     assert audit[0]["measurement_dimension_normalized"] is None
     assert audit[0]["reason"] == "measurement_dimension_alias_not_whitelisted"
@@ -119,9 +139,9 @@ def test_unknown_measurement_dimension_is_not_fuzzily_mapped_and_audit_survives(
 
 def test_missing_span_and_extra_formal_decision_fail_closed():
     row = observation(); row["provenance"]["evidence_spans"] = []
-    with pytest.raises(ValidationError): parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]})
+    with pytest.raises(ValidationError): parse_response({"schema_version": V2_SCHEMA_VERSION, "experimental_observations": [row]})
     row = observation(); row["strict_core_eligible"] = True
-    with pytest.raises(ValidationError): parse_response({"schema_version": SCHEMA_VERSION, "experimental_observations": [row]})
+    with pytest.raises(ValidationError): parse_response({"schema_version": V2_SCHEMA_VERSION, "experimental_observations": [row]})
 
 
 def test_v1_and_v2_cache_keys_are_isolated_and_prompt_config_sensitive():
@@ -149,19 +169,19 @@ def test_v2_extractor_fixture_then_reasoning_chain_without_network(tmp_path):
     (artifacts / "candidates.jsonl").write_text(json.dumps({"paper_id": "P1", "pmid": "1", "pmcid": "PMC1", "abstract_observation_ids": ["abs1"]}) + "\n")
     (article / "article_text.json").write_text(json.dumps({"sections": [{"section_title": "Results", "text": "COPS8 overexpression induced EMT."}]}))
     class Client:
-        def extract_json(self, *_args, **_kwargs): return {"schema_version": SCHEMA_VERSION, "experimental_observations": [observation()]}
+        def extract_json(self, *_args, **_kwargs): return draft_payload()
     result = run_fulltext_l1_v2_extraction(run_dir=tmp_path / "run", fulltext_candidates_path=artifacts / "candidates.jsonl", parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture", api_enabled=True, network_enabled=True, client=Client())
     assert result["summary"]["observation_count"] == 1
-    assert result["claims"][0]["intervention_sign"] == 1
+    assert result["claims"][0]["intervention_type"] == "overexpression"
     chains = evidence_chains_from_v2_observations(result["observations"])
-    assert chains[0]["experiment_id"] == "e1"
+    assert chains[0]["experiment_id"].startswith("exp_")
     assert chains[0]["measurement_dimension"] == "morphology_marker_panel"
     class MustNotCall:
         def extract_json(self, *_args, **_kwargs): raise AssertionError("v2 structured trace must not make a second paid call")
     summary = run_fulltext_reasoning_trace_stage(tmp_path / "run", api_enabled=True, network_enabled=True, client=MustNotCall())
     assert summary["api_call_count"] == 0
     generated = [json.loads(x) for x in (artifacts / "experimental_evidence_chains.jsonl").read_text().splitlines()]
-    assert generated[0]["extraction_origin"] == "fulltext_l1_v2"
+    assert generated[0]["extraction_origin"] == "fulltext_l1_v3"
 
 
 def test_parse_failure_caches_raw_response_but_emits_no_observation(tmp_path):
@@ -175,22 +195,25 @@ def test_parse_failure_caches_raw_response_but_emits_no_observation(tmp_path):
     assert list((artifacts / "cache/fulltext_l1_v2").glob("*.raw_error.json"))
 
 
-def test_unknown_dimension_failure_preserves_raw_and_reason_in_parser_audit(tmp_path):
+def test_unknown_dimension_is_reviewable_preserves_raw_and_reason_in_parser_audit(tmp_path):
     artifacts = tmp_path / "run/artifacts"; article = artifacts / "fulltext/pmc_oa/PMC1"; article.mkdir(parents=True)
     (artifacts / "candidates.jsonl").write_text(json.dumps({"paper_id": "P1", "pmcid": "PMC1"}) + "\n")
     (article / "article_text.json").write_text(json.dumps({"sections": [{"section_title": "Results", "text": "result"}]}))
     class Client:
         def extract_json(self, *_args, **_kwargs):
-            return {"schema_version": SCHEMA_VERSION, "experimental_observations": [observation(dimension="protein_abundance_score")]}
+            return draft_payload(evidence="result", dimension="protein_abundance_score")
     result = run_fulltext_l1_v2_extraction(run_dir=tmp_path / "run", fulltext_candidates_path=artifacts / "candidates.jsonl", parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture", api_enabled=True, network_enabled=True, client=Client())
-    assert result["observations"] == []
-    assert result["summary"]["parse_errors"] == 1
+    assert len(result["observations"]) == 1
+    assert result["summary"]["parse_errors"] == 0
+    formal = result["observations"][0]
+    assert formal["measurement"]["measurement_dimension"] == "unknown"
+    assert formal["measurement"]["measurement_dimension_raw"] == "protein_abundance_score"
+    assert formal["eligibility"]["graph_eligible"] is True
+    assert formal["eligibility"]["strict_core_eligible"] is False
     audit = result["parser_normalization_audit"][0]
-    assert audit["measurement_dimension_raw"] == "protein_abundance_score"
-    assert audit["reason"] == "measurement_dimension_alias_not_whitelisted"
-    raw_error = json.loads(next((artifacts / "cache/fulltext_l1_v2").glob("*.raw_error.json")).read_text())
-    assert raw_error["raw_response"]["experimental_observations"][0]["measurement"]["measurement_dimension"] == "protein_abundance_score"
-    assert raw_error["parser_normalization_audit"][0]["measurement_dimension_normalized"] is None
+    mapping = next(x for x in audit["normalization_audit"] if x["category"] == "measurement_dimension")
+    assert mapping["status"] == "reviewable_unknown"
+    assert mapping["raw_value"] == "protein_abundance_score"
 
 
 def test_successful_alias_block_recovers_from_new_v2_cache(tmp_path):
@@ -199,7 +222,7 @@ def test_successful_alias_block_recovers_from_new_v2_cache(tmp_path):
     candidates.write_text(json.dumps({"paper_id": "P1", "pmcid": "PMC1"}) + "\n")
     (article / "article_text.json").write_text(json.dumps({"sections": [{"section_title": "Results", "text": "result"}]}))
     class First:
-        def extract_json(self, *_args, **_kwargs): return {"schema_version": SCHEMA_VERSION, "experimental_observations": [observation(dimension="protein_level")]}
+        def extract_json(self, *_args, **_kwargs): return draft_payload(evidence="result", dimension="protein_level")
     args = dict(run_dir=tmp_path / "run", fulltext_candidates_path=candidates, parsed_articles_dir=artifacts / "fulltext/pmc_oa", l1_provider="fixture", l1_model="fixture", api_enabled=True, network_enabled=True)
     first = run_fulltext_l1_v2_extraction(**args, client=First())
     class MustNotCall:
@@ -207,7 +230,7 @@ def test_successful_alias_block_recovers_from_new_v2_cache(tmp_path):
     second = run_fulltext_l1_v2_extraction(**args, client=MustNotCall())
     assert first["observations"][0]["measurement"]["measurement_dimension"] == "abundance_expression"
     assert second["summary"]["cache_hits"] == 1 and second["summary"]["api_calls_made"] == 0
-    assert second["parser_normalization_audit"][0]["measurement_dimension_raw"] == "protein_level"
+    assert any(x.get("raw_value") == "protein_level" for x in second["parser_normalization_audit"][0]["normalization_audit"])
     cached = json.loads(next((artifacts / "cache/fulltext_l1_v2").glob("*.json")).read_text())
     assert cached["configured_thinking_mode"] == "disabled"
     assert cached["effective_thinking_mode"] == "disabled"

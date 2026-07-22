@@ -8,7 +8,8 @@ import pytest
 
 import code_engine.fulltext.fulltext_l1_v2 as module
 from code_engine.extraction.deepseek_client import DeepSeekClient, DeepSeekExtractionError
-from code_engine.fulltext.fulltext_l1_v2 import SCHEMA_VERSION, run_fulltext_l1_v2_extraction
+from code_engine.fulltext.fulltext_l1_v2 import run_fulltext_l1_v2_extraction
+from code_engine.schemas.fulltext_observation_draft import DRAFT_SCHEMA_VERSION
 from code_engine.integration.atlas_publish import publish_completed_scientific_run
 
 
@@ -42,7 +43,7 @@ def _setup(tmp_path, monkeypatch, block_ids=("b1", "b2")):
 
 
 def _response():
-    return {"schema_version": SCHEMA_VERSION, "experimental_observations": []}
+    return {"schema_version": DRAFT_SCHEMA_VERSION, "experimental_observations": []}
 
 
 def _malformed(message="Unterminated string starting at: line 4948 column 36 (char 170288)", raw='{"secret":"sk-sensitive12345'):

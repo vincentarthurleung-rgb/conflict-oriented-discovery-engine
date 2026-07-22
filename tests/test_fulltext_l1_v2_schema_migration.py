@@ -64,8 +64,9 @@ def test_prompt_examples_are_complete_schema_owned_and_valid():
     assert set(row["provenance"]["evidence_spans"][0]) == set(EvidenceSpan.model_fields)
     prompt = build_prompt({}, {"paper_metadata": {}, "text": "text"})
     assert "Valid empty JSON output example:" in prompt
-    assert "Valid complete non-empty JSON output example:" in prompt
-    assert "intervention.type" in prompt and "measurement.dimension" in prompt
+    assert "Valid complete non-empty Draft JSON output example:" in prompt
+    assert "interventions" in prompt and "measurement_dimension_raw" in prompt
+    assert "source_document_id" not in prompt and "observation_id" not in prompt
     assert "Do not use Markdown code fences" in prompt
 
 

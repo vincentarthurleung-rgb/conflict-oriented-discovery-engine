@@ -18,9 +18,12 @@ from code_engine.fulltext.fulltext_l1_v2_smoke import (
     _select_nonempty,
     decide_rerun_scope,
     execute_smoke,
-    schema_hash,
 )
-from code_engine.schemas.fulltext_observation import fulltext_l1_v2_prompt_examples
+from code_engine.schemas.fulltext_observation_draft import DRAFT_SCHEMA_VERSION, fulltext_l1_draft_prompt_examples
+from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import COMPLETENESS_POLICY_VERSION, HYDRATOR_VERSION
+from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION
+from code_engine.fulltext.experimental_semantics_registry import REGISTRY_VERSION
+from code_engine.fulltext.fulltext_l1_v2 import SCHEMA_VERSION, formal_schema_hash, schema_hash
 
 
 def _block():
@@ -28,10 +31,10 @@ def _block():
             "text": "CURRENT_RESULTS: HIF1A knockdown decreased target expression.", "block_id": "b", "chunk_hash": "h"}
 
 
-def test_v4_prompt_and_exact_deepseek_http_body_contract():
+def test_v6_anchored_draft_prompt_and_exact_deepseek_http_body_contract():
     prompt = build_prompt({"abstract_observation_ids": []}, _block())
-    _, nonempty = fulltext_l1_v2_prompt_examples()
-    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v4_schema_examples"
+    _, nonempty = fulltext_l1_draft_prompt_examples()
+    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v6_anchor_contract"
     assert json.dumps(nonempty, ensure_ascii=False, separators=(",", ":")) in prompt
     body = build_deepseek_request_payload(prompt, model="deepseek-v4-pro", max_tokens=DEFAULT_MAX_TOKENS,
                                           thinking_mode="disabled")
@@ -109,16 +112,20 @@ def test_sampling_is_stable_and_covers_required_categories():
     assert sum(x["signals"]["low_experiment_probability"] for x in selected) >= 2
 
 
-def test_cache_identity_rejects_historical_prompt_and_accepts_native_v4(tmp_path):
+def test_cache_identity_rejects_historical_prompt_and_accepts_native_v6(tmp_path):
     cache = tmp_path / "cache" / "fulltext_l1_v2"; cache.mkdir(parents=True)
-    empty, _ = fulltext_l1_v2_prompt_examples()
+    empty, _ = fulltext_l1_draft_prompt_examples()
     path = cache / "key.json"
-    base = {"schema_version": "fulltext_l1_experimental_observation_schema_v2", "source_fulltext_hash": "source",
+    base = {"schema_version": DRAFT_SCHEMA_VERSION, "draft_schema_version": DRAFT_SCHEMA_VERSION,
+            "hydrator_version": HYDRATOR_VERSION, "semantics_registry_version": REGISTRY_VERSION,
+            "evidence_anchor_version": EVIDENCE_ANCHOR_VERSION,
+            "completeness_policy_version": COMPLETENESS_POLICY_VERSION,
+            "formal_schema_version": SCHEMA_VERSION, "source_fulltext_hash": "source",
             "response": empty, "block_provenance": {"block_id": "block"}}
     path.write_text(json.dumps({**base, "prompt_version": "fulltext_experimental_observation_prompt_v3_json_bounded", "prompt_hash": "old"}))
     assert _fresh_cache_status(tmp_path, "key", "block", "source")[0] is False
     path.write_text(json.dumps({**base, "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
-                                "origin": "fresh_v4_provider_smoke", "configured_thinking_mode": "disabled",
+                                "origin": "fresh_v6_draft_provider_smoke", "configured_thinking_mode": "disabled",
                                 "effective_thinking_mode": "disabled", "thinking_parameter_sent": True}))
     assert _fresh_cache_status(tmp_path, "key", "block", "source")[0] is True
 
@@ -134,6 +141,10 @@ def test_frozen_decision_policy_all_three_outcomes():
     assert decide_rerun_scope("empty_results_semantically_compatible", _audit(), result)[0] == "rerun_unresolved_107_only"
     converted = {"remained_empty_count": 5, "became_nonempty_count": 1, "high_risk_valid_nonempty_count": 1}
     assert decide_rerun_scope("empty_results_semantically_compatible", _audit(), {**result, "legacy_empty": converted})[0] == "rerun_all_200_blocks"
+    raw_nonempty_failed = {**all_empty, "legacy_empty_raw_nonempty_count": 1,
+                           "legacy_empty_nonempty_schema_failure_count": 1,
+                           "legacy_empty_false_negative_candidate_count": 1}
+    assert decide_rerun_scope("empty_results_semantically_compatible", _audit(), {**result, "legacy_empty": raw_nonempty_failed})[0] == "insufficient_evidence_do_not_rerun"
     drift = {"direct_strict_schema_success_count": 3, "systematic_schema_drift": True}
     assert decide_rerun_scope("empty_results_semantically_compatible", _audit(), {**result, "nonempty_failures": drift})[0] == "insufficient_evidence_do_not_rerun"
     assert decide_rerun_scope("compatibility_uncertain", _audit(), result)[0] == "rerun_all_200_blocks"
@@ -174,7 +185,7 @@ def test_execution_calls_only_manifest_and_writes_fresh_v4_cache(tmp_path):
     class Client:
         def extract_json_result(self, prompt, **kwargs):
             calls.append((prompt, kwargs))
-            empty, _ = fulltext_l1_v2_prompt_examples()
+            empty, _ = fulltext_l1_draft_prompt_examples()
             return JSONExtractionResult(payload=empty, raw_response=json.dumps(empty), finish_reason="stop",
                                         usage={"completion_tokens": 10}, provider_metadata={"response_format": {"type": "json_object"}})
     with patch("code_engine.fulltext.fulltext_l1_v2_smoke._jsonl", return_value=[{"block_id": "old"}]), \
@@ -191,6 +202,7 @@ def test_execution_calls_only_manifest_and_writes_fresh_v4_cache(tmp_path):
     assert sorted(path.name for path in cache.glob("*.json")) == ["key0.json", "key1.json"]
     payload = json.loads((cache / "key0.json").read_text())
     assert payload["prompt_version"] == PROMPT_VERSION and payload["schema_hash"] == schema_hash()
+    assert payload["formal_schema_hash"] == formal_schema_hash()
     assert payload["transport_metadata"]["thinking_mode"]["effective_mode"] == "disabled"
     assert result["scientific_input_complete_changed"] is False and result["publication_attempted"] is False
 
@@ -211,7 +223,7 @@ def test_positive_reasoning_tokens_stop_remaining_smoke_calls_fail_closed(tmp_pa
     calls = []
     class Client:
         def extract_json_result(self, prompt, **kwargs):
-            calls.append((prompt, kwargs)); empty, _ = fulltext_l1_v2_prompt_examples()
+            calls.append((prompt, kwargs)); empty, _ = fulltext_l1_draft_prompt_examples()
             return JSONExtractionResult(payload=empty, raw_response=json.dumps(empty), finish_reason="stop",
                                         usage={"completion_tokens": 20, "completion_tokens_details": {"reasoning_tokens": 7}},
                                         provider_metadata={"reasoning_content_present": False})

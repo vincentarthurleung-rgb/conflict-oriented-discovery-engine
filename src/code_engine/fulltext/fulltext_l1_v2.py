@@ -23,13 +23,23 @@ from code_engine.fulltext.fulltext_l1_extractor import (
     chunk_text, classify_section, select_sections,
 )
 from code_engine.schemas.fulltext_observation import (
-    FulltextL1V2Response, fulltext_l1_v2_prompt_examples,
+    FulltextL1V2Response, FulltextL1V3Response, fulltext_l1_v2_prompt_examples,
     measurement_dimension_values,
 )
+from code_engine.schemas.fulltext_observation_draft import (
+    DRAFT_SCHEMA_VERSION, FulltextL1DraftResponse, fulltext_l1_draft_prompt_examples,
+)
+from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import (
+    COMPLETENESS_POLICY_VERSION, HYDRATOR_VERSION, DraftHydrationV3Error,
+    TrustedDraftContextV3, hydrate_draft_response_v3,
+)
+from code_engine.fulltext.experimental_semantics_registry import REGISTRY_VERSION
+from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION, generate_evidence_anchors, render_anchored_block
 
-SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v2"
-PROMPT_VERSION = "fulltext_experimental_observation_prompt_v4_schema_examples"
-PARSER_VERSION = "fulltext_experimental_observation_parser_v3_transport_boundary"
+V2_SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v2"
+SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v3"
+PROMPT_VERSION = "fulltext_experimental_observation_prompt_v6_anchor_contract"
+PARSER_VERSION = "fulltext_experimental_observation_draft_parser_v1"
 EXTRACTOR_VERSION = "fulltext_l1_extractor_v2"
 DEFAULT_MAX_TOKENS = 32_768
 MIN_MAX_TOKENS = 1_024
@@ -43,28 +53,29 @@ DEFAULT_OBSERVATION_LIMIT = 40
 MAX_CHILDREN_PER_PARENT = 48
 MINIMUM_CHILD_INPUT_TOKENS = 80
 TOKEN_ESTIMATOR_VERSION = "conservative_unicode_chars_v1"
-CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v2_thinking_mode"
+CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v4_formal_v3_anchors"
 DEFAULT_THINKING_MODE: ThinkingMode = "disabled"
 PROMPT_RULES = (
     "Use only the supplied full-text block. External biological knowledge is forbidden.",
     "Seeds locate text only; never confirm them merely because they were supplied.",
     "Do not treat experimental group labels, samples, biopsies, or silenced cells as natural-state causal entities.",
     "Keep observed outcome separate from author interpretation and any derived causal interpretation.",
-    "Bind every material fact to an exact evidence span; use null/unknown when absent.",
-    "Multiple endpoints from one experiment are separate observations sharing experiment_id and evidence_family_id.",
+    "Bind every material fact to exact verbatim evidence text; use null/unknown only where the Draft schema permits it.",
+    "Multiple endpoints from one experiment are separate observations sharing the same raw experiment and evidence-family labels.",
     "Split different experiments or comparisons even when they occur in one sentence or paragraph.",
-    "Preserve rescue, re-expression, secondary, and combination interventions as hierarchical fields.",
+    "Preserve every rescue, re-expression, secondary, and combination intervention as a separate structured item in interventions.",
     "Label background/review statements separately from experiments performed in the current paper.",
     "Never output canonical IDs, final entity acceptance, derived causal sign, final formal relation, strict-core eligibility, conflict, or hypothesis decisions.",
     "Species/model/method context may only bind from this experiment block; Methods context from another experiment must not be imported.",
-    "Required nested objects are provenance, experiment, intervention, measurement, observation, author_interpretation, and candidate_relation.",
+    "Required Draft objects are experiment, interventions, measurement, observation, and candidate_relation; pipeline provenance is not a model responsibility.",
     "Extract only observations directly supported by this experiment block and never repeat an observation.",
     "Use the shortest original supporting span sufficient for the fields; never copy whole Results or Methods sections.",
     "Do not repeat one span in unnecessary fields. Keep distinct endpoints separate without semantic duplication.",
     "If no qualifying observation exists, return a valid JSON object with an empty experimental_observations array.",
-    "Every field name must match the examples character-for-character; never abbreviate or alias a field name.",
-    "Never use legacy aliases such as provenance.evidence_span, experiment.model_organism, experiment.experimental_system, intervention.type, intervention.target, measurement.dimension, measurement.entity, or observation.direction.",
-    "Unknown information must use the null, empty-list, or controlled unknown value shown as permitted by the schema; never omit a required field.",
+    "Every Draft field name must match the examples character-for-character; never abbreviate or alias a field name.",
+    "Do not output paper IDs, document IDs, hashes, block IDs, offsets, observation IDs, experiment IDs, evidence-family IDs, canonical fields, formal relations, core/conflict fields, hypotheses, or Atlas fields.",
+    "Preserve observed raw vocabulary in fields ending in _raw; do not guess a Formal controlled enum.",
+    "Unknown information must use the null, empty-list, or raw unknown value shown as permitted by the Draft schema; never omit a required field.",
 )
 
 _BLOCK_RESPONSE_ERROR_KINDS = {"malformed_json", "schema_parse_failure", "empty_json_content", "output_truncated"}
@@ -153,45 +164,57 @@ def _hash(value: Any) -> str:
 
 
 def prompt_hash() -> str:
-    empty_example, nonempty_example = fulltext_l1_v2_prompt_examples()
-    return _hash({"version": PROMPT_VERSION, "schema": SCHEMA_VERSION,
-                  "response_json_schema": FulltextL1V2Response.model_json_schema(),
+    empty_example, nonempty_example = fulltext_l1_draft_prompt_examples()
+    return _hash({"version": PROMPT_VERSION, "draft_schema": DRAFT_SCHEMA_VERSION,
+                  "response_json_schema": FulltextL1DraftResponse.model_json_schema(),
                   "empty_example": empty_example, "nonempty_example": nonempty_example,
-                  "measurement_dimensions": measurement_dimension_values(), "rules": PROMPT_RULES,
+                  "raw_vocabulary_policy": "preserve_raw_then_deterministically_normalize_v1", "rules": PROMPT_RULES,
                   "context_binding_order": "evidence_span>experiment_result_block>figure_or_table>linked_methods>subsection>paper_metadata>abstract_prior"})
 
 
 def schema_hash() -> str:
-    return _hash(FulltextL1V2Response.model_json_schema())
+    return _hash(FulltextL1DraftResponse.model_json_schema())
+
+
+def formal_schema_hash() -> str:
+    return _hash(FulltextL1V3Response.model_json_schema())
 
 
 def build_prompt(candidate: dict[str, Any], block: dict[str, Any]) -> str:
-    """Strict experimental-observation extraction prompt v2 (identity-bearing template)."""
+    """Strict provider Draft extraction prompt v6 with stable evidence anchors."""
     seed = {
         "case_id": candidate.get("case_id"),
         "subject_seed": candidate.get("subject"),
         "object_seed": candidate.get("object"),
-        "abstract_observation_ids": candidate.get("abstract_observation_ids", []),
+        "abstract_prior_references": candidate.get("abstract_observation_ids", []),
     }
     rules = "\n".join(f"{index}. {rule}" for index, rule in enumerate(PROMPT_RULES, 1))
-    dimensions = json.dumps(list(measurement_dimension_values()), ensure_ascii=False)
-    empty_example, nonempty_example = fulltext_l1_v2_prompt_examples()
+    empty_example, nonempty_example = fulltext_l1_draft_prompt_examples()
     empty_json = json.dumps(empty_example, ensure_ascii=False, separators=(",", ":"))
     nonempty_json = json.dumps(nonempty_example, ensure_ascii=False, separators=(",", ":"))
+    metadata = block.get("paper_metadata") or {}
+    source_document_id = str(metadata.get("pmcid") or metadata.get("pmid") or "current_document")
+    section_value = block.get("section") or {}
+    section = section_value.get("section_title") if isinstance(section_value, dict) else None
+    anchors = generate_evidence_anchors(block_id=str(block.get("block_id") or "current_block"),
+                                        source_document_id=source_document_id,
+                                        block_text=str(block["text"]), section=section)
+    anchored_text = render_anchored_block(anchors)
     return f"""Extract experimental observations from the supplied full-text block.
 Return exactly one JSON object and nothing else. Do not use Markdown code fences or add text before or after the JSON object.
 Valid empty JSON output example: {empty_json}
-Valid complete non-empty JSON output example: {nonempty_json}
-Use the exact, unabbreviated field names in these examples. Do not add aliases or omit required fields.
-Allowed measurement_dimension JSON string values: {dimensions}. If none applies, output "unknown".
-Never invent a new measurement_dimension label, and do not put an assay name, unit, or measured entity in measurement_dimension.
+Valid complete non-empty Draft JSON output example: {nonempty_json}
+Use the exact, unabbreviated Draft field names in these examples. Do not add aliases or omit required fields.
+Fields ending in _raw preserve the wording/category supported by the block. The pipeline will normalize them later.
+Pipeline metadata and deterministic identities are deliberately absent from this Draft contract; do not generate them.
+Use evidence_anchor_ids from the anchored block as the primary evidence binding. Never invent an anchor ID.
+Keep evidence text as an audit copy; never paraphrase it.
 Rules:
 {rules}
 TARGET_PRIOR (non-authoritative): {json.dumps(seed, ensure_ascii=False)}
-PAPER_METADATA: {json.dumps(block['paper_metadata'], ensure_ascii=False)}
 CONTEXT_BINDING_ORDER: evidence_span > experiment_result_block > figure_or_table > linked_methods > subsection > paper_metadata > abstract_prior
 FULLTEXT_BLOCK:
-{block['text']}"""
+{anchored_text}"""
 
 
 def resolve_max_tokens(value: int | str | None = None) -> int:
@@ -367,6 +390,7 @@ def split_transport_metadata(response: Any) -> tuple[Any, dict[str, Any]]:
 
 
 def parse_response(response: Any, *, normalization_audit: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Legacy Formal parser retained only for historical migration tooling."""
     response, _ = split_transport_metadata(response)
     if isinstance(response, str):
         response = json.loads(response)
@@ -376,18 +400,56 @@ def parse_response(response: Any, *, normalization_audit: list[dict[str, Any]] |
     return [row.model_dump(mode="json") for row in validated.experimental_observations]
 
 
+def parse_draft_response(response: Any) -> FulltextL1DraftResponse:
+    response, _ = split_transport_metadata(response)
+    if isinstance(response, str):
+        response = json.loads(response)
+    return FulltextL1DraftResponse.model_validate(response)
+
+
+def hydrate_provider_draft(response: Any, *, run_id: str, paper: dict[str, Any], block: dict[str, Any],
+                           source_hash: str, source_artifact: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    draft = parse_draft_response(response)
+    section_value = block.get("section") or {}
+    section = section_value.get("section_title") if isinstance(section_value, dict) else str(section_value or "") or None
+    context = TrustedDraftContextV3(
+        run_id=run_id, block_id=str(block["block_id"]),
+        parent_block_id=block.get("parent_block_id") or block.get("block_id"),
+        child_block_id=block.get("child_block_id"), block_text=str(block["text"]),
+        source_block_hash=str(block.get("chunk_hash") or _hash(block["text"])),
+        source_document_id=str(paper.get("pmcid") or paper.get("pmid") or paper.get("paper_id")),
+        paper_id=str(paper.get("paper_id") or paper.get("pmid") or paper.get("pmcid")),
+        pmid=str(paper.get("pmid")) if paper.get("pmid") is not None else None,
+        pmcid=str(paper.get("pmcid")) if paper.get("pmcid") is not None else None,
+        fulltext_source_hash=source_hash, source_artifact=source_artifact, section=section,
+    )
+    hydrated = hydrate_draft_response_v3(draft, context)
+    if hydrated.rejected:
+        reasons = ",".join(f"{x['observation_index']}:{x['status']}" for x in hydrated.rejected)
+        error = DraftHydrationV3Error("draft_hydration_incomplete", reasons)
+        error.hydration_audit = [*hydrated.audit, *hydrated.rejected]
+        raise error
+    return list(hydrated.formal_response["experimental_observations"]), hydrated.audit
+
+
 def cache_key(*, source_fulltext_hash: str, chunk_hash: str, provider: str, model: str,
               config_hash: str, candidate_prior_hash: str,
-              thinking_mode: ThinkingMode = DEFAULT_THINKING_MODE) -> str:
+              thinking_mode: ThinkingMode = DEFAULT_THINKING_MODE,
+              max_tokens: int = DEFAULT_MAX_TOKENS) -> str:
     mode = validate_thinking_mode(thinking_mode)
     return _hash({
         "cache_identity_version": CACHE_IDENTITY_VERSION,
         "source_fulltext_hash": source_fulltext_hash, "chunk_hash": chunk_hash,
-        "prompt_hash": prompt_hash(), "schema_version": SCHEMA_VERSION,
+        "prompt_hash": prompt_hash(), "draft_schema_version": DRAFT_SCHEMA_VERSION,
+        "draft_schema_hash": schema_hash(), "hydrator_version": HYDRATOR_VERSION,
+        "semantics_registry_version": REGISTRY_VERSION,
+        "evidence_anchor_version": EVIDENCE_ANCHOR_VERSION,
+        "completeness_policy_version": COMPLETENESS_POLICY_VERSION,
+        "formal_schema_version": SCHEMA_VERSION, "formal_schema_hash": formal_schema_hash(),
         "extractor_version": EXTRACTOR_VERSION, "parser_version": PARSER_VERSION,
         "chunker_version": CHUNKER_VERSION, "relevant_config_hash": config_hash,
         "provider": provider, "model": model, "candidate_prior_hash": candidate_prior_hash,
-        "thinking_mode": mode,
+        "thinking_mode": mode, "max_tokens": int(max_tokens),
     })
 
 
@@ -423,26 +485,30 @@ def build_experiment_blocks(article: dict[str, Any], paper: dict[str, Any], *, m
 def observation_as_legacy_claim(row: dict[str, Any]) -> dict[str, Any]:
     """Explicit compatibility adapter; it never invents canonical or formal decisions."""
     rel = row.get("candidate_relation") or {}; prov = row.get("provenance") or {}
-    obs = row.get("observation") or {}; exp = row.get("experiment") or {}; intervention = row.get("intervention") or {}; measurement = row.get("measurement") or {}
+    obs = row.get("observation") or {}; exp = row.get("experiment") or {}; measurement = row.get("measurement") or {}
+    interventions = row.get("interventions") or []
+    intervention = interventions[0] if interventions else (row.get("intervention") or {})
+    v3 = row.get("schema_version") == SCHEMA_VERSION
     spans = prov.get("evidence_spans") or []
     return {
         "claim_id": row.get("observation_id"), "observation_id": row.get("observation_id"),
-        "source_scope": "full_text", "schema_version": SCHEMA_VERSION,
+        "source_scope": "full_text", "schema_version": row.get("schema_version") or V2_SCHEMA_VERSION,
         "paper_id": prov.get("paper_id"), "pmid": prov.get("pmid"), "pmcid": prov.get("pmcid"),
         "section_title": prov.get("section"), "section_type": classify_section(str(prov.get("section") or "")),
         "subject": rel.get("subject_mention"), "subject_raw": rel.get("subject_mention"), "predicate": rel.get("relation_raw"),
         "object": rel.get("object_mention"), "object_raw": rel.get("object_mention"), "relation_raw": rel.get("relation_raw"),
         "polarity": rel.get("lexical_direction", "unclear"), "direction": rel.get("lexical_direction", "unclear"),
-        "relation_family": rel.get("evidence_design_candidate"), "evidence_sentence": " ".join(str(x.get("text") or "") for x in spans),
-        "context": {k: exp.get(k) for k in ("species", "model_system", "cell_line", "cell_type", "tissue", "disease_model", "genotype", "localization")},
+        "relation_family": rel.get("evidence_design_raw") if v3 else rel.get("evidence_design_candidate"), "evidence_sentence": " ".join(str(x.get("text") or "") for x in spans),
+        "context": {k: exp.get(k) for k in (("species_raw", "model_system_raw", "experimental_unit_raw", "tissue_raw", "disease_model_raw", "genotype_raw") if v3 else ("species", "model_system", "cell_line", "cell_type", "tissue", "disease_model", "genotype", "localization"))},
         "experiment_id": exp.get("experiment_id"), "evidence_family_id": exp.get("evidence_family_id"),
-        "intervention_target": intervention.get("intervention_target_mention"), "intervention_type": intervention.get("intervention_type"),
+        "intervention_target": intervention.get("target_mention") if v3 else intervention.get("intervention_target_mention"), "intervention_type": intervention.get("intervention_type"),
         "intervention_sign": intervention.get("intervention_sign"), "observed_outcome_sign": obs.get("observed_outcome_sign"),
         "observed_result": obs.get("observed_result"), "measurement_dimension": measurement.get("measurement_dimension"),
         "measured_entity": measurement.get("measured_entity_mention") or measurement.get("outcome_mention"),
-        "evidence_design": rel.get("evidence_design_candidate"),
+        "evidence_design": rel.get("evidence_design_raw") if v3 else rel.get("evidence_design_candidate"),
         "linked_abstract_observation_ids": [row.get("source_abstract_observation_id")] if row.get("source_abstract_observation_id") else [],
-        "extraction_warnings": list(row.get("extraction_warnings") or []) + ["v2_compatibility_adapter_no_formal_decisions"],
+        "extraction_warnings": list(row.get("extraction_warnings") or []) + (["legacy_lossy_projection_multi_intervention"] if len(interventions) > 1 else []) + ["compatibility_adapter_no_formal_decisions"],
+        "legacy_lossy_projection": {"discarded_intervention_ids": [x.get("intervention_id") for x in interventions[1:]], "lossy": len(interventions) > 1},
         "fulltext_l1_v2_observation": row,
     }
 
@@ -525,38 +591,39 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
             if total_blocks >= max_total_chunks: break
             total_blocks += 1
             block["paper_metadata"]["fulltext_source_hash"] = source_hash
-            key = cache_key(source_fulltext_hash=source_hash, chunk_hash=block["chunk_hash"], provider=l1_provider, model=l1_model, config_hash=config_hash, candidate_prior_hash=_hash({k: paper.get(k) for k in ("subject", "object", "abstract_observation_ids")}), thinking_mode=configured_thinking_mode)
+            key = cache_key(source_fulltext_hash=source_hash, chunk_hash=block["chunk_hash"], provider=l1_provider, model=l1_model, config_hash=config_hash, candidate_prior_hash=_hash({k: paper.get(k) for k in ("subject", "object", "abstract_observation_ids")}), thinking_mode=configured_thinking_mode, max_tokens=effective_max_tokens)
             paths = [cache / f"{key}.json"] + ([shared / f"{key}.json"] if shared_enabled else [])
             prior_failures = sorted(cache.glob(f"{key}.*.raw_error.json")) + sorted(cache.glob(f"{key}.raw_error.json"))
             hit = next((p for p in paths if p.is_file()), None)
-            if hit is None:
-                # Formal same-run offline recovery may have an older prompt
-                # identity. Only explicitly provenance-marked compatible caches
-                # can cross that identity boundary.
-                for recovered in cache.glob("*.json"):
-                    if recovered.name.endswith(".raw_error.json"):
-                        continue
-                    try:
-                        candidate_cache = json.loads(recovered.read_text(encoding="utf-8"))
-                    except (OSError, json.JSONDecodeError):
-                        continue
-                    bp = candidate_cache.get("block_provenance") or {}
-                    if (candidate_cache.get("origin") in {"recovered_from_historical_raw_response", "recovered_from_historical_success_cache"} and
-                        bp.get("recovered_offline_compatible") is True and
-                        bp.get("block_id") == block["block_id"] and
-                        candidate_cache.get("source_fulltext_hash") == source_hash and
-                        candidate_cache.get("provider", l1_provider) == l1_provider and
-                        candidate_cache.get("model", l1_model) == l1_model):
-                        hit = recovered; break
+            if hit is not None:
+                try:
+                    cached_identity = json.loads(hit.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    hit = None
+                else:
+                    if not (
+                        cached_identity.get("prompt_version") == PROMPT_VERSION
+                        and cached_identity.get("prompt_hash") == prompt_hash()
+                        and cached_identity.get("draft_schema_version") == DRAFT_SCHEMA_VERSION
+                        and cached_identity.get("draft_schema_hash") == schema_hash()
+                        and cached_identity.get("hydrator_version") == HYDRATOR_VERSION
+                        and cached_identity.get("semantics_registry_version") == REGISTRY_VERSION
+                        and cached_identity.get("evidence_anchor_version") == EVIDENCE_ANCHOR_VERSION
+                        and cached_identity.get("completeness_policy_version") == COMPLETENESS_POLICY_VERSION
+                        and cached_identity.get("formal_schema_version") == SCHEMA_VERSION
+                        and cached_identity.get("formal_schema_hash") == formal_schema_hash()
+                    ):
+                        hit = None
             raw_rows = []
             transport: dict[str, Any] = {}
             scientific_payload: Any = {}
             block_audit: list[dict[str, Any]] = []
             if hit:
                 payload = json.loads(hit.read_text(encoding="utf-8"))
-                if payload.get("schema_version") != SCHEMA_VERSION: block_index += 1; continue
                 scientific_payload = payload.get("response")
-                raw_rows = parse_response(scientific_payload, normalization_audit=block_audit)
+                raw_rows, block_audit = hydrate_provider_draft(
+                    scientific_payload, run_id=run.name, paper=paper, block=block,
+                    source_hash=source_hash, source_artifact=str(article_path))
                 transport = dict(payload.get("transport_metadata") or {})
                 cache_hits += 1; completed_blocks += 1
                 status = "recovered_offline_success" if payload.get("origin", "").startswith("recovered_from_historical") else "cache_hit"
@@ -579,11 +646,19 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                     response_received = True
                     scientific_payload, transport = split_transport_metadata(response)
                     api_calls += 1; actual_llm_calls += int(transport.get("attempt_count") or 1)
-                    raw_rows = parse_response(scientific_payload, normalization_audit=block_audit)
+                    raw_rows, block_audit = hydrate_provider_draft(
+                        scientific_payload, run_id=run.name, paper=paper, block=block,
+                        source_hash=source_hash, source_artifact=str(article_path))
                     if len(raw_rows) > observation_limit:
                         raise OverflowError(f"observation_overflow:{len(raw_rows)}>{observation_limit}")
                     status = "completed"; completed_blocks += 1
-                    payload = {"schema_version": SCHEMA_VERSION, "prompt_version": PROMPT_VERSION,
+                    payload = {"schema_version": DRAFT_SCHEMA_VERSION, "draft_schema_version": DRAFT_SCHEMA_VERSION,
+                               "draft_schema_hash": schema_hash(), "formal_schema_version": SCHEMA_VERSION,
+                               "formal_schema_hash": formal_schema_hash(), "hydrator_version": HYDRATOR_VERSION,
+                               "semantics_registry_version": REGISTRY_VERSION,
+                               "evidence_anchor_version": EVIDENCE_ANCHOR_VERSION,
+                               "completeness_policy_version": COMPLETENESS_POLICY_VERSION,
+                               "prompt_version": PROMPT_VERSION,
                                "schema_hash": schema_hash(), "prompt_hash": prompt_hash(), "parser_version": PARSER_VERSION,
                                "extractor_version": EXTRACTOR_VERSION, "source_fulltext_hash": source_hash,
                                "response": scientific_payload, "transport_metadata": transport,
@@ -649,9 +724,11 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                         if len(children) >= 2:
                             blocks[block_index + 1:block_index + 1] = children
                     block_index += 1; continue
-                except (ValidationError, ValueError, TypeError, json.JSONDecodeError, OverflowError) as exc:
+                except (ValidationError, ValueError, TypeError, json.JSONDecodeError, OverflowError, DraftHydrationV3Error) as exc:
                     if not response_received:
                         raise
+                    if isinstance(exc, DraftHydrationV3Error):
+                        block_audit = list(getattr(exc, "hydration_audit", []))
                     parse_errors += 1
                     timestamp = datetime.now(timezone.utc).isoformat()
                     stamp = timestamp.replace(":", "").replace("+", "_").replace(".", "_")
@@ -734,9 +811,25 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
     write_jsonl("fulltext_l1_v2_preflight.jsonl", preflight_records)
     write_jsonl("l35_fulltext_l1_chunks.jsonl", [{"chunk_id": x.get("block_id"), "cache_key": x.get("cache_key"), "cache_status": "hit" if x.get("status") == "cache_hit" else "miss", "api_call_made": bool(x.get("api_called")), "extraction_status": x.get("status")} for x in executions])
     write_jsonl("l35_fulltext_l1_claims.jsonl", claims)
-    fields = {"species": "species", "intervention": "intervention_target_mention", "comparison": "comparison_arm", "measurement": "measurement_dimension"}
-    coverage = {"schema_version": "fulltext_l1_schema_coverage_v1", "v1_record_count": 0, "v2_record_count": len(observations), "experiment_count": len({x["experiment"]["experiment_id"] for x in observations}), "observation_count": len(observations), "context_binding_coverage": sum(bool(x.get("context_source")) for x in bindings) / len(bindings) if bindings else 0.0}
-    coverage.update({f"{name}_coverage": sum(bool((x["experiment"] if name in {"species", "comparison"} else x[name]).get(field)) and (x["measurement"].get(field) != "unknown" if name == "measurement" else True) for x in observations) / len(observations) if observations else 0.0 for name, field in fields.items()})
+    coverage = {"schema_version": "fulltext_l1_schema_coverage_v1", "v1_record_count": 0,
+                "v2_record_count": sum(x.get("schema_version") == V2_SCHEMA_VERSION for x in observations),
+                "v3_record_count": sum(x.get("schema_version") == SCHEMA_VERSION for x in observations),
+                "experiment_count": len({x["experiment"]["experiment_id"] for x in observations}),
+                "observation_count": len(observations),
+                "context_binding_coverage": sum(bool(x.get("context_source")) for x in bindings) / len(bindings) if bindings else 0.0}
+    def covered(row: dict[str, Any], name: str) -> bool:
+        if name == "species":
+            return bool(row["experiment"].get("species_raw") or row["experiment"].get("species"))
+        if name == "comparison":
+            return bool(row["experiment"].get("comparison_arm_raw") or row["experiment"].get("comparison_arm"))
+        if name == "intervention":
+            if "interventions" in row:
+                return any(bool(x.get("target_mention") or x.get("agent_or_drug_mention")) for x in row["interventions"])
+            return bool((row.get("intervention") or {}).get("intervention_target_mention"))
+        value = (row.get("measurement") or {}).get("measurement_dimension")
+        return bool(value and value != "unknown")
+    coverage.update({f"{name}_coverage": sum(covered(x, name) for x in observations) / len(observations) if observations else 0.0
+                     for name in ("species", "intervention", "comparison", "measurement")})
     statuses = {str(x.get("status")) for x in executions}
     l1_status = "completed_with_block_failures" if parse_errors else "completed" if observations else "planned" if dry_run else "skipped_provider_unavailable" if statuses and statuses <= {"blocked"} else "completed_no_observations"
     partial = bool(parse_errors)
@@ -998,14 +1091,14 @@ def recover_fulltext_l1_v2_offline(run_dir: str | Path, *, max_tokens: int | Non
         source_hash = context.fulltext_source_hash if migrated else record.get("source_fulltext_hash")
         recovered_cache_path = cache / f"{record.get('cache_key') or _hash(block_id)}.recovered.{SCHEMA_MIGRATION_VERSION}.json"
         prior_recovered = json.loads(recovered_cache_path.read_text(encoding="utf-8")) if recovered_cache_path.is_file() else {}
-        success = {"schema_version": SCHEMA_VERSION, "origin": "recovered_from_historical_raw_response",
+        success = {"schema_version": V2_SCHEMA_VERSION, "origin": "recovered_from_historical_raw_response",
             "original_prompt_version": record.get("prompt_version"), "original_prompt_hash": record.get("prompt_hash"),
             "original_parser_version": record.get("parser_version"), "original_extractor_version": record.get("extractor_version"),
             "recovery_parser_version": PARSER_VERSION, "schema_migration_version": SCHEMA_MIGRATION_VERSION,
             "recovered_at": prior_recovered.get("recovered_at") or datetime.now(timezone.utc).isoformat(), "raw_response_hash": _hash(raw_text),
             "source_block_hash": context.source_block_hash if migrated else None,
             "source_fulltext_hash": source_hash, "provider": record.get("provider"), "model": record.get("model"),
-            "response": {"schema_version": SCHEMA_VERSION, "experimental_observations": clean_rows},
+            "response": {"schema_version": V2_SCHEMA_VERSION, "experimental_observations": clean_rows},
             "transport_metadata": {"raw_response_artifact": str(raw_path), "warnings": legacy_transport.get("warnings") or [],
                 "finish_reason": record.get("finish_reason"), "usage": record.get("usage") if record.get("usage") else None,
                 "usage_availability": "available" if record.get("usage") else "unavailable",

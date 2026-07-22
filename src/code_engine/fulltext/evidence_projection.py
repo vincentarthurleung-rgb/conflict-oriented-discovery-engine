@@ -375,6 +375,13 @@ def build_reasoning_chain(
         enriched["measurement_dimension"] = dimension
     enriched = apply_evidence_semantics(enriched)
     sign = enriched.get("derived_causal_sign")
+    chain_interventions = (chain or {}).get("interventions") or []
+    grouped_intervention = len(chain_interventions) > 1
+    reviewable_group = grouped_intervention or any("scalar causal sign is unavailable" in str(x) for x in ((chain or {}).get("causal_design") or {}).get("classification_basis", []))
+    if reviewable_group:
+        sign = None
+        enriched["derived_causal_sign"] = None
+        enriched["conflict_eligible"] = False
     evidence_id = str(enriched.get("observation_id") or enriched.get("claim_id") or "")
     experiment_id = str((chain or {}).get("chain_id") or enriched.get("chunk_id") or evidence_id)
     paper_id = str(enriched.get("pmid") or enriched.get("paper_id") or (chain or {}).get("paper_id") or "")
@@ -389,12 +396,14 @@ def build_reasoning_chain(
     intervention_derived = str(enriched.get("evidence_design") or "") in {
         "gain_of_function", "loss_of_function", "pharmacological_intervention", "rescue",
     }
-    complete = bool(sign in {-1, 1} and dimension and anchors and (not intervention_derived or enriched.get("intervention_type")))
+    complete = bool(not reviewable_group and sign in {-1, 1} and dimension and anchors and (not intervention_derived or enriched.get("intervention_type")))
     warnings = []
     if sign not in {-1, 1}: warnings.append("derived_causal_sign_missing")
     if not dimension: warnings.append("measurement_dimension_missing")
     if not anchors: warnings.append("provenance_anchor_missing")
     if intervention_derived and not enriched.get("intervention_type"): warnings.append("intervention_scope_unresolved")
+    if grouped_intervention: warnings.append("multi_intervention_group_not_projected_as_independent_causal_edges")
+    if reviewable_group: warnings.append("reviewable_observation_strict_core_blocked")
     payload = EvidenceReasoningChain(
         chain_id=_stable_hash([paper_id, evidence_id, experiment_id], "erc_"), paper_id=paper_id,
         pmid=str(enriched.get("pmid") or "") or None, pmcid=str(enriched.get("pmcid") or "") or None,
