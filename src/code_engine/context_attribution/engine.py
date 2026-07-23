@@ -5,13 +5,14 @@ import json
 from collections import defaultdict
 from typing import Any
 
+from .composition import composition_identity, load_composition_policy
 from .models import ContextExtraction, ContextPairAttribution, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
 from .registry import RegistryResolution, load_registry, resolve_factors, resolve_registry
 from .validation import (
     HYDRATOR_VERSION, LOCAL_CHAIN_INFERENCE_POLICY_VERSION, VALIDATOR_VERSION,
 )
 
-PROMPT_VERSION = "context_attribution_prompts_v3"
+PROMPT_VERSION = "context_attribution_prompts_v4"
 CANDIDATE_POLICY_VERSION = "deterministic_conflict_candidates_v1"
 COMPARABILITY_POLICY_VERSION = "context_comparability_policy_v1"
 
@@ -72,7 +73,10 @@ def build_fulltext_input(observation: dict[str, Any], profiles: list[str]) -> di
             "authoritative_evidence_anchor_ids": sorted({x for item in interventions for x in anchor_ids(item)})
         },
         "comparator_or_control": {
-            "value": experiment.get("comparison_arm_raw") or experiment.get("control_arm_raw"),
+            "value": {
+                "comparison_arm_raw": experiment.get("comparison_arm_raw"),
+                "control_arm_raw": experiment.get("control_arm_raw"),
+            },
             "authoritative_evidence_anchor_ids": authoritative_ids(observation.get("evidence_span_ids"))
         },
         "measurement": {"value": measurement, "authoritative_evidence_anchor_ids": anchor_ids(measurement)},
@@ -124,6 +128,7 @@ def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], 
         "thinking_mode": thinking_mode, "max_tokens": max_tokens,
         "validator_version": VALIDATOR_VERSION, "hydrator_version": HYDRATOR_VERSION,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        **composition_identity(),
         "normalization_registry_version": registry["normalization_registry_version"],
     })
 
@@ -183,18 +188,28 @@ def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
         "Return exactly one valid JSON object. Do not output Markdown or any text outside the JSON object. "
         "Use only factor_id values present in factor_registry. Select evidence_anchor_ids only from the "
         "authoritative anchor IDs in this observation input; never create a span ID, hash ID, temporary ID, "
-        "or any other anchor. raw_value and normalized_value have different meanings: raw_value must copy a "
-        "surface expression directly from a selected authoritative anchor, or for status "
-        "inferred_from_local_chain directly from a named local chain node. Put any model normalization "
+        "or any other anchor. For status explicit, raw_value is a verbatim surface copy, not a paraphrase: "
+        "it must occur continuously in one selected authoritative anchor after only NFKC, case, whitespace, "
+        "punctuation, and Unicode-separator normalization. Preserve word order. Never expand abbreviations, "
+        "substitute synonyms, summarize outcomes, or add absent words. Thus CRC cannot become colorectal "
+        "cancer; 'mRNA expression of CSN8' cannot become 'CSN8 mRNA expression'; absent 'versus control' or "
+        "'in vitro' cannot be added. raw_value and normalized_value have different meanings. Put any model normalization "
         "proposal in normalized_candidate and set normalized_value to null; only the deterministic resolver "
         "fills normalized_value. A normalization must never replace raw_value. Omit evidence_text and "
         "authoritative_evidence: the deterministic hydrator fills them from selected anchors. Never output "
-        "the phrase 'Locally supported value:' or any summarized/paraphrased evidence_text. For local-chain "
-        "inference, provide source_chain_node_ids, supporting evidence_anchor_ids, and inference_rule. "
-        "Use unknown with raw_value='unknown', no anchors, no chain nodes, and no normalization whenever the "
+        "the phrase 'Locally supported value:' or any summarized/paraphrased evidence_text. For status "
+        "inferred_from_local_chain, raw_value must be null. Provide raw_components, source_chain_node_ids, "
+        "supporting evidence_anchor_ids, and an allowed inference_rule. Every component must name a supplied "
+        "chain_node_id and allowed field_path, copy one continuous surface from that field, and cite anchors "
+        "owned by that node. Never combine multiple fields into one component, never choose component order "
+        "freely, and never output composed_value, composition_rule, or composition_provenance; the deterministic "
+        "composer creates them. Use unknown with raw_value=null, no anchors, no chain nodes, no components, "
+        "no rule, and no normalization whenever the "
         "supplied evidence is insufficient. "
         "Use only supplied evidence; never use external knowledge. Output unknown when unsupported. "
-        "Do not treat Methods as an observed result. Never invent species, tissue, dose, time, or design. "
+        "Do not treat Methods as an observed result. Never infer species from a cell line: A549 may support "
+        "cell_line='A549' but species must be unknown unless a supplied surface or controlled rule supports it. "
+        "Never invent species, tissue, dose, time, comparator, or design. "
         "Every non-unknown value needs anchors belonging to that observation. Abstract inputs may use only "
         "the abstract evidence sentence; fulltext inputs may use only its local evidence chain. Preserve "
         "multi-intervention combinations. Distinguish same from semantically equivalent. Different does not "
@@ -213,12 +228,25 @@ def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
         if task == "observation_context_extraction"
         else examples["pair_example"]["output"]
     )
+    composition_policy, _ = load_composition_policy()
     return json.dumps({"task": task, "prompt_version": PROMPT_VERSION, "rules": rules,
                        "schema_valid_json_example": schema_valid_json_example,
-                       "examples": examples, "factor_registry": factors, "input": payload},
+                       "examples": examples, "factor_registry": factors,
+                       "local_chain_composition_policy": composition_policy,
+                       "input": payload},
                       ensure_ascii=False, sort_keys=True)
 
 def _schema_valid_cross_domain_examples() -> dict[str, Any]:
+    def provider_dump(value: ContextExtraction) -> dict[str, Any]:
+        payload = value.model_dump(mode="json")
+        for factor in payload["context_factors"]:
+            for field in (
+                "evidence_text", "authoritative_evidence", "composed_value",
+                "composition_rule", "composition_provenance", "legacy_unverifiable",
+            ):
+                factor.pop(field, None)
+        return payload
+
     explicit_input = {
         "observation_id": "example_biomedical_explicit",
         "input_mode": "fulltext_evidence_chain",
@@ -235,31 +263,110 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
             "normalized_candidate": "Homo sapiens",
             "status": "explicit", "evidence_anchor_ids": ["bio:A1"], "confidence": .9,
         }],
-    ).model_dump(mode="json", exclude={"context_factors": {
-        "__all__": {"evidence_text", "authoritative_evidence"}
-    }})
+    )
+    explicit_output = provider_dump(explicit_output)
     unknown_input = {
         "observation_id": "example_biomedical_unknown",
-        "input_mode": "abstract_sentence_only",
+        "input_mode": "fulltext_evidence_chain",
         "evidence_anchors": [{
-            "anchor_id": "bio:A2", "text": "Treatment increased the endpoint.",
-            "source_role": "abstract", "source_section": "abstract",
+            "anchor_id": "bio:A2", "text": "A549 cells showed an increased endpoint.",
+            "source_role": "current", "source_section": "Results",
         }],
     }
     unknown_output = ContextExtraction(
         observation_id=unknown_input["observation_id"], domain_profiles=["generic", "biomedical"],
-        input_mode="abstract_sentence_only",
+        input_mode="fulltext_evidence_chain",
         context_factors=[{
-            "factor_id": "species", "raw_value": "unknown", "normalized_value": None,
+            "factor_id": "species", "raw_value": None, "normalized_value": None,
             "status": "unknown", "evidence_anchor_ids": [], "confidence": 1.0,
         }],
         missing_critical_information=["species"],
-    ).model_dump(mode="json", exclude={"context_factors": {
-        "__all__": {"evidence_text", "authoritative_evidence"}
-    }})
+    )
+    unknown_output = provider_dump(unknown_output)
+    inferred_input = {
+        "observation_id": "example_biomedical_inferred",
+        "input_mode": "fulltext_evidence_chain",
+        "evidence_anchors": [{
+            "anchor_id": "bio:A3", "text": "CSN8 perturbation changed the endpoint.",
+            "source_role": "setup", "source_section": "Results",
+        }],
+        "experimental_logic_chain": {
+            "intervention_or_exposure": {
+                "value": [{
+                    "target_mention": "CSN8",
+                    "intervention_type_raw": "perturbation",
+                }],
+                "authoritative_evidence_anchor_ids": ["bio:A3"],
+            },
+        },
+    }
+    inferred_output = ContextExtraction(
+        observation_id=inferred_input["observation_id"],
+        domain_profiles=["generic", "biomedical"],
+        input_mode="fulltext_evidence_chain",
+        context_factors=[{
+            "factor_id": "intervention", "raw_value": None,
+            "normalized_candidate": None, "normalized_value": None,
+            "status": "inferred_from_local_chain",
+            "evidence_anchor_ids": ["bio:A3"],
+            "source_chain_node_ids": ["intervention_or_exposure"],
+            "inference_rule": "compose_intervention_target_and_type",
+            "raw_components": [
+                {
+                    "chain_node_id": "intervention_or_exposure",
+                    "field_path": "target_mention", "surface": "CSN8",
+                    "evidence_anchor_ids": ["bio:A3"],
+                },
+                {
+                    "chain_node_id": "intervention_or_exposure",
+                    "field_path": "intervention_type_raw", "surface": "perturbation",
+                    "evidence_anchor_ids": ["bio:A3"],
+                },
+            ],
+            "confidence": .9,
+        }],
+    )
+    inferred_output = provider_dump(inferred_output)
+    comparator_input = {
+        "observation_id": "example_comparator",
+        "input_mode": "fulltext_evidence_chain",
+        "evidence_anchors": [{
+            "anchor_id": "bio:A4", "text": "The control arm was measured in parallel.",
+            "source_role": "setup", "source_section": "Methods",
+        }],
+        "experimental_logic_chain": {
+            "comparator_or_control": {
+                "value": {"control_arm_raw": "control"},
+                "authoritative_evidence_anchor_ids": ["bio:A4"],
+            },
+        },
+    }
+    comparator_output = ContextExtraction(
+        observation_id=comparator_input["observation_id"],
+        domain_profiles=["generic", "biomedical"],
+        input_mode="fulltext_evidence_chain",
+        context_factors=[{
+            "factor_id": "comparator", "raw_value": None,
+            "status": "inferred_from_local_chain",
+            "evidence_anchor_ids": ["bio:A4"],
+            "source_chain_node_ids": ["comparator_or_control"],
+            "inference_rule": "project_comparator_control_surface",
+            "raw_components": [{
+                "chain_node_id": "comparator_or_control",
+                "field_path": "control_arm_raw", "surface": "control",
+                "evidence_anchor_ids": ["bio:A4"],
+            }],
+            "confidence": .9,
+        }],
+    )
+    comparator_output = provider_dump(comparator_output)
     examples = [
         {"description": "Explicit surface value with separate controlled normalization",
          "input": explicit_input, "output": explicit_output},
+        {"description": "Two field-level components are deterministically composed within one intervention node",
+         "input": inferred_input, "output": inferred_output},
+        {"description": "Comparator provenance comes from a comparator/control node containing control",
+         "input": comparator_input, "output": comparator_output},
         {"description": "Unknown remains unknown when the local evidence is silent",
          "input": unknown_input, "output": unknown_output},
     ]

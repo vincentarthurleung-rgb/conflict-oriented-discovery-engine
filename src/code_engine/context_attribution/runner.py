@@ -19,6 +19,7 @@ from .engine import (
     build_fulltext_input, extraction_cache_identity, extraction_prompt,
     pair_cache_identity, pair_prompt,
 )
+from .composition import composition_identity
 from .gate import apply_comparability_gate
 from .models import ContextExtraction, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
 from .planning import (
@@ -407,6 +408,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "hydrator_version": HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        **composition_identity(),
     }
     output = output_run / "artifacts"; output.mkdir(parents=True, exist_ok=True)
     observations = discover_observations(input_run)
@@ -533,6 +535,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "validator_version": VALIDATOR_VERSION, "hydrator_version": HYDRATOR_VERSION,
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        **composition_identity(),
         "provider_calls_hard_bound": len(planned_extraction_ids) + len(planned_comparison_ids),
         "activation": False, "active_pointer_unchanged": True,
         "legacy_variational_em_called": False,
@@ -1042,6 +1045,30 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
     source_provider_audits = _rows(
         source_run / "artifacts" / "context_attribution_provider_calls.jsonl"
     )
+    source_payload_locations = {
+        str(row.get("observation_id") or ""): f"{source_payload_path}:{row.get('observation_id')}"
+        for row in source_payloads
+    }
+    seen_payload_ids = set(source_payload_locations)
+    for provider_row in source_provider_audits:
+        parsed = provider_row.get("parsed_payload")
+        oid = str(
+            provider_row.get("record_id")
+            or (parsed or {}).get("observation_id")
+            or ""
+        )
+        if (
+            provider_row.get("call_type") == "extraction"
+            and oid
+            and oid not in seen_payload_ids
+            and isinstance(parsed, dict)
+        ):
+            source_payloads.append(parsed)
+            seen_payload_ids.add(oid)
+            source_payload_locations[oid] = (
+                f"{source_run / 'artifacts' / 'context_attribution_provider_calls.jsonl'}:"
+                f"{oid}:parsed_payload"
+            )
     registry_resolution = resolve_registry(
         prompt_version=PROMPT_VERSION,
         extraction_schema_version=EXTRACTION_SCHEMA_VERSION,
@@ -1076,6 +1103,9 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
     original_prompt_version = source_summary.get("prompt_version")
     for raw in source_payloads:
         oid = str(raw.get("observation_id") or "")
+        source_payload_location = source_payload_locations.get(
+            oid, f"{source_payload_path}:{oid}"
+        )
         source_provider_audit = next((
             row for row in source_provider_audits
             if row.get("call_type") == "extraction"
@@ -1092,7 +1122,7 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
             **dict(raw.get("provenance") or {}),
             "offline_revalidation": {
                 "source_run": str(source_run),
-                "source_payload": f"{source_payload_path}:{oid}",
+                "source_payload": source_payload_location,
                 "original_prompt_version": original_prompt_version,
                 "source_contract_version": source_summary.get("extraction_schema_version"),
                 "source_validator_version": source_summary.get("validator_version"),
@@ -1145,7 +1175,7 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
             "artifact_schema_version": "context_attribution_offline_revalidation_payload_v1",
             "record_id": oid,
             "source_run": str(source_run),
-            "source_payload": f"{source_payload_path}:{oid}",
+            "source_payload": source_payload_location,
             "original_prompt_version": original_prompt_version,
             "source_contract_version": source_summary.get("extraction_schema_version"),
             "source_validator_version": source_summary.get("validator_version"),
@@ -1269,6 +1299,7 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
         "hydrator_version": HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        **composition_identity(),
         **{f"new_{key}": value for key, value in new_registry_identity.items()},
         "raw_provider_response_available": any(
             row.get("raw_provider_response_available") for row in replay_rows
@@ -1320,6 +1351,7 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
         "hydrator_version": HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        **composition_identity(),
         "api_calls": 0, "network_calls": 0, "downloads": 0, "activation": False,
     })
     _write_jsonl(output / "context_attribution_offline_revalidation_payloads.jsonl", replay_rows)

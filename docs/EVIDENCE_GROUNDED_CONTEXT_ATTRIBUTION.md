@@ -1,4 +1,4 @@
-# Evidence-grounded context attribution v3
+# Evidence-grounded context attribution v4
 
 ## Audit of the existing architecture
 
@@ -104,18 +104,20 @@ remain one grouped experiment.
 
 ## Schemas, registry, and validation
 
-The production schemas are `observation_context_extraction_v3` and
-`context_pair_attribution_v2`; the extraction reader migrates v2 payloads for
-explicit offline revalidation. They store concise audit summaries, not hidden
-reasoning. The versioned registry composes `generic`, `biomedical`, `clinical`,
+The production schemas are `observation_context_extraction_v4` and
+`context_pair_attribution_v2`; the extraction reader can read v2/v3 payloads
+for offline revalidation. A legacy locally-inferred payload without components
+is never auto-split or upgraded into provenance: it remains
+`legacy_local_inference_unverifiable` and is rejected. They store concise audit
+summaries, not hidden reasoning. The versioned registry composes `generic`, `biomedical`, `clinical`,
 `chemistry`, `materials`, and `catalysis` profiles and declares factor type,
 units, criticality, applicability, comparison/normalization policies, evidence
 requirements, blocking/explanatory permissions, aliases, and prompt guidance.
 
 Registry files are immutable contracts, not mutable aliases. Historical
 Prompt v1/v2 and extraction v2 resolve explicitly to
-`configs/context_attribution/context_registry_v1.json`; Prompt v3 and
-extraction v3 resolve to `context_registry_v2.json`. The resolver checks the
+`configs/context_attribution/context_registry_v1.json`; Prompt v3/v4 and
+extraction v3/v4 resolve to `context_registry_v2.json`. The resolver checks the
 requested version, registered path, internal version and SHA-256 and never
 searches for or falls back to a “latest” file. Plan, cache, provider audit,
 offline revalidation, handoff and completeness artifacts carry the resolved
@@ -123,8 +125,11 @@ version/path/hash/schema/source identity. The restored v1 file is the Git
 history payload with SHA-256
 `db0acb543603d0d1ffe06d29e101cd61eed2582e69a845b7df1d3eb21c40f7b9`.
 
-`raw_value` is a surface form copied from an authoritative span or named local
-chain node. `normalized_value` is separate and survives only an identity,
+For `explicit`, `raw_value` is a continuous surface copied from one selected
+authoritative span. Matching permits only NFKC, case folding, whitespace
+collapse, and punctuation/Unicode-separator normalization. Word reordering,
+abbreviation expansion, synonym substitution, inferred comparator/design, and
+cell-line-to-species knowledge are not accepted. `normalized_value` is separate and survives only an identity,
 configured controlled mapping, or explicitly supplied resolver acceptance.
 Unresolved optional candidates move to `normalized_candidate`; resolver-required
 factors fail closed. `evidence_anchor_ids` are selected from the observation
@@ -140,10 +145,24 @@ and unaccepted normalized candidates. Unknown values cannot be canonicalized.
 Canonical species/entity candidates still require acceptance by the existing
 resolver.
 
-`inferred_from_local_chain` is distinct from `explicit`. It requires a
-fulltext contract, named local-chain nodes, anchors owned by those nodes, a raw
-surface present in those nodes, and a registry-allowed inference rule. It
-cannot use external knowledge.
+`inferred_from_local_chain` is distinct from `explicit`. Provider `raw_value`
+must be null. Each `raw_components` item contains `chain_node_id`,
+`field_path`, one strict `surface`, and `evidence_anchor_ids`. Every component
+is checked independently against a non-null field and anchors owned by its
+node. Node/field order and legal combinations come from immutable
+`context_local_chain_composition_v2`; the provider cannot submit the
+authoritative composed result.
+
+The deterministic composer
+`context_attribution_deterministic_composer_v1` creates `composed_value`,
+`composition_rule`, and `composition_provenance`. Provenance records the
+resolved field path/value plus authoritative anchor text, hash, offsets,
+section, and role. Components from different intervention records cannot be
+silently combined. Comparator composition accepts only `control`, `vehicle`,
+`untreated`, `mock`, or `non-targeting siRNA` copied from the
+`comparator_or_control.control_arm_raw` field. An intervention node cannot
+prove a comparator. No cell-line-to-species composition rule exists, so A549
+alone leaves species unknown.
 
 The gate blocks validated non-comparable pairs only when the registry permits
 the blocking factor. Insufficient or invalid results remain reviewable and

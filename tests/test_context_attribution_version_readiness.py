@@ -42,8 +42,8 @@ def test_registry_v1_is_immutable_and_v2_is_independent():
 
 def test_registry_resolution_is_explicit_compatible_and_fail_closed(monkeypatch):
     current = resolve_registry(
-        prompt_version="context_attribution_prompts_v3",
-        extraction_schema_version="observation_context_extraction_v3",
+        prompt_version="context_attribution_prompts_v4",
+        extraction_schema_version="observation_context_extraction_v4",
     )
     assert current.registry_version == "context_factor_registry_v2"
     assert current.registry_path.endswith("context_registry_v2.json")
@@ -105,18 +105,32 @@ def test_cache_identity_isolated_by_registry_validator_hydrator_and_local_policy
         _contract(), registry_resolution=resolution, **common
     )
     assert validator_changed != baseline
-    monkeypatch.setattr(context_engine, "VALIDATOR_VERSION", "context_attribution_validator_v2")
+    monkeypatch.setattr(context_engine, "VALIDATOR_VERSION", "context_attribution_validator_v3")
     monkeypatch.setattr(context_engine, "HYDRATOR_VERSION", "hydrator_changed")
     hydrator_changed = extraction_cache_identity(
         _contract(), registry_resolution=resolution, **common
     )
     assert hydrator_changed != baseline
-    monkeypatch.setattr(context_engine, "HYDRATOR_VERSION", "context_attribution_anchor_hydrator_v1")
+    monkeypatch.setattr(context_engine, "HYDRATOR_VERSION", "context_attribution_anchor_hydrator_v2")
     monkeypatch.setattr(context_engine, "LOCAL_CHAIN_INFERENCE_POLICY_VERSION", "local_chain_changed")
     local_changed = extraction_cache_identity(
         _contract(), registry_resolution=resolution, **common
     )
     assert local_changed != baseline
+    monkeypatch.setattr(
+        context_engine,
+        "composition_identity",
+        lambda: {
+            "composer_version": "composer_changed",
+            "composition_policy_version": "policy_changed",
+            "composition_policy_path": "changed.json",
+            "composition_policy_content_sha256": "e" * 64,
+        },
+    )
+    composition_changed = extraction_cache_identity(
+        _contract(), registry_resolution=resolution, **common
+    )
+    assert composition_changed != baseline
 
     pair_a = pair_cache_identity(
         "validated-a", "validated-b", ["generic"], pair_id="p1",

@@ -5,12 +5,16 @@ import re
 import unicodedata
 from typing import Any
 
+from .composition import (
+    COMPOSER_VERSION, COMPOSITION_POLICY_VERSION, compose, composition_identity,
+    load_composition_policy,
+)
 from .models import ContextExtraction, ContextPairAttribution
 from .registry import resolve_factors
 
-VALIDATOR_VERSION = "context_attribution_validator_v2"
-HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v1"
-LOCAL_CHAIN_INFERENCE_POLICY_VERSION = "context_local_chain_inference_v1"
+VALIDATOR_VERSION = "context_attribution_validator_v3"
+HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v2"
+LOCAL_CHAIN_INFERENCE_POLICY_VERSION = COMPOSITION_POLICY_VERSION
 
 _QUANTITY = re.compile(r"^\s*[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:\s*(?:±|\+/-)\s*\d+(?:\.\d+)?)?\s*([%°µμA-Za-z][\w%°µμ./^-]*)?\s*$")
 
@@ -33,6 +37,30 @@ def _surface_present(raw_value: str, text: str) -> bool:
 def _chain_nodes(contract: dict[str, Any]) -> dict[str, dict[str, Any]]:
     chain = contract.get("experimental_logic_chain") or {}
     return {str(key): value for key, value in chain.items() if isinstance(value, dict)}
+
+
+def _field_candidates(value: Any, field_path: str, locator: str = "value") -> list[tuple[str, Any, str]]:
+    """Resolve an allowlisted field path without accepting arbitrary flattened JSON text."""
+    parts = field_path.split(".")
+    if not all(parts) or any(part.isdigit() for part in parts):
+        return []
+
+    def walk(current: Any, remaining: list[str], here: str) -> list[tuple[str, Any, str]]:
+        if isinstance(current, list):
+            return [
+                item
+                for index, child in enumerate(current)
+                for item in walk(child, remaining, f"{here}[{index}]")
+            ]
+        if not isinstance(current, dict) or not remaining or remaining[0] not in current:
+            return []
+        child = current[remaining[0]]
+        child_path = f"{here}.{remaining[0]}"
+        if len(remaining) == 1:
+            return [(child_path, child, here)]
+        return walk(child, remaining[1:], child_path)
+
+    return walk(value, parts, locator)
 
 def hydrate_context_extraction(payload: ContextExtraction | dict[str, Any],
                                contract: dict[str, Any]) -> tuple[ContextExtraction, dict[str, Any]]:
@@ -92,7 +120,8 @@ def _resolve_normalization(factor: Any, definition: dict[str, Any],
         factor.normalization_provenance = {"validator_version": VALIDATOR_VERSION}
         return None
     factor.normalized_candidate = candidate
-    if candidate == factor.raw_value:
+    source_value = factor.raw_value or factor.composed_value
+    if candidate == source_value:
         factor.normalized_value = candidate
         factor.normalization_status = "resolved_identity"
         factor.normalization_provenance = {"resolver": "identity", "validator_version": VALIDATOR_VERSION}
@@ -104,13 +133,13 @@ def _resolve_normalization(factor: Any, definition: dict[str, Any],
                                            "validator_version": VALIDATOR_VERSION}
         return None
     mappings = definition.get("controlled_normalizations") or {}
-    resolved = mappings.get(_surface(factor.raw_value))
+    resolved = mappings.get(_surface(source_value))
     if resolved == candidate:
         factor.normalized_value = candidate
         factor.normalization_status = "resolved_controlled"
         factor.normalization_provenance = {
             "resolver": "context_registry_controlled_mapping",
-            "mapping_key": _surface(factor.raw_value),
+            "mapping_key": _surface(source_value),
             "validator_version": VALIDATOR_VERSION,
         }
         return None
@@ -140,8 +169,14 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
                                 profiles: list[str], *, accepted_normalizations: set[tuple[str, str]] | None = None,
                                 registry: dict[str, Any] | None = None,
                                 ) -> tuple[ContextExtraction, list[str]]:
+    provider_composed = isinstance(payload, dict) and any(
+        "composed_value" in factor and factor.get("composed_value") is not None
+        for factor in payload.get("context_factors", [])
+    )
     value, hydration_audit = hydrate_context_extraction(payload, contract)
     errors = _anchor_errors(contract)
+    if provider_composed:
+        errors.append("provider_composed_value_forbidden")
     if value.observation_id != contract.get("observation_id"): errors.append("observation_id_mismatch")
     if value.input_mode != contract.get("input_mode"): errors.append("input_mode_mismatch")
     known, anchors, chain_nodes = resolve_factors(profiles, registry), _anchors(contract), _chain_nodes(contract)
@@ -151,16 +186,19 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
             errors.append(f"unsupported_factor:{factor.factor_id}"); continue
         if factor.status != "unknown" and not factor.evidence_anchor_ids:
             errors.append(f"unbound_factor:{factor.factor_id}")
-        if factor.status == "unknown" and (
-            factor.evidence_anchor_ids or factor.source_chain_node_ids or factor.inference_rule
-        ):
-            errors.append(f"unknown_factor_has_evidence_binding:{factor.factor_id}")
+        if factor.legacy_unverifiable and factor.status == "inferred_from_local_chain":
+            errors.append(f"legacy_local_inference_unverifiable:{factor.factor_id}")
         for aid in factor.evidence_anchor_ids:
             if aid not in anchors: errors.append(f"anchor_not_in_observation:{factor.factor_id}:{aid}")
             elif value.input_mode == "abstract_sentence_only" and anchors[aid].get("source_role") != "abstract":
                 errors.append(f"abstract_fulltext_anchor_forbidden:{aid}")
-        bound_text = " ".join(str(anchors[x].get("text") or "") for x in factor.evidence_anchor_ids if x in anchors)
-        if factor.status == "explicit" and not _surface_present(factor.raw_value, bound_text):
+        bound_anchor_texts = [
+            str(anchors[x].get("text") or "")
+            for x in factor.evidence_anchor_ids if x in anchors
+        ]
+        if factor.status == "explicit" and not any(
+            _surface_present(factor.raw_value, text) for text in bound_anchor_texts
+        ):
             errors.append(f"explicit_value_not_in_evidence:{factor.factor_id}")
         if factor.status == "inferred_from_local_chain":
             if value.input_mode != "fulltext_evidence_chain":
@@ -170,22 +208,104 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
             unknown_nodes = [node for node in factor.source_chain_node_ids if node not in chain_nodes]
             for node in unknown_nodes:
                 errors.append(f"local_inference_unknown_chain_node:{factor.factor_id}:{node}")
-            selected_nodes = [chain_nodes[node] for node in factor.source_chain_node_ids if node in chain_nodes]
-            node_anchor_ids = {
-                str(aid) for node in selected_nodes
-                for aid in node.get("authoritative_evidence_anchor_ids", [])
-            }
-            if not set(factor.evidence_anchor_ids) <= node_anchor_ids:
-                errors.append(f"local_inference_anchor_not_bound_to_chain:{factor.factor_id}")
-            chain_surface = " ".join(
-                json_text for node in selected_nodes
-                for json_text in [str(node.get("value") or "")]
-            )
-            if not _surface_present(factor.raw_value, chain_surface):
-                errors.append(f"local_inference_raw_value_not_in_chain:{factor.factor_id}")
-            allowed_rules = known[factor.factor_id].get("allowed_local_inference_rules") or []
-            if not factor.inference_rule or factor.inference_rule not in allowed_rules:
+            policy, _ = load_composition_policy()
+            rule = policy["rules"].get(factor.inference_rule or "")
+            if not rule or factor.factor_id not in rule.get("factor_ids", []):
                 errors.append(f"local_inference_rule_not_allowed:{factor.factor_id}")
+                rule = None
+            expected = (rule or {}).get("components", [])
+            actual_shape = [
+                {"chain_node_id": item.chain_node_id, "field_path": item.field_path}
+                for item in factor.raw_components
+            ]
+            expected_shape = [
+                {"chain_node_id": item["chain_node_id"], "field_path": item["field_path"]}
+                for item in expected
+            ]
+            if rule and actual_shape != expected_shape:
+                errors.append(f"local_inference_component_order_or_shape_invalid:{factor.factor_id}")
+            seen: set[tuple[str, str, str]] = set()
+            provenance: list[dict[str, Any]] = []
+            record_locators: dict[str, set[str]] = {}
+            for index, component in enumerate(factor.raw_components):
+                key = (component.chain_node_id, component.field_path, _surface(component.surface))
+                if key in seen:
+                    errors.append(f"local_inference_duplicate_component:{factor.factor_id}:{index}")
+                seen.add(key)
+                node = chain_nodes.get(component.chain_node_id)
+                if node is None:
+                    continue
+                node_anchors = {
+                    str(aid) for aid in node.get("authoritative_evidence_anchor_ids", [])
+                }
+                if not set(component.evidence_anchor_ids) <= node_anchors:
+                    errors.append(
+                        f"local_inference_component_anchor_not_bound_to_node:{factor.factor_id}:{index}"
+                    )
+                candidates = _field_candidates(node.get("value"), component.field_path)
+                non_null = [(path, field_value, locator) for path, field_value, locator in candidates
+                            if field_value is not None]
+                if not non_null:
+                    errors.append(
+                        f"local_inference_component_field_missing_or_null:{factor.factor_id}:{index}"
+                    )
+                    continue
+                matches = [
+                    item for item in non_null if _surface_present(component.surface, str(item[1]))
+                ]
+                if len(matches) != 1:
+                    reason = "surface_not_in_field" if not matches else "field_ambiguous"
+                    errors.append(
+                        f"local_inference_component_{reason}:{factor.factor_id}:{index}"
+                    )
+                    continue
+                path, field_value, locator = matches[0]
+                slot = expected[index] if index < len(expected) else {}
+                allowed = slot.get("allowed_exact_surfaces")
+                if allowed and _surface(component.surface) not in {_surface(x) for x in allowed}:
+                    errors.append(
+                        f"local_inference_component_surface_not_allowed:{factor.factor_id}:{index}"
+                    )
+                record_locators.setdefault(component.chain_node_id, set()).add(locator)
+                provenance.append({
+                    "component_index": index,
+                    "chain_node_id": component.chain_node_id,
+                    "field_path": component.field_path,
+                    "resolved_field_path": path,
+                    "authoritative_field_value": field_value,
+                    "surface": component.surface,
+                    "evidence_anchor_ids": component.evidence_anchor_ids,
+                    "authoritative_evidence": [
+                        {
+                            "anchor_id": aid,
+                            "text": str(anchors[aid].get("text") or ""),
+                            "text_hash": anchors[aid].get("text_hash"),
+                            "char_start": anchors[aid].get("char_start"),
+                            "char_end": anchors[aid].get("char_end"),
+                            "source_section": anchors[aid].get("source_section") or anchors[aid].get("section"),
+                            "source_role": anchors[aid].get("source_role"),
+                        }
+                        for aid in component.evidence_anchor_ids if aid in anchors
+                    ],
+                })
+            for node_id, locators in record_locators.items():
+                if len(locators) > 1 and sum(
+                    x.chain_node_id == node_id for x in factor.raw_components
+                ) > 1:
+                    errors.append(
+                        f"local_inference_components_cross_node_records:{factor.factor_id}:{node_id}"
+                    )
+            component_anchor_ids = list(dict.fromkeys(
+                aid for item in factor.raw_components for aid in item.evidence_anchor_ids
+            ))
+            if factor.evidence_anchor_ids != component_anchor_ids:
+                errors.append(f"local_inference_factor_anchors_must_match_components:{factor.factor_id}")
+            if len(provenance) == len(factor.raw_components) and rule:
+                factor.composed_value = compose(
+                    rule, [item.surface for item in factor.raw_components]
+                )
+                factor.composition_rule = factor.inference_rule
+                factor.composition_provenance = provenance
         elif factor.source_chain_node_ids or factor.inference_rule:
             errors.append(f"chain_provenance_on_non_inferred_factor:{factor.factor_id}")
         if factor.factor_id in {"observed_outcome", "biological_endpoint", "yield", "selectivity", "conversion"}:
@@ -193,9 +313,10 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
                 errors.append(f"methods_anchor_cannot_prove_result:{factor.factor_id}")
         definition = known[factor.factor_id]
         if definition["value_type"] in {"quantity", "duration", "integer"} and factor.status != "unknown":
-            match = _QUANTITY.match(factor.raw_value)
+            effective_value = factor.raw_value or factor.composed_value or ""
+            match = _QUANTITY.match(effective_value)
             if not match: errors.append(f"value_not_parseable:{factor.factor_id}")
-            elif definition["value_type"] == "integer" and not factor.raw_value.strip().isdigit():
+            elif definition["value_type"] == "integer" and not effective_value.strip().isdigit():
                 errors.append(f"value_not_integer:{factor.factor_id}")
             elif match.group(1) and definition.get("units") and match.group(1) not in definition["units"]:
                 errors.append(f"unit_not_allowed:{factor.factor_id}:{match.group(1)}")
@@ -209,6 +330,7 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
         "validator_version": VALIDATOR_VERSION,
         "hydrator_version": HYDRATOR_VERSION,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        **composition_identity(),
         "valid": not errors,
         "errors": list(errors),
         "hydration": hydration_audit,

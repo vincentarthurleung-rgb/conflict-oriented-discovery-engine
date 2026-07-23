@@ -137,7 +137,7 @@ def test_final_extraction_and_pair_prompts_require_json_and_include_valid_exampl
     for final_prompt in (extraction, pair):
         assert "json" in final_prompt.casefold()
         assert required in final_prompt
-        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v3"
+        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v4"
 
 def test_registry_has_all_composable_profiles_and_required_metadata():
     registry = load_registry()
@@ -358,17 +358,17 @@ def test_smoke_closure_and_call_bound_fail_closed(tmp_path):
     assert plan["api_enabled"] is False
     assert plan["provider_calls"] == plan["network_calls"] == plan["downloads"] == 0
     assert plan["credential_values_read"] is False
-    assert plan["prompt_version"] == "context_attribution_prompts_v3"
-    assert plan["extraction_schema_version"] == "observation_context_extraction_v3"
+    assert plan["prompt_version"] == "context_attribution_prompts_v4"
+    assert plan["extraction_schema_version"] == "observation_context_extraction_v4"
     assert plan["comparison_schema_version"] == "context_pair_attribution_v2"
-    assert plan["validator_version"] == "context_attribution_validator_v2"
-    assert plan["hydrator_version"] == "context_attribution_anchor_hydrator_v1"
+    assert plan["validator_version"] == "context_attribution_validator_v3"
+    assert plan["hydrator_version"] == "context_attribution_anchor_hydrator_v2"
     assert plan["registry_version"] == "context_factor_registry_v2"
     assert plan["registry_path"] == "configs/context_attribution/context_registry_v2.json"
     assert len(plan["registry_content_sha256"]) == 64
     assert plan["registry_resolution_source"] == "current_pipeline_default"
     assert plan["normalization_policy_version"] == "context_normalization_policy_v2"
-    assert plan["local_chain_policy_version"] == "context_local_chain_inference_v1"
+    assert plan["local_chain_policy_version"] == "context_local_chain_composition_v2"
     blocked = run_context_attribution(input_run=source, output_run=tmp_path / "blocked", mode="combined",
         profiles=["generic", "biomedical"], provider="offline", model="fixture",
         purpose="smoke", smoke_pair_count=5, extraction_limit=1, comparison_limit=5)
@@ -691,7 +691,7 @@ def test_semantic_rewrite_and_non_contract_anchor_remain_fail_closed():
     assert value.validation_status == "rejected"
 
 
-def test_local_chain_inference_requires_named_node_bound_anchor_and_allowed_rule():
+def test_legacy_local_chain_inference_without_components_remains_readable_but_unverifiable():
     contract = build_fulltext_input(_fulltext(), ["generic", "biomedical"])
     payload = {
         **_unknown("f1", ""),
@@ -704,16 +704,9 @@ def test_local_chain_inference_requires_named_node_bound_anchor_and_allowed_rule
         }],
     }
     value, errors = validate_context_extraction(payload, contract, ["generic", "biomedical"])
-    assert not errors
-    assert value.validation_status == "validated"
-    missing_node = json.loads(json.dumps(payload))
-    missing_node["context_factors"][0]["source_chain_node_ids"] = []
-    _, errors = validate_context_extraction(missing_node, contract, ["generic", "biomedical"])
-    assert "local_inference_missing_chain_node:experimental_system" in errors
-    bad_rule = json.loads(json.dumps(payload))
-    bad_rule["context_factors"][0]["inference_rule"] = "llm_external_knowledge"
-    _, errors = validate_context_extraction(bad_rule, contract, ["generic", "biomedical"])
-    assert "local_inference_rule_not_allowed:experimental_system" in errors
+    assert "legacy_local_inference_unverifiable:experimental_system" in errors
+    assert value.provenance["compatibility_read"]["legacy_components_synthesized"] is False
+    assert value.validation_status == "rejected"
 
 
 class _RejectedExtractionClient:

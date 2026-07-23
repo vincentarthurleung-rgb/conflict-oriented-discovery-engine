@@ -1,0 +1,42 @@
+{
+  "schema_version": "context_local_chain_composition_policy_v2",
+  "policy_version": "context_local_chain_composition_v2",
+  "rules": {
+    "compose_intervention_target_and_type": {
+      "factor_ids": ["intervention", "treatment", "knockout_or_overexpression"],
+      "components": [
+        {"chain_node_id": "intervention_or_exposure", "field_path": "target_mention"},
+        {"chain_node_id": "intervention_or_exposure", "field_path": "intervention_type_raw"}
+      ],
+      "composition_operator": "join_with_space"
+    },
+    "project_comparator_control_surface": {
+      "factor_ids": ["comparator", "placebo_or_standard_care"],
+      "components": [
+        {
+          "chain_node_id": "comparator_or_control",
+          "field_path": "control_arm_raw",
+          "allowed_exact_surfaces": [
+            "control", "vehicle", "untreated", "mock", "non-targeting siRNA"
+          ]
+        }
+      ],
+      "composition_operator": "identity"
+    },
+    "compose_experimental_design_intervention_and_comparator": {
+      "factor_ids": ["experimental_design", "study_design"],
+      "components": [
+        {"chain_node_id": "intervention_or_exposure", "field_path": "target_mention"},
+        {"chain_node_id": "intervention_or_exposure", "field_path": "intervention_type_raw"},
+        {
+          "chain_node_id": "comparator_or_control",
+          "field_path": "control_arm_raw",
+          "allowed_exact_surfaces": [
+            "control", "vehicle", "untreated", "mock", "non-targeting siRNA"
+          ]
+        }
+      ],
+      "composition_operator": "intervention_then_versus_comparator"
+    }
+  }
+}
