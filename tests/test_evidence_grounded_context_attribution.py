@@ -293,6 +293,10 @@ def test_offline_fixture_execution_is_resumable_and_reviewable_never_confirms(tm
     assert first["api_calls"] == first["network_calls"] == 0
     handoff = json.loads((output / "artifacts/context_attribution_handoff.jsonl").read_text())
     assert handoff["formal_conflict_eligibility"] is False
+    assert handoff["extracted_context"]["claim_a_extraction_identity"]
+    assert handoff["extracted_context"]["claim_b_extraction_identity"]
+    assert handoff["handoff_provenance"]["selected_token_catalog_identity_sha256"]
+    assert handoff["handoff_provenance"]["comparison_identity"]
     second = run_context_attribution(input_run=source, output_run=output, mode="abstract-only",
         profiles=["generic", "biomedical"], provider="offline", model="fixture",
         execute=True, cached_only=True, resume=True)
@@ -358,6 +362,9 @@ def test_smoke_closure_and_call_bound_fail_closed(tmp_path):
     assert plan["api_enabled"] is False
     assert plan["provider_calls"] == plan["network_calls"] == plan["downloads"] == 0
     assert plan["credential_values_read"] is False
+    assert not (
+        output / "artifacts/context_attribution_provider_calls.jsonl"
+    ).exists()
     assert plan["prompt_version"] == "context_attribution_prompts_v5"
     assert plan["extraction_schema_version"] == "observation_context_extraction_v5"
     assert plan["comparison_schema_version"] == "context_pair_attribution_v2"
@@ -368,6 +375,26 @@ def test_smoke_closure_and_call_bound_fail_closed(tmp_path):
     assert len(plan["registry_content_sha256"]) == 64
     assert plan["registry_resolution_source"] == "current_pipeline_default"
     assert plan["normalization_policy_version"] == "context_normalization_policy_v3"
+    assert plan["schema_version"] == "context_attribution_execution_plan_v3"
+    assert plan["identity_bundle_version"] == "context_attribution_identity_bundle_v1"
+    assert plan["normalization_policy_resolution_source"] == "embedded_in_registry"
+    assert plan["normalization_policy_path"] is None
+    assert len(plan["normalization_policy_content_sha256"]) == 64
+    assert len(plan["normalization_policy_identity_sha256"]) == 64
+    assert (
+        plan["comparator_normalization_policy_resolution_source"]
+        == "embedded_in_composition_policy"
+    )
+    assert plan["comparator_normalization_policy_active"] is True
+    assert len(plan["comparator_normalization_policy_identity_sha256"]) == 64
+    assert plan["token_catalog_identity_version"] == (
+        "context_attribution_token_catalog_identity_v1"
+    )
+    assert len(plan["selected_token_catalog_identity_sha256"]) == 64
+    assert len(plan["selected_anchor_text_identity_sha256"]) == 64
+    assert len(plan["selected_observation_token_catalog_identities"]) == (
+        plan["selected_observation_count"]
+    )
     assert plan["local_chain_policy_version"] == "context_local_chain_composition_v3"
     blocked = run_context_attribution(input_run=source, output_run=tmp_path / "blocked", mode="combined",
         profiles=["generic", "biomedical"], provider="offline", model="fixture",
@@ -529,6 +556,11 @@ def test_complete_provider_artifact_replays_only_for_exact_identity(tmp_path):
         (output / "artifacts/context_attribution_provider_calls.jsonl").read_text().splitlines()
     ]
     assert all(row["provider_artifact_complete"] for row in audits)
+    assert all(row["normalization_policy_identity"] for row in audits)
+    assert all(row["comparator_normalization_policy_identity"] for row in audits)
+    extraction_audits = [row for row in audits if row["call_type"] == "extraction"]
+    assert all(row["observation_token_catalog_identity"] for row in extraction_audits)
+    assert all(row["observation_anchor_text_identity"] for row in extraction_audits)
     assert all(row["registry_version"] == "context_factor_registry_v3" for row in audits)
     assert all(len(row["registry_content_sha256"]) == 64 for row in audits)
 
@@ -745,6 +777,9 @@ def test_rejected_candidate_audit_is_separate_and_preserves_schema_payload(tmp_p
     rejected = next(row for row in audits if row["record_id"] == first)
     assert rejected["schema_result"]["valid"] is False
     assert rejected["provider_parsed_payload"]["context_factors"][0]["raw_value"] == "A549"
+    assert rejected["normalization_policy_identity"]
+    assert rejected["comparator_normalization_policy_identity"]
+    assert rejected["observation_token_catalog_identity"]
     validated = [
         json.loads(line) for line in
         (output / "artifacts/observation_context_extractions.jsonl").read_text().splitlines()
@@ -868,6 +903,10 @@ def test_offline_revalidation_is_zero_call_and_does_not_invent_provider_audit(tm
     factory.assert_not_called()
     assert summary["api_calls"] == summary["provider_calls"] == summary["network_calls"] == 0
     assert summary["raw_provider_response_unavailable"] is True
+    assert summary["source_identity_known"] is False
+    assert summary["source_identity_incomplete"] is True
+    assert summary["revalidation_identity"]["normalization_policy_identity"]
+    assert summary["revalidation_identity"]["comparator_normalization_policy_identity"]
     assert summary["finish_reason_unavailable"] is True
     assert summary["usage_unavailable"] is True
     assert summary["scientific_status"] == "all_extractions_rejected"

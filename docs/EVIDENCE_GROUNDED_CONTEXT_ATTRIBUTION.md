@@ -179,6 +179,40 @@ provider client can be created. The unsupported
 `cell_system_to_in_vitro` rule is absent from the v5 provider contract; A549
 alone leaves species and experimental mode unknown.
 
+## Reproducible identity bundle
+
+Execution plans use `context_attribution_execution_plan_v3` and
+`context_attribution_identity_bundle_v1`. Policy identities share one
+`PolicyIdentity` structure: version, schema version, resolution source,
+repository-relative path, canonical content SHA-256, parent path/hash,
+identity SHA-256, active state, and inactive reason. Canonical payloads use
+UTF-8 JSON with sorted object keys and fixed compact separators.
+
+`context_normalization_policy_v3` is embedded in
+`context_registry_v3.json`. Its identity hashes only the normalization policy
+subtree and separately binds that subtree to the registry path/hash.
+`context_comparator_normalization_v1` is active and embedded in composition
+policy v3 under `optional_normalized_classes`; it receives a separate subtree
+identity and parent binding. These identities enter extraction cache/request
+identities, provider and validation audits, summaries, completeness reports,
+offline revalidation, and handoff provenance. The legacy
+`normalization_registry_version` field remains a compatibility alias, not a
+complete identity.
+
+Token catalogs use `context_attribution_token_catalog_identity_v1`. Each
+anchor hashes its ID, text hash, tokenizer version, offset semantics, and
+ordered token ID/index/text/offset records. Observation identities sort
+anchors by anchor ID and independently hash the token catalogs and
+authoritative anchor-text metadata. A selected-run aggregate sorts only the
+selected observations by observation ID, so unselected smoke observations do
+not affect the selected identity. Plans carry hashes and counts rather than
+duplicating complete anchor text.
+
+New provider artifacts require the complete identity bundle to be reusable.
+Legacy plans, cache rows, and provider artifacts remain readable, but missing
+identity fields are reported as unknown/incomplete and are never filled from
+the current configuration or accepted as a new-identity cache/replay hit.
+
 The gate blocks validated non-comparable pairs only when the registry permits
 the blocking factor. Insufficient or invalid results remain reviewable and
 cannot become confirmed conflicts. Conditional comparisons can remain

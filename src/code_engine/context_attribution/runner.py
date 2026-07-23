@@ -22,6 +22,9 @@ from .engine import (
 from .composition import (
     composition_identity, load_composition_policy, validate_registry_policy_consistency,
 )
+from .identities import (
+    IDENTITY_BUNDLE_VERSION, resolve_policy_identities, validate_policy_identity,
+)
 from .gate import apply_comparability_gate
 from .models import ContextExtraction, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
 from .planning import (
@@ -36,6 +39,7 @@ from .validation import (
 )
 from .token_spans import (
     ANCHOR_TOKENIZER_VERSION, EXPLICIT_SPAN_VERSION, SPAN_HYDRATOR_VERSION,
+    selected_token_catalog_identity, validate_selected_token_catalog_identity,
 )
 
 ARTIFACTS = (
@@ -132,7 +136,7 @@ def discover_invalid_candidates(run: Path, observations: list[dict[str, Any]],
     return invalid
 
 def _read_index(path: Path) -> dict[str, Any]:
-    if not path.exists(): return {"schema_version": "context_attribution_cache_v1", "entries": {}}
+    if not path.exists(): return {"schema_version": "context_attribution_cache_v2", "entries": {}}
     return json.loads(path.read_text(encoding="utf-8"))
 
 def _write_json(path: Path, value: Any) -> None:
@@ -272,6 +276,57 @@ def _provider_artifact_integrity_errors(row: dict[str, Any]) -> list[str]:
     elif not 200 <= int(row["http_status"]) < 300: errors.append("http_not_successful")
     if row.get("credential_values_logged") or row.get("authorization_logged"):
         errors.append("credential_redaction_failed")
+    if row.get("identity_bundle_version") != IDENTITY_BUNDLE_VERSION:
+        errors.append("identity_bundle_incomplete")
+    if not isinstance(row.get("normalization_policy_identity"), dict):
+        errors.append("normalization_policy_identity_missing")
+    if not isinstance(row.get("comparator_normalization_policy_identity"), dict):
+        errors.append("comparator_normalization_policy_identity_missing")
+    if row.get("call_type") == "extraction":
+        if not isinstance(row.get("observation_token_catalog_identity"), dict):
+            errors.append("observation_token_catalog_identity_missing")
+        if not isinstance(row.get("observation_anchor_text_identity"), dict):
+            errors.append("observation_anchor_text_identity_missing")
+    return errors
+
+
+def _plan_identity_errors(
+    plan: dict[str, Any], contracts: dict[str, dict[str, Any]],
+    selected_observation_ids: list[str],
+) -> list[str]:
+    errors: list[str] = []
+    for field in (
+        "normalization_policy_content_sha256",
+        "normalization_policy_identity_sha256",
+        "comparator_normalization_policy_content_sha256",
+        "comparator_normalization_policy_identity_sha256",
+        "selected_token_catalog_identity_sha256",
+        "selected_anchor_text_identity_sha256",
+    ):
+        value = plan.get(field)
+        if not isinstance(value, str) or len(value) != 64:
+            errors.append(f"plan_identity_missing:{field}")
+    if plan.get("comparator_normalization_policy_active") is True and not plan.get(
+        "comparator_normalization_policy_content_sha256"
+    ):
+        errors.append("active_comparator_policy_content_identity_missing")
+    if plan.get("token_catalog_identity_version") != (
+        "context_attribution_token_catalog_identity_v1"
+    ):
+        errors.append("token_catalog_identity_version_mismatch")
+    errors.extend(validate_selected_token_catalog_identity(
+        {
+            key: plan.get(key)
+            for key in (
+                "token_catalog_identity_version",
+                "selected_token_catalog_identity_sha256",
+                "selected_anchor_text_identity_sha256",
+                "selected_observation_token_catalog_identities",
+            )
+        },
+        contracts,
+        selected_observation_ids,
+    ))
     return errors
 
 def _provider_audit_entry(*, call_type: str, record_id: str, ledger_entry_id: str,
@@ -280,7 +335,7 @@ def _provider_audit_entry(*, call_type: str, record_id: str, ledger_entry_id: st
                           contract_identity: dict[str, Any]) -> dict[str, Any]:
     metadata = dict(getattr(response, "provider_metadata", {}) or {})
     entry = {
-        "artifact_schema_version": "context_attribution_provider_call_v1",
+        "artifact_schema_version": "context_attribution_provider_call_v2",
         "status": "provider_completed",
         "call_type": call_type,
         "record_id": record_id,
@@ -319,7 +374,7 @@ def _provider_error_audit_entry(*, call_type: str, record_id: str, ledger_entry_
                                 contract_identity: dict[str, Any]) -> dict[str, Any]:
     metadata = dict(getattr(exc, "provider_metadata", {}) or {})
     return {
-        "artifact_schema_version": "context_attribution_provider_call_v1",
+        "artifact_schema_version": "context_attribution_provider_call_v2",
         "status": "failed_provider",
         "call_type": call_type,
         "record_id": record_id,
@@ -407,9 +462,21 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
     )
     registry = load_registry(resolution=registry_resolution)
     composition_policy, _ = load_composition_policy()
+    composition = composition_identity()
+    normalization_policy_identity, comparator_policy_identity = resolve_policy_identities(
+        registry=registry,
+        registry_path=registry_resolution.registry_path,
+        registry_sha256=registry_resolution.registry_content_sha256,
+        composition_policy=composition_policy,
+        composition_path=composition["composition_policy_path"],
+        composition_sha256=composition["composition_policy_content_sha256"],
+    )
     configuration_errors = validate_registry_policy_consistency(registry, composition_policy)
+    configuration_errors.extend(validate_policy_identity(normalization_policy_identity))
+    configuration_errors.extend(validate_policy_identity(comparator_policy_identity))
     registry_identity = registry_resolution.to_dict()
     contract_identity = {
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
         **registry_identity,
         "validator_version": VALIDATOR_VERSION,
         "hydrator_version": HYDRATOR_VERSION,
@@ -418,7 +485,12 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
-        **composition_identity(),
+        **composition,
+        **normalization_policy_identity.prefixed("normalization_policy"),
+        **comparator_policy_identity.prefixed("comparator_normalization_policy"),
+        "normalization_policy_identity": normalization_policy_identity.to_dict(),
+        "comparator_normalization_policy_identity": comparator_policy_identity.to_dict(),
+        "legacy_normalization_version_alias": True,
     }
     output = output_run / "artifacts"; output.mkdir(parents=True, exist_ok=True)
     observations = discover_observations(input_run)
@@ -434,6 +506,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                  if purpose == "smoke" else complete_selection(pairs))
     pair_by_id = {x["pair_id"]: x for x in pairs}
     selected_pairs = [pair_by_id[x] for x in selection["selected_pair_ids"]]
+    selected_observation_ids = list(selection["selected_observations"])
     all_candidate_ids = sorted({observation_id(p[side]) for p in pairs for side in ("claim_a", "claim_b")})
     by_id = {observation_id(x): x for x in eligible_observations}
     all_contracts = {
@@ -441,6 +514,13 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
               if observation_input_mode(by_id[oid]) == "fulltext" else build_abstract_input(by_id[oid], profiles))
         for oid in all_candidate_ids
     }
+    selected_identity = selected_token_catalog_identity(
+        all_contracts, selected_observation_ids
+    )
+    configuration_errors.extend(validate_selected_token_catalog_identity(
+        selected_identity, all_contracts, selected_observation_ids
+    ))
+    contract_identity.update(selected_identity)
     identities = {
         oid: extraction_cache_identity(contract, profiles=profiles, provider=provider, model=model,
                                        thinking_mode=thinking_mode, max_tokens=max_tokens,
@@ -449,7 +529,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         for oid, contract in all_contracts.items()
     }
     cache_path = output / "context_attribution_cache.json"
-    cache = _read_index(cache_path) if resume or cached_only else {"schema_version": "context_attribution_cache_v1", "entries": {}}
+    cache = _read_index(cache_path) if resume or cached_only else {"schema_version": "context_attribution_cache_v2", "entries": {}}
     fixtures = _load_fixture(fixture_responses)
     comparison_identities: dict[str, str] = {}
     for pair in pairs:
@@ -459,7 +539,6 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
             provider=provider, model=model, thinking_mode=thinking_mode,
             registry_resolution=registry_resolution,
         )
-    selected_observation_ids = list(selection["selected_observations"])
     cached_extraction_ids = [oid for oid in selected_observation_ids
                              if _valid_cache_entry(cache, identities[oid], "extraction")]
     extraction_misses = [oid for oid in selected_observation_ids if oid not in cached_extraction_ids]
@@ -504,7 +583,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         for oid in selected_observation_ids
     ]
     plan = {
-        "schema_version": "context_attribution_execution_plan_v2", "plan_only": not execute,
+        "schema_version": "context_attribution_execution_plan_v3", "plan_only": not execute,
         "input_run": str(input_run), "output_run": str(output_run), "input_mode": mode,
         "context_attribution_mode": "llm_evidence_grounded", "domain_profiles": profiles,
         "purpose": purpose, "smoke_pair_count": smoke_pair_count,
@@ -548,12 +627,23 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
-        **composition_identity(),
+        **composition,
+        **normalization_policy_identity.prefixed("normalization_policy"),
+        **comparator_policy_identity.prefixed("comparator_normalization_policy"),
+        "normalization_policy_identity": normalization_policy_identity.to_dict(),
+        "comparator_normalization_policy_identity": comparator_policy_identity.to_dict(),
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
+        "legacy_normalization_version_alias": True,
+        **selected_identity,
         "provider_calls_hard_bound": len(planned_extraction_ids) + len(planned_comparison_ids),
         "activation": False, "active_pointer_unchanged": True,
         "legacy_variational_em_called": False,
     }
-    plan_errors = [*configuration_errors, *validate_plan(plan)]
+    plan_errors = [
+        *configuration_errors,
+        *_plan_identity_errors(plan, all_contracts, selected_observation_ids),
+        *validate_plan(plan),
+    ]
     if plan_errors:
         plan["plan_status"] = "invalid"
         plan["coverage_complete"] = False
@@ -573,7 +663,8 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                      "prompt_version": PROMPT_VERSION,
                      "extraction_schema_version": EXTRACTION_SCHEMA_VERSION,
                      "comparison_schema_version": PAIR_SCHEMA_VERSION})
-        for name in (*ARTIFACTS[:4], ARTIFACTS[-1]): (output / name).touch(exist_ok=True)
+        for name in ARTIFACTS[:4]:
+            (output / name).touch(exist_ok=True)
         return plan
     if plan["plan_status"] in {"invalid", "blocked_by_call_bound"}:
         raise RuntimeError(f"context attribution execution blocked: {plan['plan_status']}")
@@ -609,6 +700,15 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         observation_contract_identity = {
             **contract_identity,
             "token_catalog_identity": contract.get("token_catalog_identity"),
+            "observation_token_catalog_identity":
+                contract.get("observation_token_catalog_identity"),
+            "observation_anchor_text_identity": {
+                "observation_id": oid,
+                "observation_anchor_text_identity_sha256":
+                    (contract.get("observation_token_catalog_identity") or {}).get(
+                        "observation_anchor_text_identity_sha256"
+                    ),
+            },
             "authoritative_anchor_text_sha256": [
                 {
                     "anchor_id": anchor.get("anchor_id"),
@@ -684,6 +784,18 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                 "schema_result": {"valid": True, "schema_version": EXTRACTION_SCHEMA_VERSION},
                 "provider_parsed_payload": _safe_audit_value(raw),
                 "post_hydration_composition_resolver_candidate": _safe_audit_value(dumped),
+                "normalization_policy_identity": normalization_policy_identity.to_dict(),
+                "comparator_normalization_policy_identity":
+                    comparator_policy_identity.to_dict(),
+                "observation_token_catalog_identity":
+                    contract.get("observation_token_catalog_identity"),
+                "observation_anchor_text_identity": {
+                    "observation_id": oid,
+                    "observation_anchor_text_identity_sha256":
+                        (contract.get("observation_token_catalog_identity") or {}).get(
+                            "observation_anchor_text_identity_sha256"
+                        ),
+                },
                 "deterministic_validation": validated.provenance.get("deterministic_validation"),
             })
             _upsert_ledger(ledger, {
@@ -732,6 +844,18 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                     "safe_error_type": type(exc).__name__,
                 },
                 "provider_parsed_payload": _safe_audit_value(raw),
+                "normalization_policy_identity": normalization_policy_identity.to_dict(),
+                "comparator_normalization_policy_identity":
+                    comparator_policy_identity.to_dict(),
+                "observation_token_catalog_identity":
+                    contract.get("observation_token_catalog_identity"),
+                "observation_anchor_text_identity": {
+                    "observation_id": oid,
+                    "observation_anchor_text_identity_sha256":
+                        (contract.get("observation_token_catalog_identity") or {}).get(
+                            "observation_anchor_text_identity_sha256"
+                        ),
+                },
             })
             _upsert_ledger(ledger, {
                 "ledger_entry_id": ledger_entry_id, "source": source,
@@ -841,6 +965,8 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                         "comparability_policy_version": COMPARABILITY_POLICY_VERSION,
                         "pair_id": pid,
                         "validated_extraction_identities": [identities[a], identities[b]],
+                        "claim_a_validated_extraction_identity": identities[a],
+                        "claim_b_validated_extraction_identity": identities[b],
                     },
                     "payload": dumped,
                 }
@@ -988,8 +1114,19 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                    x.get("status") == "blocked_dependency_validation" for x in ledger
                )}
     readiness = scientific_readiness(summary)
+    readiness["identity_bundle"] = {
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
+        "normalization_policy_identity_sha256":
+            normalization_policy_identity.identity_sha256,
+        "comparator_normalization_policy_identity_sha256":
+            comparator_policy_identity.identity_sha256,
+        "selected_token_catalog_identity_sha256":
+            selected_identity["selected_token_catalog_identity_sha256"],
+        "selected_anchor_text_identity_sha256":
+            selected_identity["selected_anchor_text_identity_sha256"],
+    }
     handoff_rows = [{
-        "schema_version": "context_attribution_handoff_v1",
+        "schema_version": "context_attribution_handoff_v2",
         "pair_id": item["pair_id"],
         "extracted_context": {
             "claim_a_extraction_identity": identities.get(item["claim_a_observation_id"]),
@@ -1111,6 +1248,16 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
     )
     registry = load_registry(resolution=registry_resolution)
     new_registry_identity = registry_resolution.to_dict()
+    composition_policy, _ = load_composition_policy()
+    composition = composition_identity()
+    normalization_policy_identity, comparator_policy_identity = resolve_policy_identities(
+        registry=registry,
+        registry_path=registry_resolution.registry_path,
+        registry_sha256=registry_resolution.registry_content_sha256,
+        composition_policy=composition_policy,
+        composition_path=composition["composition_policy_path"],
+        composition_sha256=composition["composition_policy_content_sha256"],
+    )
     observations = discover_observations(input_run)
     eligible = {
         observation_id(row): row for row in observations
@@ -1121,6 +1268,30 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
         oid: (build_fulltext_input(row, profiles)
               if observation_input_mode(row) == "fulltext" else build_abstract_input(row, profiles))
         for oid, row in eligible.items()
+    }
+    revalidation_observation_ids = sorted({
+        str(row.get("observation_id") or "") for row in source_payloads
+        if str(row.get("observation_id") or "") in contracts
+    })
+    revalidation_token_identity = selected_token_catalog_identity(
+        contracts, revalidation_observation_ids
+    )
+    source_identity = {
+        "normalization_policy_identity":
+            source_summary.get("normalization_policy_identity"),
+        "comparator_normalization_policy_identity":
+            source_summary.get("comparator_normalization_policy_identity"),
+        "selected_token_catalog_identity_sha256":
+            source_summary.get("selected_token_catalog_identity_sha256"),
+        "selected_anchor_text_identity_sha256":
+            source_summary.get("selected_anchor_text_identity_sha256"),
+    }
+    source_identity_known = all(source_identity.values())
+    revalidation_identity = {
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
+        "normalization_policy_identity": normalization_policy_identity.to_dict(),
+        "comparator_normalization_policy_identity": comparator_policy_identity.to_dict(),
+        **revalidation_token_identity,
     }
     settings = resolve_l1_provider_settings()
     identities = {
@@ -1166,6 +1337,9 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
                 "source_registry_path": source_registry_path,
                 "source_registry_content_sha256": source_registry_hash,
                 "source_registry_hash_known": source_registry_hash_known,
+                "source_identity": source_identity,
+                "source_identity_known": source_identity_known,
+                "revalidation_identity": revalidation_identity,
                 "revalidation_policy_version": VALIDATOR_VERSION,
                 "new_validator_version": VALIDATOR_VERSION,
                 "new_hydrator_version": HYDRATOR_VERSION,
@@ -1197,6 +1371,11 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
                 "record_type": "extraction", "record_id": oid, "valid": not errors,
                 "errors": errors, "source": "offline_revalidation",
                 "deterministic_validation": validated.provenance.get("deterministic_validation"),
+                "source_identity": source_identity,
+                "source_identity_known": source_identity_known,
+                "revalidation_identity": revalidation_identity,
+                "observation_token_catalog_identity":
+                    contracts[oid].get("observation_token_catalog_identity"),
             })
         except Exception as exc:
             dumped = candidate
@@ -1206,9 +1385,12 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
                 "record_type": "extraction", "record_id": oid, "valid": False,
                 "errors": errors, "source": "offline_revalidation",
                 "safe_error_type": type(exc).__name__,
+                "source_identity": source_identity,
+                "source_identity_known": source_identity_known,
+                "revalidation_identity": revalidation_identity,
             })
         replay_rows.append({
-            "artifact_schema_version": "context_attribution_offline_revalidation_payload_v1",
+            "artifact_schema_version": "context_attribution_offline_revalidation_payload_v2",
             "record_id": oid,
             "source_run": str(source_run),
             "source_payload": source_payload_location,
@@ -1219,6 +1401,9 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
             "source_registry_path": source_registry_path,
             "source_registry_content_sha256": source_registry_hash,
             "source_registry_hash_known": source_registry_hash_known,
+            "source_identity": source_identity,
+            "source_identity_known": source_identity_known,
+            "revalidation_identity": revalidation_identity,
             "new_prompt_version": PROMPT_VERSION,
             "new_validator_version": VALIDATOR_VERSION,
             "new_hydrator_version": HYDRATOR_VERSION,
@@ -1323,6 +1508,10 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
         "source_registry_path": source_registry_path,
         "source_registry_content_sha256": source_registry_hash,
         "source_registry_hash_known": source_registry_hash_known,
+        "source_identity": source_identity,
+        "source_identity_known": source_identity_known,
+        "source_identity_incomplete": not source_identity_known,
+        "revalidation_identity": revalidation_identity,
         "new_prompt_version": PROMPT_VERSION,
         "new_validator_version": VALIDATOR_VERSION,
         "new_hydrator_version": HYDRATOR_VERSION,
@@ -1335,7 +1524,11 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
         "hydrator_version": HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
-        **composition_identity(),
+        **composition,
+        **normalization_policy_identity.prefixed("normalization_policy"),
+        **comparator_policy_identity.prefixed("comparator_normalization_policy"),
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
+        **revalidation_token_identity,
         **{f"new_{key}": value for key, value in new_registry_identity.items()},
         "raw_provider_response_available": any(
             row.get("raw_provider_response_available") for row in replay_rows
@@ -1387,7 +1580,11 @@ def revalidate_context_attribution_offline(*, input_run: Path, source_run: Path,
         "hydrator_version": HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
-        **composition_identity(),
+        **composition,
+        **normalization_policy_identity.prefixed("normalization_policy"),
+        **comparator_policy_identity.prefixed("comparator_normalization_policy"),
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
+        **revalidation_token_identity,
         "api_calls": 0, "network_calls": 0, "downloads": 0, "activation": False,
     })
     _write_jsonl(output / "context_attribution_offline_revalidation_payloads.jsonl", replay_rows)

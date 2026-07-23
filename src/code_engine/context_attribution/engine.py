@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any
 
 from .composition import composition_identity, load_composition_policy
+from .identities import IDENTITY_BUNDLE_VERSION, resolve_policy_identities
 from .models import ContextExtraction, ContextPairAttribution, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
 from .registry import RegistryResolution, load_registry, resolve_factors, resolve_registry
 from .validation import (
@@ -117,8 +118,20 @@ def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], 
                               registry_resolution: RegistryResolution | None = None) -> str:
     registry_resolution = registry_resolution or resolve_registry()
     registry = registry or load_registry(resolution=registry_resolution)
+    composition_policy, _ = load_composition_policy()
+    composition = composition_identity()
+    normalization_identity, comparator_identity = resolve_policy_identities(
+        registry=registry,
+        registry_path=registry_resolution.registry_path,
+        registry_sha256=registry_resolution.registry_content_sha256,
+        composition_policy=composition_policy,
+        composition_path=composition["composition_policy_path"],
+        composition_sha256=composition["composition_policy_content_sha256"],
+    )
     anchors = contract.get("evidence_anchors") or []
+    observation_token_identity = contract.get("observation_token_catalog_identity") or {}
     return _hash({
+        "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
         "observation_evidence_hash": _hash(contract.get("evidence_sentence") or contract.get("direct_evidence_sentence") or ""),
         "logic_chain_hash": _hash(contract.get("experimental_logic_chain") or {}),
         "anchor_registry_hash": _hash(anchors), "domain_profiles": profiles,
@@ -134,9 +147,15 @@ def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], 
         "anchor_tokenizer_version": ANCHOR_TOKENIZER_VERSION,
         "explicit_span_version": EXPLICIT_SPAN_VERSION,
         "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
-        "token_catalog_identity": contract.get("token_catalog_identity"),
+        "observation_token_catalog_identity_sha256":
+            observation_token_identity.get("observation_token_catalog_sha256"),
+        "observation_anchor_text_identity_sha256":
+            observation_token_identity.get("observation_anchor_text_identity_sha256"),
+        "normalization_policy_identity_sha256": normalization_identity.identity_sha256,
+        "comparator_normalization_policy_identity_sha256":
+            comparator_identity.identity_sha256,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
-        **composition_identity(),
+        **composition,
         "normalization_registry_version": registry["normalization_registry_version"],
     })
 
@@ -147,6 +166,9 @@ def pair_cache_identity(a_identity: str, b_identity: str, profiles: list[str], *
     registry_resolution = registry_resolution or resolve_registry()
     registry = load_registry(resolution=registry_resolution)
     return _hash({"pair_id": pair_id, "validated_extraction_identities": [a_identity, b_identity],
+                  "identity_bundle_version": IDENTITY_BUNDLE_VERSION,
+                  "claim_a_validated_extraction_identity": a_identity,
+                  "claim_b_validated_extraction_identity": b_identity,
                   "prompt_version": PROMPT_VERSION,
                   "comparison_schema_version": PAIR_SCHEMA_VERSION, "profiles": profiles,
                   "registry_version": registry_resolution.registry_version,
