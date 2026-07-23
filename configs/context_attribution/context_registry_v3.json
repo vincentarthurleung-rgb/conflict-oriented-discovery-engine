@@ -1,0 +1,117 @@
+{
+  "schema_version": "context_factor_registry_v3",
+  "registry_version": "context_factor_registry_v3",
+  "normalization_registry_version": "context_normalization_policy_v3",
+  "local_inference_rule_contracts": {
+    "compose_intervention_target_and_type": {
+      "factor_ids": ["intervention", "treatment", "knockout_or_overexpression"],
+      "components": [
+        {"chain_node_id": "intervention_or_exposure", "field_path": "target_mention"},
+        {"chain_node_id": "intervention_or_exposure", "field_path": "intervention_type_raw"}
+      ]
+    },
+    "project_comparator_control_surface": {
+      "factor_ids": ["comparator", "placebo_or_standard_care"],
+      "components": [
+        {"chain_node_id": "comparator_or_control", "field_path": "control_arm_raw"}
+      ]
+    },
+    "compose_experimental_design_intervention_and_comparator": {
+      "factor_ids": ["experimental_design", "study_design"],
+      "components": [
+        {"chain_node_id": "intervention_or_exposure", "field_path": "target_mention"},
+        {"chain_node_id": "intervention_or_exposure", "field_path": "intervention_type_raw"},
+        {"chain_node_id": "comparator_or_control", "field_path": "control_arm_raw"}
+      ]
+    }
+  },
+  "profiles": {
+    "generic": {
+      "display_name": "Generic experimental context",
+      "factors": ["experimental_system", "research_object", "intervention", "comparator", "temporal_condition", "environmental_condition", "measurement_endpoint", "measurement_method", "observed_outcome", "experimental_design", "sample_information", "preparation", "preprocessing", "missing_information"]
+    },
+    "biomedical": {
+      "display_name": "Biomedical",
+      "factors": ["species", "strain", "sex", "age", "genotype", "knockout_or_overexpression", "tissue", "organ", "cell_type", "cell_line", "disease", "phenotype", "developmental_stage", "in_vivo_in_vitro_ex_vivo", "treatment", "dose", "route", "duration", "intervention_sequence", "assay", "normalization", "biological_endpoint"],
+      "critical": ["species", "experimental_system", "biological_endpoint"]
+    },
+    "clinical": {
+      "display_name": "Clinical",
+      "factors": ["population", "diagnosis", "disease_stage", "inclusion_criteria", "exclusion_criteria", "age_distribution", "sex_distribution", "ethnicity", "treatment_regimen", "line_of_therapy", "dose", "frequency", "combination_therapy", "comparator", "placebo_or_standard_care", "endpoint_definition", "follow_up", "subgroup", "sample_size", "study_design"],
+      "critical": ["population", "diagnosis", "endpoint_definition", "study_design"]
+    },
+    "chemistry": {
+      "display_name": "Chemistry",
+      "factors": ["reactants", "reagents", "stoichiometry", "catalyst", "ligand", "additive", "solvent", "concentration", "temperature", "pressure", "atmosphere", "reaction_time", "addition_order", "workup", "purification", "yield", "selectivity", "conversion", "analytical_method"],
+      "critical": ["reactants", "temperature", "measurement_method"]
+    },
+    "materials": {
+      "display_name": "Materials",
+      "factors": ["composition", "phase", "crystal_structure", "morphology", "particle_size", "defects", "substrate", "film_thickness", "synthesis_route", "deposition_route", "annealing", "calcination", "pretreatment", "temperature", "pressure", "atmosphere", "humidity", "testing_configuration", "mechanical_endpoint", "electrical_endpoint", "optical_endpoint", "thermal_endpoint"],
+      "critical": ["composition", "phase", "testing_configuration"]
+    },
+    "catalysis": {
+      "display_name": "Catalysis",
+      "factors": ["catalyst_composition", "support", "loading", "active_phase", "particle_size", "pretreatment", "activation", "feed_composition", "flow_rate", "space_velocity", "temperature", "pressure", "atmosphere", "conversion", "yield", "selectivity", "stability", "deactivation", "regeneration", "reactor_configuration", "measurement_configuration"],
+      "critical": ["catalyst_composition", "feed_composition", "reactor_configuration"]
+    }
+  },
+  "factor_defaults": {
+    "aliases": [],
+    "value_type": "string",
+    "units": [],
+    "criticality": "optional",
+    "applicability": "profile_defined",
+    "comparison_policy": "semantic_same_equivalent_different_or_missing",
+    "normalization_policy": "preserve_raw_and_propose_candidate_only",
+    "controlled_normalizations": {},
+    "allowed_local_inference_rules": [],
+    "evidence_requirements": "one_or_more_local_anchor_ids_for_non_unknown",
+    "whether_difference_can_block_comparability": false,
+    "whether_difference_can_explain_polarity": true,
+    "prompt_guidance": "Extract only when supported by the supplied local evidence."
+  },
+  "factor_overrides": {
+    "species": {
+      "aliases": ["organism"],
+      "criticality": "critical",
+      "normalization_policy": "resolver_acceptance_required",
+      "controlled_normalizations": {"human": "Homo sapiens", "mouse": "Mus musculus", "rat": "Rattus norvegicus"},
+      "whether_difference_can_block_comparability": true
+    },
+    "intervention": {"allowed_local_inference_rules": ["compose_intervention_target_and_type"]},
+    "treatment": {"allowed_local_inference_rules": ["compose_intervention_target_and_type"]},
+    "knockout_or_overexpression": {"allowed_local_inference_rules": ["compose_intervention_target_and_type"]},
+    "comparator": {
+      "allowed_local_inference_rules": ["project_comparator_control_surface"],
+      "controlled_normalizations": {"control": "control", "vehicle": "vehicle", "untreated": "untreated", "mock": "mock", "non targeting sirna": "non-targeting_control"}
+    },
+    "placebo_or_standard_care": {
+      "allowed_local_inference_rules": ["project_comparator_control_surface"],
+      "controlled_normalizations": {"control": "control", "vehicle": "vehicle", "untreated": "untreated", "mock": "mock", "non targeting sirna": "non-targeting_control"}
+    },
+    "experimental_design": {"allowed_local_inference_rules": ["compose_experimental_design_intervention_and_comparator"]},
+    "study_design": {"allowed_local_inference_rules": ["compose_experimental_design_intervention_and_comparator"]},
+    "in_vivo_in_vitro_ex_vivo": {
+      "allowed_local_inference_rules": [],
+      "controlled_normalizations": {"in vitro": "in_vitro", "in vivo": "in_vivo", "ex vivo": "ex_vivo"}
+    },
+    "dose": {"value_type": "quantity", "units": ["M", "mM", "uM", "nM", "mg", "mg/kg"], "criticality": "conditional"},
+    "duration": {"value_type": "duration", "units": ["s", "min", "h", "day", "week"]},
+    "reaction_time": {"value_type": "duration", "units": ["s", "min", "h", "day"]},
+    "follow_up": {"value_type": "duration", "units": ["day", "week", "month", "year"]},
+    "temperature": {"value_type": "quantity", "units": ["K", "C", "°C"], "whether_difference_can_block_comparability": true},
+    "pressure": {"value_type": "quantity", "units": ["Pa", "kPa", "bar", "atm"], "whether_difference_can_block_comparability": true},
+    "concentration": {"value_type": "quantity", "units": ["M", "mM", "uM", "nM", "mol/L"]},
+    "particle_size": {"value_type": "quantity", "units": ["nm", "um", "mm"]},
+    "film_thickness": {"value_type": "quantity", "units": ["nm", "um", "mm"]},
+    "loading": {"value_type": "quantity", "units": ["wt%", "mol%", "%"]},
+    "flow_rate": {"value_type": "quantity", "units": ["mL/min", "L/min"]},
+    "space_velocity": {"value_type": "quantity", "units": ["h-1", "mL g-1 h-1"]},
+    "sample_size": {"value_type": "integer"},
+    "yield": {"value_type": "quantity", "units": ["%"]},
+    "selectivity": {"value_type": "quantity", "units": ["%"]},
+    "conversion": {"value_type": "quantity", "units": ["%"]},
+    "observed_outcome": {"evidence_requirements": "results_or_observation_anchor_required", "whether_difference_can_block_comparability": false}
+  }
+}

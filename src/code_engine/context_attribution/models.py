@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-EXTRACTION_SCHEMA_VERSION = "observation_context_extraction_v4"
+EXTRACTION_SCHEMA_VERSION = "observation_context_extraction_v5"
 PAIR_SCHEMA_VERSION = "context_pair_attribution_v2"
 
 class StrictModel(BaseModel):
@@ -15,6 +15,11 @@ class RawComponent(StrictModel):
     surface: str = Field(min_length=1)
     evidence_anchor_ids: list[str] = Field(min_length=1)
 
+class ExplicitSpan(StrictModel):
+    evidence_anchor_id: str
+    start_token_id: str
+    end_token_id: str
+
 class ContextFactor(StrictModel):
     factor_id: str
     raw_value: str | None = None
@@ -24,6 +29,9 @@ class ContextFactor(StrictModel):
     source_chain_node_ids: list[str] = Field(default_factory=list)
     inference_rule: str | None = None
     raw_components: list[RawComponent] = Field(default_factory=list)
+    explicit_span: ExplicitSpan | None = None
+    raw_value_source: Literal["explicit_token_span"] | None = None
+    explicit_span_resolution: dict[str, Any] = Field(default_factory=dict)
     composed_value: str | None = None
     composition_rule: str | None = None
     composition_provenance: list[dict[str, Any]] = Field(default_factory=list)
@@ -41,8 +49,11 @@ class ContextFactor(StrictModel):
     @model_validator(mode="after")
     def status_contract(self):
         if self.status == "explicit":
-            if not self.raw_value or not self.evidence_anchor_ids:
-                raise ValueError("explicit_factor_requires_raw_surface_and_anchor")
+            legacy = self.legacy_unverifiable and self.raw_value
+            if not legacy and (self.explicit_span is None or not self.evidence_anchor_ids):
+                raise ValueError("explicit_factor_requires_token_span_and_anchor")
+            if self.raw_value is not None and not self.raw_value_source and not legacy:
+                raise ValueError("provider_explicit_raw_value_must_be_null")
             if self.raw_components or self.source_chain_node_ids or self.inference_rule:
                 raise ValueError("explicit_factor_must_not_have_chain_components")
         elif self.status == "inferred_from_local_chain":
@@ -52,6 +63,8 @@ class ContextFactor(StrictModel):
                 raise ValueError("inferred_factor_requires_raw_components")
             if not self.source_chain_node_ids or not self.inference_rule:
                 raise ValueError("inferred_factor_requires_chain_nodes_and_rule")
+            if self.explicit_span is not None:
+                raise ValueError("inferred_factor_explicit_span_forbidden")
             component_nodes = list(dict.fromkeys(x.chain_node_id for x in self.raw_components))
             if self.raw_components and self.source_chain_node_ids != component_nodes:
                 raise ValueError("inferred_factor_nodes_must_match_components")
@@ -63,12 +76,13 @@ class ContextFactor(StrictModel):
                 self.normalized_candidate, self.normalized_value, self.evidence_anchor_ids,
                 self.source_chain_node_ids, self.raw_components, self.inference_rule,
                 self.composed_value, self.composition_rule, self.composition_provenance,
+                self.explicit_span, self.raw_value_source, self.explicit_span_resolution,
             )):
                 raise ValueError("unknown_factor_must_be_empty")
         return self
 
 class ContextExtraction(StrictModel):
-    schema_version: Literal["observation_context_extraction_v4"] = EXTRACTION_SCHEMA_VERSION
+    schema_version: Literal["observation_context_extraction_v5"] = EXTRACTION_SCHEMA_VERSION
     observation_id: str
     domain_profiles: list[str] = Field(min_length=1)
     input_mode: Literal["abstract_sentence_only", "fulltext_evidence_chain"]
@@ -84,6 +98,7 @@ class ContextExtraction(StrictModel):
     def read_legacy_artifacts(cls, value):
         if isinstance(value, dict) and value.get("schema_version") in {
             "observation_context_extraction_v2", "observation_context_extraction_v3",
+            "observation_context_extraction_v4",
         }:
             original = value["schema_version"]
             factors = []
@@ -113,6 +128,12 @@ class ContextExtraction(StrictModel):
             for factor in self.context_factors:
                 if factor.normalized_value is not None:
                     raise ValueError("provider_normalized_value_must_be_null")
+                if factor.status == "explicit" and factor.raw_value is not None:
+                    raise ValueError("provider_explicit_raw_value_must_be_null")
+                if factor.raw_value_source or factor.explicit_span_resolution:
+                    raise ValueError("provider_explicit_hydration_fields_forbidden")
+                if factor.composed_value or factor.composition_rule or factor.composition_provenance:
+                    raise ValueError("provider_composition_fields_forbidden")
         return self
 
 class FactorComparison(StrictModel):

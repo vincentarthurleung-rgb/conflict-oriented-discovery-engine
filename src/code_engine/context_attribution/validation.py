@@ -11,9 +11,13 @@ from .composition import (
 )
 from .models import ContextExtraction, ContextPairAttribution
 from .registry import resolve_factors
+from .token_spans import (
+    ANCHOR_TOKENIZER_VERSION, EXPLICIT_SPAN_VERSION, SPAN_HYDRATOR_VERSION,
+    resolve_explicit_span,
+)
 
-VALIDATOR_VERSION = "context_attribution_validator_v3"
-HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v2"
+VALIDATOR_VERSION = "context_attribution_validator_v4"
+HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v3"
 LOCAL_CHAIN_INFERENCE_POLICY_VERSION = COMPOSITION_POLICY_VERSION
 
 _QUANTITY = re.compile(r"^\s*[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:\s*(?:±|\+/-)\s*\d+(?:\.\d+)?)?\s*([%°µμA-Za-z][\w%°µμ./^-]*)?\s*$")
@@ -88,6 +92,13 @@ def hydrate_context_extraction(payload: ContextExtraction | dict[str, Any],
             for aid in valid
         ]
         factor.evidence_text = "\n\n".join(item["text"] for item in factor.authoritative_evidence) or None
+        span_resolution, span_error = (None, None)
+        if factor.status == "explicit" and not factor.legacy_unverifiable:
+            span_resolution, span_error = resolve_explicit_span(factor.explicit_span, anchors)
+            if span_resolution is not None:
+                factor.raw_value = span_resolution["raw_value"]
+                factor.raw_value_source = "explicit_token_span"
+                factor.explicit_span_resolution = span_resolution
         hydrated_factors.append({
             "factor_id": factor.factor_id,
             "authoritative_anchor_ids": valid,
@@ -96,6 +107,8 @@ def hydrate_context_extraction(payload: ContextExtraction | dict[str, Any],
             "model_evidence_text_matched_authority": (
                 supplied_text is None or supplied_text == factor.evidence_text
             ),
+            "explicit_span_resolution": span_resolution,
+            "explicit_span_error": span_error,
         })
     audit = {
         "hydrator_version": HYDRATOR_VERSION,
@@ -118,6 +131,8 @@ def _resolve_normalization(factor: Any, definition: dict[str, Any],
         factor.normalized_value = None
         factor.normalization_status = "not_requested"
         factor.normalization_provenance = {"validator_version": VALIDATOR_VERSION}
+        if definition.get("normalization_policy") == "resolver_acceptance_required":
+            return f"normalization_required:{factor.factor_id}"
         return None
     factor.normalized_candidate = candidate
     source_value = factor.raw_value or factor.composed_value
@@ -181,6 +196,9 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
     if value.input_mode != contract.get("input_mode"): errors.append("input_mode_mismatch")
     known, anchors, chain_nodes = resolve_factors(profiles, registry), _anchors(contract), _chain_nodes(contract)
     accepted_normalizations = accepted_normalizations or set()
+    hydration_by_factor = {
+        item["factor_id"]: item for item in hydration_audit.get("factors", [])
+    }
     for factor in value.context_factors:
         if factor.factor_id not in known:
             errors.append(f"unsupported_factor:{factor.factor_id}"); continue
@@ -188,18 +206,20 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
             errors.append(f"unbound_factor:{factor.factor_id}")
         if factor.legacy_unverifiable and factor.status == "inferred_from_local_chain":
             errors.append(f"legacy_local_inference_unverifiable:{factor.factor_id}")
+        if factor.legacy_unverifiable and factor.status == "explicit":
+            errors.append(f"legacy_explicit_span_unverifiable:{factor.factor_id}")
         for aid in factor.evidence_anchor_ids:
             if aid not in anchors: errors.append(f"anchor_not_in_observation:{factor.factor_id}:{aid}")
             elif value.input_mode == "abstract_sentence_only" and anchors[aid].get("source_role") != "abstract":
                 errors.append(f"abstract_fulltext_anchor_forbidden:{aid}")
-        bound_anchor_texts = [
-            str(anchors[x].get("text") or "")
-            for x in factor.evidence_anchor_ids if x in anchors
-        ]
-        if factor.status == "explicit" and not any(
-            _surface_present(factor.raw_value, text) for text in bound_anchor_texts
-        ):
-            errors.append(f"explicit_value_not_in_evidence:{factor.factor_id}")
+        if factor.status == "explicit" and not factor.legacy_unverifiable:
+            span_error = hydration_by_factor.get(factor.factor_id, {}).get("explicit_span_error")
+            if span_error:
+                errors.append(f"{span_error}:{factor.factor_id}")
+            if factor.explicit_span and factor.evidence_anchor_ids != [
+                factor.explicit_span.evidence_anchor_id
+            ]:
+                errors.append(f"explicit_span_anchor_binding_mismatch:{factor.factor_id}")
         if factor.status == "inferred_from_local_chain":
             if value.input_mode != "fulltext_evidence_chain":
                 errors.append(f"local_inference_requires_fulltext:{factor.factor_id}")
@@ -250,9 +270,7 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
                         f"local_inference_component_field_missing_or_null:{factor.factor_id}:{index}"
                     )
                     continue
-                matches = [
-                    item for item in non_null if _surface_present(component.surface, str(item[1]))
-                ]
+                matches = [item for item in non_null if component.surface == str(item[1])]
                 if len(matches) != 1:
                     reason = "surface_not_in_field" if not matches else "field_ambiguous"
                     errors.append(
@@ -261,11 +279,6 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
                     continue
                 path, field_value, locator = matches[0]
                 slot = expected[index] if index < len(expected) else {}
-                allowed = slot.get("allowed_exact_surfaces")
-                if allowed and _surface(component.surface) not in {_surface(x) for x in allowed}:
-                    errors.append(
-                        f"local_inference_component_surface_not_allowed:{factor.factor_id}:{index}"
-                    )
                 record_locators.setdefault(component.chain_node_id, set()).add(locator)
                 provenance.append({
                     "component_index": index,
@@ -306,6 +319,17 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
                 )
                 factor.composition_rule = factor.inference_rule
                 factor.composition_provenance = provenance
+                comparator_classes = rule.get("optional_normalized_classes") or {}
+                if factor.factor_id in {"comparator", "placebo_or_standard_care"}:
+                    factor.normalization_provenance["comparator_normalization_policy_version"] = (
+                        "context_comparator_normalization_v1"
+                    )
+                    if factor.normalized_candidate is not None:
+                        expected_class = comparator_classes.get(factor.composed_value)
+                        if factor.normalized_candidate != expected_class:
+                            errors.append(
+                                f"comparator_normalized_class_unresolved:{factor.factor_id}"
+                            )
         elif factor.source_chain_node_ids or factor.inference_rule:
             errors.append(f"chain_provenance_on_non_inferred_factor:{factor.factor_id}")
         if factor.factor_id in {"observed_outcome", "biological_endpoint", "yield", "selectivity", "conversion"}:
@@ -329,6 +353,9 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
     value.provenance["deterministic_validation"] = {
         "validator_version": VALIDATOR_VERSION,
         "hydrator_version": HYDRATOR_VERSION,
+        "anchor_tokenizer_version": ANCHOR_TOKENIZER_VERSION,
+        "explicit_span_version": EXPLICIT_SPAN_VERSION,
+        "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         **composition_identity(),
         "valid": not errors,
@@ -348,8 +375,8 @@ def validate_pair_attribution(payload: ContextPairAttribution | dict[str, Any], 
     if value.claim_a_observation_id != extraction_a.observation_id: errors.append("claim_a_observation_id_mismatch")
     if value.claim_b_observation_id != extraction_b.observation_id: errors.append("claim_b_observation_id_mismatch")
     known = resolve_factors(profiles, registry)
-    values_a = {x.factor_id: x.raw_value for x in extraction_a.context_factors}
-    values_b = {x.factor_id: x.raw_value for x in extraction_b.context_factors}
+    values_a = {x.factor_id: x.raw_value or x.composed_value for x in extraction_a.context_factors}
+    values_b = {x.factor_id: x.raw_value or x.composed_value for x in extraction_b.context_factors}
     anchors_a = {x for f in extraction_a.context_factors for x in f.evidence_anchor_ids}
     anchors_b = {x for f in extraction_b.context_factors for x in f.evidence_anchor_ids}
     for factor in value.factor_comparisons:

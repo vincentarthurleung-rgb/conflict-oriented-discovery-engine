@@ -10,8 +10,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 REGISTRY_PATHS = {
     "context_factor_registry_v1": Path("configs/context_attribution/context_registry_v1.json"),
     "context_factor_registry_v2": Path("configs/context_attribution/context_registry_v2.json"),
+    "context_factor_registry_v3": Path("configs/context_attribution/context_registry_v3.json"),
 }
-CURRENT_REGISTRY_VERSION = "context_factor_registry_v2"
+CURRENT_REGISTRY_VERSION = "context_factor_registry_v3"
 LEGACY_REGISTRY_VERSION = "context_factor_registry_v1"
 DEFAULT_REGISTRY = REGISTRY_PATHS[CURRENT_REGISTRY_VERSION]
 

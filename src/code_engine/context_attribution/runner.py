@@ -19,7 +19,9 @@ from .engine import (
     build_fulltext_input, extraction_cache_identity, extraction_prompt,
     pair_cache_identity, pair_prompt,
 )
-from .composition import composition_identity
+from .composition import (
+    composition_identity, load_composition_policy, validate_registry_policy_consistency,
+)
 from .gate import apply_comparability_gate
 from .models import ContextExtraction, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
 from .planning import (
@@ -31,6 +33,9 @@ from .registry import RegistryResolution, load_registry, resolve_registry
 from .validation import validate_context_extraction, validate_pair_attribution
 from .validation import (
     HYDRATOR_VERSION, LOCAL_CHAIN_INFERENCE_POLICY_VERSION, VALIDATOR_VERSION,
+)
+from .token_spans import (
+    ANCHOR_TOKENIZER_VERSION, EXPLICIT_SPAN_VERSION, SPAN_HYDRATOR_VERSION,
 )
 
 ARTIFACTS = (
@@ -401,11 +406,16 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         expected_content_sha256=registry_content_sha256,
     )
     registry = load_registry(resolution=registry_resolution)
+    composition_policy, _ = load_composition_policy()
+    configuration_errors = validate_registry_policy_consistency(registry, composition_policy)
     registry_identity = registry_resolution.to_dict()
     contract_identity = {
         **registry_identity,
         "validator_version": VALIDATOR_VERSION,
         "hydrator_version": HYDRATOR_VERSION,
+        "anchor_tokenizer_version": ANCHOR_TOKENIZER_VERSION,
+        "explicit_span_version": EXPLICIT_SPAN_VERSION,
+        "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
         "normalization_policy_version": registry["normalization_registry_version"],
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         **composition_identity(),
@@ -533,6 +543,9 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "normalization_registry_version": registry["normalization_registry_version"],
         "normalization_policy_version": registry["normalization_registry_version"],
         "validator_version": VALIDATOR_VERSION, "hydrator_version": HYDRATOR_VERSION,
+        "anchor_tokenizer_version": ANCHOR_TOKENIZER_VERSION,
+        "explicit_span_version": EXPLICIT_SPAN_VERSION,
+        "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
         "local_chain_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         **composition_identity(),
@@ -540,7 +553,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "activation": False, "active_pointer_unchanged": True,
         "legacy_variational_em_called": False,
     }
-    plan_errors = validate_plan(plan)
+    plan_errors = [*configuration_errors, *validate_plan(plan)]
     if plan_errors:
         plan["plan_status"] = "invalid"
         plan["coverage_complete"] = False
@@ -592,6 +605,18 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
     systemic_failure: dict[str, Any] | None = None
     for oid, contract in contracts.items():
         identity = identities[oid]
+        raw: dict[str, Any] | None = None
+        observation_contract_identity = {
+            **contract_identity,
+            "token_catalog_identity": contract.get("token_catalog_identity"),
+            "authoritative_anchor_text_sha256": [
+                {
+                    "anchor_id": anchor.get("anchor_id"),
+                    "text_sha256": anchor.get("text_sha256"),
+                }
+                for anchor in contract.get("evidence_anchors") or []
+            ],
+        }
         ledger_entry_id = _ledger_id("extraction", oid, identity)
         cached = cache["entries"].get(identity) if _valid_cache_entry(cache, identity, "extraction") else None
         replayed_provider = _successful_provider_audit(provider_audits, "extraction", identity) if resume else None
@@ -625,7 +650,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                     call_type="extraction", record_id=oid, ledger_entry_id=ledger_entry_id,
                     identity=identity, provider=provider, model=model, thinking_mode=thinking_mode,
                     schema_version=EXTRACTION_SCHEMA_VERSION, prompt_snapshot=prompt_snapshot,
-                    response=response, contract_identity=contract_identity,
+                    response=response, contract_identity=observation_contract_identity,
                 )
                 _upsert_provider_audit(provider_audits, provider_entry)
                 _upsert_ledger(ledger, {
@@ -644,7 +669,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                 cache["entries"][identity] = {
                     "kind": "extraction", "request_identity": identity,
                     "identity_contract": {
-                        **contract_identity,
+                        **observation_contract_identity,
                         "prompt_version": PROMPT_VERSION,
                         "extraction_schema_version": EXTRACTION_SCHEMA_VERSION,
                         "observation_id": oid,
@@ -656,6 +681,9 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
             audits.append({
                 "record_type": "extraction", "record_id": oid, "valid": not errors,
                 "errors": errors,
+                "schema_result": {"valid": True, "schema_version": EXTRACTION_SCHEMA_VERSION},
+                "provider_parsed_payload": _safe_audit_value(raw),
+                "post_hydration_composition_resolver_candidate": _safe_audit_value(dumped),
                 "deterministic_validation": validated.provenance.get("deterministic_validation"),
             })
             _upsert_ledger(ledger, {
@@ -679,7 +707,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                 call_type="extraction", record_id=oid, ledger_entry_id=ledger_entry_id,
                 identity=identity, provider=provider, model=model, thinking_mode=thinking_mode,
                 schema_version=EXTRACTION_SCHEMA_VERSION, prompt_snapshot=prompt_snapshot, exc=exc,
-                contract_identity=contract_identity,
+                contract_identity=observation_contract_identity,
             ))
             diagnostic = _provider_failure(
                 exc, call_type="extraction", record_id=oid, ledger_entry_id=ledger_entry_id,
@@ -696,7 +724,15 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
             })
             systemic_failure = diagnostic if systemic else None
         except Exception as exc:
-            audits.append({"record_type": "extraction", "record_id": oid, "valid": False, "errors": [str(exc)]})
+            audits.append({
+                "record_type": "extraction", "record_id": oid, "valid": False,
+                "errors": [str(exc)],
+                "schema_result": {
+                    "valid": False, "schema_version": EXTRACTION_SCHEMA_VERSION,
+                    "safe_error_type": type(exc).__name__,
+                },
+                "provider_parsed_payload": _safe_audit_value(raw),
+            })
             _upsert_ledger(ledger, {
                 "ledger_entry_id": ledger_entry_id, "source": source,
                 "provider_call": source == "provider", "status": "rejected_schema",

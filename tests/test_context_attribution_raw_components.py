@@ -11,11 +11,12 @@ from code_engine.context_attribution.composition import (
 from code_engine.context_attribution.engine import extraction_prompt
 from code_engine.context_attribution.models import ContextExtraction
 from code_engine.context_attribution.registry import load_registry
+from code_engine.context_attribution.token_spans import attach_token_catalog
 from code_engine.context_attribution.validation import validate_context_extraction
 
 
 def _anchor(anchor_id: str, text: str, role: str = "setup") -> dict:
-    return {
+    return attach_token_catalog({
         "anchor_id": anchor_id,
         "text": text,
         "text_hash": hashlib.sha256(text.encode()).hexdigest(),
@@ -23,7 +24,7 @@ def _anchor(anchor_id: str, text: str, role: str = "setup") -> dict:
         "char_end": len(text),
         "source_role": role,
         "source_section": "Results",
-    }
+    })
 
 
 def _contract() -> dict:
@@ -87,7 +88,7 @@ def _base_factor(**updates) -> dict:
 
 def _payload(factor: dict) -> dict:
     return {
-        "schema_version": "observation_context_extraction_v4",
+        "schema_version": "observation_context_extraction_v5",
         "observation_id": "obs-1",
         "domain_profiles": ["generic", "biomedical"],
         "input_mode": "fulltext_evidence_chain",
@@ -95,41 +96,30 @@ def _payload(factor: dict) -> dict:
     }
 
 
-@pytest.mark.parametrize(
-    ("raw", "valid"),
-    [
-        ("mRNA expression of CSN8", True),
-        ("MRNA\u00a0EXPRESSION—OF CSN8", True),
-        ("CSN8 mRNA expression", False),
-        ("messenger RNA expression of CSN8", False),
-        ("mRNA expression of CSN8 versus control", False),
-        ("in_vitro", False),
-        ("Homo sapiens", False),
-    ],
-)
-def test_explicit_surface_copy_contract(raw, valid):
+def test_explicit_token_span_contract_hydrates_exact_surface():
     text = "mRNA expression—of CSN8 was measured in A549 cells."
-    contract = {
+    contract = attach_token_catalog({
         **_contract(),
         "evidence_anchors": [_anchor("A1", text)],
-    }
-    factor_id = "species" if raw == "Homo sapiens" else (
-        "in_vivo_in_vitro_ex_vivo" if raw == "in_vitro" else "measurement_endpoint"
-    )
+    })
     payload = _payload({
-        "factor_id": factor_id,
-        "raw_value": raw,
+        "factor_id": "measurement_endpoint",
+        "raw_value": None,
         "normalized_value": None,
         "status": "explicit",
         "evidence_anchor_ids": ["A1"],
+        "explicit_span": {
+            "evidence_anchor_id": "A1",
+            "start_token_id": "A1:T0",
+            "end_token_id": "A1:T4",
+        },
         "confidence": 0.9,
     })
-    _, errors = validate_context_extraction(
+    value, errors = validate_context_extraction(
         payload, contract, ["generic", "biomedical"]
     )
-    assert (not errors) is valid
-    if not valid:
-        assert f"explicit_value_not_in_evidence:{factor_id}" in errors
+    assert not errors
+    assert value.context_factors[0].raw_value == "mRNA expression—of CSN8"
 
 
 def test_inferred_schema_requires_components_and_forbids_free_raw_value():
@@ -141,22 +131,27 @@ def test_inferred_schema_requires_components_and_forbids_free_raw_value():
 
 
 def test_explicit_surface_cannot_span_two_authoritative_anchors():
-    contract = {
+    contract = attach_token_catalog({
         **_contract(),
         "evidence_anchors": [_anchor("A1", "CSN8"), _anchor("A2", "expression")],
-    }
+    })
     payload = _payload({
         "factor_id": "measurement_endpoint",
-        "raw_value": "CSN8 expression",
+        "raw_value": None,
         "normalized_value": None,
         "status": "explicit",
-        "evidence_anchor_ids": ["A1", "A2"],
+        "evidence_anchor_ids": ["A1"],
+        "explicit_span": {
+            "evidence_anchor_id": "A1",
+            "start_token_id": "A1:T0",
+            "end_token_id": "A2:T0",
+        },
         "confidence": 0.9,
     })
     _, errors = validate_context_extraction(
         payload, contract, ["generic", "biomedical"]
     )
-    assert "explicit_value_not_in_evidence:measurement_endpoint" in errors
+    assert "explicit_span_unknown_end_token:measurement_endpoint" in errors
 
 
 def test_valid_components_compose_stably_and_hydrate_full_provenance():
@@ -246,16 +241,19 @@ def test_comparator_requires_control_surface_from_comparator_node():
 
 
 def test_a549_cell_line_explicit_species_unknown_and_no_registry_mapping():
-    contract = {
+    contract = attach_token_catalog({
         **_contract(),
         "evidence_anchors": [_anchor("A1", "A549 cells showed an increased endpoint.")],
-    }
+    })
     payload = _payload({
         "factor_id": "cell_line",
-        "raw_value": "A549",
+        "raw_value": None,
         "normalized_value": None,
         "status": "explicit",
         "evidence_anchor_ids": ["A1"],
+        "explicit_span": {
+            "evidence_anchor_id": "A1", "start_token_id": "A1:T0", "end_token_id": "A1:T0",
+        },
         "confidence": 0.9,
     })
     payload["context_factors"].append({
@@ -277,16 +275,20 @@ def test_a549_cell_line_explicit_species_unknown_and_no_registry_mapping():
     guessed = copy.deepcopy(payload)
     guessed["context_factors"][1] = {
         "factor_id": "species",
-        "raw_value": "Homo sapiens",
+        "raw_value": None,
         "normalized_value": None,
+        "normalized_candidate": "Homo sapiens",
         "status": "explicit",
         "evidence_anchor_ids": ["A1"],
+        "explicit_span": {
+            "evidence_anchor_id": "A1", "start_token_id": "A1:T0", "end_token_id": "A1:T0",
+        },
         "confidence": 0.9,
     }
     _, errors = validate_context_extraction(
         guessed, contract, ["generic", "biomedical"]
     )
-    assert "explicit_value_not_in_evidence:species" in errors
+    assert "normalization_unresolved:species" in errors
 
 
 def test_unknown_structure_and_provider_composed_value_are_rejected():
@@ -304,15 +306,13 @@ def test_unknown_structure_and_provider_composed_value_are_rejected():
         ContextExtraction.model_validate(_payload(invalid))
 
     provider_composed = _payload(_base_factor(composed_value="model chose this"))
-    _, errors = validate_context_extraction(
-        provider_composed, _contract(), ["generic", "biomedical"]
-    )
-    assert "provider_composed_value_forbidden" in errors
+    with pytest.raises(ValidationError, match="provider_composition_fields_forbidden"):
+        validate_context_extraction(provider_composed, _contract(), ["generic", "biomedical"])
 
 
 def test_prompt_contains_and_validates_all_new_examples():
     prompt = json.loads(extraction_prompt(_contract(), ["generic", "biomedical"]))
-    assert prompt["prompt_version"] == "context_attribution_prompts_v4"
+    assert prompt["prompt_version"] == "context_attribution_prompts_v5"
     assert prompt["local_chain_composition_policy"]["policy_version"] == COMPOSITION_POLICY_VERSION
     descriptions = " ".join(x["description"] for x in prompt["examples"]["extraction_examples"])
     assert "field-level components" in descriptions

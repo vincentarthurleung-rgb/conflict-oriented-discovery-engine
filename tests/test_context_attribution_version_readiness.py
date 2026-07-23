@@ -42,11 +42,11 @@ def test_registry_v1_is_immutable_and_v2_is_independent():
 
 def test_registry_resolution_is_explicit_compatible_and_fail_closed(monkeypatch):
     current = resolve_registry(
-        prompt_version="context_attribution_prompts_v4",
-        extraction_schema_version="observation_context_extraction_v4",
+        prompt_version="context_attribution_prompts_v5",
+        extraction_schema_version="observation_context_extraction_v5",
     )
-    assert current.registry_version == "context_factor_registry_v2"
-    assert current.registry_path.endswith("context_registry_v2.json")
+    assert current.registry_version == "context_factor_registry_v3"
+    assert current.registry_path.endswith("context_registry_v3.json")
     assert len(current.registry_content_sha256) == 64
     legacy = resolve_registry(
         prompt_version="context_attribution_prompts_v2",
@@ -105,13 +105,13 @@ def test_cache_identity_isolated_by_registry_validator_hydrator_and_local_policy
         _contract(), registry_resolution=resolution, **common
     )
     assert validator_changed != baseline
-    monkeypatch.setattr(context_engine, "VALIDATOR_VERSION", "context_attribution_validator_v3")
+    monkeypatch.setattr(context_engine, "VALIDATOR_VERSION", "context_attribution_validator_v4")
     monkeypatch.setattr(context_engine, "HYDRATOR_VERSION", "hydrator_changed")
     hydrator_changed = extraction_cache_identity(
         _contract(), registry_resolution=resolution, **common
     )
     assert hydrator_changed != baseline
-    monkeypatch.setattr(context_engine, "HYDRATOR_VERSION", "context_attribution_anchor_hydrator_v2")
+    monkeypatch.setattr(context_engine, "HYDRATOR_VERSION", "context_attribution_anchor_hydrator_v3")
     monkeypatch.setattr(context_engine, "LOCAL_CHAIN_INFERENCE_POLICY_VERSION", "local_chain_changed")
     local_changed = extraction_cache_identity(
         _contract(), registry_resolution=resolution, **common

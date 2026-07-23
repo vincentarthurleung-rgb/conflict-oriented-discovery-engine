@@ -11,8 +11,12 @@ from .registry import RegistryResolution, load_registry, resolve_factors, resolv
 from .validation import (
     HYDRATOR_VERSION, LOCAL_CHAIN_INFERENCE_POLICY_VERSION, VALIDATOR_VERSION,
 )
+from .token_spans import (
+    ANCHOR_TOKENIZER_VERSION, EXPLICIT_SPAN_VERSION, SPAN_HYDRATOR_VERSION,
+    attach_token_catalog,
+)
 
-PROMPT_VERSION = "context_attribution_prompts_v4"
+PROMPT_VERSION = "context_attribution_prompts_v5"
 CANDIDATE_POLICY_VERSION = "deterministic_conflict_candidates_v1"
 COMPARABILITY_POLICY_VERSION = "context_comparability_policy_v1"
 
@@ -30,7 +34,7 @@ def build_abstract_input(observation: dict[str, Any], profiles: list[str]) -> di
     """The abstract contract deliberately ignores every full-text-shaped field."""
     oid, sentence = _id(observation), _evidence(observation)
     anchor_id = f"{oid}:abstract_sentence"
-    return {
+    return attach_token_catalog({
         "contract_version": "abstract_context_input_v1", "input_mode": "abstract_sentence_only",
         "observation_id": oid, "domain_profiles": profiles,
         "read_only_scientific_reference": {
@@ -45,7 +49,7 @@ def build_abstract_input(observation: dict[str, Any], profiles: list[str]) -> di
         "sentence_provenance": observation.get("sentence_provenance") or {
             "paper_id": observation.get("paper_id"), "source_section": "abstract"
         },
-    }
+    })
 
 def build_fulltext_input(observation: dict[str, Any], profiles: list[str]) -> dict[str, Any]:
     provenance = observation.get("provenance") or {}
@@ -89,7 +93,7 @@ def build_fulltext_input(observation: dict[str, Any], profiles: list[str]) -> di
         },
     }
     direct = next((a.get("text") for a in anchors if a.get("span_type") == "observation"), _evidence(observation))
-    return {
+    return attach_token_catalog({
         "contract_version": "fulltext_context_input_v1", "input_mode": "fulltext_evidence_chain",
         "observation_id": _id(observation), "domain_profiles": profiles,
         "read_only_scientific_reference": {
@@ -104,7 +108,7 @@ def build_fulltext_input(observation: dict[str, Any], profiles: list[str]) -> di
         "measurement_identity": _hash(measurement), "source_section": provenance.get("section"),
         "source_role": [a.get("source_role") for a in anchors],
         "evidence_family": experiment.get("evidence_family_id"),
-    }
+    })
 
 def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], provider: str,
                               model: str, thinking_mode: str = "default",
@@ -127,6 +131,10 @@ def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], 
         "extraction_schema_version": EXTRACTION_SCHEMA_VERSION, "provider": provider, "model": model,
         "thinking_mode": thinking_mode, "max_tokens": max_tokens,
         "validator_version": VALIDATOR_VERSION, "hydrator_version": HYDRATOR_VERSION,
+        "anchor_tokenizer_version": ANCHOR_TOKENIZER_VERSION,
+        "explicit_span_version": EXPLICIT_SPAN_VERSION,
+        "explicit_span_hydrator_version": SPAN_HYDRATOR_VERSION,
+        "token_catalog_identity": contract.get("token_catalog_identity"),
         "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
         **composition_identity(),
         "normalization_registry_version": registry["normalization_registry_version"],
@@ -188,9 +196,11 @@ def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
         "Return exactly one valid JSON object. Do not output Markdown or any text outside the JSON object. "
         "Use only factor_id values present in factor_registry. Select evidence_anchor_ids only from the "
         "authoritative anchor IDs in this observation input; never create a span ID, hash ID, temporary ID, "
-        "or any other anchor. For status explicit, raw_value is a verbatim surface copy, not a paraphrase: "
-        "it must occur continuously in one selected authoritative anchor after only NFKC, case, whitespace, "
-        "punctuation, and Unicode-separator normalization. Preserve word order. Never expand abbreviations, "
+        "or any other anchor. For status explicit, set raw_value=null and select exactly one explicit_span "
+        "using evidence_anchor_id, start_token_id, and end_token_id from the same supplied anchor. Do not copy "
+        "surface text or provide quotes. The selected contiguous span must directly express the factor and "
+        "must be narrow enough to exclude irrelevant prose. The deterministic hydrator alone slices raw_value "
+        "from Unicode code-point offsets. Preserve word order. Never expand abbreviations, "
         "substitute synonyms, summarize outcomes, or add absent words. Thus CRC cannot become colorectal "
         "cancer; 'mRNA expression of CSN8' cannot become 'CSN8 mRNA expression'; absent 'versus control' or "
         "'in vitro' cannot be added. raw_value and normalized_value have different meanings. Put any model normalization "
@@ -209,7 +219,8 @@ def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
         "Use only supplied evidence; never use external knowledge. Output unknown when unsupported. "
         "Do not treat Methods as an observed result. Never infer species from a cell line: A549 may support "
         "cell_line='A549' but species must be unknown unless a supplied surface or controlled rule supports it. "
-        "Never invent species, tissue, dose, time, comparator, or design. "
+        "Never invent species, tissue, dose, time, comparator, or design. A549 is a valid cell_line span but "
+        "cannot be used as a species span. If no direct single span or active local-chain rule exists, use unknown. "
         "Every non-unknown value needs anchors belonging to that observation. Abstract inputs may use only "
         "the abstract evidence sentence; fulltext inputs may use only its local evidence chain. Preserve "
         "multi-intervention combinations. Distinguish same from semantically equivalent. Different does not "
@@ -229,6 +240,17 @@ def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
         else examples["pair_example"]["output"]
     )
     composition_policy, _ = load_composition_policy()
+    active_rules = set(composition_policy["rules"])
+    factors = {
+        factor_id: {
+            **definition,
+            "allowed_local_inference_rules": [
+                rule for rule in definition.get("allowed_local_inference_rules", [])
+                if rule in active_rules
+            ],
+        }
+        for factor_id, definition in factors.items()
+    }
     return json.dumps({"task": task, "prompt_version": PROMPT_VERSION, "rules": rules,
                        "schema_valid_json_example": schema_valid_json_example,
                        "examples": examples, "factor_registry": factors,
@@ -243,36 +265,111 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
             for field in (
                 "evidence_text", "authoritative_evidence", "composed_value",
                 "composition_rule", "composition_provenance", "legacy_unverifiable",
+                "raw_value_source", "explicit_span_resolution",
             ):
                 factor.pop(field, None)
         return payload
 
-    explicit_input = {
+    explicit_input = attach_token_catalog({
         "observation_id": "example_biomedical_explicit",
         "input_mode": "fulltext_evidence_chain",
         "evidence_anchors": [{
             "anchor_id": "bio:A1", "text": "Human A549 cells were treated for 24 h.",
             "source_role": "current", "source_section": "Results",
         }],
-    }
+    })
     explicit_output = ContextExtraction(
         observation_id=explicit_input["observation_id"], domain_profiles=["generic", "biomedical"],
         input_mode="fulltext_evidence_chain",
         context_factors=[{
-            "factor_id": "species", "raw_value": "Human", "normalized_value": None,
+            "factor_id": "species", "raw_value": None, "normalized_value": None,
             "normalized_candidate": "Homo sapiens",
             "status": "explicit", "evidence_anchor_ids": ["bio:A1"], "confidence": .9,
+            "explicit_span": {
+                "evidence_anchor_id": "bio:A1",
+                "start_token_id": "bio:A1:T0", "end_token_id": "bio:A1:T0",
+            },
         }],
     )
     explicit_output = provider_dump(explicit_output)
-    unknown_input = {
+    cell_line_input = attach_token_catalog({
+        "observation_id": "example_a549_cell_line",
+        "input_mode": "fulltext_evidence_chain",
+        "evidence_anchors": [{
+            "anchor_id": "bio:A5", "text": "A549 cells showed an increased endpoint.",
+            "source_role": "current", "source_section": "Results",
+        }],
+    })
+    cell_line_output = provider_dump(ContextExtraction(
+        observation_id=cell_line_input["observation_id"],
+        domain_profiles=["generic", "biomedical"],
+        input_mode="fulltext_evidence_chain",
+        context_factors=[{
+            "factor_id": "cell_line", "raw_value": None, "status": "explicit",
+            "evidence_anchor_ids": ["bio:A5"],
+            "explicit_span": {
+                "evidence_anchor_id": "bio:A5",
+                "start_token_id": "bio:A5:T0", "end_token_id": "bio:A5:T0",
+            },
+            "confidence": .9,
+        }, {
+            "factor_id": "species", "raw_value": None, "status": "unknown",
+            "evidence_anchor_ids": [], "confidence": 1.0,
+        }],
+        missing_critical_information=["species"],
+    ))
+    multi_input = attach_token_catalog({
+        "observation_id": "example_multi_token",
+        "input_mode": "fulltext_evidence_chain",
+        "evidence_anchors": [{
+            "anchor_id": "bio:A6", "text": "HCT116 and DLD-1 cells were compared.",
+            "source_role": "current", "source_section": "Results",
+        }],
+    })
+    multi_output = provider_dump(ContextExtraction(
+        observation_id=multi_input["observation_id"],
+        domain_profiles=["generic", "biomedical"],
+        input_mode="fulltext_evidence_chain",
+        context_factors=[{
+            "factor_id": "cell_line", "raw_value": None, "status": "explicit",
+            "evidence_anchor_ids": ["bio:A6"],
+            "explicit_span": {
+                "evidence_anchor_id": "bio:A6",
+                "start_token_id": "bio:A6:T0", "end_token_id": "bio:A6:T4",
+            },
+            "confidence": .9,
+        }],
+    ))
+    crc_input = attach_token_catalog({
+        "observation_id": "example_crc",
+        "input_mode": "fulltext_evidence_chain",
+        "evidence_anchors": [{
+            "anchor_id": "bio:A7", "text": "CRC samples showed the endpoint.",
+            "source_role": "current", "source_section": "Results",
+        }],
+    })
+    crc_output = provider_dump(ContextExtraction(
+        observation_id=crc_input["observation_id"],
+        domain_profiles=["generic", "biomedical"],
+        input_mode="fulltext_evidence_chain",
+        context_factors=[{
+            "factor_id": "disease", "raw_value": None, "status": "explicit",
+            "evidence_anchor_ids": ["bio:A7"],
+            "explicit_span": {
+                "evidence_anchor_id": "bio:A7",
+                "start_token_id": "bio:A7:T0", "end_token_id": "bio:A7:T0",
+            },
+            "confidence": .9,
+        }],
+    ))
+    unknown_input = attach_token_catalog({
         "observation_id": "example_biomedical_unknown",
         "input_mode": "fulltext_evidence_chain",
         "evidence_anchors": [{
             "anchor_id": "bio:A2", "text": "A549 cells showed an increased endpoint.",
             "source_role": "current", "source_section": "Results",
         }],
-    }
+    })
     unknown_output = ContextExtraction(
         observation_id=unknown_input["observation_id"], domain_profiles=["generic", "biomedical"],
         input_mode="fulltext_evidence_chain",
@@ -283,7 +380,7 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
         missing_critical_information=["species"],
     )
     unknown_output = provider_dump(unknown_output)
-    inferred_input = {
+    inferred_input = attach_token_catalog({
         "observation_id": "example_biomedical_inferred",
         "input_mode": "fulltext_evidence_chain",
         "evidence_anchors": [{
@@ -299,7 +396,7 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
                 "authoritative_evidence_anchor_ids": ["bio:A3"],
             },
         },
-    }
+    })
     inferred_output = ContextExtraction(
         observation_id=inferred_input["observation_id"],
         domain_profiles=["generic", "biomedical"],
@@ -327,7 +424,7 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
         }],
     )
     inferred_output = provider_dump(inferred_output)
-    comparator_input = {
+    comparator_input = attach_token_catalog({
         "observation_id": "example_comparator",
         "input_mode": "fulltext_evidence_chain",
         "evidence_anchors": [{
@@ -340,7 +437,7 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
                 "authoritative_evidence_anchor_ids": ["bio:A4"],
             },
         },
-    }
+    })
     comparator_output = ContextExtraction(
         observation_id=comparator_input["observation_id"],
         domain_profiles=["generic", "biomedical"],
@@ -363,6 +460,12 @@ def _schema_valid_cross_domain_examples() -> dict[str, Any]:
     examples = [
         {"description": "Explicit surface value with separate controlled normalization",
          "input": explicit_input, "output": explicit_output},
+        {"description": "A549 is a cell_line span while species remains unknown",
+         "input": cell_line_input, "output": cell_line_output},
+        {"description": "Exact multi-token HCT116 and DLD-1 span preserves punctuation",
+         "input": multi_input, "output": multi_output},
+        {"description": "CRC remains the exact disease raw surface and is not expanded",
+         "input": crc_input, "output": crc_output},
         {"description": "Two field-level components are deterministically composed within one intervention node",
          "input": inferred_input, "output": inferred_output},
         {"description": "Comparator provenance comes from a comparator/control node containing control",

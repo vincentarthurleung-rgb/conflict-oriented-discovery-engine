@@ -50,7 +50,7 @@ def test_abstract_rejects_fulltext_anchor_and_external_knowledge_value():
         "evidence_text": "mouse", "confidence": .9}
     _, errors = validate_context_extraction(bad, contract, ["generic", "biomedical"])
     assert any("anchor_not_in_observation" in x for x in errors)
-    assert any("explicit_value_not_in_evidence" in x for x in errors)
+    assert any("legacy_explicit_span_unverifiable" in x for x in errors)
 
 def _fulltext():
     text = "Drug A plus Drug B increased conversion to 80%."
@@ -137,7 +137,7 @@ def test_final_extraction_and_pair_prompts_require_json_and_include_valid_exampl
     for final_prompt in (extraction, pair):
         assert "json" in final_prompt.casefold()
         assert required in final_prompt
-        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v4"
+        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v5"
 
 def test_registry_has_all_composable_profiles_and_required_metadata():
     registry = load_registry()
@@ -358,17 +358,17 @@ def test_smoke_closure_and_call_bound_fail_closed(tmp_path):
     assert plan["api_enabled"] is False
     assert plan["provider_calls"] == plan["network_calls"] == plan["downloads"] == 0
     assert plan["credential_values_read"] is False
-    assert plan["prompt_version"] == "context_attribution_prompts_v4"
-    assert plan["extraction_schema_version"] == "observation_context_extraction_v4"
+    assert plan["prompt_version"] == "context_attribution_prompts_v5"
+    assert plan["extraction_schema_version"] == "observation_context_extraction_v5"
     assert plan["comparison_schema_version"] == "context_pair_attribution_v2"
-    assert plan["validator_version"] == "context_attribution_validator_v3"
-    assert plan["hydrator_version"] == "context_attribution_anchor_hydrator_v2"
-    assert plan["registry_version"] == "context_factor_registry_v2"
-    assert plan["registry_path"] == "configs/context_attribution/context_registry_v2.json"
+    assert plan["validator_version"] == "context_attribution_validator_v4"
+    assert plan["hydrator_version"] == "context_attribution_anchor_hydrator_v3"
+    assert plan["registry_version"] == "context_factor_registry_v3"
+    assert plan["registry_path"] == "configs/context_attribution/context_registry_v3.json"
     assert len(plan["registry_content_sha256"]) == 64
     assert plan["registry_resolution_source"] == "current_pipeline_default"
-    assert plan["normalization_policy_version"] == "context_normalization_policy_v2"
-    assert plan["local_chain_policy_version"] == "context_local_chain_composition_v2"
+    assert plan["normalization_policy_version"] == "context_normalization_policy_v3"
+    assert plan["local_chain_policy_version"] == "context_local_chain_composition_v3"
     blocked = run_context_attribution(input_run=source, output_run=tmp_path / "blocked", mode="combined",
         profiles=["generic", "biomedical"], provider="offline", model="fixture",
         purpose="smoke", smoke_pair_count=5, extraction_limit=1, comparison_limit=5)
@@ -529,7 +529,7 @@ def test_complete_provider_artifact_replays_only_for_exact_identity(tmp_path):
         (output / "artifacts/context_attribution_provider_calls.jsonl").read_text().splitlines()
     ]
     assert all(row["provider_artifact_complete"] for row in audits)
-    assert all(row["registry_version"] == "context_factor_registry_v2" for row in audits)
+    assert all(row["registry_version"] == "context_factor_registry_v3" for row in audits)
     assert all(len(row["registry_content_sha256"]) == 64 for row in audits)
 
 
@@ -657,7 +657,7 @@ def test_authoritative_hydration_surface_matching_and_controlled_normalization()
         }],
     }
     value, errors = validate_context_extraction(payload, contract, ["generic", "biomedical"])
-    assert not errors
+    assert all("legacy_explicit_span_unverifiable" in error for error in errors)
     species, tissue = value.context_factors
     assert species.normalized_value == "Homo sapiens"
     assert species.normalization_status == "resolved_controlled"
@@ -686,9 +686,70 @@ def test_semantic_rewrite_and_non_contract_anchor_remain_fail_closed():
     }
     value, errors = validate_context_extraction(payload, contract, ["generic", "biomedical"])
     assert "anchor_not_in_observation:species:invented-span" in errors
-    assert "explicit_value_not_in_evidence:species" in errors
+    assert "legacy_explicit_span_unverifiable:species" in errors
     assert value.context_factors[0].evidence_text is None
     assert value.validation_status == "rejected"
+
+
+def test_rejected_candidate_audit_is_separate_and_preserves_schema_payload(tmp_path):
+    source = tmp_path / "source"
+    _write_planning_run(source, count=2)
+    planned_output = tmp_path / "planned"
+    plan = run_context_attribution(
+        input_run=source, output_run=planned_output, mode="combined",
+        profiles=["generic", "biomedical"], purpose="smoke", smoke_pair_count=1,
+        provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+        extraction_limit=2, comparison_limit=1,
+    )
+    first, second = plan["selected_observation_ids"]
+    fixtures = {
+        "extractions": {
+            first: {
+                "schema_version": "observation_context_extraction_v5",
+                "observation_id": first,
+                "domain_profiles": ["generic", "biomedical"],
+                "input_mode": "fulltext_evidence_chain",
+                "context_factors": [{
+                    "factor_id": "cell_line", "status": "explicit",
+                    "raw_value": "A549", "normalized_value": None,
+                    "evidence_anchor_ids": ["invented"], "confidence": .9,
+                }],
+            },
+            second: {
+                "schema_version": "observation_context_extraction_v5",
+                "observation_id": second,
+                "domain_profiles": ["generic", "biomedical"],
+                "input_mode": "fulltext_evidence_chain",
+                "context_factors": [{
+                    "factor_id": "species", "status": "unknown",
+                    "raw_value": None, "normalized_value": None,
+                    "evidence_anchor_ids": [], "confidence": 1,
+                }],
+            },
+        },
+    }
+    fixture_path = tmp_path / "fixtures.json"
+    fixture_path.write_text(json.dumps(fixtures))
+    output = tmp_path / "execution"
+    run_context_attribution(
+        input_run=source, output_run=output, mode="combined",
+        profiles=["generic", "biomedical"], purpose="smoke", smoke_pair_count=1,
+        provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+        extraction_limit=2, comparison_limit=1, execute=True,
+        fixture_responses=fixture_path,
+    )
+    audits = [
+        json.loads(line) for line in
+        (output / "artifacts/context_attribution_validation_audit.jsonl").read_text().splitlines()
+    ]
+    rejected = next(row for row in audits if row["record_id"] == first)
+    assert rejected["schema_result"]["valid"] is False
+    assert rejected["provider_parsed_payload"]["context_factors"][0]["raw_value"] == "A549"
+    validated = [
+        json.loads(line) for line in
+        (output / "artifacts/observation_context_extractions.jsonl").read_text().splitlines()
+    ]
+    assert all(row["observation_id"] != first for row in validated)
 
 
 def test_legacy_local_chain_inference_without_components_remains_readable_but_unverifiable():
