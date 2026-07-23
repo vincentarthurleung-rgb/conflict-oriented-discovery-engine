@@ -1,4 +1,4 @@
-"""Explicit two-block Prompt v7 / Formal v3 provider smoke profile.
+"""Explicit two-block Prompt v8 / Formal v3 provider smoke profile.
 
 Planning is offline. Execution is available only to the separately gated CLI
 and never mutates the scientific run, downstream stages, or Atlas state.
@@ -134,7 +134,7 @@ def _fresh_cache_status(cache_root: Path, key: str, *, block_id: str, source_has
     valid = (
         payload.get("cache_identity") == key
         and payload.get("smoke_profile") == SMOKE_PROFILE
-        and payload.get("origin") == "native_prompt_v7_anchor_authoritative_formal_v3_provider_smoke"
+        and payload.get("origin") == "native_prompt_v8_results_anchor_contract_formal_v3_provider_smoke"
         and payload.get("provider") == PROVIDER and payload.get("model") == MODEL
         and payload.get("prompt_version") == PROMPT_VERSION and payload.get("prompt_hash") == prompt_hash()
         and payload.get("rendered_prompt_hash") == rendered_prompt_hash
@@ -341,7 +341,7 @@ def _aggregate_results(results: list[dict[str, Any]], *, calls: int, stopped_rea
     legacy = next((x for x in results if x.get("block_id") == "PMC7269543_4_0"), {})
     return {
         "schema_version": RESULTS_SCHEMA_VERSION, "mode": "executed", "smoke_profile": SMOKE_PROFILE,
-        "origin": "native_prompt_v7_anchor_authoritative_formal_v3_provider_output",
+        "origin": "native_prompt_v8_results_anchor_contract_formal_v3_provider_output",
         "api_calls": calls, "network_calls": calls, "downloads": 0, "maximum_calls": MAXIMUM_CALLS,
         "cache_hits": sum(x.get("cache_hit", False) for x in results),
         "provider_errors": sum(x.get("status") == "provider_error" for x in results),
@@ -497,7 +497,7 @@ def execute_v3_smoke(run_dir: Path, *, api_authorized: bool, client: Any | None 
             result.update(paths)
             cache_payload = {
                 "cache_identity": key, "smoke_profile": SMOKE_PROFILE,
-                "origin": "native_prompt_v7_anchor_authoritative_formal_v3_provider_smoke", "provider": PROVIDER, "model": MODEL,
+                "origin": "native_prompt_v8_results_anchor_contract_formal_v3_provider_smoke", "provider": PROVIDER, "model": MODEL,
                 "prompt_version": PROMPT_VERSION, "prompt_hash": prompt_hash(),
                 "rendered_prompt_hash": entry["rendered_prompt_hash"],
                 "draft_schema_version": DRAFT_SCHEMA_VERSION, "draft_schema_hash": schema_hash(),

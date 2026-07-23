@@ -110,10 +110,15 @@ class FulltextL1DraftResponse(DraftStrictModel):
 
 
 def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]:
-    evidence = EvidenceAnchorReferenceDraft(
+    result_evidence = EvidenceAnchorReferenceDraft(
         evidence_anchor_ids=["example_block:S0001"],
         span_type="observation",
         model_selected_excerpt_raw="HIF1A knockdown decreased target-gene expression versus control.",
+    )
+    methods_evidence = EvidenceAnchorReferenceDraft(
+        evidence_anchor_ids=["example_block:S0002"],
+        span_type="methods",
+        model_selected_excerpt_raw="HIF1A was depleted by RNA interference and expression was measured by RT-qPCR.",
     )
     row = ExperimentalObservationDraft(
         experiment=ExperimentDraft(
@@ -132,7 +137,7 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
             intervention_type_raw="knockdown",
             intervention_target_mention="HIF1A",
             intervention_method_raw="knockdown",
-            evidence=evidence.model_copy(update={"span_type": "intervention"}),
+            evidence=methods_evidence.model_copy(update={"span_type": "intervention"}),
         )],
         combination_mode_raw="unknown",
         measurement=MeasurementDraft(
@@ -140,13 +145,13 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
             measured_entity_mention="target gene",
             outcome_mention="target-gene expression",
             endpoint_raw="target-gene expression",
-            evidence=evidence.model_copy(update={"span_type": "measurement"}),
+            evidence=methods_evidence.model_copy(update={"span_type": "measurement"}),
         ),
         observation=ObservationDraft(
             observed_result="decreased versus control",
             lexical_direction_raw="negative",
             comparison_raw="versus non-targeting control",
-            evidence=evidence,
+            evidence=result_evidence,
         ),
         candidate_relation=CandidateRelationDraft(
             subject_mention="HIF1A",
@@ -156,7 +161,7 @@ def fulltext_l1_draft_prompt_examples() -> tuple[dict[str, Any], dict[str, Any]]
             evidence_design_raw="knockdown comparison",
         ),
         statement_role="current_study_experiment",
-        evidence_references=[evidence],
+        evidence_references=[result_evidence, methods_evidence],
     )
     empty = FulltextL1DraftResponse(schema_version=DRAFT_SCHEMA_VERSION, experimental_observations=[])
     nonempty = FulltextL1DraftResponse(schema_version=DRAFT_SCHEMA_VERSION, experimental_observations=[row])

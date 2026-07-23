@@ -158,7 +158,7 @@ PYTHONPATH=src python -m code_engine.cli.system_b_import_evaluation_staging \
 1. 查看 `fulltext_l1_v2_execution_records.jsonl` 和 summary 的 `still_failed`/`newly_failed`，按 block ID 区分失败。
 2. provider/auth/timeout 是传输失败；Draft schema drift 是响应契约失败；missing/cross-block anchor 是证据身份失败；reviewable 是科学 gate，不是传输错误。
 3. 保留成功 block cache；相同 input/provider/model/Prompt/Draft/Formal/anchor/config identity 才能复用，避免重新支付全部 blocks。
-4. offline raw-response reparse/rehydrate 只适合兼容的历史输出；先运行对应 CLI `--help`，不得把 Prompt v6 cache 冒充 Prompt v7 native output。
+4. offline raw-response reparse/rehydrate 只适合兼容的历史输出；先运行对应 CLI `--help`，不得把 Prompt v6/v7 cache 冒充 Prompt v8 native output。
 5. 修复后重新检查三项 completeness gate。不要手改 summary、删掉 failed execution record 或把 reviewable 改成 core。
 
 `run_case_to_atlas --dry-run --reuse-only --offline` 可审计已有 case 的一键编排计划；不要把 README 旧式 `--api --network` 示例作为默认恢复命令。

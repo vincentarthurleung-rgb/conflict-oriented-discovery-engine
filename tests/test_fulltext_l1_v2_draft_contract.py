@@ -9,9 +9,11 @@ from code_engine.fulltext.fulltext_l1_draft_hydration import (
     hydrate_draft_response, locate_exact_evidence, normalize_draft_enum,
 )
 from code_engine.fulltext.fulltext_l1_v2 import (
-    CACHE_IDENTITY_VERSION, PROMPT_VERSION, build_prompt, cache_key, formal_schema_hash,
+    CACHE_IDENTITY_VERSION, PROMPT_VERSION, SCHEMA_VERSION, build_prompt, cache_key, formal_schema_hash,
     prompt_hash, schema_hash,
 )
+from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION
+from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import HYDRATOR_VERSION
 from code_engine.fulltext.fulltext_l1_v2_draft_reparse import (
     adapt_v4_formal_direct_to_draft, reparse_smoke_responses_offline,
 )
@@ -23,9 +25,10 @@ from code_engine.schemas.fulltext_observation_draft import (
 
 
 EVIDENCE = "HIF1A knockdown decreased target-gene expression versus control."
+METHODS_EVIDENCE = "HIF1A was depleted by RNA interference and expression was measured by RT-qPCR."
 
 
-def context(text=f"CURRENT_RESULTS: {EVIDENCE}"):
+def context(text=f"CURRENT_RESULTS: {EVIDENCE}\nLINKED_METHODS: {METHODS_EVIDENCE}"):
     return TrustedDraftContext(
         run_id="run", block_id="block", parent_block_id="parent", child_block_id="child",
         block_text=text, source_block_hash="block-hash", source_document_id="PMC1",
@@ -56,16 +59,37 @@ def test_draft_is_strict_has_no_pipeline_identity_and_supports_raw_multi_interve
     assert len(parsed.experimental_observations[0].interventions) == 2
 
 
-def test_prompt_v7_is_draft_owned_anchored_and_excludes_pipeline_responsibilities():
-    prompt = build_prompt({}, {"paper_metadata": {"paper_id": "must-not-appear"}, "text": f"CURRENT_RESULTS: {EVIDENCE}"})
-    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v7_anchor_id_authoritative"
+def test_prompt_v8_is_draft_owned_role_anchored_and_excludes_pipeline_responsibilities():
+    prompt = build_prompt({}, {
+        "paper_metadata": {"paper_id": "must-not-appear"},
+        "text": f"CURRENT_RESULTS: {EVIDENCE}\nLINKED_METHODS: Expression was measured by RT-qPCR.",
+    })
+    assert PROMPT_VERSION == "fulltext_experimental_observation_prompt_v8_results_anchor_contract"
     assert DRAFT_SCHEMA_VERSION in prompt
     assert "source_document_id" not in prompt and "observation_id" not in prompt
     assert "char_start" not in prompt and "char_end" not in prompt
     assert "canonical" in prompt and "conflict" in prompt and "hypotheses" in prompt
     assert "Do not use Markdown code fences" in prompt
     assert "evidence_anchor_ids" in prompt and "block:S0001" in prompt
+    assert "SOURCE_ROLE=CURRENT_RESULTS (Results-compatible)" in prompt
+    assert "SOURCE_ROLE=LINKED_METHODS (Methods-only)" in prompt
+    assert "observation/result evidence must reference at least one Results-compatible CURRENT_RESULTS anchor" in prompt
+    assert "Never use a LINKED_METHODS-only anchor as the sole evidence" in prompt
+    assert "Never emit observed_result=null" in prompt
+    assert "do not emit an observation for that experiment" in prompt
+    assert "remove the entire candidate observation before emitting JSON" in prompt
+    assert "Cells were treated with inhibitor X for 24 hours." in prompt
     assert "must-not-appear" not in prompt
+
+
+def test_prompt_nonempty_example_separates_results_and_methods_anchor_purposes():
+    _, nonempty = fulltext_l1_draft_prompt_examples()
+    parsed = FulltextL1DraftResponse.model_validate(nonempty)
+    row = parsed.experimental_observations[0]
+    assert row.observation.evidence.evidence_anchor_ids == ["example_block:S0001"]
+    assert row.interventions[0].evidence.evidence_anchor_ids == ["example_block:S0002"]
+    assert row.measurement.evidence.evidence_anchor_ids == ["example_block:S0002"]
+    assert {x.span_type for x in row.evidence_references} == {"observation", "methods"}
 
 
 def test_trusted_hydration_localizes_exact_span_and_generates_stable_sensitive_id():
@@ -141,8 +165,24 @@ def test_v4_adapter_removes_model_provenance_and_keeps_structured_secondary():
 def test_cache_identity_binds_both_contracts_and_versions():
     key = cache_key(source_fulltext_hash="source", chunk_hash="block", provider="p", model="m",
                     config_hash="config", candidate_prior_hash="prior", thinking_mode="disabled")
-    assert len(key) == 64 and CACHE_IDENTITY_VERSION.endswith("authoritative_anchors")
+    assert len(key) == 64
+    assert CACHE_IDENTITY_VERSION == "fulltext_l1_v2_cache_identity_v6_results_anchor_contract"
     assert len(prompt_hash()) == len(schema_hash()) == len(formal_schema_hash()) == 64
+    assert DRAFT_SCHEMA_VERSION == "fulltext_l1_experimental_observation_draft_schema_v3_anchor_id_authoritative"
+    assert SCHEMA_VERSION == "fulltext_l1_experimental_observation_schema_v3"
+    assert HYDRATOR_VERSION == "fulltext_l1_draft_hydrator_v3_formal_v3_authoritative_anchors"
+    assert EVIDENCE_ANCHOR_VERSION == "fulltext_evidence_anchor_contract_v2"
+
+
+def test_old_prompt_cache_identity_cannot_hit_new_prompt(monkeypatch):
+    kwargs = dict(source_fulltext_hash="source", chunk_hash="block", provider="p", model="m",
+                  config_hash="config", candidate_prior_hash="prior", thinking_mode="disabled")
+    new_key = cache_key(**kwargs)
+    monkeypatch.setattr("code_engine.fulltext.fulltext_l1_v2.PROMPT_VERSION",
+                        "fulltext_experimental_observation_prompt_v7_anchor_id_authoritative")
+    monkeypatch.setattr("code_engine.fulltext.fulltext_l1_v2.CACHE_IDENTITY_VERSION",
+                        "fulltext_l1_v2_cache_identity_v5_authoritative_anchors")
+    assert cache_key(**kwargs) != new_key
 
 
 def test_offline_smoke_reparse_is_idempotent_zero_call_and_fixes_legacy_metric(tmp_path, monkeypatch):

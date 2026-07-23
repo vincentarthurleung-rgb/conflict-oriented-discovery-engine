@@ -23,7 +23,7 @@ from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import (
     hydrate_draft_response_v3,
 )
 from code_engine.fulltext.fulltext_l1_v2 import (
-    DEFAULT_MAX_TOKENS, DEFAULT_THINKING_MODE, PROMPT_VERSION, SCHEMA_VERSION,
+    CACHE_IDENTITY_VERSION, DEFAULT_MAX_TOKENS, DEFAULT_THINKING_MODE, PROMPT_VERSION, SCHEMA_VERSION,
     build_prompt, cache_key, estimate_tokens, formal_schema_hash, observation_as_legacy_claim,
     prompt_hash, schema_hash, split_transport_metadata, token_budget_preflight,
     FulltextTokenBudget,
@@ -71,6 +71,21 @@ def _source_id(block_id: str, parent_block_id: str | None) -> str:
     if parent_block_id: return parent_block_id
     marker = "__split_fulltext_block_split_v1_"
     return block_id.split(marker, 1)[0] if marker in block_id else block_id
+
+
+def _frozen_contract() -> dict[str, str]:
+    return {
+        "prompt_version": PROMPT_VERSION,
+        "prompt_hash": prompt_hash(),
+        "cache_identity_version": CACHE_IDENTITY_VERSION,
+        "draft_schema_version": DRAFT_SCHEMA_VERSION,
+        "draft_schema_hash": schema_hash(),
+        "formal_schema_version": SCHEMA_VERSION,
+        "formal_schema_hash": formal_schema_hash(),
+        "hydrator_version": HYDRATOR_VERSION,
+        "anchor_contract_version": EVIDENCE_ANCHOR_VERSION,
+        "completeness_policy_version": COMPLETENESS_POLICY_VERSION,
+    }
 
 
 def _context(output_run: Path, item: dict[str, Any]) -> TrustedDraftContextV3:
@@ -139,7 +154,10 @@ def _audit_failure(source_run: Path, output_run: Path, record: dict[str, Any],
         "parent_block_id": parent, "split_depth": split_depth,
         "input_hash": block["chunk_hash"], "cache_identity": record.get("cache_key"),
         "expected_cache_identity": expected_identity, "cache_identity_match": record.get("cache_key") == expected_identity,
-        "prompt_version": record.get("prompt_version"), "draft_schema_version": DRAFT_SCHEMA_VERSION,
+        "source_prompt_version": record.get("prompt_version"), "prompt_version": PROMPT_VERSION,
+        "prompt_hash": prompt_hash(), "cache_identity_version": CACHE_IDENTITY_VERSION,
+        "old_cache_identity_excluded": record.get("cache_key") != expected_identity,
+        "draft_schema_version": DRAFT_SCHEMA_VERSION,
         "formal_schema_version": SCHEMA_VERSION, "anchor_contract_version": EVIDENCE_ANCHOR_VERSION,
         "provider_called": bool(record.get("api_called")), "raw_response_exists": raw_exists,
         "raw_json_valid": raw_valid, "draft_valid": draft_valid, "formal_valid": formal_valid,
@@ -171,7 +189,11 @@ def _successful_protection(source_run: Path, records: list[dict[str, Any]]) -> t
 
 def _output_path(source_run: Path, output_run: Path | None) -> Path:
     if output_run: return output_run
-    digest=_sha({"source":str(source_run.resolve()),"profile":PROFILE,"allowlist":ALLOWLIST})[:20]
+    digest=_sha({
+        "source":str(source_run.resolve()),"profile":PROFILE,"allowlist":ALLOWLIST,
+        "prompt_version":PROMPT_VERSION,"prompt_hash":prompt_hash(),
+        "cache_identity_version":CACHE_IDENTITY_VERSION,
+    })[:20]
     return source_run.parent/f"{source_run.name}__failed_block_recovery_{digest}"
 
 
@@ -201,12 +223,15 @@ def write_recovery_plan(source_run: Path, *, output_run: Path | None = None) -> 
         "parent_complete":False, "further_split_required":False,
         "reason":"finish_reason_stop_and_payload_within_budget", "frozen_child_split_plan":[],
     }
+    frozen_contract=_frozen_contract()
     identity={"schema_version":PLAN_SCHEMA,"recovery_profile":PROFILE,"source_run":str(source_run),
-              "failed_source_blocks":list(ALLOWLIST),"audits":audits,"source_tree_hash":_sha(before)}
+              "failed_source_blocks":list(ALLOWLIST),"audits":audits,"source_tree_hash":_sha(before),
+              "frozen_contract":frozen_contract}
     plan={**identity,"mode":"plan_only","planned_leaf_blocks":list(ALLOWLIST),
           "offline_recoverable_blocks":offline,"provider_required_blocks":provider,
           "cache_hits":0,"planned_provider_calls":len(provider),"maximum_provider_calls":MAXIMUM_PROVIDER_CALLS,
           "network_calls":0,"api_calls":0,"downloads":0,"protected_successful_blocks":len(success),
+          "successful_blocks_reused":len(success),"successful_blocks_recalled":0,
           "successful_block_protection":success,"protected_artifact_hashes":protected,
           "source_artifact_hashes":before,"split_audit":split_audit,
           "protected_external_state_hashes":external_before,"atlas_activated":False,"active_projection_unchanged":True,
@@ -214,6 +239,10 @@ def write_recovery_plan(source_run: Path, *, output_run: Path | None = None) -> 
           "recovery_run":str(output),"publication_allowed":False,
           "plan_hash":_sha(identity),"requires_explicit_execute_and_api":True,
           "hidden_retries":0,"provider_retry_limit":0,"dynamic_call_budget_expansion":False,
+          "dynamic_budget_expansion":False,"further_splits":0,
+          "provider_scan_scope":list(ALLOWLIST),
+          "resumable_ledger_path":str(output/"artifacts/fulltext_failed_block_recovery_execution_ledger.jsonl"),
+          "ledger_flush_policy":"after_each_provider_call_or_terminal_validation_result",
           "cops8_post_recovery_safeguards":{
               "block_id":"PMC7708218_15_0","existing_same_paper_evidence_present":True,
               "exact_duplicate_removal_required":True,"evidence_family_recalculation_required":True,
@@ -275,6 +304,8 @@ def execute_recovery(source_run: Path, *, output_run: Path, api_authorized: bool
     plan=json.loads(plan_path.read_text(encoding="utf-8"))
     if plan.get("failed_source_blocks")!=list(ALLOWLIST) or plan.get("maximum_provider_calls")!=MAXIMUM_PROVIDER_CALLS:
         raise RuntimeError("saved plan violates the frozen allowlist or call bound")
+    if plan.get("frozen_contract") != _frozen_contract():
+        raise RuntimeError("systematic schema or prompt contract drift after recovery planning")
     if _sha(_tree_hashes(source_run))!=plan.get("source_tree_hash"): raise RuntimeError("source run changed after planning")
     records=_jsonl(source_run/"artifacts/fulltext_l1_v2_execution_records.jsonl"); failures=[x for x in records if x.get("block_id") in ALLOWLIST]
     config=_historical_config(source_run/"artifacts",records); inventory=_block_inventory(source_run,failures,config)
@@ -292,7 +323,18 @@ def execute_recovery(source_run: Path, *, output_run: Path, api_authorized: bool
         item=inventory[block_id]; entry=next(x for x in plan["audits"] if x["block_id"]==block_id)
         key=entry["expected_cache_identity"]; cache_file=cache/f"{key}.json"
         if cache_file.is_file():
-            cached=json.loads(cache_file.read_text(encoding="utf-8")); results.append({**cached["execution_record"],"api_called":False,"cache_hit":True}); _write_jsonl(ledger_path,results); continue
+            cached=json.loads(cache_file.read_text(encoding="utf-8"))
+            compatible = (
+                cached.get("cache_identity") == key
+                and cached.get("prompt_version") == PROMPT_VERSION
+                and cached.get("prompt_hash") == prompt_hash()
+                and cached.get("cache_identity_version") == CACHE_IDENTITY_VERSION
+            )
+            if not compatible:
+                raise RuntimeError("recovery cache artifact violates the frozen prompt/cache identity")
+            results.append({**cached["execution_record"],"api_called":False,"cache_hit":True})
+            _write_jsonl(ledger_path,results)
+            continue
         method=getattr(client,"extract_json_result",None) or getattr(client,"extract_json")
         calls+=1
         try:
@@ -310,11 +352,15 @@ def execute_recovery(source_run: Path, *, output_run: Path, api_authorized: bool
             rec={"block_id":block_id,"parent_block_id":item["block"].get("parent_block_id"),"status":"completed" if complete else "formal_incomplete",
                  "api_called":True,"cache_hit":False,"cache_identity":key,"finish_reason":transport.get("finish_reason"),
                  "usage":transport.get("usage") or {},"observation_count":len(formal["experimental_observations"]),
-                 "formal_rejected_count":len(hydrated.rejected),"origin":"native_prompt_v7_provider_failed_block_recovery",
+                 "formal_rejected_count":len(hydrated.rejected),"prompt_version":PROMPT_VERSION,
+                 "prompt_hash":prompt_hash(),"cache_identity_version":CACHE_IDENTITY_VERSION,
+                 "origin":"native_prompt_v8_results_anchor_contract_provider_failed_block_recovery",
                  "raw_response_path":str(raw_path)}
             _write_json(cache/f"{key}.draft.json",draft.model_dump(mode="json")); _write_json(cache/f"{key}.formal.json",formal)
             _write_json(cache/f"{key}.audit.json",{"hydration_audit":hydrated.audit,"rejected":hydrated.rejected})
-            _write_json(cache_file,{"cache_identity":key,"execution_record":rec,"draft_response":draft.model_dump(mode="json"),
+            _write_json(cache_file,{"cache_identity":key,"prompt_version":PROMPT_VERSION,
+                                    "prompt_hash":prompt_hash(),"cache_identity_version":CACHE_IDENTITY_VERSION,
+                                    "execution_record":rec,"draft_response":draft.model_dump(mode="json"),
                                     "formal_response":formal,"hydration_audit":hydrated.audit,"rejected":hydrated.rejected})
             results.append(rec); _write_jsonl(ledger_path,results)
         except (DeepSeekExtractionError,ValidationError,ValueError,TypeError,json.JSONDecodeError) as exc:

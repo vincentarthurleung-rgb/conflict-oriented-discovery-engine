@@ -1,4 +1,4 @@
-"""Plan or explicitly execute the bounded Prompt v7 authoritative-anchor smoke."""
+"""Plan or explicitly execute the bounded Prompt v8 result-role-anchor smoke."""
 from __future__ import annotations
 
 import argparse

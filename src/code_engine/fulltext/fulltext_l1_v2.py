@@ -34,11 +34,11 @@ from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import (
     TrustedDraftContextV3, hydrate_draft_response_v3,
 )
 from code_engine.fulltext.experimental_semantics_registry import REGISTRY_VERSION
-from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION, generate_evidence_anchors, render_anchored_block
+from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION, EvidenceAnchor, generate_evidence_anchors
 
 V2_SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v2"
 SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v3"
-PROMPT_VERSION = "fulltext_experimental_observation_prompt_v7_anchor_id_authoritative"
+PROMPT_VERSION = "fulltext_experimental_observation_prompt_v8_results_anchor_contract"
 PARSER_VERSION = "fulltext_experimental_observation_draft_parser_v1"
 EXTRACTOR_VERSION = "fulltext_l1_extractor_v2"
 DEFAULT_MAX_TOKENS = 32_768
@@ -53,7 +53,7 @@ DEFAULT_OBSERVATION_LIMIT = 40
 MAX_CHILDREN_PER_PARENT = 48
 MINIMUM_CHILD_INPUT_TOKENS = 80
 TOKEN_ESTIMATOR_VERSION = "conservative_unicode_chars_v1"
-CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v5_authoritative_anchors"
+CACHE_IDENTITY_VERSION = "fulltext_l1_v2_cache_identity_v6_results_anchor_contract"
 DEFAULT_THINKING_MODE: ThinkingMode = "disabled"
 PROMPT_RULES = (
     "Use only the supplied full-text block. External biological knowledge is forbidden.",
@@ -61,6 +61,12 @@ PROMPT_RULES = (
     "Do not treat experimental group labels, samples, biopsies, or silenced cells as natural-state causal entities.",
     "Keep observed outcome separate from author interpretation and any derived causal interpretation.",
     "Bind every material fact using only evidence_anchor_ids from the supplied anchored block.",
+    "An experimental observation represents an observed result.",
+    "The observation/result evidence must reference at least one Results-compatible CURRENT_RESULTS anchor.",
+    "Never use a LINKED_METHODS-only anchor as the sole evidence for observed_result, observation direction, result magnitude, result comparison, or final outcome.",
+    "LINKED_METHODS anchors may only support experimental setup, intervention, treatment condition, dose, duration, measurement method, assay, or control/comparison design.",
+    "A Methods statement does not prove an experimental result.",
+    "Observation evidence and measurement/intervention evidence may use different anchors: bind the observed result to CURRENT_RESULTS and the method to LINKED_METHODS.",
     "Multiple endpoints from one experiment are separate observations sharing the same raw experiment and evidence-family labels.",
     "Split different experiments or comparisons even when they occur in one sentence or paragraph.",
     "Preserve every rescue, re-expression, secondary, and combination intervention as a separate structured item in interventions.",
@@ -73,6 +79,10 @@ PROMPT_RULES = (
     "model_selected_excerpt_raw is optional audit context only and is never authoritative evidence.",
     "Do not repeat one anchor in unnecessary fields. Keep distinct endpoints separate without semantic duplication.",
     "If no qualifying observation exists, return a valid JSON object with an empty experimental_observations array.",
+    "Every emitted experimental observation must contain a non-empty, explicitly supported observed_result.",
+    "If the supplied block only describes methods, treatment conditions, assay setup, sample preparation, controls, or a planned measurement and does not state the measured result, do not emit an observation for that experiment.",
+    "Never emit observed_result=null and never emit an observation merely to record a Methods-described experiment.",
+    "Do not invent or infer a missing result.",
     "Every Draft field name must match the examples character-for-character; never abbreviate or alias a field name.",
     "Do not output paper IDs, document IDs, hashes, block IDs, offsets, observation IDs, experiment IDs, evidence-family IDs, canonical fields, formal relations, core/conflict fields, hypotheses, or Atlas fields.",
     "Preserve observed raw vocabulary in fields ending in _raw; do not guess a Formal controlled enum.",
@@ -181,8 +191,29 @@ def formal_schema_hash() -> str:
     return _hash(FulltextL1V3Response.model_json_schema())
 
 
+def _prompt_source_role(anchor: EvidenceAnchor, block_text: str) -> str:
+    """Expose the existing source role to the model without changing anchor identity."""
+    line_start = block_text.rfind("\n", 0, anchor.char_start) + 1
+    prefix = block_text[line_start:anchor.char_start]
+    if prefix.startswith("CURRENT_RESULTS:"):
+        return "CURRENT_RESULTS (Results-compatible)"
+    if prefix.startswith("LINKED_METHODS:"):
+        return "LINKED_METHODS (Methods-only)"
+    if prefix.startswith("PRECEDING_SETUP:"):
+        return "PRECEDING_SETUP"
+    current = re.match(r"CURRENT_([A-Z_]+):", prefix)
+    return f"CURRENT_{current.group(1)}" if current else anchor.source_role.upper()
+
+
+def _render_prompt_anchored_block(anchors: list[EvidenceAnchor], block_text: str) -> str:
+    return "\n".join(
+        f"[{item.anchor_id}] [SOURCE_ROLE={_prompt_source_role(item, block_text)}] {item.text}"
+        for item in anchors
+    )
+
+
 def build_prompt(candidate: dict[str, Any], block: dict[str, Any]) -> str:
-    """Strict provider Draft extraction prompt v7 with authoritative evidence anchors."""
+    """Strict provider Draft extraction prompt v8 with result-role-aware anchors."""
     seed = {
         "case_id": candidate.get("case_id"),
         "subject_seed": candidate.get("subject"),
@@ -197,14 +228,22 @@ def build_prompt(candidate: dict[str, Any], block: dict[str, Any]) -> str:
     source_document_id = str(metadata.get("pmcid") or metadata.get("pmid") or "current_document")
     section_value = block.get("section") or {}
     section = section_value.get("section_title") if isinstance(section_value, dict) else None
+    block_text = str(block["text"])
     anchors = generate_evidence_anchors(block_id=str(block.get("block_id") or "current_block"),
                                         source_document_id=source_document_id,
-                                        block_text=str(block["text"]), section=section)
-    anchored_text = render_anchored_block(anchors)
+                                        block_text=block_text, section=section)
+    anchored_text = _render_prompt_anchored_block(anchors, block_text)
     return f"""Extract experimental observations from the supplied full-text block.
 Return exactly one JSON object and nothing else. Do not use Markdown code fences or add text before or after the JSON object.
 Valid empty JSON output example: {empty_json}
 Valid complete non-empty Draft JSON output example: {nonempty_json}
+In the non-empty schema-valid example, example_block:S0001 is a CURRENT_RESULTS anchor supporting
+observed_result and observation evidence. example_block:S0002 is a LINKED_METHODS anchor supporting
+the intervention and measurement only. These purposes deliberately use different anchors.
+Methods-only negative example (do not emit an observation; return the valid empty JSON):
+Cells were treated with inhibitor X for 24 hours. Expression was normalized to GAPDH.
+Protein levels were measured by western blot.
+Those sentences state treatment and measurement methods but no measured result.
 Use the exact, unabbreviated Draft field names in these examples. Do not add aliases or omit required fields.
 Fields ending in _raw preserve the wording/category supported by the block. The pipeline will normalize them later.
 Pipeline metadata and deterministic identities are deliberately absent from this Draft contract; do not generate them.
@@ -213,6 +252,12 @@ Do not return source text, offsets, or hashes as authoritative fields. model_sel
 when present it is a non-authoritative audit note and cannot change the registry evidence.
 Rules:
 {rules}
+FINAL SELF-CHECK BEFORE OUTPUT — for every candidate observation:
+1. observed_result is a non-empty string.
+2. observation evidence includes a Results-compatible CURRENT_RESULTS anchor.
+3. no observation/result claim relies only on LINKED_METHODS anchors.
+4. if any condition is not met, remove the entire candidate observation before emitting JSON.
+This is a pre-output selection rule, never a request to edit or repair provider output after generation.
 TARGET_PRIOR (non-authoritative): {json.dumps(seed, ensure_ascii=False)}
 CONTEXT_BINDING_ORDER: evidence_span > experiment_result_block > figure_or_table > linked_methods > subsection > paper_metadata > abstract_prior
 FULLTEXT_BLOCK:

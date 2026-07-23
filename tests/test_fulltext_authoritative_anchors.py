@@ -40,9 +40,9 @@ def test_anchor_id_is_authoritative_and_excerpt_mismatch_is_warning_only():
     draft = _draft()
     audit = audit_draft_anchor_bindings(draft, _context())
     assert audit["valid"] is True
-    assert audit["anchor_reference_count"] == audit["anchor_id_valid_reference_count"] == 4
+    assert audit["anchor_reference_count"] == audit["anchor_id_valid_reference_count"] == 5
     assert audit["unique_anchor_id_count"] == 1
-    assert audit["anchor_excerpt_mismatch_count"] == 4
+    assert audit["anchor_excerpt_mismatch_count"] == 5
     assert audit["formal_evidence_binding_failure_count"] == 0
     result = hydrate_draft_response_v3(draft, _context())
     assert not result.rejected
@@ -57,7 +57,7 @@ def test_anchor_id_is_authoritative_and_excerpt_mismatch_is_warning_only():
 ])
 def test_true_anchor_identity_failures_remain_fail_closed(anchor_id, metric):
     audit = audit_draft_anchor_bindings(_draft(anchor_id=anchor_id), _context())
-    assert audit["valid"] is False and audit[metric] == 4
+    assert audit["valid"] is False and audit[metric] == 5
     result = hydrate_draft_response_v3(_draft(anchor_id=anchor_id), _context())
     assert not result.formal_response["experimental_observations"]
     assert len(result.rejected) == 1

@@ -26,7 +26,11 @@ def _fixture(tmp_path: Path, monkeypatch):
     for block_id,payload in zip(ALLOWLIST,(first,second)):
         records.append({"block_id":block_id,"status":"parse_error","api_called":True,"cache_key":f"old-{block_id}",
                         "prompt_version":"v7","finish_reason":"stop","raw_response":payload,"usage":{}})
-    records.append({"block_id":"successful","status":"completed_empty","api_called":True,"cache_key":"success"})
+    records.extend(
+        {"block_id":f"successful-{index:03d}","status":"completed_empty","api_called":True,
+         "cache_key":f"success-{index:03d}"}
+        for index in range(198)
+    )
     _write_rows(artifacts/"fulltext_l1_v2_execution_records.jsonl",records)
     items={}
     for index,block_id in enumerate(ALLOWLIST):
@@ -67,11 +71,18 @@ def test_plan_is_allowlisted_zero_call_and_preserves_source(tmp_path,monkeypatch
     assert result["planned_provider_calls"]==result["maximum_provider_calls"]==MAXIMUM_PROVIDER_CALLS
     assert result["api_calls"]==result["network_calls"]==result["downloads"]==0
     assert result["successful_blocks_recalled"]==0
+    assert result["protected_successful_blocks"]==198
     assert before=={p.relative_to(run):p.read_bytes() for p in run.rglob("*") if p.is_file()}
     plan=json.loads((tmp_path/"recovery/artifacts/fulltext_failed_block_recovery_plan.json").read_text())
     assert [x["failure_category"] for x in plan["audits"]]==["evidence-anchor failure","Draft schema failure"]
     assert plan["split_audit"]["further_split_required"] is False
-    assert plan["dynamic_call_budget_expansion"] is False and plan["hidden_retries"]==0
+    assert plan["dynamic_call_budget_expansion"] is False and plan["dynamic_budget_expansion"] is False
+    assert plan["hidden_retries"]==0 and plan["further_splits"]==0
+    assert plan["provider_scan_scope"]==list(ALLOWLIST)
+    assert plan["successful_blocks_reused"]==198 and plan["successful_blocks_recalled"]==0
+    assert all(x["old_cache_identity_excluded"] for x in plan["audits"])
+    assert plan["frozen_contract"]["prompt_version"].endswith("v8_results_anchor_contract")
+    assert plan["frozen_contract"]["cache_identity_version"].endswith("v6_results_anchor_contract")
 
 
 def test_execution_and_cli_fail_closed_without_both_flags(tmp_path):
@@ -79,6 +90,20 @@ def test_execution_and_cli_fail_closed_without_both_flags(tmp_path):
         execute_recovery(tmp_path/"source",output_run=tmp_path/"out",api_authorized=False)
     with pytest.raises(SystemExit): main(["--run-dir",str(tmp_path),"--execute"])
     with pytest.raises(SystemExit): main(["--run-dir",str(tmp_path),"--api"])
+
+
+def test_execution_stops_before_provider_on_frozen_contract_drift(tmp_path,monkeypatch):
+    run=_fixture(tmp_path,monkeypatch); output=tmp_path/"recovery"
+    write_recovery_plan(run,output_run=output)
+    plan_path=output/"artifacts/fulltext_failed_block_recovery_plan.json"
+    plan=json.loads(plan_path.read_text())
+    plan["frozen_contract"]["draft_schema_hash"]="drifted"
+    plan_path.write_text(json.dumps(plan))
+    class NeverClient:
+        def extract_json_result(self,*_args,**_kwargs):
+            raise AssertionError("provider must not be called after contract drift")
+    with pytest.raises(RuntimeError,match="systematic schema or prompt contract drift"):
+        execute_recovery(run,output_run=output,api_authorized=True,client=NeverClient())
 
 
 def test_unallowlisted_source_fails_closed(tmp_path):
