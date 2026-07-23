@@ -23,10 +23,11 @@ def parser() -> argparse.ArgumentParser:
                        help="Deterministic representative pair target for smoke purpose.")
     value.add_argument("--max-extraction-calls", type=int, default=50)
     value.add_argument("--max-comparison-calls", type=int, default=50)
-    value.add_argument("--provider", choices=("offline", "deepseek", "openai"), default="offline")
-    value.add_argument("--model", default="offline-fixture")
+    value.add_argument("--provider", choices=("deepseek", "openai"),
+                       help="Advanced override; defaults to the shared L1 provider configuration.")
+    value.add_argument("--model", help="Advanced override; defaults to the shared L1 model configuration.")
     value.add_argument("--thinking-mode", choices=("enabled", "disabled", "provider_default"),
-                       default="provider_default")
+                       help="Advanced override; defaults to the Fulltext L1 thinking configuration.")
     value.add_argument("--execute", action="store_true", help="Execute cached/fixture work. Still no API unless --api is also set.")
     value.add_argument("--api", action="store_true", help="Permit provider calls; requires --execute.")
     value.add_argument("--resume", action="store_true")
@@ -38,6 +39,9 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = parser().parse_args()
+    if args.execute and args.api:
+        from code_engine.validation.external_api_smoke import load_dotenv
+        load_dotenv()
     selected_mode = "abstract-only" if args.abstract_only else "fulltext-only" if args.fulltext_only else "combined" if args.combined else args.mode
     allowlist = None
     if args.candidate_pair_allowlist:

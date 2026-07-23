@@ -8,7 +8,7 @@ from typing import Any
 from .models import ContextExtraction, ContextPairAttribution, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
 from .registry import load_registry, resolve_factors
 
-PROMPT_VERSION = "context_attribution_prompts_v1"
+PROMPT_VERSION = "context_attribution_prompts_v2"
 CANDIDATE_POLICY_VERSION = "deterministic_conflict_candidates_v1"
 
 def _hash(value: Any) -> str:
@@ -90,6 +90,7 @@ def build_fulltext_input(observation: dict[str, Any], profiles: list[str]) -> di
 
 def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], provider: str,
                               model: str, thinking_mode: str = "default",
+                              max_tokens: int | None = None,
                               registry: dict[str, Any] | None = None) -> str:
     registry = registry or load_registry()
     anchors = contract.get("evidence_anchors") or []
@@ -99,7 +100,8 @@ def extraction_cache_identity(contract: dict[str, Any], *, profiles: list[str], 
         "anchor_registry_hash": _hash(anchors), "domain_profiles": profiles,
         "domain_profile_version": registry["registry_version"], "prompt_version": PROMPT_VERSION,
         "schema_version": EXTRACTION_SCHEMA_VERSION, "provider": provider, "model": model,
-        "thinking_mode": thinking_mode, "normalization_registry_version": registry["normalization_registry_version"],
+        "thinking_mode": thinking_mode, "max_tokens": max_tokens,
+        "normalization_registry_version": registry["normalization_registry_version"],
     })
 
 def pair_cache_identity(a_identity: str, b_identity: str, profiles: list[str]) -> str:
@@ -141,6 +143,7 @@ def pair_prompt(payload: dict[str, Any], profiles: list[str]) -> str:
 
 def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
     rules = (
+        "Return exactly one valid JSON object. Do not output Markdown or any text outside the JSON object. "
         "Use only supplied evidence; never use external knowledge. Output unknown when unsupported. "
         "Do not treat Methods as an observed result. Never invent species, tissue, dose, time, or design. "
         "Every non-unknown value needs anchors belonging to that observation. Abstract inputs may use only "
@@ -151,7 +154,13 @@ def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
         "Return concise evidence-grounded reasoning_summary, never hidden chain-of-thought."
     )
     examples = _schema_valid_cross_domain_examples()
+    schema_valid_json_example = (
+        examples["extraction_examples"][0]
+        if task == "observation_context_extraction"
+        else examples["pair_example"]
+    )
     return json.dumps({"task": task, "prompt_version": PROMPT_VERSION, "rules": rules,
+                       "schema_valid_json_example": schema_valid_json_example,
                        "examples": examples, "factor_registry": factors, "input": payload},
                       ensure_ascii=False, sort_keys=True)
 

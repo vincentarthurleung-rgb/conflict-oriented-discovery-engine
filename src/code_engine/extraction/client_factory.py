@@ -36,6 +36,43 @@ def resolve_l1_timeout_config(*, connect_timeout_seconds: float | None = None,
             "max_retries": _nonnegative_int(retries, 2)}
 
 
+def resolve_l1_provider_settings(*, provider: str | None = None, model_name: str | None = None,
+                                 thinking_mode: str | None = None,
+                                 max_tokens: int | None = None) -> dict[str, Any]:
+    """Resolve the same non-secret provider settings used by formal L1 paths.
+
+    This function never inspects credential variables.  Client construction is
+    the separate, execute+api-only operation that checks credentials.
+    """
+    from code_engine.extraction.deepseek_client import validate_thinking_mode
+    from code_engine.extraction.policy import DEFAULT_L1_MODEL_FAMILY, DEFAULT_L1_MODEL_NAME
+    from code_engine.fulltext.fulltext_l1_v2 import DEFAULT_MAX_TOKENS, DEFAULT_THINKING_MODE
+
+    selected_provider = (provider or os.getenv("L1_PROVIDER") or DEFAULT_L1_MODEL_FAMILY).casefold()
+    selected_model = model_name or os.getenv("MODEL_NAME") or DEFAULT_L1_MODEL_NAME
+    selected_thinking = thinking_mode or os.getenv("FULLTEXT_L1_V2_THINKING_MODE") or DEFAULT_THINKING_MODE
+    selected_max_tokens = int(max_tokens if max_tokens is not None else
+                              os.getenv("FULLTEXT_L1_V2_MAX_TOKENS", DEFAULT_MAX_TOKENS))
+    if selected_provider not in {"deepseek", "openai"}:
+        raise ValueError(f"unsupported L1 provider: {selected_provider}")
+    validate_thinking_mode(selected_thinking)
+    if selected_max_tokens <= 0:
+        raise ValueError("L1 max_tokens must be positive")
+    return {
+        "provider": selected_provider, "model": selected_model,
+        "thinking_mode": selected_thinking, "max_tokens": selected_max_tokens,
+        "provider_source": "override" if provider is not None else "L1_PROVIDER" if os.getenv("L1_PROVIDER") else "shared_default",
+        "model_source": "override" if model_name is not None else "MODEL_NAME" if os.getenv("MODEL_NAME") else "shared_default",
+        "thinking_mode_source": "override" if thinking_mode is not None else
+                                "FULLTEXT_L1_V2_THINKING_MODE" if os.getenv("FULLTEXT_L1_V2_THINKING_MODE") else
+                                "fulltext_l1_default",
+        "max_tokens_source": "override" if max_tokens is not None else
+                             "FULLTEXT_L1_V2_MAX_TOKENS" if os.getenv("FULLTEXT_L1_V2_MAX_TOKENS") else
+                             "fulltext_l1_default",
+        "credential_values_read": False,
+    }
+
+
 def _chat_messages(prompt: Any) -> list[dict[str, Any]]:
     return prompt if isinstance(prompt, list) else [{"role": "system", "content": prompt}]
 
@@ -223,4 +260,5 @@ __all__ = [
     "diagnose_entity_cleaner_provider",
     "diagnose_l1_provider",
     "resolve_l1_timeout_config",
+    "resolve_l1_provider_settings",
 ]

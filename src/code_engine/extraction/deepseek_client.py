@@ -166,7 +166,12 @@ class DeepSeekClient:
         last_raw_response: Any = None
         last_finish_reason: str | None = None
         last_usage: dict[str, Any] = {}
-        last_provider_metadata: dict[str, Any] = {}
+        last_provider_metadata: dict[str, Any] = {
+            "provider": "deepseek", "request_endpoint": self.endpoint, "model": model,
+            "response_format": dict(DEEPSEEK_JSON_RESPONSE_FORMAT),
+            "json_output_enabled": True, "max_tokens": max_tokens,
+            **deepseek_thinking_mode_audit(thinking_mode),
+        }
         attempts = self.max_retries + 1
         timeout = httpx.Timeout(connect=self.connect_timeout_seconds, read=self.read_timeout_seconds,
                                 write=self.connect_timeout_seconds, pool=self.connect_timeout_seconds)
@@ -213,8 +218,14 @@ class DeepSeekClient:
             except (httpx.HTTPError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as exc:
                 last_error = str(exc)
                 last_exception = exc
-                if isinstance(exc, json.JSONDecodeError) and "response" in locals():
-                    last_raw_response = response.text
+                if isinstance(exc, httpx.HTTPStatusError):
+                    last_raw_response = _safe_provider_error_body(exc.response.text, api_key=self.api_key)
+                    last_provider_metadata = {
+                        **last_provider_metadata, "http_status": exc.response.status_code,
+                        "latency_seconds": time.monotonic() - started,
+                    }
+                elif isinstance(exc, json.JSONDecodeError) and "response" in locals():
+                    last_raw_response = _safe_provider_error_body(response.text, api_key=self.api_key)
                 _, retryable, _ = _error_metadata(exc)
                 if getattr(exc, "error_type", None) == "empty_json_content":
                     retryable = True
@@ -256,8 +267,20 @@ class DeepSeekClient:
         return self.extract_json_result(prompt, **kwargs).payload
 
 
+def _safe_provider_error_body(value: Any, *, api_key: str | None = None,
+                              maximum_characters: int = 16_384) -> str:
+    """Keep provider diagnostics while removing credential-shaped content."""
+    import re
+    text = str(value or "")
+    if api_key:
+        text = text.replace(api_key, "[REDACTED]")
+    text = re.sub(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+", "Bearer [REDACTED]", text)
+    text = re.sub(r'(?i)(api[_-]?key["\\s:=]+)[^",\\s}]+', r'\1[REDACTED]', text)
+    return text[:maximum_characters]
+
+
 __all__ = [
     "DeepSeekClient", "DeepSeekExtractionError", "JSONExtractionResult",
     "ThinkingMode", "build_deepseek_request_payload", "deepseek_thinking_mode_audit",
-    "validate_thinking_mode",
+    "validate_thinking_mode", "_safe_provider_error_body",
 ]

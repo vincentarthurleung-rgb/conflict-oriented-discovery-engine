@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from code_engine.extraction.client_factory import build_json_client_from_config
+from code_engine.extraction.client_factory import (
+    build_l1_client_from_env_or_config, resolve_l1_provider_settings,
+)
+from code_engine.extraction.deepseek_client import DeepSeekExtractionError, _safe_provider_error_body
 
 from .engine import (
     PROMPT_VERSION, build_abstract_input, build_fulltext_input, extraction_cache_identity,
@@ -132,17 +136,62 @@ def _valid_cache_entry(cache: dict[str, Any], identity: str, kind: str) -> bool:
     return bool(isinstance(entry, dict) and entry.get("kind") == kind
                 and isinstance(payload, dict) and payload.get("validation_status") == "validated")
 
+def _ledger_id(call_type: str, record_id: str, identity: str) -> str:
+    digest = hashlib.sha256(f"{call_type}\x1f{record_id}\x1f{identity}".encode()).hexdigest()[:20]
+    return f"ctx-ledger-{digest}"
+
+def _upsert_ledger(ledger: list[dict[str, Any]], entry: dict[str, Any]) -> None:
+    index = next((i for i, row in enumerate(ledger)
+                  if row.get("ledger_entry_id") == entry.get("ledger_entry_id")), None)
+    if index is None: ledger.append(entry)
+    else: ledger[index] = {**ledger[index], **entry}
+
+def _provider_failure(exc: Exception, *, call_type: str, record_id: str,
+                      ledger_entry_id: str, provider: str, model: str,
+                      thinking_mode: str, max_tokens: int) -> dict[str, Any]:
+    metadata = dict(getattr(exc, "provider_metadata", {}) or {})
+    raw = getattr(exc, "raw_response", None)
+    return {
+        "error_type": getattr(exc, "error_type", type(exc).__name__),
+        "error_kind": getattr(exc, "error_kind", "unknown"),
+        "status_code": getattr(exc, "status_code", None),
+        "provider_error_response_body": _safe_provider_error_body(raw),
+        "request_endpoint": metadata.get("request_endpoint") or
+                            ("https://api.deepseek.com/v1/chat/completions" if provider == "deepseek" else None),
+        "provider": provider, "model": model, "thinking_mode": thinking_mode,
+        "max_tokens": max_tokens,
+        "response_format_enabled": bool(metadata.get("json_output_enabled", True)),
+        "response_format": metadata.get("response_format") or {"type": "json_object"},
+        "prompt_version": PROMPT_VERSION,
+        "schema_version": EXTRACTION_SCHEMA_VERSION if call_type == "extraction" else PAIR_SCHEMA_VERSION,
+        "call_type": call_type, "record_id": record_id, "ledger_entry_id": ledger_entry_id,
+        "authorization_logged": False, "credential_values_logged": False,
+    }
+
 def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
-                            profiles: list[str], provider: str, model: str,
+                            profiles: list[str], provider: str | None = None, model: str | None = None,
                             execute: bool = False, api: bool = False, cached_only: bool = False,
                             resume: bool = False, extraction_limit: int = 50, comparison_limit: int = 50,
                             allowlist: set[str] | None = None, fixture_responses: Path | None = None,
                             purpose: str = "smoke", smoke_pair_count: int = 5,
-                            thinking_mode: str = "provider_default") -> dict[str, Any]:
+                            thinking_mode: str | None = None) -> dict[str, Any]:
     if api and not execute: raise ValueError("--api requires --execute")
     if purpose not in {"smoke", "complete"}: raise ValueError("purpose must be smoke or complete")
-    if provider not in {"offline", "deepseek", "openai"}: raise ValueError(f"unsupported provider: {provider}")
-    if not model: raise ValueError("model is required")
+    if provider == "offline":
+        settings = {
+            "provider": "offline", "model": model or "offline-fixture",
+            "thinking_mode": thinking_mode or "disabled", "max_tokens": 32_768,
+            "provider_source": "offline_fixture_override",
+            "model_source": "override" if model else "offline_fixture_default",
+            "thinking_mode_source": "override" if thinking_mode else "offline_fixture_default",
+            "max_tokens_source": "fulltext_l1_default", "credential_values_read": False,
+        }
+    else:
+        settings = resolve_l1_provider_settings(
+            provider=provider, model_name=model, thinking_mode=thinking_mode,
+        )
+    provider, model = settings["provider"], settings["model"]
+    thinking_mode, max_tokens = settings["thinking_mode"], int(settings["max_tokens"])
     output = output_run / "artifacts"; output.mkdir(parents=True, exist_ok=True)
     observations = discover_observations(input_run)
     eligible_observations = []
@@ -166,7 +215,7 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
     }
     identities = {
         oid: extraction_cache_identity(contract, profiles=profiles, provider=provider, model=model,
-                                       thinking_mode=thinking_mode)
+                                       thinking_mode=thinking_mode, max_tokens=max_tokens)
         for oid, contract in all_contracts.items()
     }
     cache_path = output / "context_attribution_cache.json"
@@ -246,9 +295,13 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
         "comparison_cache_hits": len(cached_pair_ids),
         "comparison_calls_planned": len(planned_comparison_ids),
         "provider": provider, "model": model, "thinking_mode": thinking_mode,
+        "configured_max_tokens": max_tokens,
         "provider_metadata_valid": provider == "offline" or (provider in {"deepseek", "openai"} and bool(model)),
-        "provider_configuration_source": "explicit_cli_or_function_arguments",
-        "credential_values_read": False, "api_enabled": bool(api and execute),
+        "provider_configuration_source": {
+            "provider": settings["provider_source"], "model": settings["model_source"],
+            "thinking_mode": settings["thinking_mode_source"], "max_tokens": settings["max_tokens_source"],
+        },
+        "credential_values_read": settings["credential_values_read"], "api_enabled": bool(api and execute),
         "network_calls": 0, "provider_calls": 0, "downloads": 0,
         "prompt_version": PROMPT_VERSION, "extraction_schema_version": EXTRACTION_SCHEMA_VERSION,
         "comparison_schema_version": PAIR_SCHEMA_VERSION,
@@ -279,24 +332,54 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
     if plan["plan_status"] in {"invalid", "blocked_by_call_bound"}:
         raise RuntimeError(f"context attribution execution blocked: {plan['plan_status']}")
     contracts = {oid: all_contracts[oid] for oid in selected_observation_ids}
-    client = build_json_client_from_config(provider, model, max_retries=0) if api else None
+    client = build_l1_client_from_env_or_config(provider, model, max_retries=0) if api else None
     if api and client is None: raise RuntimeError("requested_provider_not_configured")
-    ledger, audits, extractions, attributions = [], [], [], []
+    ledger_path = output / ARTIFACTS[3]
+    ledger = _rows(ledger_path) if resume else []
+    audits, extractions, attributions = [], [], []
     calls = {"extraction": 0, "comparison": 0}
+    for oid in selected_observation_ids:
+        identity = identities[oid]
+        _upsert_ledger(ledger, {
+            "ledger_entry_id": _ledger_id("extraction", oid, identity),
+            "call_type": "extraction", "record_id": oid, "identity": identity,
+            "status": "pending", "provider_call": False, "provider": provider, "model": model,
+        })
+    for pid in selection["selected_pair_ids"]:
+        identity = comparison_identities[pid]
+        _upsert_ledger(ledger, {
+            "ledger_entry_id": _ledger_id("comparison", pid, identity),
+            "call_type": "comparison", "record_id": pid, "identity": identity,
+            "status": "pending", "provider_call": False, "provider": provider, "model": model,
+        })
+    _write_jsonl(ledger_path, ledger)
     extraction_by_id: dict[str, ContextExtraction] = {}
+    systemic_failure: dict[str, Any] | None = None
     for oid, contract in contracts.items():
         identity = identities[oid]
+        ledger_entry_id = _ledger_id("extraction", oid, identity)
         cached = cache["entries"].get(identity) if _valid_cache_entry(cache, identity, "extraction") else None
         source = "cache" if cached else "fixture" if oid in fixtures.get("extractions", {}) else "provider"
-        if cached: raw = cached["payload"]
-        elif oid in fixtures.get("extractions", {}): raw = fixtures["extractions"][oid]
-        elif cached_only: continue
-        elif calls["extraction"] >= extraction_limit: continue
-        elif client:
-            raw = client.extract_json(extraction_prompt(contract, profiles), thinking_mode=thinking_mode)
-            calls["extraction"] += 1
-        else: continue
         try:
+            if cached:
+                raw = cached["payload"]
+            elif oid in fixtures.get("extractions", {}):
+                raw = fixtures["extractions"][oid]
+            elif cached_only or calls["extraction"] >= extraction_limit or client is None:
+                continue
+            else:
+                _upsert_ledger(ledger, {
+                    "ledger_entry_id": ledger_entry_id, "status": "in_progress",
+                    "source": "provider", "provider_call": True, "attempt_count": 1,
+                })
+                _write_jsonl(ledger_path, ledger)
+                calls["extraction"] += 1
+                method = getattr(client, "extract_json_result", None) or getattr(client, "extract_json")
+                response = method(
+                    extraction_prompt(contract, profiles), model=model, temperature=0, top_p=1,
+                    max_tokens=max_tokens, retry_on_length=False, thinking_mode=thinking_mode,
+                )
+                raw = response.payload if hasattr(response, "payload") else response
             validated, errors = validate_context_extraction(raw, contract, profiles)
             validated.extraction_identity = identity
             dumped = validated.model_dump(mode="json")
@@ -304,34 +387,68 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                 cache["entries"][identity] = {"kind": "extraction", "payload": dumped}
                 extraction_by_id[oid] = validated
             extractions.append(dumped); audits.append({"record_type": "extraction", "record_id": oid, "valid": not errors, "errors": errors})
-            ledger.append({"call_type": "extraction", "record_id": oid, "identity": identity, "source": source,
-                           "provider_call": source == "provider", "status": "rejected" if errors else "completed"})
+            _upsert_ledger(ledger, {
+                "ledger_entry_id": ledger_entry_id, "source": source,
+                "provider_call": source == "provider", "status": "rejected_validation" if errors else "completed",
+            })
+        except DeepSeekExtractionError as exc:
+            diagnostic = _provider_failure(
+                exc, call_type="extraction", record_id=oid, ledger_entry_id=ledger_entry_id,
+                provider=provider, model=model, thinking_mode=thinking_mode, max_tokens=max_tokens,
+            )
+            systemic = diagnostic["status_code"] == 400
+            status = "failed_systemic_provider_400" if systemic else "failed_provider"
+            audits.append({"record_type": "extraction", "record_id": oid, "valid": False,
+                           "errors": [status], "provider_diagnostic": diagnostic})
+            _upsert_ledger(ledger, {
+                "ledger_entry_id": ledger_entry_id, "source": "provider", "provider_call": True,
+                "status": status, "attempt_count": int(getattr(exc, "attempts", 1) or 1),
+                "provider_diagnostic": diagnostic,
+            })
+            systemic_failure = diagnostic if systemic else None
         except Exception as exc:
             audits.append({"record_type": "extraction", "record_id": oid, "valid": False, "errors": [str(exc)]})
-            ledger.append({"call_type": "extraction", "record_id": oid, "identity": identity, "source": source,
-                           "provider_call": source == "provider", "status": "rejected_schema"})
+            _upsert_ledger(ledger, {
+                "ledger_entry_id": ledger_entry_id, "source": source,
+                "provider_call": source == "provider", "status": "rejected_schema",
+                "safe_error_type": type(exc).__name__,
+            })
         _write_jsonl(output / ARTIFACTS[2], audits)
-        _write_jsonl(output / ARTIFACTS[3], ledger)
+        _write_jsonl(ledger_path, ledger)
         _write_json(cache_path, cache)
+        if systemic_failure is not None:
+            break
     gates = []
-    for pair in selected_pairs:
+    for pair in ([] if systemic_failure is not None else selected_pairs):
         pid = pair["pair_id"]; identity = comparison_identities[pid]
+        ledger_entry_id = _ledger_id("comparison", pid, identity)
         a, b = str(pair["claim_a"].get("observation_id") or pair["claim_a"].get("claim_id")), str(pair["claim_b"].get("observation_id") or pair["claim_b"].get("claim_id"))
         if a not in extraction_by_id or b not in extraction_by_id: continue
         cached = cache["entries"].get(identity) if _valid_cache_entry(cache, identity, "pair") else None
         source = "cache" if cached else "fixture" if pid in fixtures.get("pairs", {}) else "provider"
-        if cached: raw = cached["payload"]
-        elif pid in fixtures.get("pairs", {}): raw = fixtures["pairs"][pid]
-        elif cached_only: continue
-        elif calls["comparison"] >= comparison_limit: continue
-        elif client:
-            payload = {"pair_id": pid, "claim_a_extraction": extraction_by_id[a].model_dump(mode="json"),
-                       "claim_b_extraction": extraction_by_id[b].model_dump(mode="json"),
-                       "claim_a_evidence": contracts[a], "claim_b_evidence": contracts[b]}
-            raw = client.extract_json(pair_prompt(payload, profiles), thinking_mode=thinking_mode)
-            calls["comparison"] += 1
-        else: continue
         try:
+            if cached:
+                raw = cached["payload"]
+            elif pid in fixtures.get("pairs", {}):
+                raw = fixtures["pairs"][pid]
+            elif cached_only or calls["comparison"] >= comparison_limit or client is None:
+                continue
+            else:
+                payload = {"pair_id": pid, "claim_a_extraction": extraction_by_id[a].model_dump(mode="json"),
+                           "claim_b_extraction": extraction_by_id[b].model_dump(mode="json"),
+                           "claim_a_evidence": contracts[a], "claim_b_evidence": contracts[b]}
+                _upsert_ledger(ledger, {
+                    "ledger_entry_id": ledger_entry_id, "status": "in_progress",
+                    "source": "provider", "provider_call": True, "attempt_count": 1,
+                })
+                _write_jsonl(ledger_path, ledger)
+                calls["comparison"] += 1
+                method = getattr(client, "extract_json_result", None) or getattr(client, "extract_json")
+                response = method(
+                    pair_prompt(payload, profiles), model=model, temperature=0, top_p=1,
+                    max_tokens=max_tokens, retry_on_length=False, thinking_mode=thinking_mode,
+                )
+                raw = response.payload if hasattr(response, "payload") else response
             validated, errors = validate_pair_attribution(raw, pair_id=pid, extraction_a=extraction_by_id[a],
                                                           extraction_b=extraction_by_id[b], profiles=profiles)
             validated.comparison_identity = identity
@@ -341,15 +458,37 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
             existing = all(bool((x.get("eligibility") or {}).get("conflict_eligible", x.get("conflict_eligible", False)))
                            for x in (pair["claim_a"], pair["claim_b"]))
             gates.append(apply_comparability_gate(validated, profiles, existing_formal_eligibility=existing))
-            ledger.append({"call_type": "comparison", "record_id": pid, "identity": identity, "source": source,
-                           "provider_call": source == "provider", "status": "rejected" if errors else "completed"})
+            _upsert_ledger(ledger, {
+                "ledger_entry_id": ledger_entry_id, "source": source,
+                "provider_call": source == "provider", "status": "rejected_validation" if errors else "completed",
+            })
+        except DeepSeekExtractionError as exc:
+            diagnostic = _provider_failure(
+                exc, call_type="comparison", record_id=pid, ledger_entry_id=ledger_entry_id,
+                provider=provider, model=model, thinking_mode=thinking_mode, max_tokens=max_tokens,
+            )
+            systemic = diagnostic["status_code"] == 400
+            status = "failed_systemic_provider_400" if systemic else "failed_provider"
+            audits.append({"record_type": "pair", "record_id": pid, "valid": False,
+                           "errors": [status], "provider_diagnostic": diagnostic})
+            _upsert_ledger(ledger, {
+                "ledger_entry_id": ledger_entry_id, "source": "provider", "provider_call": True,
+                "status": status, "attempt_count": int(getattr(exc, "attempts", 1) or 1),
+                "provider_diagnostic": diagnostic,
+            })
+            systemic_failure = diagnostic if systemic else None
         except Exception as exc:
             audits.append({"record_type": "pair", "record_id": pid, "valid": False, "errors": [str(exc)]})
-            ledger.append({"call_type": "comparison", "record_id": pid, "identity": identity, "source": source,
-                           "provider_call": source == "provider", "status": "rejected_schema"})
+            _upsert_ledger(ledger, {
+                "ledger_entry_id": ledger_entry_id, "source": source,
+                "provider_call": source == "provider", "status": "rejected_schema",
+                "safe_error_type": type(exc).__name__,
+            })
         _write_jsonl(output / ARTIFACTS[2], audits)
-        _write_jsonl(output / ARTIFACTS[3], ledger)
+        _write_jsonl(ledger_path, ledger)
         _write_json(cache_path, cache)
+        if systemic_failure is not None:
+            break
     cache["updated_at"] = datetime.now(timezone.utc).isoformat()
     _write_json(cache_path, cache)
     _write_jsonl(output / ARTIFACTS[0], extractions); _write_jsonl(output / ARTIFACTS[1], attributions)
@@ -373,13 +512,18 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                    for x in audits if not x["valid"]]
     _write_jsonl(output / "context_attribution_retry_queue.jsonl", retry_queue)
     distribution = Counter(x.get("comparability") for x in attributions)
-    summary = {**plan, "status": "completed", "plan_only": False, "extraction_count": len(extractions),
+    execution_status = "failed_systemic_provider_error" if systemic_failure is not None else "completed"
+    summary = {**plan, "status": execution_status, "plan_only": False, "extraction_count": len(extractions),
                "pair_attribution_count": len(attributions), "comparability_distribution": dict(distribution),
                "validation_failure_count": sum(not x["valid"] for x in audits),
                "api_calls": sum(calls.values()), "provider_calls": sum(calls.values()),
-               "network_calls": sum(calls.values()), "downloads": 0, "activation": False}
+               "network_calls": sum(calls.values()), "downloads": 0, "activation": False,
+               "systemic_provider_failure": systemic_failure,
+               "pending_ledger_entry_count": sum(x.get("status") == "pending" for x in ledger),
+               "failed_ledger_entry_count": sum(str(x.get("status", "")).startswith("failed") for x in ledger)}
     execution_complete = len(attributions) == len(selected_pairs)
-    completeness = {"status": "complete" if purpose == "complete" and execution_complete else
+    completeness = {"status": "failed_systemic_provider_error" if systemic_failure is not None else
+                              "complete" if purpose == "complete" and execution_complete else
                               "smoke_complete" if purpose == "smoke" and execution_complete else "incomplete",
                     "purpose": purpose, "coverage_complete": purpose == "complete" and execution_complete,
                     "candidate_pairs": len(pairs), "selected_pairs": len(selected_pairs),

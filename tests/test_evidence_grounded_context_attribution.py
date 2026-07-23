@@ -2,10 +2,11 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 import pytest
+import httpx
 
 from code_engine.context_attribution.engine import (
     build_abstract_input, build_fulltext_input, candidate_pairs,
-    extraction_cache_identity, pair_cache_identity,
+    extraction_cache_identity, extraction_prompt, pair_cache_identity, pair_prompt,
 )
 from code_engine.context_attribution.gate import apply_comparability_gate
 from code_engine.context_attribution.models import ContextExtraction
@@ -13,6 +14,9 @@ from code_engine.context_attribution.planning import representative_smoke_select
 from code_engine.context_attribution.registry import load_registry, resolve_factors
 from code_engine.context_attribution.runner import run_context_attribution
 from code_engine.context_attribution.validation import validate_context_extraction, validate_pair_attribution
+from code_engine.extraction.deepseek_client import (
+    DeepSeekClient, DeepSeekExtractionError, JSONExtractionResult,
+)
 from code_engine.graph.conflict_discovery import build_conflict_graph
 
 def _abstract(oid="a", sentence="Treatment increased the endpoint.", polarity="positive"):
@@ -74,6 +78,56 @@ def test_fulltext_contract_preserves_combination_measurement_and_result():
     assert chain["intervention_or_exposure"]["combination_mode"] == "concurrent"
     assert chain["measurement"]["value"] != chain["observed_result"]["value"]
     assert contract["input_mode"] == "fulltext_evidence_chain"
+
+
+def test_final_extraction_and_pair_prompts_require_json_and_include_valid_examples():
+    profiles = ["generic", "biomedical"]
+    extraction = extraction_prompt(build_abstract_input(_abstract(), profiles), profiles)
+    extraction_body = json.loads(extraction)
+    extraction_example = extraction_body["schema_valid_json_example"]
+    ContextExtraction.model_validate(extraction_example)
+
+    extraction_a = ContextExtraction.model_validate(_unknown("a", ""))
+    extraction_b = ContextExtraction.model_validate(_unknown("b", ""))
+    pair = pair_prompt({
+        "pair_id": "p",
+        "claim_a_extraction": extraction_a.model_dump(mode="json"),
+        "claim_b_extraction": extraction_b.model_dump(mode="json"),
+    }, profiles)
+    pair_body = json.loads(pair)
+    _, pair_example_errors = validate_pair_attribution(
+        pair_body["schema_valid_json_example"],
+        pair_id="example_chemistry_pair",
+        extraction_a=ContextExtraction.model_validate({
+            **_unknown("example_chemistry_a", ""),
+            "domain_profiles": ["generic", "chemistry"],
+            "context_factors": [{
+                "factor_id": "temperature", "raw_value": "25 C", "normalized_value": None,
+                "status": "explicit", "evidence_anchor_ids": ["chem_a:A1"],
+                "evidence_text": "25 C", "confidence": .9,
+            }],
+        }),
+        extraction_b=ContextExtraction.model_validate({
+            **_unknown("example_chemistry_b", ""),
+            "domain_profiles": ["generic", "chemistry"],
+            "context_factors": [{
+                "factor_id": "temperature", "raw_value": "298.15 K", "normalized_value": None,
+                "status": "explicit", "evidence_anchor_ids": ["chem_b:A1"],
+                "evidence_text": "298.15 K", "confidence": .9,
+            }],
+        }),
+        profiles=["generic", "chemistry"],
+    )
+    assert not pair_example_errors
+
+    required = (
+        "Return exactly one valid JSON object. "
+        "Do not output Markdown or any text outside the JSON object."
+    )
+    for final_prompt in (extraction, pair):
+        assert "json" in final_prompt.casefold()
+        assert required in final_prompt
+        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v2"
 
 def test_registry_has_all_composable_profiles_and_required_metadata():
     registry = load_registry()
@@ -330,3 +384,143 @@ def test_unavailable_smoke_categories_are_explicit():
     assert unavailable == {"requested_category": "fulltext_fulltext", "available": False,
                            "selected": False, "selected_pair_ids": [],
                            "reason": "category_not_present_in_current_candidate_pairs"}
+
+def test_shared_provider_defaults_and_explicit_overrides(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    _write_planning_run(source, count=2)
+    monkeypatch.setenv("L1_PROVIDER", "deepseek")
+    monkeypatch.setenv("MODEL_NAME", "deepseek-v4-pro")
+    default = run_context_attribution(input_run=source, output_run=tmp_path / "default", mode="combined",
+        profiles=["generic", "biomedical"], purpose="smoke")
+    assert (default["provider"], default["model"], default["thinking_mode"]) == (
+        "deepseek", "deepseek-v4-pro", "disabled")
+    assert default["provider_configuration_source"]["provider"] == "L1_PROVIDER"
+    override = run_context_attribution(input_run=source, output_run=tmp_path / "override", mode="combined",
+        profiles=["generic", "biomedical"], purpose="smoke",
+        provider="openai", model="gpt-test", thinking_mode="provider_default")
+    assert (override["provider"], override["model"], override["thinking_mode"]) == (
+        "openai", "gpt-test", "provider_default")
+    assert set(override["provider_configuration_source"].values()) >= {"override"}
+
+class _RecordingContextClient:
+    def __init__(self):
+        self.calls = []
+    def extract_json_result(self, prompt, **kwargs):
+        self.calls.append((json.loads(prompt), kwargs))
+        body = self.calls[-1][0]
+        if body["task"] == "observation_context_extraction":
+            oid = body["input"]["observation_id"]
+            return JSONExtractionResult(payload=_unknown(oid, ""), raw_response="{}")
+        pair_input = body["input"]
+        a = pair_input["claim_a_extraction"]["observation_id"]
+        b = pair_input["claim_b_extraction"]["observation_id"]
+        return JSONExtractionResult(payload={
+            "schema_version": "context_pair_attribution_v2", "pair_id": pair_input["pair_id"],
+            "claim_a_observation_id": a, "claim_b_observation_id": b,
+            "comparability": "insufficient_information",
+            "factor_comparisons": [{"factor_id": "species", "claim_a_value": "unknown",
+                "claim_b_value": "unknown", "status": "missing_both", "comparability_effect": "unknown",
+                "explanatory_strength": "unknown", "claim_a_anchor_ids": [], "claim_b_anchor_ids": [],
+                "reason": "Species is absent."}],
+            "primary_explanatory_factors": [], "missing_critical_information": ["species"],
+            "reasoning_summary": "Species is absent from both claims.", "confidence": .8,
+        }, raw_response="{}")
+
+def test_context_execution_uses_shared_l1_factory_and_fulltext_request_contract(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    _write_planning_run(source, count=2)
+    client = _RecordingContextClient()
+    factory = patch("code_engine.context_attribution.runner.build_l1_client_from_env_or_config",
+                    return_value=client)
+    with factory as shared:
+        result = run_context_attribution(input_run=source, output_run=tmp_path / "execution",
+            mode="combined", profiles=["generic", "biomedical"], purpose="smoke",
+            smoke_pair_count=1,
+            provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+            extraction_limit=2, comparison_limit=1, execute=True, api=True)
+    shared.assert_called_once_with("deepseek", "deepseek-v4-pro", max_retries=0)
+    assert result["status"] == "completed"
+    assert len(client.calls) == 3
+    for _, kwargs in client.calls:
+        assert kwargs == {"model": "deepseek-v4-pro", "temperature": 0, "top_p": 1,
+                          "max_tokens": 32768, "retry_on_length": False,
+                          "thinking_mode": "disabled"}
+
+class _Systemic400Client:
+    def __init__(self):
+        self.calls = 0
+    def extract_json_result(self, prompt, **kwargs):
+        self.calls += 1
+        error = DeepSeekExtractionError(
+            "deepseek_extraction_failed", "400", 1, error_kind="configuration",
+            retryable=False, status_code=400,
+            raw_response='{"error":{"message":"bad request","api_key":"SECRET","auth":"Bearer token"}}',
+            provider_metadata={"request_endpoint": DeepSeekClient.endpoint,
+                               "response_format": {"type": "json_object"},
+                               "json_output_enabled": True},
+        )
+        error.error_type = "api_error"
+        raise error
+
+def test_systemic_400_is_redacted_ledgered_and_stops_immediately(tmp_path):
+    source = tmp_path / "source"
+    _write_planning_run(source, count=2)
+    client = _Systemic400Client()
+    with patch("code_engine.context_attribution.runner.build_l1_client_from_env_or_config",
+               return_value=client):
+        result = run_context_attribution(input_run=source, output_run=tmp_path / "failed",
+            mode="combined", profiles=["generic", "biomedical"], purpose="smoke",
+            smoke_pair_count=1,
+            provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+            extraction_limit=2, comparison_limit=1, execute=True, api=True)
+    assert result["status"] == "failed_systemic_provider_error"
+    assert result["provider_calls"] == result["api_calls"] == result["network_calls"] == 1
+    assert client.calls == 1
+    ledger = [json.loads(x) for x in (tmp_path / "failed/artifacts/context_attribution_execution_ledger.jsonl").read_text().splitlines()]
+    failed = [x for x in ledger if x["status"] == "failed_systemic_provider_400"]
+    assert len(failed) == 1
+    diagnostic = failed[0]["provider_diagnostic"]
+    assert diagnostic["status_code"] == 400
+    assert diagnostic["call_type"] == "extraction"
+    assert diagnostic["request_endpoint"] == DeepSeekClient.endpoint
+    serialized = json.dumps(ledger)
+    assert "SECRET" not in serialized and "Bearer token" not in serialized
+    assert sum(x["status"] == "pending" for x in ledger) == 2
+    assert result["activation"] is False and result["active_pointer_unchanged"] is True
+
+def test_shared_deepseek_preserves_safe_400_body_and_request_contract(monkeypatch):
+    captured = {}
+    def fake_post(url, *, content, headers, timeout):
+        captured["url"] = url
+        captured["payload"] = json.loads(content)
+        captured["authorization_present"] = "Authorization" in headers
+        return httpx.Response(400, request=httpx.Request("POST", url),
+                              text='{"error":{"message":"invalid request","api_key":"TOPSECRET"}}')
+    monkeypatch.setattr(httpx, "post", fake_post)
+    client = DeepSeekClient("TOPSECRET", max_retries=0)
+    with pytest.raises(DeepSeekExtractionError) as caught:
+        client.extract_json_result("{}", model="deepseek-v4-pro", temperature=0, top_p=1,
+                                   max_tokens=32768, retry_on_length=False,
+                                   thinking_mode="disabled")
+    assert captured["url"] == DeepSeekClient.endpoint
+    assert captured["payload"] == {
+        "model": "deepseek-v4-pro", "messages": [{"role": "system", "content": "{}"}],
+        "response_format": {"type": "json_object"}, "temperature": 0, "top_p": 1.0,
+        "max_tokens": 32768, "thinking": {"type": "disabled"},
+    }
+    assert captured["authorization_present"]
+    assert caught.value.status_code == 400
+    assert "invalid request" in caught.value.raw_response
+    assert "TOPSECRET" not in caught.value.raw_response
+
+def test_plan_only_does_not_construct_client_or_expose_credentials(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    _write_planning_run(source, count=2)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "DO_NOT_LOG")
+    with patch("code_engine.context_attribution.runner.build_l1_client_from_env_or_config") as factory:
+        plan = run_context_attribution(input_run=source, output_run=tmp_path / "plan",
+            mode="combined", profiles=["generic", "biomedical"], purpose="smoke")
+    factory.assert_not_called()
+    assert plan["provider_calls"] == plan["network_calls"] == 0
+    assert plan["credential_values_read"] is False
+    assert "DO_NOT_LOG" not in json.dumps(plan)
