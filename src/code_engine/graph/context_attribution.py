@@ -1,4 +1,9 @@
-"""Deterministic context attribution for conflict edges."""
+"""Legacy/experimental context attribution for conflict edges.
+
+Production context comparability lives in :mod:`code_engine.context_attribution`.
+The variational scorer is retained only for explicit ablation runs and its
+payload is marked ineligible for production handoff.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +22,7 @@ def calculate_shannon_entropy(prob_list: List[float]) -> float:
 
 
 def run_variational_em_attribution(observations: List[Dict[str, Any]], latent_universe: List[str]) -> Tuple[str, float, float]:
-    """Compatibility implementation of the prior weakly supervised EM scorer."""
+    """Experimental compatibility implementation of the old weakly supervised scorer."""
 
     if not observations:
         return "None", 0.0, 0.0
@@ -83,17 +88,25 @@ def build_context_attributions(
     grouped_observations: Dict[Tuple[str, str], List[Dict[str, Any]]],
     edge_entropy: Dict[Tuple[str, str], float],
     latent_pool: List[str],
+    *,
+    context_attribution_mode: str = "llm_evidence_grounded",
 ) -> Dict[Tuple[str, str], Dict[str, Any]]:
-    """Return attribution payloads keyed by normalized edge pair."""
+    """Return legacy graph diagnostics, without using EM in the default mode."""
 
     attributions: Dict[Tuple[str, str], Dict[str, Any]] = {}
     for pair, observations in grouped_observations.items():
-        best_delta_c, score, collapsed_entropy = run_variational_em_attribution(observations, latent_pool)
+        experimental = context_attribution_mode == "variational_em_experimental"
+        if experimental:
+            best_delta_c, score, collapsed_entropy = run_variational_em_attribution(observations, latent_pool)
+        else:
+            best_delta_c, score, collapsed_entropy = "not_run", 0.0, edge_entropy.get(pair, 0.0)
         ranked_contexts = context_entropy_reduction(observations, edge_entropy.get(pair, 0.0))
         attributions[pair] = {
             "conflict_edge_id": f"{pair[0]}->{pair[1]}",
             "ranked_contexts": ranked_contexts,
-            "method": "entropy_reduction_plus_legacy_em",
+            "schema_profile": "legacy_variational_em_experimental_v1" if experimental else "production_context_attribution_bridge_v2",
+            "method": "entropy_reduction_plus_variational_em_experimental" if experimental else "observed_context_diagnostic_llm_attribution_external",
+            "production_handoff_eligible": not experimental,
             "score_components": {
                 "legacy_em_best_delta_c": best_delta_c,
                 "legacy_em_score": score,

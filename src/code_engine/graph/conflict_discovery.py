@@ -48,6 +48,7 @@ def build_conflict_graph(
     latent_pool: List[str],
     thresholds: Dict[str, float] | None = None,
     include_low_confidence: bool = False,
+    context_attribution_mode: str = "llm_evidence_grounded",
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
     """Build legacy-compatible L3 graph plus normalized conflict/audit records."""
 
@@ -73,7 +74,10 @@ def build_conflict_graph(
         total = len(items)
         edge_entropy[pair] = calculate_shannon_entropy([counts.get(1, 0) / total, counts.get(-1, 0) / total])
 
-    attributions = build_context_attributions(grouped, edge_entropy, latent_pool)
+    attributions = build_context_attributions(
+        grouped, edge_entropy, latent_pool,
+        context_attribution_mode=context_attribution_mode,
+    )
     legacy_graph: List[Dict[str, Any]] = []
     conflict_edges: List[Dict[str, Any]] = []
     attribution_records: List[Dict[str, Any]] = []

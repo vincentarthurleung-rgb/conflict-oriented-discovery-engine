@@ -1,0 +1,13 @@
+{
+  "schema_version": "context_attribution_runtime_config_v1",
+  "context_attribution_mode": "llm_evidence_grounded",
+  "legacy_mode": "variational_em_experimental",
+  "legacy_production_handoff_allowed": false,
+  "candidate_pair_policy_version": "deterministic_conflict_candidates_v1",
+  "prompt_version": "context_attribution_prompts_v1",
+  "extraction_schema_version": "observation_context_extraction_v2",
+  "comparison_schema_version": "context_pair_attribution_v2",
+  "provider_call_hard_bound": true,
+  "default_plan_only": true,
+  "activation_allowed": false
+}
