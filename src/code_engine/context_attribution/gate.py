@@ -4,9 +4,10 @@ from .models import ContextPairAttribution
 from .registry import resolve_factors
 
 def apply_comparability_gate(attribution: ContextPairAttribution | dict[str, Any], profiles: list[str],
-                             *, existing_formal_eligibility: bool) -> dict[str, Any]:
+                             *, existing_formal_eligibility: bool,
+                             registry: dict[str, Any] | None = None) -> dict[str, Any]:
     value = attribution if isinstance(attribution, ContextPairAttribution) else ContextPairAttribution.model_validate(attribution)
-    factors = resolve_factors(profiles)
+    factors = resolve_factors(profiles, registry)
     validated = value.validation_status == "validated"
     blocking = [x.factor_id for x in value.factor_comparisons
                 if x.comparability_effect == "blocking"

@@ -12,7 +12,9 @@ from code_engine.context_attribution.gate import apply_comparability_gate
 from code_engine.context_attribution.models import ContextExtraction
 from code_engine.context_attribution.planning import representative_smoke_selection
 from code_engine.context_attribution.registry import load_registry, resolve_factors
-from code_engine.context_attribution.runner import run_context_attribution
+from code_engine.context_attribution.runner import (
+    revalidate_context_attribution_offline, run_context_attribution,
+)
 from code_engine.context_attribution.validation import validate_context_extraction, validate_pair_attribution
 from code_engine.extraction.deepseek_client import (
     DeepSeekClient, DeepSeekExtractionError, JSONExtractionResult,
@@ -86,6 +88,14 @@ def test_final_extraction_and_pair_prompts_require_json_and_include_valid_exampl
     extraction_body = json.loads(extraction)
     extraction_example = extraction_body["schema_valid_json_example"]
     ContextExtraction.model_validate(extraction_example)
+    validated_example, extraction_example_errors = validate_context_extraction(
+        extraction_example,
+        extraction_body["examples"]["extraction_examples"][0]["input"],
+        ["generic", "biomedical"],
+    )
+    assert not extraction_example_errors
+    assert validated_example.context_factors[0].raw_value == "Human"
+    assert validated_example.context_factors[0].normalized_value == "Homo sapiens"
 
     extraction_a = ContextExtraction.model_validate(_unknown("a", ""))
     extraction_b = ContextExtraction.model_validate(_unknown("b", ""))
@@ -127,7 +137,7 @@ def test_final_extraction_and_pair_prompts_require_json_and_include_valid_exampl
     for final_prompt in (extraction, pair):
         assert "json" in final_prompt.casefold()
         assert required in final_prompt
-        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v2"
+        assert json.loads(final_prompt)["prompt_version"] == "context_attribution_prompts_v3"
 
 def test_registry_has_all_composable_profiles_and_required_metadata():
     registry = load_registry()
@@ -348,6 +358,17 @@ def test_smoke_closure_and_call_bound_fail_closed(tmp_path):
     assert plan["api_enabled"] is False
     assert plan["provider_calls"] == plan["network_calls"] == plan["downloads"] == 0
     assert plan["credential_values_read"] is False
+    assert plan["prompt_version"] == "context_attribution_prompts_v3"
+    assert plan["extraction_schema_version"] == "observation_context_extraction_v3"
+    assert plan["comparison_schema_version"] == "context_pair_attribution_v2"
+    assert plan["validator_version"] == "context_attribution_validator_v2"
+    assert plan["hydrator_version"] == "context_attribution_anchor_hydrator_v1"
+    assert plan["registry_version"] == "context_factor_registry_v2"
+    assert plan["registry_path"] == "configs/context_attribution/context_registry_v2.json"
+    assert len(plan["registry_content_sha256"]) == 64
+    assert plan["registry_resolution_source"] == "current_pipeline_default"
+    assert plan["normalization_policy_version"] == "context_normalization_policy_v2"
+    assert plan["local_chain_policy_version"] == "context_local_chain_inference_v1"
     blocked = run_context_attribution(input_run=source, output_run=tmp_path / "blocked", mode="combined",
         profiles=["generic", "biomedical"], provider="offline", model="fixture",
         purpose="smoke", smoke_pair_count=5, extraction_limit=1, comparison_limit=5)
@@ -410,7 +431,11 @@ class _RecordingContextClient:
         body = self.calls[-1][0]
         if body["task"] == "observation_context_extraction":
             oid = body["input"]["observation_id"]
-            return JSONExtractionResult(payload=_unknown(oid, ""), raw_response="{}")
+            return JSONExtractionResult(
+                payload=_unknown(oid, ""), raw_response=json.dumps(_unknown(oid, "")),
+                finish_reason="stop", usage={"prompt_tokens": 10, "completion_tokens": 5},
+                provider_metadata={"http_status": 200, "request_endpoint": DeepSeekClient.endpoint},
+            )
         pair_input = body["input"]
         a = pair_input["claim_a_extraction"]["observation_id"]
         b = pair_input["claim_b_extraction"]["observation_id"]
@@ -424,7 +449,9 @@ class _RecordingContextClient:
                 "reason": "Species is absent."}],
             "primary_explanatory_factors": [], "missing_critical_information": ["species"],
             "reasoning_summary": "Species is absent from both claims.", "confidence": .8,
-        }, raw_response="{}")
+        }, raw_response="{}", finish_reason="stop",
+            usage={"prompt_tokens": 12, "completion_tokens": 7},
+            provider_metadata={"http_status": 200, "request_endpoint": DeepSeekClient.endpoint})
 
 def test_context_execution_uses_shared_l1_factory_and_fulltext_request_contract(tmp_path, monkeypatch):
     source = tmp_path / "source"
@@ -445,6 +472,18 @@ def test_context_execution_uses_shared_l1_factory_and_fulltext_request_contract(
         assert kwargs == {"model": "deepseek-v4-pro", "temperature": 0, "top_p": 1,
                           "max_tokens": 32768, "retry_on_length": False,
                           "thinking_mode": "disabled"}
+    provider_calls = [
+        json.loads(line) for line in
+        (tmp_path / "execution/artifacts/context_attribution_provider_calls.jsonl").read_text().splitlines()
+    ]
+    assert len(provider_calls) == 3
+    assert {row["status"] for row in provider_calls} == {"validated"}
+    assert all(row["prompt_snapshot"] and "json" in row["prompt_snapshot"].casefold()
+               for row in provider_calls)
+    assert all(row["raw_response_body"] is not None and row["parsed_payload"]
+               and row["finish_reason"] == "stop" and row["usage"] for row in provider_calls)
+    assert all(row["http_status"] == 200 and not row["authorization_logged"]
+               for row in provider_calls)
 
 class _Systemic400Client:
     def __init__(self):
@@ -461,6 +500,66 @@ class _Systemic400Client:
         )
         error.error_type = "api_error"
         raise error
+
+
+def test_complete_provider_artifact_replays_only_for_exact_identity(tmp_path):
+    source, output = tmp_path / "source", tmp_path / "execution"
+    _write_planning_run(source, count=2)
+    client = _RecordingContextClient()
+    factory_path = "code_engine.context_attribution.runner.build_l1_client_from_env_or_config"
+    arguments = dict(
+        input_run=source, output_run=output, mode="combined",
+        profiles=["generic", "biomedical"], purpose="smoke", smoke_pair_count=1,
+        provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+        extraction_limit=2, comparison_limit=1, execute=True, api=True,
+    )
+    with patch(factory_path, return_value=client):
+        run_context_attribution(**arguments)
+    assert len(client.calls) == 3
+    cache_path = output / "artifacts/context_attribution_cache.json"
+    cache = json.loads(cache_path.read_text())
+    cache["entries"] = {}
+    cache_path.write_text(json.dumps(cache))
+    with patch(factory_path, return_value=client):
+        resumed = run_context_attribution(**arguments, resume=True)
+    assert len(client.calls) == 3
+    assert resumed["provider_calls"] == 0
+    audits = [
+        json.loads(line) for line in
+        (output / "artifacts/context_attribution_provider_calls.jsonl").read_text().splitlines()
+    ]
+    assert all(row["provider_artifact_complete"] for row in audits)
+    assert all(row["registry_version"] == "context_factor_registry_v2" for row in audits)
+    assert all(len(row["registry_content_sha256"]) == 64 for row in audits)
+
+
+@pytest.mark.parametrize("missing_field", ["raw_response_body", "parsed_payload"])
+def test_incomplete_provider_artifact_is_not_a_resume_cache_hit(tmp_path, missing_field):
+    source, output = tmp_path / f"source-{missing_field}", tmp_path / f"execution-{missing_field}"
+    _write_planning_run(source, count=2)
+    client = _RecordingContextClient()
+    factory_path = "code_engine.context_attribution.runner.build_l1_client_from_env_or_config"
+    arguments = dict(
+        input_run=source, output_run=output, mode="combined",
+        profiles=["generic", "biomedical"], purpose="smoke", smoke_pair_count=1,
+        provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+        extraction_limit=2, comparison_limit=1, execute=True, api=True,
+    )
+    with patch(factory_path, return_value=client):
+        run_context_attribution(**arguments)
+    cache_path = output / "artifacts/context_attribution_cache.json"
+    cache = json.loads(cache_path.read_text())
+    cache["entries"] = {}
+    cache_path.write_text(json.dumps(cache))
+    audit_path = output / "artifacts/context_attribution_provider_calls.jsonl"
+    audits = [json.loads(line) for line in audit_path.read_text().splitlines()]
+    extraction = next(row for row in audits if row["call_type"] == "extraction")
+    extraction[missing_field] = None
+    audit_path.write_text("".join(json.dumps(row) + "\n" for row in audits))
+    with patch(factory_path, return_value=client):
+        resumed = run_context_attribution(**arguments, resume=True)
+    assert len(client.calls) == 4
+    assert resumed["provider_calls"] == 1
 
 def test_systemic_400_is_redacted_ledgered_and_stops_immediately(tmp_path):
     source = tmp_path / "source"
@@ -485,7 +584,8 @@ def test_systemic_400_is_redacted_ledgered_and_stops_immediately(tmp_path):
     assert diagnostic["request_endpoint"] == DeepSeekClient.endpoint
     serialized = json.dumps(ledger)
     assert "SECRET" not in serialized and "Bearer token" not in serialized
-    assert sum(x["status"] == "pending" for x in ledger) == 2
+    assert sum(x["status"] == "pending" for x in ledger) == 1
+    assert sum(x["status"] == "blocked_dependency_validation" for x in ledger) == 1
     assert result["activation"] is False and result["active_pointer_unchanged"] is True
 
 def test_shared_deepseek_preserves_safe_400_body_and_request_contract(monkeypatch):
@@ -524,3 +624,205 @@ def test_plan_only_does_not_construct_client_or_expose_credentials(tmp_path, mon
     assert plan["provider_calls"] == plan["network_calls"] == 0
     assert plan["credential_values_read"] is False
     assert "DO_NOT_LOG" not in json.dumps(plan)
+
+
+def test_prompt_separates_raw_normalized_and_forbids_model_evidence_and_new_anchors():
+    profiles = ["generic", "biomedical"]
+    prompts = (
+        extraction_prompt(build_abstract_input(_abstract(), profiles), profiles),
+        pair_prompt({"pair_id": "p", "claim_a_extraction": _unknown("a", ""),
+                     "claim_b_extraction": _unknown("b", "")}, profiles),
+    )
+    for prompt in prompts:
+        rules = json.loads(prompt)["rules"]
+        assert "raw_value and normalized_value have different meanings" in rules
+        assert "never create a span ID" in rules
+        assert "Omit evidence_text and authoritative_evidence" in rules
+        assert "Locally supported value:" in rules
+
+
+def test_authoritative_hydration_surface_matching_and_controlled_normalization():
+    row = _abstract(sentence="HUMAN\u00a0tissue—24 h changed the endpoint.")
+    contract = build_abstract_input(row, ["generic", "biomedical"])
+    payload = {
+        **_unknown("a", ""),
+        "context_factors": [{
+            "factor_id": "species", "raw_value": "human", "normalized_value": "Homo sapiens",
+            "status": "explicit", "evidence_anchor_ids": ["a:abstract_sentence"],
+            "evidence_text": "Locally supported value: Homo sapiens", "confidence": .9,
+        }, {
+            "factor_id": "tissue", "raw_value": "human tissue 24 h", "normalized_value": "TISSUE:UNRESOLVED",
+            "status": "explicit", "evidence_anchor_ids": ["a:abstract_sentence"],
+            "evidence_text": "invented summary", "confidence": .8,
+        }],
+    }
+    value, errors = validate_context_extraction(payload, contract, ["generic", "biomedical"])
+    assert not errors
+    species, tissue = value.context_factors
+    assert species.normalized_value == "Homo sapiens"
+    assert species.normalization_status == "resolved_controlled"
+    assert tissue.normalized_value is None
+    assert tissue.normalized_candidate == "TISSUE:UNRESOLVED"
+    assert tissue.normalization_status == "unresolved_candidate"
+    assert all(factor.evidence_text == row["evidence_sentence"] for factor in value.context_factors)
+    assert "Locally supported value:" not in json.dumps(value.model_dump(mode="json"))
+    evidence = species.authoritative_evidence[0]
+    assert evidence["anchor_id"] == "a:abstract_sentence"
+    assert evidence["text_hash"] == contract["evidence_anchors"][0]["text_hash"]
+    assert evidence["char_start"] == 0 and evidence["char_end"] == len(row["evidence_sentence"])
+
+
+def test_semantic_rewrite_and_non_contract_anchor_remain_fail_closed():
+    contract = build_abstract_input(
+        _abstract(sentence="Human cells changed the endpoint."), ["generic", "biomedical"]
+    )
+    payload = {
+        **_unknown("a", ""),
+        "context_factors": [{
+            "factor_id": "species", "raw_value": "Homo sapiens", "normalized_value": None,
+            "status": "explicit", "evidence_anchor_ids": ["invented-span"],
+            "evidence_text": "Human cells changed the endpoint.", "confidence": .9,
+        }],
+    }
+    value, errors = validate_context_extraction(payload, contract, ["generic", "biomedical"])
+    assert "anchor_not_in_observation:species:invented-span" in errors
+    assert "explicit_value_not_in_evidence:species" in errors
+    assert value.context_factors[0].evidence_text is None
+    assert value.validation_status == "rejected"
+
+
+def test_local_chain_inference_requires_named_node_bound_anchor_and_allowed_rule():
+    contract = build_fulltext_input(_fulltext(), ["generic", "biomedical"])
+    payload = {
+        **_unknown("f1", ""),
+        "input_mode": "fulltext_evidence_chain",
+        "context_factors": [{
+            "factor_id": "experimental_system", "raw_value": "control", "normalized_value": None,
+            "status": "inferred_from_local_chain", "evidence_anchor_ids": ["A1"],
+            "source_chain_node_ids": ["comparator_or_control"],
+            "inference_rule": "direct_local_chain_projection", "confidence": .8,
+        }],
+    }
+    value, errors = validate_context_extraction(payload, contract, ["generic", "biomedical"])
+    assert not errors
+    assert value.validation_status == "validated"
+    missing_node = json.loads(json.dumps(payload))
+    missing_node["context_factors"][0]["source_chain_node_ids"] = []
+    _, errors = validate_context_extraction(missing_node, contract, ["generic", "biomedical"])
+    assert "local_inference_missing_chain_node:experimental_system" in errors
+    bad_rule = json.loads(json.dumps(payload))
+    bad_rule["context_factors"][0]["inference_rule"] = "llm_external_knowledge"
+    _, errors = validate_context_extraction(bad_rule, contract, ["generic", "biomedical"])
+    assert "local_inference_rule_not_allowed:experimental_system" in errors
+
+
+class _RejectedExtractionClient:
+    def __init__(self):
+        self.calls = 0
+
+    def extract_json_result(self, prompt, **kwargs):
+        self.calls += 1
+        body = json.loads(prompt)
+        oid = body["input"]["observation_id"]
+        payload = {
+            **_unknown(oid, ""),
+            "context_factors": [{
+                "factor_id": "species", "raw_value": "Homo sapiens", "normalized_value": None,
+                "status": "explicit", "evidence_anchor_ids": ["invented-span"],
+                "evidence_text": "Locally supported value: Homo sapiens", "confidence": .9,
+            }],
+        }
+        return JSONExtractionResult(
+            payload=payload,
+            raw_response=json.dumps(payload) + "\nBearer SECRET_PROVIDER_TOKEN",
+            finish_reason="stop",
+            usage={"prompt_tokens": 2, "completion_tokens": 2},
+            provider_metadata={
+                "http_status": 200,
+                "Authorization": "Bearer SECRET_PROVIDER_TOKEN",
+                "api_key": "SECRET_PROVIDER_TOKEN",
+            },
+        )
+
+
+def test_all_rejected_blocks_comparison_separates_status_and_resume_reuses_raw(tmp_path):
+    source, output = tmp_path / "source", tmp_path / "rejected"
+    _write_planning_run(source, count=2)
+    client = _RejectedExtractionClient()
+    factory_path = "code_engine.context_attribution.runner.build_l1_client_from_env_or_config"
+    with patch(factory_path, return_value=client):
+        first = run_context_attribution(
+            input_run=source, output_run=output, mode="combined",
+            profiles=["generic", "biomedical"], purpose="smoke", smoke_pair_count=1,
+            provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+            extraction_limit=2, comparison_limit=1, execute=True, api=True,
+        )
+    assert client.calls == 2
+    assert first["execution_status"] == first["status"] == "completed"
+    assert first["scientific_status"] == "all_extractions_rejected"
+    assert first["validated_extraction_count"] == 0
+    assert first["pair_attribution_count"] == 0
+    assert first["blocked_dependency_ledger_entry_count"] == 1
+    ledger = [json.loads(line) for line in
+              (output / "artifacts/context_attribution_execution_ledger.jsonl").read_text().splitlines()]
+    blocked = next(row for row in ledger if row["call_type"] == "comparison")
+    assert blocked["status"] == "blocked_dependency_validation"
+    assert blocked["provider_call"] is False
+    assert len(blocked["blocked_observation_ids"]) == 2
+    assert json.loads((output / "artifacts/context_attribution_cache.json").read_text())["entries"] == {}
+    assert not (output / "artifacts/observation_context_extractions.jsonl").read_text()
+    provider_audit_text = (output / "artifacts/context_attribution_provider_calls.jsonl").read_text()
+    assert "SECRET_PROVIDER_TOKEN" not in provider_audit_text
+    assert "Bearer [REDACTED]" in provider_audit_text
+
+    with patch(factory_path, return_value=client):
+        second = run_context_attribution(
+            input_run=source, output_run=output, mode="combined",
+            profiles=["generic", "biomedical"], purpose="smoke", smoke_pair_count=1,
+            provider="deepseek", model="deepseek-v4-pro", thinking_mode="disabled",
+            extraction_limit=2, comparison_limit=1, execute=True, api=True, resume=True,
+        )
+    assert client.calls == 4
+    assert second["provider_calls"] == 2
+    assert second["scientific_status"] == "all_extractions_rejected"
+
+
+def test_offline_revalidation_is_zero_call_and_does_not_invent_provider_audit(tmp_path):
+    input_run, source_run, output = tmp_path / "input", tmp_path / "failed", tmp_path / "revalidated"
+    _write_planning_run(input_run, count=2)
+    (source_run / "artifacts").mkdir(parents=True)
+    parsed = {
+        **_unknown("o0", ""),
+        "context_factors": [{
+            "factor_id": "species", "raw_value": "Homo sapiens", "normalized_value": None,
+            "status": "explicit", "evidence_anchor_ids": ["invented-span"],
+            "evidence_text": "Locally supported value: Homo sapiens", "confidence": .9,
+        }],
+    }
+    (source_run / "artifacts/observation_context_extractions.jsonl").write_text(
+        json.dumps(parsed) + "\n", encoding="utf-8"
+    )
+    (source_run / "artifacts/context_attribution_summary.json").write_text(json.dumps({
+        "prompt_version": "context_attribution_prompts_v2",
+        "planned_comparison_pair_ids": ["p00"],
+    }), encoding="utf-8")
+    with patch("code_engine.context_attribution.runner.build_l1_client_from_env_or_config") as factory:
+        summary = revalidate_context_attribution_offline(
+            input_run=input_run, source_run=source_run, output_run=output,
+            mode="combined", profiles=["generic", "biomedical"],
+        )
+    factory.assert_not_called()
+    assert summary["api_calls"] == summary["provider_calls"] == summary["network_calls"] == 0
+    assert summary["raw_provider_response_unavailable"] is True
+    assert summary["finish_reason_unavailable"] is True
+    assert summary["usage_unavailable"] is True
+    assert summary["scientific_status"] == "all_extractions_rejected"
+    replay = json.loads(
+        (output / "artifacts/context_attribution_offline_revalidation_payloads.jsonl").read_text()
+    )
+    assert replay["source_run"] == str(source_run)
+    assert replay["original_prompt_version"] == "context_attribution_prompts_v2"
+    assert replay["raw_provider_response_unavailable"] is True
+    assert replay["finish_reason"] is None and replay["usage"] is None
+    assert summary["handoff_created"] is False
+    assert not (output / "artifacts/context_attribution_handoff.jsonl").read_text()

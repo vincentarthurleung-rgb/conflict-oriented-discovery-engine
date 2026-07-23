@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from typing import Any
 
 from .models import ContextExtraction, ContextPairAttribution
 from .registry import resolve_factors
+
+VALIDATOR_VERSION = "context_attribution_validator_v2"
+HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v1"
+LOCAL_CHAIN_INFERENCE_POLICY_VERSION = "context_local_chain_inference_v1"
 
 _QUANTITY = re.compile(r"^\s*[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:\s*(?:±|\+/-)\s*\d+(?:\.\d+)?)?\s*([%°µμA-Za-z][\w%°µμ./^-]*)?\s*$")
 
@@ -14,6 +19,108 @@ def _hash(text: str) -> str:
 
 def _anchors(contract: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {str(x.get("anchor_id") or x.get("evidence_span_id")): x for x in contract.get("evidence_anchors", [])}
+
+def _surface(value: Any) -> str:
+    normalized = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    normalized = "".join(" " if unicodedata.category(char)[0] in {"P", "Z"} else char
+                         for char in normalized)
+    return " ".join(normalized.split())
+
+def _surface_present(raw_value: str, text: str) -> bool:
+    needle, haystack = _surface(raw_value), _surface(text)
+    return bool(needle and needle in haystack)
+
+def _chain_nodes(contract: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    chain = contract.get("experimental_logic_chain") or {}
+    return {str(key): value for key, value in chain.items() if isinstance(value, dict)}
+
+def hydrate_context_extraction(payload: ContextExtraction | dict[str, Any],
+                               contract: dict[str, Any]) -> tuple[ContextExtraction, dict[str, Any]]:
+    """Replace model-authored evidence copies with authoritative contract spans."""
+    value = payload if isinstance(payload, ContextExtraction) else ContextExtraction.model_validate(payload)
+    anchors = _anchors(contract)
+    contract_order = {aid: index for index, aid in enumerate(anchors)}
+    hydrated_factors = []
+    for factor in value.context_factors:
+        supplied_text = factor.evidence_text
+        unique = list(dict.fromkeys(factor.evidence_anchor_ids))
+        valid = sorted((aid for aid in unique if aid in anchors), key=contract_order.get)
+        invalid = [aid for aid in unique if aid not in anchors]
+        factor.evidence_anchor_ids = [*valid, *invalid]
+        factor.authoritative_evidence = [
+            {
+                "anchor_id": aid,
+                "text": str(anchors[aid].get("text") or ""),
+                "text_hash": anchors[aid].get("text_hash"),
+                "char_start": anchors[aid].get("char_start"),
+                "char_end": anchors[aid].get("char_end"),
+                "source_section": anchors[aid].get("source_section"),
+                "source_role": anchors[aid].get("source_role"),
+            }
+            for aid in valid
+        ]
+        factor.evidence_text = "\n\n".join(item["text"] for item in factor.authoritative_evidence) or None
+        hydrated_factors.append({
+            "factor_id": factor.factor_id,
+            "authoritative_anchor_ids": valid,
+            "unknown_anchor_ids": invalid,
+            "model_evidence_text_ignored": supplied_text is not None,
+            "model_evidence_text_matched_authority": (
+                supplied_text is None or supplied_text == factor.evidence_text
+            ),
+        })
+    audit = {
+        "hydrator_version": HYDRATOR_VERSION,
+        "authoritative_source": "observation_contract",
+        "factors": hydrated_factors,
+    }
+    value.provenance = {**value.provenance, "deterministic_hydration": audit}
+    return value, audit
+
+def _resolve_normalization(factor: Any, definition: dict[str, Any],
+                           accepted: set[tuple[str, str]]) -> str | None:
+    candidate = factor.normalized_value or factor.normalized_candidate
+    if factor.status == "unknown":
+        factor.normalized_value = None
+        factor.normalized_candidate = None
+        factor.normalization_status = "not_applicable"
+        factor.normalization_provenance = {"validator_version": VALIDATOR_VERSION}
+        return None
+    if not candidate:
+        factor.normalized_value = None
+        factor.normalization_status = "not_requested"
+        factor.normalization_provenance = {"validator_version": VALIDATOR_VERSION}
+        return None
+    factor.normalized_candidate = candidate
+    if candidate == factor.raw_value:
+        factor.normalized_value = candidate
+        factor.normalization_status = "resolved_identity"
+        factor.normalization_provenance = {"resolver": "identity", "validator_version": VALIDATOR_VERSION}
+        return None
+    if (factor.factor_id, candidate) in accepted:
+        factor.normalized_value = candidate
+        factor.normalization_status = "resolved_supplied"
+        factor.normalization_provenance = {"resolver": "accepted_normalizations",
+                                           "validator_version": VALIDATOR_VERSION}
+        return None
+    mappings = definition.get("controlled_normalizations") or {}
+    resolved = mappings.get(_surface(factor.raw_value))
+    if resolved == candidate:
+        factor.normalized_value = candidate
+        factor.normalization_status = "resolved_controlled"
+        factor.normalization_provenance = {
+            "resolver": "context_registry_controlled_mapping",
+            "mapping_key": _surface(factor.raw_value),
+            "validator_version": VALIDATOR_VERSION,
+        }
+        return None
+    factor.normalized_value = None
+    factor.normalization_status = "unresolved_candidate"
+    factor.normalization_provenance = {"resolver": "context_registry_controlled_mapping",
+                                       "validator_version": VALIDATOR_VERSION}
+    if definition.get("normalization_policy") == "resolver_acceptance_required":
+        return f"normalization_unresolved:{factor.factor_id}"
+    return None
 
 def _anchor_errors(contract: dict[str, Any]) -> list[str]:
     errors = []
@@ -30,28 +137,57 @@ def _anchor_errors(contract: dict[str, Any]) -> list[str]:
     return errors
 
 def validate_context_extraction(payload: ContextExtraction | dict[str, Any], contract: dict[str, Any],
-                                profiles: list[str], *, accepted_normalizations: set[tuple[str, str]] | None = None
+                                profiles: list[str], *, accepted_normalizations: set[tuple[str, str]] | None = None,
+                                registry: dict[str, Any] | None = None,
                                 ) -> tuple[ContextExtraction, list[str]]:
-    value = payload if isinstance(payload, ContextExtraction) else ContextExtraction.model_validate(payload)
+    value, hydration_audit = hydrate_context_extraction(payload, contract)
     errors = _anchor_errors(contract)
     if value.observation_id != contract.get("observation_id"): errors.append("observation_id_mismatch")
     if value.input_mode != contract.get("input_mode"): errors.append("input_mode_mismatch")
-    known, anchors = resolve_factors(profiles), _anchors(contract)
+    known, anchors, chain_nodes = resolve_factors(profiles, registry), _anchors(contract), _chain_nodes(contract)
     accepted_normalizations = accepted_normalizations or set()
     for factor in value.context_factors:
         if factor.factor_id not in known:
             errors.append(f"unsupported_factor:{factor.factor_id}"); continue
         if factor.status != "unknown" and not factor.evidence_anchor_ids:
             errors.append(f"unbound_factor:{factor.factor_id}")
+        if factor.status == "unknown" and (
+            factor.evidence_anchor_ids or factor.source_chain_node_ids or factor.inference_rule
+        ):
+            errors.append(f"unknown_factor_has_evidence_binding:{factor.factor_id}")
         for aid in factor.evidence_anchor_ids:
             if aid not in anchors: errors.append(f"anchor_not_in_observation:{factor.factor_id}:{aid}")
             elif value.input_mode == "abstract_sentence_only" and anchors[aid].get("source_role") != "abstract":
                 errors.append(f"abstract_fulltext_anchor_forbidden:{aid}")
-        if factor.evidence_text and factor.evidence_text not in {str(anchors[x].get("text")) for x in factor.evidence_anchor_ids if x in anchors}:
-            errors.append(f"evidence_text_mismatch:{factor.factor_id}")
         bound_text = " ".join(str(anchors[x].get("text") or "") for x in factor.evidence_anchor_ids if x in anchors)
-        if factor.status == "explicit" and factor.raw_value.casefold() not in bound_text.casefold():
+        if factor.status == "explicit" and not _surface_present(factor.raw_value, bound_text):
             errors.append(f"explicit_value_not_in_evidence:{factor.factor_id}")
+        if factor.status == "inferred_from_local_chain":
+            if value.input_mode != "fulltext_evidence_chain":
+                errors.append(f"local_inference_requires_fulltext:{factor.factor_id}")
+            if not factor.source_chain_node_ids:
+                errors.append(f"local_inference_missing_chain_node:{factor.factor_id}")
+            unknown_nodes = [node for node in factor.source_chain_node_ids if node not in chain_nodes]
+            for node in unknown_nodes:
+                errors.append(f"local_inference_unknown_chain_node:{factor.factor_id}:{node}")
+            selected_nodes = [chain_nodes[node] for node in factor.source_chain_node_ids if node in chain_nodes]
+            node_anchor_ids = {
+                str(aid) for node in selected_nodes
+                for aid in node.get("authoritative_evidence_anchor_ids", [])
+            }
+            if not set(factor.evidence_anchor_ids) <= node_anchor_ids:
+                errors.append(f"local_inference_anchor_not_bound_to_chain:{factor.factor_id}")
+            chain_surface = " ".join(
+                json_text for node in selected_nodes
+                for json_text in [str(node.get("value") or "")]
+            )
+            if not _surface_present(factor.raw_value, chain_surface):
+                errors.append(f"local_inference_raw_value_not_in_chain:{factor.factor_id}")
+            allowed_rules = known[factor.factor_id].get("allowed_local_inference_rules") or []
+            if not factor.inference_rule or factor.inference_rule not in allowed_rules:
+                errors.append(f"local_inference_rule_not_allowed:{factor.factor_id}")
+        elif factor.source_chain_node_ids or factor.inference_rule:
+            errors.append(f"chain_provenance_on_non_inferred_factor:{factor.factor_id}")
         if factor.factor_id in {"observed_outcome", "biological_endpoint", "yield", "selectivity", "conversion"}:
             if any(anchors[x].get("source_role") == "methods" for x in factor.evidence_anchor_ids if x in anchors):
                 errors.append(f"methods_anchor_cannot_prove_result:{factor.factor_id}")
@@ -63,24 +199,33 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
                 errors.append(f"value_not_integer:{factor.factor_id}")
             elif match.group(1) and definition.get("units") and match.group(1) not in definition["units"]:
                 errors.append(f"unit_not_allowed:{factor.factor_id}:{match.group(1)}")
-        if factor.normalized_value and factor.normalized_value != factor.raw_value:
-            if (factor.factor_id, factor.normalized_value) not in accepted_normalizations:
-                errors.append(f"normalization_unresolved:{factor.factor_id}")
+        normalization_error = _resolve_normalization(factor, definition, accepted_normalizations)
+        if normalization_error:
+            errors.append(normalization_error)
         if factor.status == "conflicting" and factor.normalized_value not in {None, "unknown"}:
             errors.append(f"conflicting_factor_must_not_resolve:{factor.factor_id}")
     value.validation_status = "rejected" if errors else "validated"
+    value.provenance["deterministic_validation"] = {
+        "validator_version": VALIDATOR_VERSION,
+        "hydrator_version": HYDRATOR_VERSION,
+        "local_chain_inference_policy_version": LOCAL_CHAIN_INFERENCE_POLICY_VERSION,
+        "valid": not errors,
+        "errors": list(errors),
+        "hydration": hydration_audit,
+    }
     return value, errors
 
 def validate_pair_attribution(payload: ContextPairAttribution | dict[str, Any], *,
                               pair_id: str, extraction_a: ContextExtraction,
-                              extraction_b: ContextExtraction, profiles: list[str]
+                              extraction_b: ContextExtraction, profiles: list[str],
+                              registry: dict[str, Any] | None = None,
                               ) -> tuple[ContextPairAttribution, list[str]]:
     value = payload if isinstance(payload, ContextPairAttribution) else ContextPairAttribution.model_validate(payload)
     errors: list[str] = []
     if value.pair_id != pair_id: errors.append("pair_id_mismatch")
     if value.claim_a_observation_id != extraction_a.observation_id: errors.append("claim_a_observation_id_mismatch")
     if value.claim_b_observation_id != extraction_b.observation_id: errors.append("claim_b_observation_id_mismatch")
-    known = resolve_factors(profiles)
+    known = resolve_factors(profiles, registry)
     values_a = {x.factor_id: x.raw_value for x in extraction_a.context_factors}
     values_b = {x.factor_id: x.raw_value for x in extraction_b.context_factors}
     anchors_a = {x for f in extraction_a.context_factors for x in f.evidence_anchor_ids}

@@ -192,7 +192,7 @@ class DeepSeekClient:
                 last_finish_reason = payload["choices"][0].get("finish_reason")
                 last_usage = dict(payload.get("usage") or {})
                 last_provider_metadata = {
-                    "provider": "deepseek", "model": model,
+                    "provider": "deepseek", "request_endpoint": self.endpoint, "model": model,
                     "response_format": {"type": "json_object"},
                     "json_output_enabled": True, "max_tokens": max_tokens,
                     "http_status": getattr(response, "status_code", 200),

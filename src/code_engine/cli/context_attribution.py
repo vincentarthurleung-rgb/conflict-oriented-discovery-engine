@@ -4,7 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
-from code_engine.context_attribution.runner import run_context_attribution
+from code_engine.context_attribution.runner import (
+    revalidate_context_attribution_offline, run_context_attribution,
+)
 
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description="Plan or run evidence-grounded two-stage L4 context attribution.")
@@ -33,28 +35,47 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--resume", action="store_true")
     value.add_argument("--cached-only", action="store_true")
     value.add_argument("--fixture-responses", type=Path, help="Offline extraction/pair response JSON.")
+    value.add_argument("--registry-version", help="Exact immutable registry version.")
+    value.add_argument("--registry-path", type=Path, help="Explicit registered path; version/path must match.")
+    value.add_argument("--registry-content-sha256", help="Expected registry content hash; mismatch fails closed.")
+    value.add_argument(
+        "--offline-revalidate-from", type=Path,
+        help="Revalidate parsed extraction payloads from an existing run with zero provider/network calls.",
+    )
     value.add_argument("--no-activation", action="store_true", default=True,
                        help="Required safety posture; this CLI never changes an active pointer.")
     return value
 
 def main() -> None:
     args = parser().parse_args()
+    selected_mode = "abstract-only" if args.abstract_only else "fulltext-only" if args.fulltext_only else "combined" if args.combined else args.mode
+    profiles = [x.strip() for x in args.domain_profiles.split(",") if x.strip()]
+    if args.offline_revalidate_from:
+        if args.api or args.execute or args.resume or args.cached_only or args.fixture_responses:
+            raise SystemExit("--offline-revalidate-from cannot be combined with execution/provider flags")
+        result = revalidate_context_attribution_offline(
+            input_run=args.input_run, source_run=args.offline_revalidate_from,
+            output_run=args.output_run, mode=selected_mode, profiles=profiles,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     if args.execute and args.api:
         from code_engine.validation.external_api_smoke import load_dotenv
         load_dotenv()
-    selected_mode = "abstract-only" if args.abstract_only else "fulltext-only" if args.fulltext_only else "combined" if args.combined else args.mode
     allowlist = None
     if args.candidate_pair_allowlist:
         allowlist = {x.strip() for x in args.candidate_pair_allowlist.read_text(encoding="utf-8").splitlines() if x.strip()}
     result = run_context_attribution(
         input_run=args.input_run, output_run=args.output_run, mode=selected_mode,
-        profiles=[x.strip() for x in args.domain_profiles.split(",") if x.strip()],
+        profiles=profiles,
         provider=args.provider, model=args.model, execute=args.execute, api=args.api,
         cached_only=args.cached_only, resume=args.resume,
         extraction_limit=max(0, args.max_extraction_calls), comparison_limit=max(0, args.max_comparison_calls),
         allowlist=allowlist, fixture_responses=args.fixture_responses,
         purpose=args.purpose, smoke_pair_count=max(0, args.smoke_pair_count),
         thinking_mode=args.thinking_mode,
+        registry_version=args.registry_version, registry_path=args.registry_path,
+        registry_content_sha256=args.registry_content_sha256,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

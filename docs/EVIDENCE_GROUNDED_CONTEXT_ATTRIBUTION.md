@@ -1,4 +1,4 @@
-# Evidence-grounded context attribution v2
+# Evidence-grounded context attribution v3
 
 ## Audit of the existing architecture
 
@@ -104,12 +104,33 @@ remain one grouped experiment.
 
 ## Schemas, registry, and validation
 
-The production schemas are `observation_context_extraction_v2` and
-`context_pair_attribution_v2`. They store concise audit summaries, not hidden
+The production schemas are `observation_context_extraction_v3` and
+`context_pair_attribution_v2`; the extraction reader migrates v2 payloads for
+explicit offline revalidation. They store concise audit summaries, not hidden
 reasoning. The versioned registry composes `generic`, `biomedical`, `clinical`,
 `chemistry`, `materials`, and `catalysis` profiles and declares factor type,
 units, criticality, applicability, comparison/normalization policies, evidence
 requirements, blocking/explanatory permissions, aliases, and prompt guidance.
+
+Registry files are immutable contracts, not mutable aliases. Historical
+Prompt v1/v2 and extraction v2 resolve explicitly to
+`configs/context_attribution/context_registry_v1.json`; Prompt v3 and
+extraction v3 resolve to `context_registry_v2.json`. The resolver checks the
+requested version, registered path, internal version and SHA-256 and never
+searches for or falls back to a “latest” file. Plan, cache, provider audit,
+offline revalidation, handoff and completeness artifacts carry the resolved
+version/path/hash/schema/source identity. The restored v1 file is the Git
+history payload with SHA-256
+`db0acb543603d0d1ffe06d29e101cd61eed2582e69a845b7df1d3eb21c40f7b9`.
+
+`raw_value` is a surface form copied from an authoritative span or named local
+chain node. `normalized_value` is separate and survives only an identity,
+configured controlled mapping, or explicitly supplied resolver acceptance.
+Unresolved optional candidates move to `normalized_candidate`; resolver-required
+factors fail closed. `evidence_anchor_ids` are selected from the observation
+contract. Model-authored `evidence_text` is ignored: the deterministic hydrator
+replaces it with the exact authoritative span and preserves its hash, offsets,
+section, and role in `authoritative_evidence`.
 
 Validation rejects mismatched IDs, unknown/cross-claim anchors, hash/offset/text
 errors, unsupported factors, invalid quantities/units, unsafe equivalence,
@@ -118,6 +139,11 @@ values, Methods-only result claims, silent resolution of conflicting values,
 and unaccepted normalized candidates. Unknown values cannot be canonicalized.
 Canonical species/entity candidates still require acceptance by the existing
 resolver.
+
+`inferred_from_local_chain` is distinct from `explicit`. It requires a
+fulltext contract, named local-chain nodes, anchors owned by those nodes, a raw
+surface present in those nodes, and a registry-allowed inference rule. It
+cannot use external knowledge.
 
 The gate blocks validated non-comparable pairs only when the registry permits
 the blocking factor. Insufficient or invalid results remain reviewable and
@@ -132,6 +158,40 @@ unless `--api` is also explicit. Provider clients are configured with zero
 automatic retries, and extraction/comparison hard bounds are separate.
 Artifacts are written into a new output run; no Atlas activation or active
 pointer operation exists in this CLI.
+
+Successful future provider calls are atomically recorded in
+`context_attribution_provider_calls.jsonl`, separate from validated scientific
+artifacts. Each row contains the request identity, complete prompt snapshot,
+redacted raw body, parsed payload, finish reason, usage, HTTP status and
+validation result, but never Authorization or API keys. Resume revalidates a
+complete provider row instead of repeating that provider call.
+
+Ledger terminal states distinguish `validated`, `rejected_schema`,
+`rejected_validation`, and `failed_provider`. A comparison whose extraction
+dependency is rejected becomes `blocked_dependency_validation`, not `pending`;
+resume reopens it only after both dependency extractions validate.
+`execution_status` describes engine/transport completion, while
+`scientific_status` describes validation completeness. The legacy `status`
+field mirrors `execution_status` only.
+
+Scientific status has fixed precedence: interrupted, pending, bounded or
+inconsistent work is `incomplete`; zero valid selected extractions with
+rejections is `all_extractions_rejected`; mixed valid/rejected or
+dependency-blocked work is `partial_validation_failure`; valid extractions but
+no selected pair attribution is `no_pairs_attributed`; fully validated complete
+coverage is `validated_complete`; and a fully validated selected smoke scope is
+`validated_partial`. Publication readiness requires `validated_complete`.
+Handoff rows require an actually validated pair; `status=completed` alone never
+opens the gate. Atlas activation remains a separate explicit operation and is
+always false here.
+
+`--offline-revalidate-from SOURCE_RUN` reads only previously parsed extraction
+payloads. It records the source run/payload and old/new validator versions,
+performs zero provider/network calls, records whether original raw response,
+finish reason and usage are actually available, writes no cache or handoff,
+and never activates Atlas. Missing source registry hashes remain explicitly
+unknown (`source_registry_hash_known=false`) rather than being reconstructed
+from the current file.
 
 Planning has two explicit purposes. `smoke` uses deterministic stratified
 greedy coverage and a stable pair-ID tie-break. It selects pairs before deriving
@@ -155,6 +215,8 @@ The legacy L4 files are not overwritten. New outputs include:
 - `context_pair_attributions.jsonl`
 - `context_attribution_validation_audit.jsonl`
 - `context_attribution_execution_ledger.jsonl`
+- `context_attribution_provider_calls.jsonl`
+- `context_attribution_offline_revalidation_payloads.jsonl` (offline replay only)
 - `context_attribution_retry_queue.jsonl`
 - `context_comparability_gate.jsonl`
 - `context_attribution_summary.json`
