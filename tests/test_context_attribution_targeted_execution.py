@@ -10,6 +10,13 @@ from code_engine.context_attribution.recovery_execution import (
     EXPECTED_ALLOWLIST, execute_targeted_recovery,
     validate_targeted_recovery_execution_plan,
 )
+from code_engine.context_attribution.identities import (
+    resolve_provider_execution_identity,
+)
+from code_engine.context_attribution.models import PAIR_SCHEMA_VERSION
+from code_engine.context_attribution.recovery import (
+    EXTRACTION_SCHEMA_VERSION_V6, PROMPT_VERSION_V6,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -19,22 +26,33 @@ OID17 = "ftl1v3_17b7314297cabac677007b35"
 OID41 = "ftl1v3_41f0090d726e6e8591a58574"
 
 
-def plan_for(target):
+def plan_for(target, *, fake=False):
     return build_recovery_plan(
         input_run=INPUT, source_run=SOURCE, target_run=target,
         mode="targeted_provider",
+        provider="fake" if fake else None,
+        model="fake-recovery-v1" if fake else None,
+        thinking_mode="disabled" if fake else None,
+        fake_test_configuration=fake,
     )
 
 
 def execute(target, scenarios=None, *, interrupt=None, resume=False, fake=None):
     fake = fake or FakeRecoveryProvider(extraction_scenarios=scenarios)
+    identity = resolve_provider_execution_identity(
+        provider="fake", model="fake-recovery-v1", thinking_mode="disabled",
+        configured_max_tokens=32768, prompt_version=PROMPT_VERSION_V6,
+        extraction_schema_version=EXTRACTION_SCHEMA_VERSION_V6,
+        comparison_schema_version=PAIR_SCHEMA_VERSION, fake_test=True,
+    )
     summary = execute_targeted_recovery(
         plan=(json.loads((target / "artifacts/context_attribution_recovery_plan.json")
-                         .read_text()) if resume else plan_for(target)),
+                         .read_text()) if resume else plan_for(target, fake=True)),
         input_run=INPUT, source_run=SOURCE, target_run=target,
         profiles=["generic", "biomedical"], client_factory=lambda: fake,
         resume=resume, provider_mode="fake_test", test_only=True,
         interrupt_after_persist=interrupt,
+        actual_provider_execution_identity=identity,
     )
     return summary, fake
 

@@ -131,7 +131,8 @@ def validate_targeted_recovery_execution_plan(
 
 
 def _call(client: Any, *, call_type: str, record_id: str, request_identity: str,
-          prompt: str, attempt_number: int) -> dict[str, Any]:
+          prompt: str, attempt_number: int,
+          execution_identity: ProviderExecutionIdentity) -> dict[str, Any]:
     if hasattr(client, "call"):
         result = client.call(
             call_type=call_type, record_id=record_id, request_identity=request_identity,
@@ -140,8 +141,10 @@ def _call(client: Any, *, call_type: str, record_id: str, request_identity: str,
     else:
         method = getattr(client, "extract_json_result", None) or client.extract_json
         result = method(
-            prompt, temperature=0, top_p=1, max_tokens=32768,
-            retry_on_length=False, thinking_mode="provider_default",
+            prompt, model=execution_identity.model, temperature=0, top_p=1,
+            max_tokens=execution_identity.configured_max_tokens,
+            retry_on_length=False,
+            thinking_mode=execution_identity.thinking_mode,
         )
     return result.payload if hasattr(result, "payload") else result
 
@@ -198,16 +201,9 @@ def execute_targeted_recovery(
     if target_run.exists() and not resume and any(target_run.iterdir()):
         raise FileExistsError(f"recovery output is not empty: {target_run}")
     artifacts.mkdir(parents=True, exist_ok=True)
-    _atomic_write(artifacts / "context_attribution_recovery_plan.json", plan)
     execution_identity = ProviderExecutionIdentity.model_validate(
         plan["provider_execution_identity"]
     )
-    # The factory is intentionally invoked only after every immutable-plan check above.
-    client = client_factory()
-    contracts = _contracts(input_run, profiles)
-    source_ledger, source_providers, _, source_cache = _source_maps(source_run)
-    source_plan = _json(source_run / "artifacts/context_attribution_plan.json")
-    pairs = source_plan["selected_pairs"]
     cache_path = artifacts / "context_attribution_cache.json"
     ledger_path = artifacts / "context_attribution_execution_ledger.jsonl"
     provider_path = artifacts / "context_attribution_provider_calls.jsonl"
@@ -220,6 +216,41 @@ def execute_targeted_recovery(
     provider_audits = _rows(provider_path) if resume else []
     audits = _rows(audit_path) if resume else []
     retry = _rows(retry_path) if resume else []
+    if resume:
+        resume_errors = []
+        for row in provider_audits:
+            if (row.get("provider_execution_identity_sha256") !=
+                    execution_identity.identity_sha256):
+                resume_errors.append(
+                    f"resume_provider_audit_identity_mismatch:{row.get('record_id')}"
+                )
+        for row in ledger:
+            planned = row.get("planned_provider_execution_identity_sha256")
+            actual = row.get("actual_provider_execution_identity_sha256")
+            if row.get("provider_call") and (
+                planned != execution_identity.identity_sha256
+                or actual != execution_identity.identity_sha256
+                or row.get("identity_match") is not True
+            ):
+                resume_errors.append(
+                    f"resume_checkpoint_identity_mismatch:{row.get('record_id')}"
+                )
+        summary_path = artifacts / "context_attribution_summary.json"
+        if summary_path.exists():
+            prior_summary = _json(summary_path)
+            if prior_summary.get("scientific_result_test_only") and not test_only:
+                resume_errors.append("fake_artifact_for_production_resume")
+        if resume_errors:
+            raise RuntimeError(
+                "targeted_recovery_execution_blocked:" + ",".join(resume_errors)
+            )
+    _atomic_write(artifacts / "context_attribution_recovery_plan.json", plan)
+    # Factory invocation follows plan, CLI, audit, checkpoint, and fake-boundary checks.
+    client = client_factory()
+    contracts = _contracts(input_run, profiles)
+    source_ledger, source_providers, _, source_cache = _source_maps(source_run)
+    source_plan = _json(source_run / "artifacts/context_attribution_plan.json")
+    pairs = source_plan["selected_pairs"]
     validated_by_id: dict[str, dict[str, Any]] = {}
     calls = {"extraction": 0, "comparison": 0}
 
@@ -242,6 +273,15 @@ def execute_targeted_recovery(
             **payload.get("provenance", {}), "source_kind": "source_validated_reuse",
             "source_run": str(source_run), "source_extraction_identity": identity,
             "provider_execution_identity_source": "source_artifact_identity_or_unknown",
+            "source_provider_execution_configuration": {
+                "provider": source_plan.get("provider"),
+                "model": source_plan.get("model"),
+                "thinking_mode": source_plan.get("thinking_mode"),
+                "configured_max_tokens": source_plan.get("configured_max_tokens"),
+            },
+            "source_provider_execution_identity_sha256": None,
+            "source_provider_execution_identity_status":
+                "unknown_legacy_incomplete",
         }
         cache["entries"][target_identity] = {
             "kind": "extraction", "request_identity": target_identity,
@@ -351,6 +391,7 @@ def execute_targeted_recovery(
                     request_identity=identity,
                     prompt=extraction_prompt_v6(contracts[oid], profiles),
                     attempt_number=2,
+                    execution_identity=execution_identity,
                 )
                 status, error = "provider_completed", None
             except Exception as exc:
@@ -451,14 +492,15 @@ def execute_targeted_recovery(
         if missing:
             blocked.append({"pair_id": pid, "blocked_observation_ids": missing})
             continue
-        identity = _sha({
+        comparison_identity_bundle = {
             "pair_id": pid,
             "extraction_a_identity": validated_by_id[a].get("extraction_identity"),
             "extraction_b_identity": validated_by_id[b].get("extraction_identity"),
-            "schema": "context_pair_attribution_v2",
+            "comparison_schema_version": "context_pair_attribution_v2",
             "provider_execution_identity_sha256":
                 execution_identity.identity_sha256,
-        })
+        }
+        identity = _sha(comparison_identity_bundle)
         cached = cache["entries"].get(identity)
         if cached:
             comparisons.append(cached["payload"])
@@ -490,6 +532,7 @@ def execute_targeted_recovery(
                         "claim_b": validated_by_id[b],
                     }, profiles),
                     attempt_number=1,
+                    execution_identity=execution_identity,
                 )
                 provider_status, provider_error = "provider_completed", None
             except Exception as exc:
@@ -509,6 +552,7 @@ def execute_targeted_recovery(
                 "effective_thinking_mode": execution_identity.thinking_mode,
                 "effective_configured_max_tokens":
                     execution_identity.configured_max_tokens,
+                "request_identity_bundle": comparison_identity_bundle,
             }, ("call_type", "record_id"))
             _upsert(ledger, {
                 "ledger_entry_id": _entry_id("comparison", pid, identity),
