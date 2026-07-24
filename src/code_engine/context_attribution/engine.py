@@ -7,7 +7,10 @@ from typing import Any
 
 from .composition import composition_identity, load_composition_policy
 from .identities import IDENTITY_BUNDLE_VERSION, resolve_policy_identities
-from .models import ContextExtraction, ContextPairAttribution, EXTRACTION_SCHEMA_VERSION, PAIR_SCHEMA_VERSION
+from .models import (
+    ContextExtraction, ContextPairAttribution, EXTRACTION_SCHEMA_VERSION,
+    PAIR_SCHEMA_VERSION, ProviderContextExtractionV6,
+)
 from .registry import RegistryResolution, load_registry, resolve_factors, resolve_registry
 from .validation import (
     HYDRATOR_VERSION, LOCAL_CHAIN_INFERENCE_POLICY_VERSION, VALIDATOR_VERSION,
@@ -18,6 +21,7 @@ from .token_spans import (
 )
 
 PROMPT_VERSION = "context_attribution_prompts_v5"
+RECOVERY_PROMPT_VERSION = "context_attribution_prompts_v6"
 CANDIDATE_POLICY_VERSION = "deterministic_conflict_candidates_v1"
 COMPARABILITY_POLICY_VERSION = "context_comparability_policy_v1"
 
@@ -207,6 +211,30 @@ def extraction_prompt(contract: dict[str, Any], profiles: list[str],
                       registry: dict[str, Any] | None = None) -> str:
     factors = resolve_factors(profiles, registry)
     return _prompt("observation_context_extraction", contract, factors)
+
+
+def extraction_prompt_v6(contract: dict[str, Any], profiles: list[str],
+                         registry: dict[str, Any] | None = None) -> str:
+    """Compact provider contract with no redundant factor-level anchor authority."""
+    factors = resolve_factors(profiles, registry)
+    rules = (
+        "Return exactly one JSON object matching output_schema. "
+        "For explicit factors provide explicit_span; the system derives its anchor. "
+        "For inferred_from_local_chain provide canonical-order raw_components, "
+        "source_chain_node_ids, and inference_rule; the system derives factor anchors. "
+        "For unknown provide no span, component, chain, rule, or normalized candidate. "
+        "Never output factor-level evidence_anchor_ids, raw_value, normalized_value, "
+        "hydrated evidence, composed fields, provenance, or explanations. "
+        "Use only supplied anchors and local-chain fields. Do not guess missing spans."
+    )
+    return json.dumps({
+        "task": "observation_context_extraction",
+        "prompt_version": RECOVERY_PROMPT_VERSION,
+        "rules": rules,
+        "factor_registry": factors,
+        "input": contract,
+        "output_schema": ProviderContextExtractionV6.model_json_schema(),
+    }, ensure_ascii=False, sort_keys=True)
 
 def pair_prompt(payload: dict[str, Any], profiles: list[str],
                 registry: dict[str, Any] | None = None) -> str:

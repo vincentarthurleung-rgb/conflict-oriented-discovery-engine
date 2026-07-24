@@ -4,6 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EXTRACTION_SCHEMA_VERSION = "observation_context_extraction_v5"
+EXTRACTION_SCHEMA_VERSION_V6 = "observation_context_extraction_v6"
 PAIR_SCHEMA_VERSION = "context_pair_attribution_v2"
 
 class StrictModel(BaseModel):
@@ -19,6 +20,58 @@ class ExplicitSpan(StrictModel):
     evidence_anchor_id: str
     start_token_id: str
     end_token_id: str
+
+
+class ProviderContextFactorV6(StrictModel):
+    """Provider-owned v6 fields.
+
+    Factor-level anchors and every hydrated/composed/normalized field are
+    deliberately absent.  They are deterministic system authority.
+    """
+
+    factor_id: str
+    status: Literal["explicit", "inferred_from_local_chain", "unknown", "conflicting"]
+    explicit_span: ExplicitSpan | None = None
+    source_chain_node_ids: list[str] = Field(default_factory=list)
+    inference_rule: str | None = None
+    raw_components: list[RawComponent] = Field(default_factory=list)
+    normalized_candidate: str | None = None
+    confidence: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def status_contract(self):
+        if self.status == "explicit":
+            if self.explicit_span is None:
+                raise ValueError("explicit_factor_requires_token_span")
+            if self.raw_components or self.source_chain_node_ids or self.inference_rule:
+                raise ValueError("explicit_factor_must_not_have_chain_components")
+        elif self.status == "inferred_from_local_chain":
+            if self.explicit_span is not None:
+                raise ValueError("inferred_factor_explicit_span_forbidden")
+            if not self.raw_components:
+                raise ValueError("inferred_factor_requires_raw_components")
+            if not self.source_chain_node_ids or not self.inference_rule:
+                raise ValueError("inferred_factor_requires_chain_nodes_and_rule")
+            component_nodes = list(dict.fromkeys(x.chain_node_id for x in self.raw_components))
+            if self.source_chain_node_ids != component_nodes:
+                raise ValueError("inferred_factor_nodes_must_match_components")
+        elif self.status == "unknown":
+            if any((
+                self.explicit_span, self.source_chain_node_ids, self.inference_rule,
+                self.raw_components, self.normalized_candidate,
+            )):
+                raise ValueError("unknown_factor_must_be_empty")
+        return self
+
+
+class ProviderContextExtractionV6(StrictModel):
+    schema_version: Literal["observation_context_extraction_v6"] = EXTRACTION_SCHEMA_VERSION_V6
+    observation_id: str
+    domain_profiles: list[str] = Field(min_length=1)
+    input_mode: Literal["abstract_sentence_only", "fulltext_evidence_chain"]
+    context_factors: list[ProviderContextFactorV6]
+    missing_critical_information: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 class ContextFactor(StrictModel):
     factor_id: str

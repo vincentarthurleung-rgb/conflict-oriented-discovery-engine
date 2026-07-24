@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
+
 IDENTITY_BUNDLE_VERSION = "context_attribution_identity_bundle_v1"
+PROVIDER_EXECUTION_IDENTITY_VERSION = (
+    "context_attribution_provider_execution_identity_v1"
+)
 NORMALIZATION_POLICY_SCHEMA_VERSION = "context_normalization_policy_schema_v3"
 COMPARATOR_NORMALIZATION_POLICY_SCHEMA_VERSION = (
     "context_comparator_normalization_policy_schema_v1"
@@ -20,6 +26,145 @@ def canonical_json(value: Any) -> str:
 
 def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
+
+
+class ProviderExecutionIdentity(BaseModel):
+    """Immutable effective Provider configuration; provenance is non-hashing."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    provider_execution_identity_version: str = PROVIDER_EXECUTION_IDENTITY_VERSION
+    provider: str
+    model: str
+    thinking_mode: str
+    configured_max_tokens: int = Field(gt=0)
+    prompt_version: str
+    extraction_schema_version: str
+    comparison_schema_version: str
+    configuration_source: dict[str, str]
+    identity_sha256: str
+
+    def canonical_payload(self) -> dict[str, Any]:
+        return {
+            "provider_execution_identity_version":
+                self.provider_execution_identity_version,
+            "provider": self.provider,
+            "model": self.model,
+            "thinking_mode": self.thinking_mode,
+            "configured_max_tokens": self.configured_max_tokens,
+            "prompt_version": self.prompt_version,
+            "extraction_schema_version": self.extraction_schema_version,
+            "comparison_schema_version": self.comparison_schema_version,
+        }
+
+    def verify(self) -> bool:
+        return (
+            self.provider_execution_identity_version ==
+            PROVIDER_EXECUTION_IDENTITY_VERSION
+            and self.thinking_mode in {
+                "enabled", "disabled", "provider_default",
+            }
+            and len(self.identity_sha256) == 64
+            and all(char in "0123456789abcdef" for char in self.identity_sha256)
+            and self.identity_sha256 == canonical_sha256(self.canonical_payload())
+        )
+
+
+def build_provider_execution_identity(
+    *, provider: str, model: str, thinking_mode: str,
+    configured_max_tokens: int, prompt_version: str,
+    extraction_schema_version: str, comparison_schema_version: str,
+    configuration_source: dict[str, str] | None = None,
+) -> ProviderExecutionIdentity:
+    payload = {
+        "provider_execution_identity_version":
+            PROVIDER_EXECUTION_IDENTITY_VERSION,
+        "provider": provider,
+        "model": model,
+        "thinking_mode": thinking_mode,
+        "configured_max_tokens": configured_max_tokens,
+        "prompt_version": prompt_version,
+        "extraction_schema_version": extraction_schema_version,
+        "comparison_schema_version": comparison_schema_version,
+    }
+    return ProviderExecutionIdentity(
+        **payload,
+        configuration_source=dict(configuration_source or {}),
+        identity_sha256=canonical_sha256(payload),
+    )
+
+
+def resolve_provider_execution_identity(
+    *, provider: str | None, model: str | None, thinking_mode: str | None,
+    configured_max_tokens: int | None, prompt_version: str,
+    extraction_schema_version: str, comparison_schema_version: str,
+    production_config: dict[str, Any] | None = None,
+    fake_test: bool = False,
+) -> ProviderExecutionIdentity:
+    """Resolve only non-secret settings; credential variables are never inspected."""
+    from code_engine.extraction.policy import (
+        DEFAULT_L1_MODEL_FAMILY, DEFAULT_L1_MODEL_NAME,
+    )
+    from code_engine.fulltext.fulltext_l1_v2 import (
+        DEFAULT_MAX_TOKENS, DEFAULT_THINKING_MODE,
+    )
+
+    config = production_config or {}
+    if fake_test:
+        sources = {
+            key: "fake_test_configuration"
+            for key in (
+                "provider", "model", "thinking_mode", "configured_max_tokens",
+            )
+        }
+        effective = (
+            provider or "fake", model or "fake-recovery-v1",
+            thinking_mode or "disabled",
+            configured_max_tokens or DEFAULT_MAX_TOKENS,
+        )
+    else:
+        def choose(
+            explicit: Any, config_key: str, env_name: str, default: Any,
+        ) -> tuple[Any, str]:
+            if explicit is not None:
+                return explicit, "cli"
+            if config.get(config_key) is not None:
+                return config[config_key], "production_config"
+            if os.getenv(env_name) is not None:
+                return os.getenv(env_name), env_name
+            return default, "built_in_default"
+
+        effective_provider, provider_source = choose(
+            provider, "provider", "L1_PROVIDER", DEFAULT_L1_MODEL_FAMILY,
+        )
+        effective_model, model_source = choose(
+            model, "model", "MODEL_NAME", DEFAULT_L1_MODEL_NAME,
+        )
+        effective_thinking, thinking_source = choose(
+            thinking_mode, "thinking_mode", "FULLTEXT_L1_V2_THINKING_MODE",
+            DEFAULT_THINKING_MODE,
+        )
+        effective_tokens, token_source = choose(
+            configured_max_tokens, "configured_max_tokens",
+            "FULLTEXT_L1_V2_MAX_TOKENS", DEFAULT_MAX_TOKENS,
+        )
+        effective = (
+            effective_provider, effective_model, effective_thinking,
+            int(effective_tokens),
+        )
+        sources = {
+            "provider": provider_source, "model": model_source,
+            "thinking_mode": thinking_source,
+            "configured_max_tokens": token_source,
+        }
+    return build_provider_execution_identity(
+        provider=str(effective[0]), model=str(effective[1]),
+        thinking_mode=str(effective[2]), configured_max_tokens=int(effective[3]),
+        prompt_version=prompt_version,
+        extraction_schema_version=extraction_schema_version,
+        comparison_schema_version=comparison_schema_version,
+        configuration_source=sources,
+    )
 
 
 @dataclass(frozen=True)
@@ -162,7 +307,9 @@ def validate_policy_identity(identity: PolicyIdentity) -> list[str]:
 __all__ = [
     "COMPARATOR_NORMALIZATION_POLICY_SCHEMA_VERSION", "IDENTITY_BUNDLE_VERSION",
     "NORMALIZATION_POLICY_SCHEMA_VERSION", "PolicyIdentity", "canonical_json",
-    "canonical_sha256", "comparator_normalization_policy_payload",
+    "PROVIDER_EXECUTION_IDENTITY_VERSION", "ProviderExecutionIdentity",
+    "build_provider_execution_identity", "canonical_sha256",
+    "comparator_normalization_policy_payload",
     "normalization_policy_payload", "resolve_policy_identities",
-    "validate_policy_identity",
+    "resolve_provider_execution_identity", "validate_policy_identity",
 ]

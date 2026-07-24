@@ -17,6 +17,7 @@ from .token_spans import (
 )
 
 VALIDATOR_VERSION = "context_attribution_validator_v4"
+RECOVERY_VALIDATOR_VERSION = "context_attribution_validator_v5"
 HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v3"
 LOCAL_CHAIN_INFERENCE_POLICY_VERSION = COMPOSITION_POLICY_VERSION
 
@@ -362,6 +363,24 @@ def validate_context_extraction(payload: ContextExtraction | dict[str, Any], con
         "errors": list(errors),
         "hydration": hydration_audit,
     }
+    return value, errors
+
+
+def validate_context_extraction_v5(
+    payload: ContextExtraction | dict[str, Any], contract: dict[str, Any],
+    profiles: list[str], *, accepted_normalizations: set[tuple[str, str]] | None = None,
+    registry: dict[str, Any] | None = None,
+) -> tuple[ContextExtraction, list[str]]:
+    """v5 wrapper: v6 anchor authority is derived before this full validator."""
+    value, errors = validate_context_extraction(
+        payload, contract, profiles,
+        accepted_normalizations=accepted_normalizations, registry=registry,
+    )
+    audit = value.provenance.get("deterministic_validation") or {}
+    audit["base_validator_version"] = VALIDATOR_VERSION
+    audit["validator_version"] = RECOVERY_VALIDATOR_VERSION
+    audit["factor_anchor_authority"] = "system_derived_before_validation"
+    value.provenance["deterministic_validation"] = audit
     return value, errors
 
 def validate_pair_attribution(payload: ContextPairAttribution | dict[str, Any], *,

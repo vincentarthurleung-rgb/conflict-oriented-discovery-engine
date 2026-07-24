@@ -179,6 +179,77 @@ def _validation_audit_id(record_type: str, record_id: str, identity: str) -> str
     return f"ctx-validation-{digest}"
 
 
+def _retry_queue_v2_rows(
+    audits: list[dict[str, Any]], ledger: list[dict[str, Any]],
+    provider_audits: list[dict[str, Any]], source_run: Path,
+) -> list[dict[str, Any]]:
+    ledger_by_id = {
+        row.get("record_id"): row for row in ledger if row.get("call_type") == "extraction"
+    }
+    provider_by_id = {
+        row.get("record_id"): row for row in provider_audits
+        if row.get("call_type") == "extraction"
+    }
+    output = []
+    for audit in audits:
+        if audit.get("record_type") != "extraction" or audit.get("valid"):
+            continue
+        oid = audit["record_id"]
+        entry, provider = ledger_by_id.get(oid, {}), provider_by_id.get(oid, {})
+        status = str(entry.get("status") or "")
+        diagnostic = entry.get("provider_diagnostic") or {}
+        complete = not _provider_artifact_integrity_errors(provider)
+        if status == "rejected_validation" and complete:
+            layer, action, automatic = "deterministic_validation", "offline_revalidate", False
+        elif status == "rejected_schema" and complete:
+            layer, action, automatic = (
+                "schema", "provider_regeneration_explicit_opt_in", False
+            )
+        elif status.startswith("failed_provider") and diagnostic.get("error_kind") == "output_truncated":
+            layer, action, automatic = "provider", "provider_regeneration_required", True
+        else:
+            layer, action, automatic = "execution_internal", "blocked_manual_review", False
+        attempt_count = int(entry.get("attempt_count") or 0)
+        output.append({
+            "retry_record_schema_version": "context_attribution_retry_queue_v2",
+            "record_type": "extraction",
+            "record_id": oid,
+            "observation_id": oid,
+            "source_run": str(source_run),
+            "source_status": status,
+            "failure_layer": layer,
+            "failure_code": (audit.get("errors") or ["unknown_failure"])[0],
+            "errors": audit.get("errors") or [],
+            "provider_artifact_complete": complete,
+            "identity_complete": len(str(entry.get("identity") or "")) == 64,
+            "recovery_action": action,
+            "automatic_provider_recall_allowed": automatic,
+            "provider_regeneration_requires_explicit_opt_in":
+                action == "provider_regeneration_explicit_opt_in",
+            "offline_revalidation_possible": action == "offline_revalidate",
+            "new_provider_call_required": action in {
+                "provider_regeneration_required", "provider_regeneration_explicit_opt_in",
+            },
+            "new_provider_call_required_reason": (
+                "complete_payload_unavailable" if action == "provider_regeneration_required"
+                else "explicit_provider_regeneration_opt_in_required"
+                if action == "provider_regeneration_explicit_opt_in" else None
+            ),
+            "source_provider_call_id": entry.get("ledger_entry_id"),
+            "source_request_identity": entry.get("identity"),
+            "attempt_count": attempt_count,
+            "max_attempts": attempt_count + 1 if automatic else attempt_count,
+            "next_attempt_allowed": automatic,
+            "blocked_reason": None if automatic else (
+                "offline_revalidation_only" if action == "offline_revalidate"
+                else "explicit_provider_regeneration_opt_in_required"
+                if action == "provider_regeneration_explicit_opt_in"
+                else "manual_review_required"
+            ),
+        })
+    return output
+
+
 def _ensure_validation_audit_ids(
     audits: list[dict[str, Any]],
     extraction_identities: dict[str, str],
@@ -1043,14 +1114,36 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
     _write_jsonl(provider_audit_path, provider_audits)
     _write_jsonl(output / "context_comparability_gate.jsonl", gates)
     gate_by_pair = {x["pair_id"]: x for x in gates}
-    retry_queue = [{"record_type": x["record_type"], "record_id": x["record_id"], "errors": x["errors"]}
-                   for x in audits if not x["valid"]]
+    retry_queue = _retry_queue_v2_rows(audits, ledger, provider_audits, output_run)
     _write_jsonl(output / "context_attribution_retry_queue.jsonl", retry_queue)
     distribution = Counter(x.get("comparability") for x in attributions)
     execution_status = "failed_systemic_provider_error" if systemic_failure is not None else "completed"
     validated_extraction_count = len(extraction_by_id)
     rejected_extraction_count = sum(
         row["record_type"] == "extraction" and not row["valid"] for row in audits
+    )
+    current_extraction_ledger = [
+        row for row in ledger
+        if row.get("call_type") == "extraction"
+        and row.get("record_id") in selected_observation_ids
+    ]
+    provider_failed_observation_count = sum(
+        str(row.get("status") or "").startswith("failed_provider")
+        or row.get("status") == "failed_systemic_provider_400"
+        for row in current_extraction_ledger
+    )
+    schema_rejected_observation_count = sum(
+        row.get("status") == "rejected_schema" for row in current_extraction_ledger
+    )
+    deterministic_rejected_observation_count = sum(
+        row.get("status") == "rejected_validation" for row in current_extraction_ledger
+    )
+    execution_internal_failure_count = sum(
+        row.get("status") in {"failed_internal", "failed_execution"}
+        for row in current_extraction_ledger
+    )
+    nonvalidated_observation_count = (
+        len(selected_observation_ids) - validated_extraction_count
     )
     current_pair_ledger_ids = {
         _ledger_id("comparison", pid, comparison_identities[pid])
@@ -1096,8 +1189,38 @@ def run_context_attribution(*, input_run: Path, output_run: Path, mode: str,
                "plan_only": False, "extraction_count": len(extractions),
                "pair_attribution_count": len(attributions), "comparability_distribution": dict(distribution),
                "validation_failure_count": sum(not x["valid"] for x in audits),
+               "validation_failure_count_semantics":
+                   "legacy_mixed_provider_schema_deterministic_and_pair_failures",
                "validated_extraction_count": validated_extraction_count,
                "rejected_extraction_count": rejected_extraction_count,
+               "legacy_rejected_extraction_count_semantics":
+                   "all_nonvalidated_selected_observations",
+               "provider_failed_observation_count": provider_failed_observation_count,
+               "schema_rejected_observation_count": schema_rejected_observation_count,
+               "deterministic_rejected_observation_count":
+                   deterministic_rejected_observation_count,
+               "execution_internal_failure_count": execution_internal_failure_count,
+               "nonvalidated_observation_count": nonvalidated_observation_count,
+               "retry_queue_entry_count": len(retry_queue),
+               "provider_recall_required_count": sum(
+                   row["recovery_action"] == "provider_regeneration_required"
+                   for row in retry_queue
+               ),
+               "provider_regeneration_opt_in_count": sum(
+                   row["recovery_action"] == "provider_regeneration_explicit_opt_in"
+                   for row in retry_queue
+               ),
+               "offline_revalidation_candidate_count": sum(
+                   row["recovery_action"] == "offline_revalidate"
+                   for row in retry_queue
+               ),
+               "detailed_scientific_status": (
+                   "validated_partial_mixed_failure"
+                   if validated_extraction_count and rejected_extraction_count
+                   else "fully_validated_smoke"
+                   if validated_extraction_count == len(selected_observation_ids)
+                   else "all_extractions_rejected"
+               ),
                "validated_pair_count": validated_pair_count,
                "blocked_pair_count": blocked_pair_count,
                "pending_pair_count": pending_pair_count,
