@@ -14,6 +14,13 @@ L2 normalized claim
   → L4c Formal Conflict Judgment
 ```
 
+The separation remains valid. The Accepted
+`ADR-conflict-adjudication-orchestration-v1` extends and refines its
+orchestration: L3 is now Claim Alignment followed by Contradiction Signal, L4b
+contains parallel Comparability and Divergence Explanation branches, and L4c
+is unified pair-level adjudication. This extension does not delete or alter the
+historical architecture decision.
+
 ## Responsibilities and authority
 
 L2.5 describes one observation's experimental conditions. Provider output may

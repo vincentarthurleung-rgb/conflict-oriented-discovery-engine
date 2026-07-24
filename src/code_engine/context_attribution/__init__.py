@@ -18,11 +18,19 @@ from .conflict_comparability import ConflictComparabilityAssessment
 from .conflict_judgment import FormalConflictDecision
 from .context_difference import ContextDifference
 from .observation_context import ObservationContext
+from .claim_alignment import AlignedClaimGroup
+from .conflict_candidate import ContradictionSignal
+from .conflict_adjudication import (
+    ConflictAdjudicationDecision,
+    FactorAttributionBundle,
+)
 
 __all__ = [
     "ContextExtraction", "ContextPairAttribution", "RegistryResolution",
     "ObservationContext", "ConflictCandidate", "ContextDifference",
     "ConflictComparabilityAssessment", "FormalConflictDecision",
+    "AlignedClaimGroup", "ContradictionSignal",
+    "FactorAttributionBundle", "ConflictAdjudicationDecision",
     "apply_comparability_gate", "calculate_scientific_status",
     "build_abstract_input", "build_fulltext_input", "candidate_pairs",
     "extraction_cache_identity", "pair_cache_identity", "resolve_registry",
