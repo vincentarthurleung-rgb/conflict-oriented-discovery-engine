@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/contracts/context_comparison_effect_adjudication_v1.schema.json",
+  "title": "Context Comparison Effect Adjudication v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adjudication_id",
+    "pair_id",
+    "factor_id",
+    "source_run",
+    "source_pair_payload_path",
+    "source_pair_payload_sha256",
+    "source_request_identity",
+    "source_provider_execution_identity_sha256",
+    "endpoint_a_observation_id",
+    "endpoint_b_observation_id",
+    "endpoint_a_extraction_identity",
+    "endpoint_b_extraction_identity",
+    "comparison_contract_version",
+    "provider_status",
+    "provider_claim_a_value",
+    "provider_claim_b_value",
+    "provider_comparability_effect",
+    "provider_comparability_class",
+    "provider_confidence",
+    "schema_validation_status",
+    "deterministic_validation_status",
+    "validator_error_codes",
+    "decision_status",
+    "effect_assessment_status",
+    "adjudicated_effect",
+    "adjudicated_comparability_class",
+    "formal_conflict_eligible",
+    "rationale",
+    "rationale_category",
+    "evidence_anchor_ids",
+    "supporting_source_refs",
+    "uncertainty_notes",
+    "reviewer_id",
+    "reviewer_role",
+    "reviewer_domain",
+    "review_round",
+    "independent_review",
+    "adjudicator_id",
+    "adjudication_timestamp",
+    "supersedes_adjudication_id",
+    "conflict_of_interest_declared",
+    "active",
+    "code_provenance_identity",
+    "contract_identity_sha256",
+    "source_artifacts_verified",
+    "source_payload_modified",
+    "provider_called",
+    "credential_read"
+  ],
+  "properties": {
+    "schema_version": {"const": "context_comparison_effect_adjudication_v1"},
+    "adjudication_id": {"type": "string", "minLength": 1},
+    "pair_id": {"type": "string", "minLength": 1},
+    "factor_id": {"type": "string", "minLength": 1},
+    "source_run": {"type": "string", "minLength": 1},
+    "source_pair_payload_path": {"type": "string", "minLength": 1},
+    "source_pair_payload_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_request_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_provider_execution_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "endpoint_a_observation_id": {"type": "string", "minLength": 1},
+    "endpoint_b_observation_id": {"type": "string", "minLength": 1},
+    "endpoint_a_extraction_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "endpoint_b_extraction_identity": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "comparison_contract_version": {"type": "string", "minLength": 1},
+    "provider_status": {"enum": ["same", "different", "missing_a", "missing_b", "missing_both"]},
+    "provider_claim_a_value": {"type": ["string", "null"]},
+    "provider_claim_b_value": {"type": ["string", "null"]},
+    "provider_comparability_effect": {"enum": ["none", "minor", "major", "blocking", "unknown", null]},
+    "provider_comparability_class": {"type": ["string", "null"]},
+    "provider_confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "schema_validation_status": {"enum": ["valid", "invalid", "not_run"]},
+    "deterministic_validation_status": {"enum": ["validated", "rejected", "not_run"]},
+    "validator_error_codes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "decision_status": {"enum": ["pending", "adjudicated", "superseded"]},
+    "effect_assessment_status": {"enum": ["assessed", "unknown", "not_applicable", null]},
+    "adjudicated_effect": {"enum": ["none", "minor", "major", "blocking", null]},
+    "adjudicated_comparability_class": {"enum": ["comparable", "conditionally_comparable", "non_comparable", "insufficient_information", null]},
+    "formal_conflict_eligible": {"type": ["boolean", "null"]},
+    "rationale": {"type": "string"},
+    "rationale_category": {"type": ["string", "null"]},
+    "evidence_anchor_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "supporting_source_refs": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "uncertainty_notes": {"type": "string"},
+    "reviewer_id": {"type": ["string", "null"]},
+    "reviewer_role": {"type": ["string", "null"]},
+    "reviewer_domain": {"type": ["string", "null"]},
+    "review_round": {"type": "integer", "minimum": 1},
+    "independent_review": {"type": "boolean"},
+    "adjudicator_id": {"type": ["string", "null"]},
+    "adjudication_timestamp": {"type": ["string", "null"], "format": "date-time"},
+    "supersedes_adjudication_id": {"type": ["string", "null"]},
+    "conflict_of_interest_declared": {"type": "boolean"},
+    "active": {"type": "boolean"},
+    "code_provenance_identity": {"type": "string", "minLength": 1},
+    "contract_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_artifacts_verified": {"const": true},
+    "source_payload_modified": {"const": false},
+    "provider_called": {"const": false},
+    "credential_read": {"const": false},
+    "reviewer_A_adjudication_id": {"type": ["string", "null"]},
+    "reviewer_B_adjudication_id": {"type": ["string", "null"]},
+    "reviewer_A_decision_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "reviewer_B_decision_hash": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "disagreement_fields": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "adjudicator_decision": {"type": ["object", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"decision_status": {"const": "pending"}}, "required": ["decision_status"]},
+      "then": {
+        "properties": {
+          "effect_assessment_status": {"const": null},
+          "adjudicated_effect": {"const": null},
+          "adjudicated_comparability_class": {"const": null},
+          "formal_conflict_eligible": {"const": null},
+          "rationale": {"const": ""},
+          "reviewer_id": {"enum": ["", null]},
+          "adjudication_timestamp": {"const": null},
+          "active": {"const": true}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision_status": {"const": "adjudicated"},
+          "effect_assessment_status": {"const": "assessed"}
+        },
+        "required": ["decision_status", "effect_assessment_status"]
+      },
+      "then": {
+        "properties": {
+          "adjudicated_effect": {"enum": ["none", "minor", "major", "blocking"]},
+          "formal_conflict_eligible": {"type": "boolean"},
+          "reviewer_id": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision_status": {"const": "adjudicated"},
+          "effect_assessment_status": {"const": "unknown"}
+        },
+        "required": ["decision_status", "effect_assessment_status"]
+      },
+      "then": {
+        "properties": {
+          "adjudicated_effect": {"const": null},
+          "formal_conflict_eligible": {"const": false},
+          "reviewer_id": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision_status": {"const": "adjudicated"},
+          "effect_assessment_status": {"const": "not_applicable"}
+        },
+        "required": ["decision_status", "effect_assessment_status"]
+      },
+      "then": {
+        "properties": {
+          "adjudicated_effect": {"const": null},
+          "reviewer_id": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"decision_status": {"const": "adjudicated"}}, "required": ["decision_status"]},
+      "then": {
+        "properties": {
+          "effect_assessment_status": {"enum": ["assessed", "unknown", "not_applicable"]},
+          "adjudication_timestamp": {"type": "string", "format": "date-time"},
+          "active": {"const": true}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"adjudicated_effect": {"const": "blocking"}}, "required": ["adjudicated_effect"]},
+      "then": {"properties": {"formal_conflict_eligible": {"const": false}}}
+    },
+    {
+      "if": {"properties": {"decision_status": {"const": "superseded"}}, "required": ["decision_status"]},
+      "then": {
+        "properties": {
+          "active": {"const": false},
+          "supersedes_adjudication_id": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  ]
+}
