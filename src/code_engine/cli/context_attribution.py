@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import warnings
 from pathlib import Path
 
 from code_engine.context_attribution.runner import (
@@ -75,6 +76,13 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = parser().parse_args()
+    warnings.warn(
+        "The mixed context_attribution CLI is deprecated. New offline staging "
+        "runs use code_engine.context_attribution.offline_split and emit "
+        "separate L2.5/L3/L4a/L4b/L4c artifacts.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     selected_mode = "abstract-only" if args.abstract_only else "fulltext-only" if args.fulltext_only else "combined" if args.combined else args.mode
     profiles = [x.strip() for x in args.domain_profiles.split(",") if x.strip()]
     if args.paid_payload_offline_revalidation:

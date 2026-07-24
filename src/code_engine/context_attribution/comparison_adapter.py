@@ -5,10 +5,14 @@ from typing import Any
 
 from .identities import canonical_sha256
 from .models import ContextPairAttributionV3
+from .context_difference.adapters import adapt_legacy_pair_to_context_difference
 
 PAIR_V2_TO_V3_ADAPTER_VERSION = (
     "context_pair_attribution_v2_to_v3_missing_value_adapter_v1"
 )
+
+# Deprecated: ``adapt_pair_v2_to_v3`` exists only for historical readers.
+# New staging/runtime code projects directly to ContextDifference v1.
 
 
 def adapt_pair_v2_to_v3(
