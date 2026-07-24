@@ -27,6 +27,7 @@ EXPECTED_ALLOWLIST = {
     "ftl1v3_41f0090d726e6e8591a58574",
 }
 BLOCKED_DEFAULT = {"ftl1v3_f530298f2b2955bfe9988710"}
+PROVIDER_CALL_VERSION_V4 = "context_attribution_provider_call_v4"
 
 
 def _now() -> str:
@@ -132,7 +133,7 @@ def validate_targeted_recovery_execution_plan(
 
 def _call(client: Any, *, call_type: str, record_id: str, request_identity: str,
           prompt: str, attempt_number: int,
-          execution_identity: ProviderExecutionIdentity) -> dict[str, Any]:
+          execution_identity: ProviderExecutionIdentity) -> tuple[dict[str, Any], dict[str, Any]]:
     if hasattr(client, "call"):
         result = client.call(
             call_type=call_type, record_id=record_id, request_identity=request_identity,
@@ -146,7 +147,38 @@ def _call(client: Any, *, call_type: str, record_id: str, request_identity: str,
             retry_on_length=False,
             thinking_mode=execution_identity.thinking_mode,
         )
-    return result.payload if hasattr(result, "payload") else result
+    payload = result.payload if hasattr(result, "payload") else result
+    raw_response = getattr(result, "raw_response", None)
+    metadata = dict(getattr(result, "provider_metadata", {}) or {})
+    usage = dict(getattr(result, "usage", {}) or {})
+    transport = {
+        "request_payload": {
+            "model": execution_identity.model,
+            "temperature": 0, "top_p": 1,
+            "max_tokens": execution_identity.configured_max_tokens,
+            "thinking_mode": execution_identity.thinking_mode,
+            "prompt": prompt,
+        },
+        "prompt_snapshot": prompt,
+        "raw_response": raw_response,
+        "raw_response_sha256": (
+            _sha(raw_response) if isinstance(raw_response, str) else None
+        ),
+        "raw_response_available": isinstance(raw_response, str),
+        "parsed_payload_sha256": _sha(payload),
+        "parsed_from_raw_response_proven": isinstance(raw_response, str),
+        "http_status": metadata.get("http_status"),
+        "http_status_available": metadata.get("http_status") is not None,
+        "finish_reason": getattr(result, "finish_reason", None),
+        "finish_reason_available": getattr(result, "finish_reason", None) is not None,
+        "usage": usage or None,
+        "usage_available": bool(usage),
+        "provider_response_metadata": metadata or None,
+        "provider_response_metadata_available": bool(metadata),
+        "provider_call_id": metadata.get("provider_call_id"),
+        "provider_call_id_available": metadata.get("provider_call_id") is not None,
+    }
+    return payload, transport
 
 
 def _upsert(rows: list[dict[str, Any]], row: dict[str, Any], keys: tuple[str, ...]) -> None:
@@ -386,7 +418,7 @@ def execute_targeted_recovery(
             started = _now()
             calls["extraction"] += 1
             try:
-                raw = _call(
+                raw, transport = _call(
                     client, call_type="extraction", record_id=oid,
                     request_identity=identity,
                     prompt=extraction_prompt_v6(contracts[oid], profiles),
@@ -395,9 +427,9 @@ def execute_targeted_recovery(
                 )
                 status, error = "provider_completed", None
             except Exception as exc:
-                raw, status, error = None, "failed_provider", str(exc)
+                raw, transport, status, error = None, {}, "failed_provider", str(exc)
             provider_row = {
-                "artifact_schema_version": PROVIDER_CALL_VERSION_V3,
+                "artifact_schema_version": PROVIDER_CALL_VERSION_V4,
                 "call_type": "extraction", "record_id": oid, "observation_id": oid,
                 "request_identity": identity, "recovery_attempt_id": _entry_id(
                     "attempt", oid, identity),
@@ -419,7 +451,35 @@ def execute_targeted_recovery(
                 "effective_configured_max_tokens":
                     execution_identity.configured_max_tokens,
                 "started_at": started, "ended_at": _now(), "status": status,
-                "parsed_payload": raw, "error": error,
+                "parsed_payload": raw,
+                "parsed_payload_sha256": (
+                    _sha(raw) if isinstance(raw, dict) else None
+                ),
+                "parsed_payload_available": isinstance(raw, dict),
+                "request_body": transport.get("request_payload"),
+                "request_body_available": bool(transport.get("request_payload")),
+                "prompt_snapshot": transport.get("prompt_snapshot"),
+                "prompt_snapshot_available": transport.get("prompt_snapshot") is not None,
+                "raw_response_body": transport.get("raw_response"),
+                "raw_response_sha256": transport.get("raw_response_sha256"),
+                "raw_response_available": transport.get("raw_response_available", False),
+                "parsed_from_raw_response_proven":
+                    transport.get("parsed_from_raw_response_proven", False),
+                "http_status": transport.get("http_status"),
+                "http_status_available": transport.get("http_status_available", False),
+                "finish_reason": transport.get("finish_reason"),
+                "finish_reason_available":
+                    transport.get("finish_reason_available", False),
+                "usage": transport.get("usage"),
+                "usage_available": transport.get("usage_available", False),
+                "provider_response_metadata":
+                    transport.get("provider_response_metadata"),
+                "provider_response_metadata_available":
+                    transport.get("provider_response_metadata_available", False),
+                "provider_call_id": transport.get("provider_call_id"),
+                "provider_call_id_available":
+                    transport.get("provider_call_id_available", False),
+                "error": error,
             }
             _upsert(provider_audits, provider_row, ("call_type", "record_id"))
             _upsert(ledger, {
@@ -524,7 +584,7 @@ def execute_targeted_recovery(
             calls["comparison"] += 1
             started = _now()
             try:
-                raw = _call(
+                raw, transport = _call(
                     client, call_type="comparison", record_id=pid,
                     request_identity=identity,
                     prompt=pair_prompt({
@@ -536,13 +596,42 @@ def execute_targeted_recovery(
                 )
                 provider_status, provider_error = "provider_completed", None
             except Exception as exc:
-                raw, provider_status, provider_error = None, "failed_provider", str(exc)
+                raw, transport, provider_status, provider_error = (
+                    None, {}, "failed_provider", str(exc)
+                )
             _upsert(provider_audits, {
-                "artifact_schema_version": PROVIDER_CALL_VERSION_V3,
+                "artifact_schema_version": PROVIDER_CALL_VERSION_V4,
                 "call_type": "comparison", "record_id": pid, "pair_id": pid,
                 "request_identity": identity, "attempt_number": 1,
                 "started_at": started, "ended_at": _now(),
                 "status": provider_status, "parsed_payload": raw,
+                "parsed_payload_sha256": (
+                    _sha(raw) if isinstance(raw, dict) else None
+                ),
+                "parsed_payload_available": isinstance(raw, dict),
+                "request_body": transport.get("request_payload"),
+                "request_body_available": bool(transport.get("request_payload")),
+                "prompt_snapshot": transport.get("prompt_snapshot"),
+                "prompt_snapshot_available": transport.get("prompt_snapshot") is not None,
+                "raw_response_body": transport.get("raw_response"),
+                "raw_response_sha256": transport.get("raw_response_sha256"),
+                "raw_response_available": transport.get("raw_response_available", False),
+                "parsed_from_raw_response_proven":
+                    transport.get("parsed_from_raw_response_proven", False),
+                "http_status": transport.get("http_status"),
+                "http_status_available": transport.get("http_status_available", False),
+                "finish_reason": transport.get("finish_reason"),
+                "finish_reason_available":
+                    transport.get("finish_reason_available", False),
+                "usage": transport.get("usage"),
+                "usage_available": transport.get("usage_available", False),
+                "provider_response_metadata":
+                    transport.get("provider_response_metadata"),
+                "provider_response_metadata_available":
+                    transport.get("provider_response_metadata_available", False),
+                "provider_call_id": transport.get("provider_call_id"),
+                "provider_call_id_available":
+                    transport.get("provider_call_id_available", False),
                 "error": provider_error,
                 "provider_execution_identity": execution_identity.model_dump(mode="json"),
                 "provider_execution_identity_sha256":
@@ -609,8 +698,17 @@ def execute_targeted_recovery(
                   extraction_rows, jsonl=True)
     _atomic_write(artifacts / "context_pair_attributions.jsonl", comparisons, jsonl=True)
     total_calls = calls["extraction"] + calls["comparison"]
+    artifact_record_count = len(provider_audits)
+    complete_artifact_count = sum(
+        row.get("raw_response_available") is True
+        and row.get("request_body_available") is True
+        and row.get("prompt_snapshot_available") is True
+        and row.get("parsed_payload_available") is True
+        and row.get("parsed_from_raw_response_proven") is True
+        for row in provider_audits
+    )
     summary = {
-        **plan, "schema_version": "context_attribution_recovery_execution_summary_v1",
+        **plan, "schema_version": "context_attribution_recovery_execution_summary_v2",
         "plan_only": False, "status": "completed",
         "source_reused_count": sum(
             (e.get("provenance") == "source_validated_reuse")
@@ -633,9 +731,27 @@ def execute_targeted_recovery(
         "blocked_pairs": blocked, "provider_calls": total_calls,
         "extraction_provider_calls": calls["extraction"],
         "comparison_provider_calls": calls["comparison"],
+        "api_calls": 0 if test_only else total_calls,
         "network_calls": 0 if test_only else total_calls,
+        "network_call_attempt_count": 0 if test_only else total_calls,
         "real_api_calls": 0 if test_only else total_calls,
-        "downloads": 0, "credential_values_read": False if test_only else None,
+        "provider_call_artifact_created":
+            provider_path.is_file() and artifact_record_count > 0,
+        "provider_call_artifact_record_count": artifact_record_count,
+        "raw_response_record_count": sum(
+            row.get("raw_response_available") is True for row in provider_audits
+        ),
+        "complete_provider_artifact_count": complete_artifact_count,
+        "downloads": 0,
+        "credential_values_read": provider_mode == "production" and not test_only,
+        "credential_values_logged": False,
+        "credential_values_persisted": False,
+        "credential_source_names": (
+            ["DEEPSEEK_API_KEY"] if provider_mode == "production"
+            and execution_identity.provider == "deepseek" and not test_only else
+            ["OPENAI_API_KEY"] if provider_mode == "production"
+            and execution_identity.provider == "openai" and not test_only else []
+        ),
         "provider_client_created": True, "provider_mode": provider_mode,
         "provider": execution_identity.provider,
         "model": execution_identity.model,

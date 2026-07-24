@@ -14,6 +14,7 @@ from code_engine.context_attribution.identities import (
     resolve_provider_execution_identity,
 )
 from code_engine.context_attribution.models import PAIR_SCHEMA_VERSION
+from code_engine.context_attribution.offline_v7 import execute_offline_v7
 from code_engine.context_attribution.recovery import (
     EXTRACTION_SCHEMA_VERSION_V6, PROMPT_VERSION_V6,
 )
@@ -53,6 +54,10 @@ def parser() -> argparse.ArgumentParser:
         help="Revalidate parsed extraction payloads from an existing run with zero provider/network calls.",
     )
     value.add_argument(
+        "--paid-payload-offline-revalidation", action="store_true",
+        help="Run the allowlisted v6/v2 paid parsed payload through v7/v3 contracts with zero API calls.",
+    )
+    value.add_argument(
         "--recovery-source-run", type=Path,
         help="Paid/source run whose immutable artifacts are classified for recovery.",
     )
@@ -72,6 +77,19 @@ def main() -> None:
     args = parser().parse_args()
     selected_mode = "abstract-only" if args.abstract_only else "fulltext-only" if args.fulltext_only else "combined" if args.combined else args.mode
     profiles = [x.strip() for x in args.domain_profiles.split(",") if x.strip()]
+    if args.paid_payload_offline_revalidation:
+        if not args.offline_revalidate_from:
+            raise SystemExit("--paid-payload-offline-revalidation requires --offline-revalidate-from")
+        if any((args.api, args.execute, args.resume, args.cached_only,
+                args.fixture_responses, args.recovery_source_run, args.recovery_mode)):
+            raise SystemExit("paid payload offline revalidation forbids provider/execution/recovery flags")
+        result = execute_offline_v7(
+            repository_root=Path(__file__).parents[3],
+            input_run=args.input_run, source_run=args.offline_revalidate_from,
+            output_run=args.output_run, profiles=profiles,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     if args.recovery_source_run or args.recovery_mode:
         if not args.recovery_source_run or not args.recovery_mode:
             raise SystemExit("--recovery-source-run and --recovery-mode are required together")

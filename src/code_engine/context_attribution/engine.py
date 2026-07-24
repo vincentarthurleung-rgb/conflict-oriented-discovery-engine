@@ -9,7 +9,8 @@ from .composition import composition_identity, load_composition_policy
 from .identities import IDENTITY_BUNDLE_VERSION, resolve_policy_identities
 from .models import (
     ContextExtraction, ContextPairAttribution, EXTRACTION_SCHEMA_VERSION,
-    PAIR_SCHEMA_VERSION, ProviderContextExtractionV6,
+    PAIR_SCHEMA_VERSION, ContextPairAttributionV3, ProviderContextExtractionV6,
+    ProviderContextExtractionV7,
 )
 from .registry import RegistryResolution, load_registry, resolve_factors, resolve_registry
 from .validation import (
@@ -22,6 +23,8 @@ from .token_spans import (
 
 PROMPT_VERSION = "context_attribution_prompts_v5"
 RECOVERY_PROMPT_VERSION = "context_attribution_prompts_v6"
+EXTRACTION_PROMPT_VERSION_V7 = "context_attribution_prompts_v7"
+COMPARISON_PROMPT_VERSION_V3 = "context_pair_attribution_prompts_v3"
 CANDIDATE_POLICY_VERSION = "deterministic_conflict_candidates_v1"
 COMPARABILITY_POLICY_VERSION = "context_comparability_policy_v1"
 
@@ -240,6 +243,43 @@ def pair_prompt(payload: dict[str, Any], profiles: list[str],
                 registry: dict[str, Any] | None = None) -> str:
     factors = resolve_factors(profiles, registry)
     return _prompt("observation_pair_context_attribution", payload, factors)
+
+
+def extraction_prompt_v7(contract: dict[str, Any], profiles: list[str],
+                         registry: dict[str, Any] | None = None) -> str:
+    factors = resolve_factors(profiles, registry)
+    rules = (
+        "Return exactly one JSON object matching output_schema. Provider authority is "
+        "limited to explicit_span, raw_components, source_chain_node_ids, and an "
+        "optional normalized_candidate. Never output inference_rule, factor-level "
+        "evidence anchors, raw_value, composed_value, normalized_value, hydrated "
+        "evidence, or provenance. For inferred factors copy components exactly from "
+        "the supplied chain; deterministic system code selects the rule. Do not add "
+        "components or use external knowledge."
+    )
+    return json.dumps({
+        "task": "observation_context_extraction",
+        "prompt_version": EXTRACTION_PROMPT_VERSION_V7,
+        "rules": rules, "factor_registry": factors, "input": contract,
+        "output_schema": ProviderContextExtractionV7.model_json_schema(),
+    }, ensure_ascii=False, sort_keys=True)
+
+
+def pair_prompt_v3(payload: dict[str, Any], profiles: list[str],
+                   registry: dict[str, Any] | None = None) -> str:
+    factors = resolve_factors(profiles, registry)
+    rules = (
+        "Return exactly one JSON object matching output_schema. Missing values must "
+        "be JSON null and must exactly match missing_a, missing_b, or missing_both. "
+        "same and different require two non-empty strings. Use only the two supplied "
+        "validated extractions and their anchors; do not infer missing values."
+    )
+    return json.dumps({
+        "task": "observation_pair_context_attribution",
+        "prompt_version": COMPARISON_PROMPT_VERSION_V3,
+        "rules": rules, "factor_registry": factors, "input": payload,
+        "output_schema": ContextPairAttributionV3.model_json_schema(),
+    }, ensure_ascii=False, sort_keys=True)
 
 def _prompt(task: str, payload: dict[str, Any], factors: dict[str, Any]) -> str:
     rules = (

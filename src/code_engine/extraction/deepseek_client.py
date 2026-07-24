@@ -195,7 +195,7 @@ class DeepSeekClient:
                     "provider": "deepseek", "request_endpoint": self.endpoint, "model": model,
                     "response_format": {"type": "json_object"},
                     "json_output_enabled": True, "max_tokens": max_tokens,
-                    "http_status": getattr(response, "status_code", 200),
+                    "http_status": getattr(response, "status_code", None),
                     "latency_seconds": time.monotonic() - started,
                     "reasoning_content_present": reasoning_content not in (None, ""),
                     "reasoning_content_characters": len(str(reasoning_content or "")),

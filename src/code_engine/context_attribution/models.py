@@ -5,7 +5,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EXTRACTION_SCHEMA_VERSION = "observation_context_extraction_v5"
 EXTRACTION_SCHEMA_VERSION_V6 = "observation_context_extraction_v6"
+EXTRACTION_SCHEMA_VERSION_V7 = "observation_context_extraction_v7"
 PAIR_SCHEMA_VERSION = "context_pair_attribution_v2"
+PAIR_SCHEMA_VERSION_V3 = "context_pair_attribution_v3"
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -70,6 +72,51 @@ class ProviderContextExtractionV6(StrictModel):
     domain_profiles: list[str] = Field(min_length=1)
     input_mode: Literal["abstract_sentence_only", "fulltext_evidence_chain"]
     context_factors: list[ProviderContextFactorV6]
+    missing_critical_information: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ProviderContextFactorV7(StrictModel):
+    """The v7 Provider contract excludes every deterministically derived field."""
+
+    factor_id: str
+    status: Literal["explicit", "inferred_from_local_chain", "unknown", "conflicting"]
+    explicit_span: ExplicitSpan | None = None
+    source_chain_node_ids: list[str] = Field(default_factory=list)
+    raw_components: list[RawComponent] = Field(default_factory=list)
+    normalized_candidate: str | None = None
+    confidence: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def status_contract(self):
+        if self.status == "explicit":
+            if self.explicit_span is None:
+                raise ValueError("explicit_factor_requires_token_span")
+            if self.raw_components or self.source_chain_node_ids:
+                raise ValueError("explicit_factor_must_not_have_chain_components")
+        elif self.status == "inferred_from_local_chain":
+            if self.explicit_span is not None:
+                raise ValueError("inferred_factor_explicit_span_forbidden")
+            if not self.raw_components:
+                raise ValueError("inferred_factor_requires_raw_components")
+            if not self.source_chain_node_ids:
+                raise ValueError("inferred_factor_requires_chain_nodes")
+            component_nodes = list(dict.fromkeys(x.chain_node_id for x in self.raw_components))
+            if self.source_chain_node_ids != component_nodes:
+                raise ValueError("inferred_factor_nodes_must_match_components")
+        elif self.status == "unknown":
+            if any((self.explicit_span, self.source_chain_node_ids,
+                    self.raw_components, self.normalized_candidate)):
+                raise ValueError("unknown_factor_must_be_empty")
+        return self
+
+
+class ProviderContextExtractionV7(StrictModel):
+    schema_version: Literal["observation_context_extraction_v7"] = EXTRACTION_SCHEMA_VERSION_V7
+    observation_id: str
+    domain_profiles: list[str] = Field(min_length=1)
+    input_mode: Literal["abstract_sentence_only", "fulltext_evidence_chain"]
+    context_factors: list[ProviderContextFactorV7]
     missing_critical_information: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
@@ -207,6 +254,48 @@ class ContextPairAttribution(StrictModel):
     claim_b_observation_id: str
     comparability: Literal["comparable", "conditionally_comparable", "non_comparable", "insufficient_information"]
     factor_comparisons: list[FactorComparison]
+    primary_explanatory_factors: list[str] = Field(default_factory=list)
+    missing_critical_information: list[str] = Field(default_factory=list)
+    reasoning_summary: str
+    confidence: float = Field(ge=0, le=1)
+    comparison_identity: str | None = None
+    validation_status: Literal["unvalidated", "validated", "rejected", "reviewable"] = "unvalidated"
+
+
+class FactorComparisonV3(StrictModel):
+    factor_id: str
+    claim_a_value: str | None
+    claim_b_value: str | None
+    status: Literal["same", "different", "missing_a", "missing_b", "missing_both"]
+    comparability_effect: Literal["none", "minor", "major", "blocking", "unknown"]
+    explanatory_strength: Literal["none", "low", "medium", "high", "unknown"]
+    claim_a_anchor_ids: list[str] = Field(default_factory=list)
+    claim_b_anchor_ids: list[str] = Field(default_factory=list)
+    reason: str
+
+    @model_validator(mode="after")
+    def nullable_status_contract(self):
+        if self.claim_a_value == "" or self.claim_b_value == "":
+            raise ValueError("factor_comparison_empty_string_forbidden")
+        a = self.claim_a_value is not None
+        b = self.claim_b_value is not None
+        expected = {
+            "same": (True, True), "different": (True, True),
+            "missing_a": (False, True), "missing_b": (True, False),
+            "missing_both": (False, False),
+        }[self.status]
+        if (a, b) != expected:
+            raise ValueError(f"factor_comparison_status_value_mismatch:{self.status}")
+        return self
+
+
+class ContextPairAttributionV3(StrictModel):
+    schema_version: Literal["context_pair_attribution_v3"] = PAIR_SCHEMA_VERSION_V3
+    pair_id: str
+    claim_a_observation_id: str
+    claim_b_observation_id: str
+    comparability: Literal["comparable", "conditionally_comparable", "non_comparable", "insufficient_information"]
+    factor_comparisons: list[FactorComparisonV3]
     primary_explanatory_factors: list[str] = Field(default_factory=list)
     missing_critical_information: list[str] = Field(default_factory=list)
     reasoning_summary: str

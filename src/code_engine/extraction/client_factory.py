@@ -105,7 +105,7 @@ class OpenAIJSONClient:
             finish_reason=payload["choices"][0].get("finish_reason"), usage=dict(payload.get("usage") or {}),
             provider_metadata={"provider": "openai", "model": request_payload["model"],
                 "response_format": {"type": "json_object"}, "json_output_enabled": True,
-                "max_tokens": kwargs.get("max_tokens"), "http_status": getattr(response, "status", 200)})
+                "max_tokens": kwargs.get("max_tokens"), "http_status": getattr(response, "status", None)})
 
     def extract_json(self, prompt: Any, **kwargs: Any) -> dict[str, Any]:
         return self.extract_json_result(prompt, **kwargs).payload

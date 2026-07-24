@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 IDENTITY_BUNDLE_VERSION = "context_attribution_identity_bundle_v1"
 PROVIDER_EXECUTION_IDENTITY_VERSION = (
-    "context_attribution_provider_execution_identity_v1"
+    "context_attribution_provider_execution_identity_v2"
 )
 NORMALIZATION_POLICY_SCHEMA_VERSION = "context_normalization_policy_schema_v3"
 COMPARATOR_NORMALIZATION_POLICY_SCHEMA_VERSION = (
@@ -38,11 +38,21 @@ class ProviderExecutionIdentity(BaseModel):
     model: str
     thinking_mode: str
     configured_max_tokens: int = Field(gt=0)
-    prompt_version: str
+    extraction_prompt_version: str
+    comparison_prompt_version: str
     extraction_schema_version: str
     comparison_schema_version: str
+    extraction_validator_version: str
+    comparison_validator_version: str
     configuration_source: dict[str, str]
     identity_sha256: str
+
+    @property
+    def prompt_version(self) -> str | None:
+        """Read-only compatibility view; never participates in v2 identity."""
+        if self.extraction_prompt_version == self.comparison_prompt_version:
+            return self.extraction_prompt_version
+        return None
 
     def canonical_payload(self) -> dict[str, Any]:
         return {
@@ -52,9 +62,12 @@ class ProviderExecutionIdentity(BaseModel):
             "model": self.model,
             "thinking_mode": self.thinking_mode,
             "configured_max_tokens": self.configured_max_tokens,
-            "prompt_version": self.prompt_version,
+            "extraction_prompt_version": self.extraction_prompt_version,
+            "comparison_prompt_version": self.comparison_prompt_version,
             "extraction_schema_version": self.extraction_schema_version,
             "comparison_schema_version": self.comparison_schema_version,
+            "extraction_validator_version": self.extraction_validator_version,
+            "comparison_validator_version": self.comparison_validator_version,
         }
 
     def verify(self) -> bool:
@@ -72,10 +85,22 @@ class ProviderExecutionIdentity(BaseModel):
 
 def build_provider_execution_identity(
     *, provider: str, model: str, thinking_mode: str,
-    configured_max_tokens: int, prompt_version: str,
+    configured_max_tokens: int, prompt_version: str | None = None,
+    extraction_prompt_version: str | None = None,
+    comparison_prompt_version: str | None = None,
     extraction_schema_version: str, comparison_schema_version: str,
+    extraction_validator_version: str = "context_attribution_validator_v6",
+    comparison_validator_version: str = "context_pair_attribution_validator_v3",
     configuration_source: dict[str, str] | None = None,
 ) -> ProviderExecutionIdentity:
+    # ``prompt_version`` is a legacy construction shim only.  When supplied it
+    # intentionally replaces both call-specific values so old drift checks
+    # remain fail-closed; v2 callers must omit it.
+    if prompt_version is not None:
+        extraction_prompt_version = prompt_version
+        comparison_prompt_version = prompt_version
+    if not extraction_prompt_version or not comparison_prompt_version:
+        raise ValueError("call_specific_prompt_versions_required")
     payload = {
         "provider_execution_identity_version":
             PROVIDER_EXECUTION_IDENTITY_VERSION,
@@ -83,9 +108,12 @@ def build_provider_execution_identity(
         "model": model,
         "thinking_mode": thinking_mode,
         "configured_max_tokens": configured_max_tokens,
-        "prompt_version": prompt_version,
+        "extraction_prompt_version": extraction_prompt_version,
+        "comparison_prompt_version": comparison_prompt_version,
         "extraction_schema_version": extraction_schema_version,
         "comparison_schema_version": comparison_schema_version,
+        "extraction_validator_version": extraction_validator_version,
+        "comparison_validator_version": comparison_validator_version,
     }
     return ProviderExecutionIdentity(
         **payload,
@@ -96,8 +124,12 @@ def build_provider_execution_identity(
 
 def resolve_provider_execution_identity(
     *, provider: str | None, model: str | None, thinking_mode: str | None,
-    configured_max_tokens: int | None, prompt_version: str,
+    configured_max_tokens: int | None, prompt_version: str | None = None,
+    extraction_prompt_version: str | None = None,
+    comparison_prompt_version: str | None = None,
     extraction_schema_version: str, comparison_schema_version: str,
+    extraction_validator_version: str = "context_attribution_validator_v6",
+    comparison_validator_version: str = "context_pair_attribution_validator_v3",
     production_config: dict[str, Any] | None = None,
     fake_test: bool = False,
 ) -> ProviderExecutionIdentity:
@@ -161,10 +193,49 @@ def resolve_provider_execution_identity(
         provider=str(effective[0]), model=str(effective[1]),
         thinking_mode=str(effective[2]), configured_max_tokens=int(effective[3]),
         prompt_version=prompt_version,
+        extraction_prompt_version=extraction_prompt_version,
+        comparison_prompt_version=comparison_prompt_version,
         extraction_schema_version=extraction_schema_version,
         comparison_schema_version=comparison_schema_version,
+        extraction_validator_version=extraction_validator_version,
+        comparison_validator_version=comparison_validator_version,
         configuration_source=sources,
     )
+
+
+def validate_call_contract_identity(
+    identity: ProviderExecutionIdentity, *, call_type: str,
+    effective_prompt_version: str, effective_schema_version: str,
+    effective_validator_version: str,
+) -> dict[str, Any]:
+    if call_type == "extraction":
+        expected = (
+            identity.extraction_prompt_version,
+            identity.extraction_schema_version,
+            identity.extraction_validator_version,
+        )
+    elif call_type == "comparison":
+        expected = (
+            identity.comparison_prompt_version,
+            identity.comparison_schema_version,
+            identity.comparison_validator_version,
+        )
+    else:
+        raise ValueError(f"unknown_provider_call_type:{call_type}")
+    actual = (
+        effective_prompt_version, effective_schema_version,
+        effective_validator_version,
+    )
+    if actual != expected:
+        raise ValueError(f"provider_call_contract_identity_mismatch:{call_type}")
+    payload = {
+        "call_type": call_type,
+        "effective_prompt_version": effective_prompt_version,
+        "effective_schema_version": effective_schema_version,
+        "effective_validator_version": effective_validator_version,
+        "provider_execution_identity_sha256": identity.identity_sha256,
+    }
+    return {**payload, "contract_identity_sha256": canonical_sha256(payload)}
 
 
 @dataclass(frozen=True)
@@ -312,4 +383,5 @@ __all__ = [
     "comparator_normalization_policy_payload",
     "normalization_policy_payload", "resolve_policy_identities",
     "resolve_provider_execution_identity", "validate_policy_identity",
+    "validate_call_contract_identity",
 ]

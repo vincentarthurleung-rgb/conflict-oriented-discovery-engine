@@ -9,7 +9,9 @@ from .composition import (
     COMPOSER_VERSION, COMPOSITION_POLICY_VERSION, compose, composition_identity,
     load_composition_policy,
 )
-from .models import ContextExtraction, ContextPairAttribution
+from .models import (
+    ContextExtraction, ContextPairAttribution, ContextPairAttributionV3,
+)
 from .registry import resolve_factors
 from .token_spans import (
     ANCHOR_TOKENIZER_VERSION, EXPLICIT_SPAN_VERSION, SPAN_HYDRATOR_VERSION,
@@ -18,6 +20,8 @@ from .token_spans import (
 
 VALIDATOR_VERSION = "context_attribution_validator_v4"
 RECOVERY_VALIDATOR_VERSION = "context_attribution_validator_v5"
+VALIDATOR_VERSION_V6 = "context_attribution_validator_v6"
+PAIR_VALIDATOR_VERSION_V3 = "context_pair_attribution_validator_v3"
 HYDRATOR_VERSION = "context_attribution_anchor_hydrator_v3"
 LOCAL_CHAIN_INFERENCE_POLICY_VERSION = COMPOSITION_POLICY_VERSION
 
@@ -383,6 +387,23 @@ def validate_context_extraction_v5(
     value.provenance["deterministic_validation"] = audit
     return value, errors
 
+
+def validate_context_extraction_v6(
+    payload: ContextExtraction | dict[str, Any], contract: dict[str, Any],
+    profiles: list[str], *, accepted_normalizations: set[tuple[str, str]] | None = None,
+    registry: dict[str, Any] | None = None,
+) -> tuple[ContextExtraction, list[str]]:
+    value, errors = validate_context_extraction(
+        payload, contract, profiles,
+        accepted_normalizations=accepted_normalizations, registry=registry,
+    )
+    audit = value.provenance.get("deterministic_validation") or {}
+    audit["base_validator_version"] = VALIDATOR_VERSION
+    audit["validator_version"] = VALIDATOR_VERSION_V6
+    audit["inference_rule_authority"] = "system_deterministic"
+    value.provenance["deterministic_validation"] = audit
+    return value, errors
+
 def validate_pair_attribution(payload: ContextPairAttribution | dict[str, Any], *,
                               pair_id: str, extraction_a: ContextExtraction,
                               extraction_b: ContextExtraction, profiles: list[str],
@@ -414,6 +435,61 @@ def validate_pair_attribution(payload: ContextPairAttribution | dict[str, Any], 
             if not _quantities_equivalent(values_a.get(factor.factor_id, factor.claim_a_value),
                                           values_b.get(factor.factor_id, factor.claim_b_value)):
                 errors.append(f"unsafe_unit_equivalence:{factor.factor_id}")
+    value.validation_status = "rejected" if errors else "validated"
+    return value, errors
+
+
+def validate_pair_attribution_v3(
+    payload: ContextPairAttributionV3 | dict[str, Any], *,
+    pair_id: str, extraction_a: ContextExtraction,
+    extraction_b: ContextExtraction, profiles: list[str],
+    registry: dict[str, Any] | None = None,
+) -> tuple[ContextPairAttributionV3, list[str]]:
+    if isinstance(extraction_a, dict):
+        raw_a = dict(extraction_a)
+        if raw_a.get("schema_version") in {
+            "observation_context_extraction_v6", "observation_context_extraction_v7"
+        }:
+            raw_a["schema_version"] = "observation_context_extraction_v5"
+        extraction_a = ContextExtraction.model_validate(raw_a)
+    if isinstance(extraction_b, dict):
+        raw_b = dict(extraction_b)
+        if raw_b.get("schema_version") in {
+            "observation_context_extraction_v6", "observation_context_extraction_v7"
+        }:
+            raw_b["schema_version"] = "observation_context_extraction_v5"
+        extraction_b = ContextExtraction.model_validate(raw_b)
+    value = (payload if isinstance(payload, ContextPairAttributionV3)
+             else ContextPairAttributionV3.model_validate(payload))
+    errors: list[str] = []
+    if value.pair_id != pair_id:
+        errors.append("pair_id_mismatch")
+    if value.claim_a_observation_id != extraction_a.observation_id:
+        errors.append("claim_a_observation_id_mismatch")
+    if value.claim_b_observation_id != extraction_b.observation_id:
+        errors.append("claim_b_observation_id_mismatch")
+    known = resolve_factors(profiles, registry)
+    anchors_a = {x for f in extraction_a.context_factors for x in f.evidence_anchor_ids}
+    anchors_b = {x for f in extraction_b.context_factors for x in f.evidence_anchor_ids}
+    for factor in value.factor_comparisons:
+        if factor.factor_id not in known:
+            errors.append(f"unsupported_factor:{factor.factor_id}")
+        for aid in factor.claim_a_anchor_ids:
+            if aid not in anchors_a:
+                errors.append(f"claim_a_cross_or_unknown_anchor:{aid}")
+            if aid in anchors_b:
+                errors.append(f"claim_a_anchor_cross_referenced:{aid}")
+        for aid in factor.claim_b_anchor_ids:
+            if aid not in anchors_b:
+                errors.append(f"claim_b_cross_or_unknown_anchor:{aid}")
+            if aid in anchors_a:
+                errors.append(f"claim_b_anchor_cross_referenced:{aid}")
+        if factor.status.startswith("missing") and factor.comparability_effect == "none":
+            errors.append(f"missing_factor_treated_as_same:{factor.factor_id}")
+        if (factor.comparability_effect == "blocking" and
+                not known.get(factor.factor_id, {}).get(
+                    "whether_difference_can_block_comparability")):
+            errors.append(f"unregistered_blocking_factor:{factor.factor_id}")
     value.validation_status = "rejected" if errors else "validated"
     return value, errors
 
