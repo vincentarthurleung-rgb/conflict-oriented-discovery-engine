@@ -22,6 +22,8 @@ class ConflictAdjudicationDecision(BaseModel):
     claim_alignment_identity: str
     contradiction_signal_identity: str
     conflict_candidate_identity: str
+    candidate_qualification_identity: str | None = None
+    candidate_qualification_status: str | None = None
     context_difference_identity: str | None
     context_difference_binding_identity: str | None
     comparability_assessment_bundle_identity: str | None
@@ -32,6 +34,7 @@ class ConflictAdjudicationDecision(BaseModel):
         "candidate_only",
         "blocked_alignment_unvalidated",
         "blocked_contradiction_unvalidated",
+        "blocked_candidate_unqualified",
         "blocked_context_unavailable",
         "blocked_difference_unvalidated",
         "blocked_attribution_pending",

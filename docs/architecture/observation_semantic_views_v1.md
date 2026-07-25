@@ -10,3 +10,10 @@ Status: Active
 - `GranularityQualificationView` exposes biological level, endpoint compartment, and endpoint subtype for explicit bridge assessment.
 
 The proposition-core identity excludes observation and literature IDs, result values, context, evidence text, paths, timestamps, and downstream judgments. The full semantic-view identity may bind the observation ID. `observation_semantics` has no L3/L4 dependency.
+
+The views flow through L3a Proposition Core Alignment, L3b Contradiction
+Signal, and L3c Candidate Qualification. L3c consumes view-derived identities
+but cannot modify or reinterpret L2 semantic views.
+
+L4 Entry subsequently validates the referenced Observation Context authorities;
+it does not mutate or re-project any semantic view.

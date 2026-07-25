@@ -52,7 +52,11 @@ Formal v3 authority.
 ## Dependency direction
 
 Observation Context imports no pairwise layer. Context Difference may import
-Candidate and Observation Context schemas. Comparability may import Difference.
+Candidate Qualification and Observation Context schemas. Only a qualified
+Candidate may create future-standard L4 authority; historical Difference
+artifacts can remain diagnostic. Comparability may import Difference.
+Candidate qualification first enters the independent Context Readiness Gate;
+it never directly authorizes Difference creation.
 Formal Judgment may import all validated upstream artifacts. Legacy readers and
 adapters are read-only and are never runtime authority.
 

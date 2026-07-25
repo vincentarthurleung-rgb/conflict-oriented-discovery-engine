@@ -3,6 +3,7 @@ from __future__ import annotations
 from ...claim_alignment.models import AlignedClaimGroup
 from ...conflict_candidate.contradiction import ContradictionSignal
 from ...conflict_candidate.models import ConflictCandidate
+from ...conflict_candidate.qualification.models import ConflictCandidateQualificationV1
 from ...context_difference.migration import ContextDifferenceMigrationBinding
 from ...context_difference.models import ContextDifference
 from ...layer_identity import layer_identity
@@ -23,6 +24,7 @@ def adjudicate_pair_staging(
     bundle: FactorAttributionBundle | None,
     comparability: list[FactorComparabilityAssessment],
     explanations: list[FactorDivergenceExplanation],
+    qualification: ConflictCandidateQualificationV1 | None = None,
 ) -> ConflictAdjudicationDecision:
     gate_identity = layer_identity(
         "conflict_adjudication_gate_policy",
@@ -44,6 +46,11 @@ def adjudicate_pair_staging(
         status, rationale = (
             "blocked_contradiction_unvalidated",
             "A validated contradiction signal is required.",
+        )
+    elif qualification is not None and qualification.qualification_status != "qualified":
+        status, rationale = (
+            "blocked_candidate_unqualified",
+            "Candidate Qualification does not grant future-standard L4 authority.",
         )
     elif candidate.validation_status != "validated":
         status, rationale = "candidate_only", "Candidate is not validated."
@@ -111,6 +118,12 @@ def adjudicate_pair_staging(
         "claim_alignment_identity": alignment.claim_alignment_identity,
         "contradiction_signal_identity": signal.contradiction_signal_identity,
         "conflict_candidate_identity": candidate.conflict_candidate_identity,
+        "candidate_qualification_identity": (
+            qualification.qualification_identity if qualification else None
+        ),
+        "candidate_qualification_status": (
+            qualification.qualification_status if qualification else None
+        ),
         "context_difference_identity": (
             difference.context_difference_identity if difference else None
         ),
@@ -137,6 +150,8 @@ def adjudicate_pair_staging(
             "both_attribution_branches_consumed": bundle is not None,
             "scientific_aggregation_performed": False,
             "formal_v3_modified": False,
+            "legacy_decision_path": qualification is None,
+            "candidate_qualification_consumed": qualification is not None,
         },
         "validator_version": "conflict_adjudication_validator_v1",
         "validation_status": "validated",

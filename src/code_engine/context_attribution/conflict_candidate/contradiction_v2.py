@@ -27,10 +27,18 @@ class ContradictionSignalV2(BaseModel):
     signal_type: Literal["opposite_direction","incompatible_outcome","quantitative_disagreement","unresolved_disagreement"]
     signal_status: Literal["validated","candidate","rejected","insufficient_information"]
     signal_structure_valid: bool
+    signal_schema_valid: bool = True
+    signal_validator_valid: bool = True
+    signal_provenance_complete: bool = True
+    alignment_eligible: bool = False
+    candidate_qualification_status: str | None = None
+    candidate_qualification_identity: str | None = None
+    downstream_candidate_authority: bool = False
     result_dimension_comparisons: list[ResultDimensionComparison]
     signal_basis: list[str]
     candidate_authority_scope: Literal["future_standard","legacy_preserved","diagnostic_only"]
     formal_adjudication_eligible: bool
+    deprecated_ambiguous_metric: bool = True
     validator_version: Literal["contradiction_signal_validator_v2"] = "contradiction_signal_validator_v2"
     contradiction_signal_identity_v2: str
     provenance: dict[str, Any]
@@ -59,11 +67,19 @@ def build_contradiction_signal_v2(*, alignment: ClaimAlignmentRecordV2,
         "signal_type":"opposite_direction" if opposed else "unresolved_disagreement",
         "signal_status":"validated" if opposed else "insufficient_information",
         "signal_structure_valid":structural,
+        "signal_schema_valid":True,
+        "signal_validator_valid":True,
+        "signal_provenance_complete":True,
+        "alignment_eligible":alignment.alignment_status == "aligned",
+        "candidate_qualification_status":None,
+        "candidate_qualification_identity":None,
+        "downstream_candidate_authority":False,
         "result_dimension_comparisons":[{"dimension_id":"direction","value_a":a,"value_b":b,
                                          "comparison":"opposed" if opposed else "unresolved"}],
         "signal_basis":["result views compared independently of proposition core",
                         "structural validity does not confer formal authority"],
         "candidate_authority_scope":scope,"formal_adjudication_eligible":eligible,
+        "deprecated_ambiguous_metric":True,
         "validator_version":"contradiction_signal_validator_v2",
         "provenance":{"result_view_only":True,"context_effect_consumed":False,
                       "alignment_gate_bypassed":False}}

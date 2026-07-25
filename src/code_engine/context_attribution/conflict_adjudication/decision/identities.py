@@ -17,6 +17,8 @@ def conflict_adjudication_decision_identity(payload: dict[str, Any]) -> str:
                 "claim_alignment_identity",
                 "contradiction_signal_identity",
                 "conflict_candidate_identity",
+                "candidate_qualification_identity",
+                "candidate_qualification_status",
                 "context_difference_identity",
                 "context_difference_binding_identity",
                 "comparability_assessment_bundle_identity",

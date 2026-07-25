@@ -16,3 +16,6 @@ __all__ = [
     "ContextDifferenceMigrationBinding",
     "bind_context_difference_migration",
 ]
+from .qualification_gate import require_qualified_candidate
+
+__all__ = ["require_qualified_candidate"]
