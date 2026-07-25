@@ -1,0 +1,94 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "downstream_authority_source": {
+      "enum": [
+        "existing_entry_gate",
+        "asset_display_policy"
+      ],
+      "title": "Downstream Authority Source",
+      "type": "string"
+    },
+    "downstream_use_authority": {
+      "enum": [
+        "allowed_for_observation_display",
+        "allowed_for_exploratory_graph",
+        "allowed_for_l4_entry",
+        "diagnostic_only",
+        "blocked"
+      ],
+      "title": "Downstream Use Authority",
+      "type": "string"
+    },
+    "evidence_authority": {
+      "enum": [
+        "exact_field_anchor",
+        "exact_sentence_anchor",
+        "block_level_only",
+        "evidence_unresolved",
+        "source_unavailable"
+      ],
+      "title": "Evidence Authority",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "observation_identity": {
+      "title": "Observation Identity",
+      "type": "string"
+    },
+    "provenance_authority": {
+      "enum": [
+        "end_to_end_direct",
+        "end_to_end_reconstructed",
+        "parsed_or_context_artifact_only",
+        "legacy_incomplete",
+        "unavailable"
+      ],
+      "title": "Provenance Authority",
+      "type": "string"
+    },
+    "replayability_authority": {
+      "enum": [
+        "fully_replayable",
+        "parser_replayable",
+        "structured_artifact_replayable",
+        "partially_replayable",
+        "not_replayable"
+      ],
+      "title": "Replayability Authority",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "context_asset_scoped_authority_v1",
+      "default": "context_asset_scoped_authority_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "semantic_authority": {
+      "enum": [
+        "validated_current",
+        "validated_legacy",
+        "candidate_only",
+        "unresolved",
+        "invalid"
+      ],
+      "title": "Semantic Authority",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observation_identity",
+    "semantic_authority",
+    "evidence_authority",
+    "provenance_authority",
+    "replayability_authority",
+    "downstream_use_authority",
+    "downstream_authority_source",
+    "identity"
+  ],
+  "title": "ContextAssetScopedAuthority",
+  "type": "object"
+}

@@ -1,0 +1,130 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "automatic_execution_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Execution Authorized",
+      "type": "boolean"
+    },
+    "available_recovery_modes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Available Recovery Modes",
+      "type": "array"
+    },
+    "budget_authorization_present": {
+      "const": false,
+      "default": false,
+      "title": "Budget Authorization Present",
+      "type": "boolean"
+    },
+    "current_context_asset_status": {
+      "title": "Current Context Asset Status",
+      "type": "string"
+    },
+    "dedup_group_identity": {
+      "title": "Dedup Group Identity",
+      "type": "string"
+    },
+    "experiment_scope_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Experiment Scope Identity"
+    },
+    "field_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Field Ids",
+      "type": "array"
+    },
+    "historical_artifact_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Historical Artifact Refs",
+      "type": "array"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "minimal_source_block_set": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Minimal Source Block Set",
+      "type": "array"
+    },
+    "network_call_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Network Call Authorized",
+      "type": "boolean"
+    },
+    "observation_identity": {
+      "title": "Observation Identity",
+      "type": "string"
+    },
+    "parsed_lineage_status": {
+      "title": "Parsed Lineage Status",
+      "type": "string"
+    },
+    "preferred_recovery_mode": {
+      "title": "Preferred Recovery Mode",
+      "type": "string"
+    },
+    "provider_call_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Provider Call Authorized",
+      "type": "boolean"
+    },
+    "provider_reextraction_required": {
+      "title": "Provider Reextraction Required",
+      "type": "boolean"
+    },
+    "raw_lineage_status": {
+      "title": "Raw Lineage Status",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "context_asset_remediation_requirement_v2",
+      "default": "context_asset_remediation_requirement_v2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_reingestion_required": {
+      "title": "Source Reingestion Required",
+      "type": "boolean"
+    },
+    "source_scope_status": {
+      "title": "Source Scope Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observation_identity",
+    "field_ids",
+    "current_context_asset_status",
+    "preferred_recovery_mode",
+    "source_scope_status",
+    "raw_lineage_status",
+    "parsed_lineage_status",
+    "provider_reextraction_required",
+    "source_reingestion_required",
+    "dedup_group_identity",
+    "identity"
+  ],
+  "title": "ContextAssetRemediationRequirement",
+  "type": "object"
+}

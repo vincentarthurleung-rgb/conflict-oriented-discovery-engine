@@ -1,0 +1,154 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "authoritative_anchor_available": {
+      "title": "Authoritative Anchor Available",
+      "type": "boolean"
+    },
+    "blocking_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reason Codes",
+      "type": "array"
+    },
+    "consolidation_value_available": {
+      "title": "Consolidation Value Available",
+      "type": "boolean"
+    },
+    "coverage_record_id": {
+      "title": "Coverage Record Id",
+      "type": "string"
+    },
+    "deterministic_recovery_available": {
+      "title": "Deterministic Recovery Available",
+      "type": "boolean"
+    },
+    "direct_evidence_available": {
+      "title": "Direct Evidence Available",
+      "type": "boolean"
+    },
+    "experiment_scope_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Experiment Scope Identity"
+    },
+    "field_id": {
+      "title": "Field Id",
+      "type": "string"
+    },
+    "field_registry_identity": {
+      "title": "Field Registry Identity",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "migrated_from_historical_context": {
+      "title": "Migrated From Historical Context",
+      "type": "boolean"
+    },
+    "normalized_value_available": {
+      "title": "Normalized Value Available",
+      "type": "boolean"
+    },
+    "observation_identity": {
+      "title": "Observation Identity",
+      "type": "string"
+    },
+    "preserved_in_parsed_payload": {
+      "title": "Preserved In Parsed Payload",
+      "type": "boolean"
+    },
+    "propagation_available": {
+      "title": "Propagation Available",
+      "type": "boolean"
+    },
+    "provider_reextraction_required": {
+      "title": "Provider Reextraction Required",
+      "type": "boolean"
+    },
+    "representable_in_context_schema": {
+      "title": "Representable In Context Schema",
+      "type": "boolean"
+    },
+    "representable_in_observation_schema": {
+      "title": "Representable In Observation Schema",
+      "type": "boolean"
+    },
+    "requested_by_context_prompt": {
+      "title": "Requested By Context Prompt",
+      "type": "boolean"
+    },
+    "requested_by_observation_prompt": {
+      "title": "Requested By Observation Prompt",
+      "type": "boolean"
+    },
+    "returned_in_context_payload": {
+      "title": "Returned In Context Payload",
+      "type": "boolean"
+    },
+    "returned_in_observation_payload": {
+      "title": "Returned In Observation Payload",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "context_asset_coverage_ledger_v1",
+      "default": "context_asset_coverage_ledger_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "shared_scope_evidence_available": {
+      "title": "Shared Scope Evidence Available",
+      "type": "boolean"
+    },
+    "source_scope_sufficient": {
+      "title": "Source Scope Sufficient",
+      "type": "boolean"
+    },
+    "validated_value_available": {
+      "title": "Validated Value Available",
+      "type": "boolean"
+    },
+    "value_state_available": {
+      "title": "Value State Available",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "coverage_record_id",
+    "observation_identity",
+    "field_id",
+    "field_registry_identity",
+    "requested_by_observation_prompt",
+    "requested_by_context_prompt",
+    "representable_in_observation_schema",
+    "representable_in_context_schema",
+    "returned_in_observation_payload",
+    "returned_in_context_payload",
+    "preserved_in_parsed_payload",
+    "migrated_from_historical_context",
+    "direct_evidence_available",
+    "shared_scope_evidence_available",
+    "authoritative_anchor_available",
+    "value_state_available",
+    "validated_value_available",
+    "normalized_value_available",
+    "consolidation_value_available",
+    "propagation_available",
+    "provider_reextraction_required",
+    "deterministic_recovery_available",
+    "source_scope_sufficient",
+    "identity"
+  ],
+  "title": "ContextCoverageRecord",
+  "type": "object"
+}

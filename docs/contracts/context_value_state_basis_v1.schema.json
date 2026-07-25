@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "ContextValueState": {
+      "enum": [
+        "present",
+        "explicitly_absent",
+        "not_mentioned",
+        "not_extracted",
+        "unknown",
+        "ambiguous",
+        "not_applicable",
+        "invalid",
+        "unavailable",
+        "legacy_null_unresolved"
+      ],
+      "title": "ContextValueState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "extraction_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Extraction Evidence Refs",
+      "type": "array"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "context_value_state_basis_v1",
+      "default": "context_value_state_basis_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_basis_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Scope Basis Refs",
+      "type": "array"
+    },
+    "source_evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Evidence Refs",
+      "type": "array"
+    },
+    "state_authority": {
+      "enum": [
+        "authoritative",
+        "candidate",
+        "legacy_unresolved"
+      ],
+      "title": "State Authority",
+      "type": "string"
+    },
+    "state_basis_type": {
+      "title": "State Basis Type",
+      "type": "string"
+    },
+    "validation_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Validation Refs",
+      "type": "array"
+    },
+    "value_state": {
+      "$ref": "#/$defs/ContextValueState"
+    }
+  },
+  "required": [
+    "value_state",
+    "state_basis_type",
+    "state_authority"
+  ],
+  "title": "ContextValueStateBasis",
+  "type": "object"
+}

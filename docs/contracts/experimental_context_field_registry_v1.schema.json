@@ -1,0 +1,123 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "active_status": {
+      "enum": [
+        "active",
+        "audit_only",
+        "deprecated"
+      ],
+      "title": "Active Status",
+      "type": "string"
+    },
+    "canonical_field_path": {
+      "title": "Canonical Field Path",
+      "type": "string"
+    },
+    "cardinality": {
+      "enum": [
+        "one",
+        "many"
+      ],
+      "title": "Cardinality",
+      "type": "string"
+    },
+    "currently_supported": {
+      "title": "Currently Supported",
+      "type": "boolean"
+    },
+    "direct_evidence_required": {
+      "title": "Direct Evidence Required",
+      "type": "boolean"
+    },
+    "field_id": {
+      "title": "Field Id",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "legacy_aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Legacy Aliases",
+      "type": "array"
+    },
+    "normalization_contract": {
+      "title": "Normalization Contract",
+      "type": "string"
+    },
+    "ordered_or_unordered": {
+      "enum": [
+        "ordered",
+        "unordered",
+        "not_applicable"
+      ],
+      "title": "Ordered Or Unordered",
+      "type": "string"
+    },
+    "parser_preserved": {
+      "title": "Parser Preserved",
+      "type": "boolean"
+    },
+    "prompt_requested": {
+      "title": "Prompt Requested",
+      "type": "boolean"
+    },
+    "schema_representable": {
+      "title": "Schema Representable",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "experimental_context_field_registry_v1",
+      "default": "experimental_context_field_registry_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_propagation_allowed": {
+      "title": "Scope Propagation Allowed",
+      "type": "boolean"
+    },
+    "scope_propagation_policy_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope Propagation Policy Identity"
+    },
+    "semantic_category": {
+      "title": "Semantic Category",
+      "type": "string"
+    },
+    "value_type": {
+      "title": "Value Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "field_id",
+    "canonical_field_path",
+    "semantic_category",
+    "value_type",
+    "cardinality",
+    "ordered_or_unordered",
+    "direct_evidence_required",
+    "scope_propagation_allowed",
+    "normalization_contract",
+    "currently_supported",
+    "prompt_requested",
+    "schema_representable",
+    "parser_preserved",
+    "active_status",
+    "identity"
+  ],
+  "title": "ContextFieldRegistryRecord",
+  "type": "object"
+}

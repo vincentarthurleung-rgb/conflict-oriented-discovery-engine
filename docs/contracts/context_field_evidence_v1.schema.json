@@ -1,0 +1,416 @@
+{
+  "$defs": {
+    "AssetProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "AssetProvenance",
+      "type": "object"
+    },
+    "ContextValueOrigin": {
+      "enum": [
+        "direct_local_evidence",
+        "direct_shared_experiment_evidence",
+        "deterministic_scope_inheritance",
+        "historical_validated_context",
+        "historical_context_consolidation",
+        "parsed_payload_recovery",
+        "raw_response_recovery",
+        "document_metadata_explicit",
+        "human_annotation",
+        "unresolved_legacy",
+        "unavailable"
+      ],
+      "title": "ContextValueOrigin",
+      "type": "string"
+    },
+    "ContextValueState": {
+      "enum": [
+        "present",
+        "explicitly_absent",
+        "not_mentioned",
+        "not_extracted",
+        "unknown",
+        "ambiguous",
+        "not_applicable",
+        "invalid",
+        "unavailable",
+        "legacy_null_unresolved"
+      ],
+      "title": "ContextValueState",
+      "type": "string"
+    },
+    "ContextValueStateBasis": {
+      "additionalProperties": false,
+      "properties": {
+        "extraction_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Extraction Evidence Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "context_value_state_basis_v1",
+          "default": "context_value_state_basis_v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope_basis_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scope Basis Refs",
+          "type": "array"
+        },
+        "source_evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Evidence Refs",
+          "type": "array"
+        },
+        "state_authority": {
+          "enum": [
+            "authoritative",
+            "candidate",
+            "legacy_unresolved"
+          ],
+          "title": "State Authority",
+          "type": "string"
+        },
+        "state_basis_type": {
+          "title": "State Basis Type",
+          "type": "string"
+        },
+        "validation_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Validation Refs",
+          "type": "array"
+        },
+        "value_state": {
+          "$ref": "#/$defs/ContextValueState"
+        }
+      },
+      "required": [
+        "value_state",
+        "state_basis_type",
+        "state_authority"
+      ],
+      "title": "ContextValueStateBasis",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "anchor_precision": {
+      "enum": [
+        "exact",
+        "sentence",
+        "block",
+        "unresolved"
+      ],
+      "title": "Anchor Precision",
+      "type": "string"
+    },
+    "anchor_validation_status": {
+      "title": "Anchor Validation Status",
+      "type": "string"
+    },
+    "authority_status": {
+      "title": "Authority Status",
+      "type": "string"
+    },
+    "canonical_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Canonical Identity"
+    },
+    "canonical_value": {
+      "default": null,
+      "title": "Canonical Value"
+    },
+    "context_candidate_revision_identity": {
+      "title": "Context Candidate Revision Identity",
+      "type": "string"
+    },
+    "context_field_evidence_id": {
+      "title": "Context Field Evidence Id",
+      "type": "string"
+    },
+    "context_validation_status": {
+      "title": "Context Validation Status",
+      "type": "string"
+    },
+    "deterministically_resolved_offsets": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "integer"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Deterministically Resolved Offsets",
+      "type": "array"
+    },
+    "evidence_anchor_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Anchor Ids",
+      "type": "array"
+    },
+    "evidence_quote": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evidence Quote"
+    },
+    "experiment_scope_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Experiment Scope Identity"
+    },
+    "extracted_value": {
+      "default": null,
+      "title": "Extracted Value"
+    },
+    "field_id": {
+      "title": "Field Id",
+      "type": "string"
+    },
+    "field_path": {
+      "title": "Field Path",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "migration_record": {
+      "default": false,
+      "title": "Migration Record",
+      "type": "boolean"
+    },
+    "normalization_status": {
+      "title": "Normalization Status",
+      "type": "string"
+    },
+    "observation_candidate_identity": {
+      "title": "Observation Candidate Identity",
+      "type": "string"
+    },
+    "original_artifact_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Original Artifact Identity"
+    },
+    "original_field_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Original Field Name"
+    },
+    "original_schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Original Schema"
+    },
+    "original_value": {
+      "default": null,
+      "title": "Original Value"
+    },
+    "provenance": {
+      "$ref": "#/$defs/AssetProvenance"
+    },
+    "provider_supplied_offsets": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "integer"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Provider Supplied Offsets",
+      "type": "array"
+    },
+    "provider_value": {
+      "default": null,
+      "title": "Provider Value"
+    },
+    "raw_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Text"
+    },
+    "rejection_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rejection Reason Codes",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "context_field_evidence_v1",
+      "default": "context_field_evidence_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_block_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Block Ids",
+      "type": "array"
+    },
+    "source_paragraph_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Paragraph Ids",
+      "type": "array"
+    },
+    "source_sentence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Sentence Ids",
+      "type": "array"
+    },
+    "unresolved_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved Reason Codes",
+      "type": "array"
+    },
+    "value_origin": {
+      "$ref": "#/$defs/ContextValueOrigin"
+    },
+    "value_state": {
+      "$ref": "#/$defs/ContextValueState"
+    },
+    "value_state_basis": {
+      "$ref": "#/$defs/ContextValueStateBasis"
+    }
+  },
+  "required": [
+    "context_field_evidence_id",
+    "context_candidate_revision_identity",
+    "observation_candidate_identity",
+    "field_id",
+    "field_path",
+    "value_state",
+    "value_origin",
+    "value_state_basis",
+    "anchor_precision",
+    "anchor_validation_status",
+    "context_validation_status",
+    "normalization_status",
+    "authority_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ContextFieldEvidence",
+  "type": "object"
+}

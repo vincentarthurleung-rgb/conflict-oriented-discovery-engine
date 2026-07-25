@@ -1,0 +1,118 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "atomic_observations_required": {
+      "const": true,
+      "default": true,
+      "title": "Atomic Observations Required",
+      "type": "boolean"
+    },
+    "canonical_identity_requested_from_llm": {
+      "const": false,
+      "default": false,
+      "title": "Canonical Identity Requested From Llm",
+      "type": "boolean"
+    },
+    "comparability_judgment_requested_from_llm": {
+      "const": false,
+      "default": false,
+      "title": "Comparability Judgment Requested From Llm",
+      "type": "boolean"
+    },
+    "conflict_judgment_requested_from_llm": {
+      "const": false,
+      "default": false,
+      "title": "Conflict Judgment Requested From Llm",
+      "type": "boolean"
+    },
+    "contract_status": {
+      "const": "Proposed",
+      "default": "Proposed",
+      "title": "Contract Status",
+      "type": "string"
+    },
+    "divergence_explanation_requested_from_llm": {
+      "const": false,
+      "default": false,
+      "title": "Divergence Explanation Requested From Llm",
+      "type": "boolean"
+    },
+    "evidence_refs_required": {
+      "const": true,
+      "default": true,
+      "title": "Evidence Refs Required",
+      "type": "boolean"
+    },
+    "experiment_scopes_required": {
+      "const": true,
+      "default": true,
+      "title": "Experiment Scopes Required",
+      "type": "boolean"
+    },
+    "explicit_value_state_candidates_supported": {
+      "const": true,
+      "default": true,
+      "title": "Explicit Value State Candidates Supported",
+      "type": "boolean"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "intervention_order_supported": {
+      "const": true,
+      "default": true,
+      "title": "Intervention Order Supported",
+      "type": "boolean"
+    },
+    "local_context_supported": {
+      "const": true,
+      "default": true,
+      "title": "Local Context Supported",
+      "type": "boolean"
+    },
+    "output_shape": {
+      "additionalProperties": true,
+      "title": "Output Shape",
+      "type": "object"
+    },
+    "production_status": {
+      "const": "not_activated",
+      "default": "not_activated",
+      "title": "Production Status",
+      "type": "string"
+    },
+    "prompt_requirements": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prompt Requirements",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "research_grade_observation_context_extraction_contract_v1",
+      "default": "research_grade_observation_context_extraction_contract_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "shared_context_supported": {
+      "const": true,
+      "default": true,
+      "title": "Shared Context Supported",
+      "type": "boolean"
+    },
+    "validation_status": {
+      "const": "pending_smoke_validation",
+      "default": "pending_smoke_validation",
+      "title": "Validation Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "output_shape",
+    "prompt_requirements",
+    "identity"
+  ],
+  "title": "ResearchGradeObservationContextExtractionContract",
+  "type": "object"
+}

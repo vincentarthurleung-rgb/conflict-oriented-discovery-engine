@@ -1,0 +1,17 @@
+{
+  "enum": [
+    "direct_local_evidence",
+    "direct_shared_experiment_evidence",
+    "deterministic_scope_inheritance",
+    "historical_validated_context",
+    "historical_context_consolidation",
+    "parsed_payload_recovery",
+    "raw_response_recovery",
+    "document_metadata_explicit",
+    "human_annotation",
+    "unresolved_legacy",
+    "unavailable"
+  ],
+  "title": "ContextValueOrigin",
+  "type": "string"
+}

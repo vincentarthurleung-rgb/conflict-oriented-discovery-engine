@@ -1,0 +1,67 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "category_counts": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
+      },
+      "title": "Category Counts",
+      "type": "object"
+    },
+    "completeness_status": {
+      "title": "Completeness Status",
+      "type": "string"
+    },
+    "evidence_anchor_coverage": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Evidence Anchor Coverage",
+      "type": "number"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "normalization_coverage": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Normalization Coverage",
+      "type": "number"
+    },
+    "observation_identity": {
+      "title": "Observation Identity",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "context_completeness_profile_v1",
+      "default": "context_completeness_profile_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "validity_status": {
+      "title": "Validity Status",
+      "type": "string"
+    },
+    "value_state_coverage": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Value State Coverage",
+      "type": "number"
+    }
+  },
+  "required": [
+    "observation_identity",
+    "category_counts",
+    "evidence_anchor_coverage",
+    "normalization_coverage",
+    "value_state_coverage",
+    "validity_status",
+    "completeness_status",
+    "identity"
+  ],
+  "title": "ContextCompletenessProfile",
+  "type": "object"
+}

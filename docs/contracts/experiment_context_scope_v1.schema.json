@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "AssetProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "AssetProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "ambiguity_status": {
+      "enum": [
+        "unambiguous",
+        "ambiguous",
+        "unavailable"
+      ],
+      "title": "Ambiguity Status",
+      "type": "string"
+    },
+    "authority_status": {
+      "enum": [
+        "authoritative",
+        "candidate_only",
+        "blocked"
+      ],
+      "title": "Authority Status",
+      "type": "string"
+    },
+    "directly_stated_context_field_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Directly Stated Context Field Ids",
+      "type": "array"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "experiment_group_identity": {
+      "title": "Experiment Group Identity",
+      "type": "string"
+    },
+    "experiment_scope_id": {
+      "title": "Experiment Scope Id",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "linked_observation_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Linked Observation Ids",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/AssetProvenance"
+    },
+    "schema_version": {
+      "const": "experiment_context_scope_v1",
+      "default": "experiment_context_scope_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_detection_method": {
+      "title": "Scope Detection Method",
+      "type": "string"
+    },
+    "scope_detection_version": {
+      "title": "Scope Detection Version",
+      "type": "string"
+    },
+    "scope_end_anchor": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope End Anchor"
+    },
+    "scope_start_anchor": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope Start Anchor"
+    },
+    "scope_status": {
+      "enum": [
+        "validated_explicit_scope",
+        "deterministic_scope_candidate",
+        "ambiguous_scope",
+        "unavailable",
+        "invalid"
+      ],
+      "title": "Scope Status",
+      "type": "string"
+    },
+    "source_block_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Block Refs",
+      "type": "array"
+    },
+    "source_paragraph_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Paragraph Refs",
+      "type": "array"
+    },
+    "source_section_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Section Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "experiment_scope_id",
+    "document_id",
+    "experiment_group_identity",
+    "scope_detection_method",
+    "scope_detection_version",
+    "scope_status",
+    "authority_status",
+    "ambiguity_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ExperimentContextScope",
+  "type": "object"
+}

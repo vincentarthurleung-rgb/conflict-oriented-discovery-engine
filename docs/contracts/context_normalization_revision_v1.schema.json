@@ -1,0 +1,156 @@
+{
+  "$defs": {
+    "AssetProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "AssetProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "ambiguous_candidates": {
+      "items": {},
+      "title": "Ambiguous Candidates",
+      "type": "array"
+    },
+    "canonical_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Canonical Identity"
+    },
+    "canonical_value": {
+      "default": null,
+      "title": "Canonical Value"
+    },
+    "extracted_value": {
+      "default": null,
+      "title": "Extracted Value"
+    },
+    "field_id": {
+      "title": "Field Id",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "immutable": {
+      "const": true,
+      "default": true,
+      "title": "Immutable",
+      "type": "boolean"
+    },
+    "normalization_contract_identity": {
+      "title": "Normalization Contract Identity",
+      "type": "string"
+    },
+    "normalization_revision_id": {
+      "title": "Normalization Revision Id",
+      "type": "string"
+    },
+    "normalization_status": {
+      "enum": [
+        "resolved",
+        "ambiguous",
+        "unresolved",
+        "not_requested"
+      ],
+      "title": "Normalization Status",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/AssetProvenance"
+    },
+    "raw_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Text"
+    },
+    "registry_identity": {
+      "title": "Registry Identity",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "context_normalization_revision_v1",
+      "default": "context_normalization_revision_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "unresolved_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unresolved Reason"
+    },
+    "validated_context_revision_identity": {
+      "title": "Validated Context Revision Identity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "normalization_revision_id",
+    "validated_context_revision_identity",
+    "field_id",
+    "normalization_status",
+    "normalization_contract_identity",
+    "registry_identity",
+    "identity",
+    "provenance"
+  ],
+  "title": "ContextNormalizationRevision",
+  "type": "object"
+}

@@ -1,0 +1,68 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "automatic_context_retry_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Context Retry Allowed",
+      "type": "boolean"
+    },
+    "block_level_dedup_required": {
+      "const": true,
+      "default": true,
+      "title": "Block Level Dedup Required",
+      "type": "boolean"
+    },
+    "bulk_secondary_context_calls_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Bulk Secondary Context Calls Allowed",
+      "type": "boolean"
+    },
+    "cache_first_required": {
+      "const": true,
+      "default": true,
+      "title": "Cache First Required",
+      "type": "boolean"
+    },
+    "explicit_budget_authorization_required": {
+      "const": true,
+      "default": true,
+      "title": "Explicit Budget Authorization Required",
+      "type": "boolean"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "provider_call_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Provider Call Authorized",
+      "type": "boolean"
+    },
+    "raw_first_persistence_required": {
+      "const": true,
+      "default": true,
+      "title": "Raw First Persistence Required",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "context_provider_call_policy_v1",
+      "default": "context_provider_call_policy_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selective_remediation_only": {
+      "const": true,
+      "default": true,
+      "title": "Selective Remediation Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "identity"
+  ],
+  "title": "ContextProviderCallPolicy",
+  "type": "object"
+}

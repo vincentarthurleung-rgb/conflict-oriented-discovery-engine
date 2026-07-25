@@ -1,0 +1,84 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cross_document_propagation_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Cross Document Propagation Allowed",
+      "type": "boolean"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "llm_adjudication_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Llm Adjudication Allowed",
+      "type": "boolean"
+    },
+    "majority_vote_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Majority Vote Allowed",
+      "type": "boolean"
+    },
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "reject_local_conflict": {
+      "const": true,
+      "default": true,
+      "title": "Reject Local Conflict",
+      "type": "boolean"
+    },
+    "reject_scope_conflict": {
+      "const": true,
+      "default": true,
+      "title": "Reject Scope Conflict",
+      "type": "boolean"
+    },
+    "require_explicit_source_evidence": {
+      "const": true,
+      "default": true,
+      "title": "Require Explicit Source Evidence",
+      "type": "boolean"
+    },
+    "require_observation_membership": {
+      "const": true,
+      "default": true,
+      "title": "Require Observation Membership",
+      "type": "boolean"
+    },
+    "require_registry_permission": {
+      "const": true,
+      "default": true,
+      "title": "Require Registry Permission",
+      "type": "boolean"
+    },
+    "require_validated_scope": {
+      "const": true,
+      "default": true,
+      "title": "Require Validated Scope",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "context_scope_propagation_policy_v1",
+      "default": "context_scope_propagation_policy_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "policy_id",
+    "version",
+    "identity"
+  ],
+  "title": "ContextScopePropagationPolicy",
+  "type": "object"
+}

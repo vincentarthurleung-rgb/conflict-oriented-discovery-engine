@@ -1,0 +1,112 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "coverage_readiness": {
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ],
+      "title": "Coverage Readiness",
+      "type": "string"
+    },
+    "downstream_readiness": {
+      "enum": [
+        "observation_display_ready",
+        "exploratory_graph_ready",
+        "l4_entry_eligible",
+        "diagnostic_only",
+        "blocked"
+      ],
+      "title": "Downstream Readiness",
+      "type": "string"
+    },
+    "evidence_readiness": {
+      "enum": [
+        "field_level_exact",
+        "sentence_level",
+        "block_level",
+        "partial",
+        "unresolved"
+      ],
+      "title": "Evidence Readiness",
+      "type": "string"
+    },
+    "future_data_reuse_readiness": {
+      "enum": [
+        "research_grade_candidate",
+        "usable_with_limitations",
+        "challenge_record",
+        "unusable"
+      ],
+      "title": "Future Data Reuse Readiness",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "observation_identity": {
+      "title": "Observation Identity",
+      "type": "string"
+    },
+    "provenance_readiness": {
+      "enum": [
+        "end_to_end_direct",
+        "end_to_end_reconstructed",
+        "structured_artifact_only",
+        "legacy_incomplete",
+        "unavailable"
+      ],
+      "title": "Provenance Readiness",
+      "type": "string"
+    },
+    "replayability_readiness": {
+      "enum": [
+        "fully_replayable",
+        "parser_replayable",
+        "structured_artifact_replayable",
+        "partially_replayable",
+        "not_replayable"
+      ],
+      "title": "Replayability Readiness",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "context_asset_multi_axis_readiness_v1",
+      "default": "context_asset_multi_axis_readiness_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "semantic_readiness": {
+      "enum": [
+        "validated_current",
+        "validated_legacy",
+        "candidate_only",
+        "invalid",
+        "unavailable"
+      ],
+      "title": "Semantic Readiness",
+      "type": "string"
+    },
+    "threshold_contract_identity": {
+      "title": "Threshold Contract Identity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observation_identity",
+    "semantic_readiness",
+    "evidence_readiness",
+    "provenance_readiness",
+    "replayability_readiness",
+    "coverage_readiness",
+    "downstream_readiness",
+    "future_data_reuse_readiness",
+    "threshold_contract_identity",
+    "identity"
+  ],
+  "title": "ContextAssetMultiAxisReadiness",
+  "type": "object"
+}

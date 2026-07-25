@@ -1,0 +1,74 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "authority_status": {
+      "title": "Authority Status",
+      "type": "string"
+    },
+    "conflicting_value_check": {
+      "enum": [
+        "clear",
+        "conflict",
+        "not_assessed"
+      ],
+      "title": "Conflicting Value Check",
+      "type": "string"
+    },
+    "experiment_scope_identity": {
+      "title": "Experiment Scope Identity",
+      "type": "string"
+    },
+    "field_id": {
+      "title": "Field Id",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "link_type": {
+      "enum": [
+        "direct_membership",
+        "deterministic_inheritance"
+      ],
+      "title": "Link Type",
+      "type": "string"
+    },
+    "observation_identity": {
+      "title": "Observation Identity",
+      "type": "string"
+    },
+    "propagation_policy_identity": {
+      "title": "Propagation Policy Identity",
+      "type": "string"
+    },
+    "propagation_validation_status": {
+      "title": "Propagation Validation Status",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "observation_context_scope_link_v1",
+      "default": "observation_context_scope_link_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_context_field_identity": {
+      "title": "Source Context Field Identity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observation_identity",
+    "experiment_scope_identity",
+    "field_id",
+    "source_context_field_identity",
+    "link_type",
+    "propagation_policy_identity",
+    "propagation_validation_status",
+    "conflicting_value_check",
+    "authority_status",
+    "identity"
+  ],
+  "title": "ObservationContextScopeLink",
+  "type": "object"
+}
