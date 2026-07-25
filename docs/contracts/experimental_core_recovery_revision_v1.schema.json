@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "CoreProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_rule_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deterministic Rule Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "CoreProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "affected_component": {
+      "title": "Affected Component",
+      "type": "string"
+    },
+    "authority_status": {
+      "enum": [
+        "authoritative",
+        "deterministic",
+        "candidate_only",
+        "unresolved",
+        "blocked"
+      ],
+      "title": "Authority Status",
+      "type": "string"
+    },
+    "deterministic_rule_identity": {
+      "title": "Deterministic Rule Identity",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "immutable": {
+      "const": true,
+      "default": true,
+      "title": "Immutable",
+      "type": "boolean"
+    },
+    "old_status": {
+      "title": "Old Status",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/CoreProvenance"
+    },
+    "recovered_links": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Recovered Links",
+      "type": "array"
+    },
+    "recovered_records": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Recovered Records",
+      "type": "array"
+    },
+    "recovery_method": {
+      "title": "Recovery Method",
+      "type": "string"
+    },
+    "recovery_revision_id": {
+      "title": "Recovery Revision Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "experimental_core_recovery_revision_v1",
+      "default": "experimental_core_recovery_revision_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_artifact_identity": {
+      "title": "Source Artifact Identity",
+      "type": "string"
+    },
+    "source_observation_identity": {
+      "title": "Source Observation Identity",
+      "type": "string"
+    },
+    "source_stage": {
+      "title": "Source Stage",
+      "type": "string"
+    },
+    "supersedes_revision_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Revision Id"
+    },
+    "unresolved_items": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "recovery_revision_id",
+    "source_observation_identity",
+    "affected_component",
+    "source_stage",
+    "source_artifact_identity",
+    "old_status",
+    "recovery_method",
+    "deterministic_rule_identity",
+    "authority_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ExperimentalCoreRecoveryRevision",
+  "type": "object"
+}

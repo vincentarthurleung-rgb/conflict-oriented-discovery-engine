@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "CoreProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_rule_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deterministic Rule Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "CoreProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "evidence_count": {
+      "title": "Evidence Count",
+      "type": "integer"
+    },
+    "factor_count": {
+      "title": "Factor Count",
+      "type": "integer"
+    },
+    "field_availability": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Field Availability",
+      "type": "object"
+    },
+    "field_status": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Field Status",
+      "type": "object"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "intervention_count": {
+      "title": "Intervention Count",
+      "type": "integer"
+    },
+    "linkage_count": {
+      "title": "Linkage Count",
+      "type": "integer"
+    },
+    "measurement_count": {
+      "title": "Measurement Count",
+      "type": "integer"
+    },
+    "observed_result_count": {
+      "title": "Observed Result Count",
+      "type": "integer"
+    },
+    "payload_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload Hash"
+    },
+    "provenance": {
+      "$ref": "#/$defs/CoreProvenance"
+    },
+    "schema_version": {
+      "const": "experimental_core_stage_trace_v1",
+      "default": "experimental_core_stage_trace_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_artifact_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Artifact Ref"
+    },
+    "source_observation_identity": {
+      "title": "Source Observation Identity",
+      "type": "string"
+    },
+    "stage_identity": {
+      "title": "Stage Identity",
+      "type": "string"
+    },
+    "stage_name": {
+      "title": "Stage Name",
+      "type": "string"
+    },
+    "stage_number": {
+      "title": "Stage Number",
+      "type": "integer"
+    },
+    "trace_id": {
+      "title": "Trace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "trace_id",
+    "source_observation_identity",
+    "stage_number",
+    "stage_name",
+    "stage_identity",
+    "factor_count",
+    "intervention_count",
+    "measurement_count",
+    "observed_result_count",
+    "linkage_count",
+    "evidence_count",
+    "field_availability",
+    "field_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ExperimentalCoreStageTrace",
+  "type": "object"
+}

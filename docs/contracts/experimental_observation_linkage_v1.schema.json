@@ -1,0 +1,147 @@
+{
+  "$defs": {
+    "CoreProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_rule_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deterministic Rule Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "CoreProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "authority_status": {
+      "enum": [
+        "authoritative",
+        "deterministic",
+        "candidate_only",
+        "unresolved",
+        "blocked"
+      ],
+      "title": "Authority Status",
+      "type": "string"
+    },
+    "derivation_method": {
+      "title": "Derivation Method",
+      "type": "string"
+    },
+    "evidence_anchor_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Anchor Ids",
+      "type": "array"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "linkage_id": {
+      "title": "Linkage Id",
+      "type": "string"
+    },
+    "observation_revision_identity": {
+      "title": "Observation Revision Identity",
+      "type": "string"
+    },
+    "order": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Order"
+    },
+    "provenance": {
+      "$ref": "#/$defs/CoreProvenance"
+    },
+    "relation_type": {
+      "enum": [
+        "factor_applies_to_measurement",
+        "measurement_produces_result",
+        "result_compared_against_factor",
+        "result_uses_baseline",
+        "factor_precedes_factor",
+        "factor_cooccurs_with_factor",
+        "observation_belongs_to_experiment_scope"
+      ],
+      "title": "Relation Type",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "experimental_observation_linkage_v1",
+      "default": "experimental_observation_linkage_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_ref": {
+      "title": "Source Ref",
+      "type": "string"
+    },
+    "target_ref": {
+      "title": "Target Ref",
+      "type": "string"
+    },
+    "validation_status": {
+      "title": "Validation Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "linkage_id",
+    "observation_revision_identity",
+    "relation_type",
+    "source_ref",
+    "target_ref",
+    "derivation_method",
+    "validation_status",
+    "authority_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ExperimentalObservationLinkage",
+  "type": "object"
+}

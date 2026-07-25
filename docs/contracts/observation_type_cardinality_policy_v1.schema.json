@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "ObservationTypePolicyEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "comparator_ref_required_for_comparative_result": {
+          "title": "Comparator Ref Required For Comparative Result",
+          "type": "boolean"
+        },
+        "factor_requirement": {
+          "enum": [
+            "active_factor_required",
+            "group_or_comparison_required",
+            "not_required_by_type_policy",
+            "not_applicable",
+            "unresolved"
+          ],
+          "title": "Factor Requirement",
+          "type": "string"
+        },
+        "machine_reuse_eligible": {
+          "title": "Machine Reuse Eligible",
+          "type": "boolean"
+        },
+        "measurement_minimum": {
+          "title": "Measurement Minimum",
+          "type": "integer"
+        },
+        "observation_type": {
+          "enum": [
+            "interventional_experiment",
+            "observational_comparison",
+            "descriptive_measurement",
+            "non_experimental_claim",
+            "unresolved"
+          ],
+          "title": "Observation Type",
+          "type": "string"
+        },
+        "result_measurement_ref_required": {
+          "title": "Result Measurement Ref Required",
+          "type": "boolean"
+        },
+        "result_minimum": {
+          "title": "Result Minimum",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "observation_type",
+        "factor_requirement",
+        "measurement_minimum",
+        "result_minimum",
+        "result_measurement_ref_required",
+        "comparator_ref_required_for_comparative_result",
+        "machine_reuse_eligible"
+      ],
+      "title": "ObservationTypePolicyEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/ObservationTypePolicyEntry"
+      },
+      "title": "Entries",
+      "type": "array"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "immutable": {
+      "const": true,
+      "default": true,
+      "title": "Immutable",
+      "type": "boolean"
+    },
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "observation_type_cardinality_policy_v1",
+      "default": "observation_type_cardinality_policy_v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "policy_id",
+    "entries",
+    "identity"
+  ],
+  "title": "ObservationTypeCardinalityPolicy",
+  "type": "object"
+}

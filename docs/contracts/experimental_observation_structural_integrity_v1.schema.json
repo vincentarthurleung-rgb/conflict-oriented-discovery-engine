@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "CoreProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_rule_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deterministic Rule Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "CoreProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "core_evidence_complete": {
+      "title": "Core Evidence Complete",
+      "type": "boolean"
+    },
+    "dangling_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Dangling Refs",
+      "type": "array"
+    },
+    "duplicate_local_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Duplicate Local Ids",
+      "type": "array"
+    },
+    "factor_requirement_basis": {
+      "title": "Factor Requirement Basis",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "issue_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Issue Codes",
+      "type": "array"
+    },
+    "observation_type": {
+      "enum": [
+        "interventional_experiment",
+        "observational_comparison",
+        "descriptive_measurement",
+        "non_experimental_claim",
+        "unresolved"
+      ],
+      "title": "Observation Type",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/CoreProvenance"
+    },
+    "provenance_traceable": {
+      "title": "Provenance Traceable",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "experimental_observation_structural_integrity_v1",
+      "default": "experimental_observation_structural_integrity_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_observation_identity": {
+      "title": "Source Observation Identity",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "structurally_complete",
+        "structurally_complete_with_limitations",
+        "incomplete_missing_factor",
+        "incomplete_missing_measurement",
+        "incomplete_missing_result",
+        "incomplete_missing_linkage",
+        "invalid_dangling_reference",
+        "non_experimental_claim",
+        "unresolved"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "structured_observation_revision_identity": {
+      "title": "Structured Observation Revision Identity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_observation_identity",
+    "structured_observation_revision_identity",
+    "observation_type",
+    "status",
+    "factor_requirement_basis",
+    "core_evidence_complete",
+    "provenance_traceable",
+    "identity",
+    "provenance"
+  ],
+  "title": "ExperimentalObservationStructuralIntegrity",
+  "type": "object"
+}

@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "CoreProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_rule_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Deterministic Rule Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "offline": {
+          "const": true,
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "CoreProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "assay_context_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assay Context Ref"
+    },
+    "authority_status": {
+      "enum": [
+        "authoritative",
+        "deterministic",
+        "candidate_only",
+        "unresolved",
+        "blocked"
+      ],
+      "title": "Authority Status",
+      "type": "string"
+    },
+    "evidence_anchor_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Anchor Ids",
+      "type": "array"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "local_measurement_id": {
+      "title": "Local Measurement Id",
+      "type": "string"
+    },
+    "localization_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Localization Ref"
+    },
+    "measured_entity_canonical": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Measured Entity Canonical"
+    },
+    "measured_entity_extracted": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Measured Entity Extracted"
+    },
+    "measured_entity_raw": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Measured Entity Raw"
+    },
+    "measurement_id": {
+      "title": "Measurement Id",
+      "type": "string"
+    },
+    "measurement_semantic_level": {
+      "title": "Measurement Semantic Level",
+      "type": "string"
+    },
+    "method_canonical": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Canonical"
+    },
+    "method_extracted": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Extracted"
+    },
+    "method_raw": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Method Raw"
+    },
+    "normalization_status": {
+      "title": "Normalization Status",
+      "type": "string"
+    },
+    "observation_revision_identity": {
+      "title": "Observation Revision Identity",
+      "type": "string"
+    },
+    "property_or_endpoint_canonical": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Property Or Endpoint Canonical"
+    },
+    "property_or_endpoint_extracted": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Property Or Endpoint Extracted"
+    },
+    "property_or_endpoint_raw": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Property Or Endpoint Raw"
+    },
+    "provenance": {
+      "$ref": "#/$defs/CoreProvenance"
+    },
+    "sample_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sample Ref"
+    },
+    "schema_version": {
+      "const": "measurement_record_v1",
+      "default": "measurement_record_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "unit_canonical": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unit Canonical"
+    },
+    "unit_raw": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unit Raw"
+    },
+    "validation_status": {
+      "title": "Validation Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "measurement_id",
+    "observation_revision_identity",
+    "local_measurement_id",
+    "measurement_semantic_level",
+    "validation_status",
+    "normalization_status",
+    "authority_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "MeasurementRecord",
+  "type": "object"
+}
