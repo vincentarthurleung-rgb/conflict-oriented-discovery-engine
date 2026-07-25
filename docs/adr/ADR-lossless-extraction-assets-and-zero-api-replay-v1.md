@@ -21,3 +21,8 @@ Parser/schema/registry and derived-reasoning changes can preferentially replay
 offline. Historical incompleteness remains visible. The facility serves
 reproducibility, auditability, and billing safety only; it does not establish a
 public dataset release, data-paper contribution, or any conflict-science rule.
+# Historical forensic v2 note
+
+The v1 decision remains unchanged. The accepted deterministic historical
+lineage ADR adds fail-closed, one-to-one recovery and treats all v1
+re-extraction requirements as a pre-forensic upper bound.

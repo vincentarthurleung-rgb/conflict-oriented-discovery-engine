@@ -23,3 +23,9 @@ The HIF1A offline audit is at
 `runs/20260725_hif1a_extraction_asset_preservation_v1_offline`. Historical
 missing input text and raw-response bindings are reported as missing rather
 than reconstructed.
+# Historical forensic v2 note
+
+Historical lineage forensics v1 consumes these immutable v1 assets without
+modifying them. Its replayability v2 distinguishes direct and deterministic
+unique bindings from probable/unbound candidates. The 81 selective
+re-extraction records emitted here are the pre-forensic upper bound.
