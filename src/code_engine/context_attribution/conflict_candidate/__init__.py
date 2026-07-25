@@ -5,6 +5,8 @@ from .models import ConflictCandidate
 from .validation import validate_conflict_candidate
 from .contradiction import ContradictionSignal, validate_contradiction_signal
 from .migration import CandidateMigrationBinding, bind_historical_candidate
+from .contradiction_v2 import ContradictionSignalV2, build_contradiction_signal_v2, validate_contradiction_signal_v2
+from .binding_v2 import CandidateAlignmentSignalBindingV2, bind_candidate_v2
 
 __all__ = [
     "ConflictCandidate",
@@ -14,4 +16,9 @@ __all__ = [
     "validate_contradiction_signal",
     "CandidateMigrationBinding",
     "bind_historical_candidate",
+    "ContradictionSignalV2",
+    "build_contradiction_signal_v2",
+    "validate_contradiction_signal_v2",
+    "CandidateAlignmentSignalBindingV2",
+    "bind_candidate_v2",
 ]

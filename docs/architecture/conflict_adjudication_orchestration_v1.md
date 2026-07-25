@@ -1,5 +1,9 @@
 # Conflict Adjudication Orchestration v1
 
+## v2 semantic-boundary refinement
+
+Claim Alignment v2 consumes direction-neutral Proposition Core views and explicit Granularity Bridge assessments. Contradiction Signal v2 separately consumes Result views and binds the v2 alignment identity. Structural contradiction validity is not formal eligibility: historical candidates are retained under `legacy_preserved`, and no signal may bypass the alignment gate. Context Difference remains independently valid; comparability and divergence explanation remain pending L4b policy.
+
 Status: **Active staging architecture**
 
 ```text
