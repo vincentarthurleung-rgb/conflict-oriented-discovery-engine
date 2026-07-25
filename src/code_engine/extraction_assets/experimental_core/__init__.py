@@ -15,3 +15,9 @@ __all__ = [
     "ObservedResultRecord", "StructuredExperimentalObservationRevision",
     "build_policy",
 ]
+"""Immutable experimental-core assets and offline v2 repair projections."""
+
+from .comparison_semantics import classify_comparison
+from .projection import build_compatibility_sidecar, build_projection
+
+__all__ = ["build_compatibility_sidecar", "build_projection", "classify_comparison"]

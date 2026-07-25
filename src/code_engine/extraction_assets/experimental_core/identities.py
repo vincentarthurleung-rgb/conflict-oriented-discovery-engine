@@ -21,7 +21,40 @@ CONTRACT_NAMES = (
     "experimental_core_remediation",
     "experimental_core_orchestration",
     "research_grade_observation_context_extraction_v2",
+    "experimental_core_projection_v2",
+    "experimental_core_projection_compatibility",
+    "observed_result_comparison_semantics",
+    "comparative_result_link_recovery",
+    "comparative_link_candidate_edge",
+    "measurement_method_recovery",
+    "measurement_method_context_link",
+    "measurement_method_missing_reason",
+    "experimental_linkage_completeness_v2",
+    "experimental_linkage_metric_reconciliation",
+    "experimental_observation_machine_reuse_v2",
+    "experimental_core_projection_readiness",
+    "experimental_core_remediation_v2",
+    "projection_v2_downstream_compatibility",
+    "experimental_core_projection_repair_orchestration",
 )
+
+CONTRACT_IDENTITY_NAMES = {
+    "experimental_core_projection_v2": "experimental_core_projection_contract_identity_v2",
+    "experimental_core_projection_compatibility": "experimental_core_projection_compatibility_contract_identity_v1",
+    "observed_result_comparison_semantics": "observed_result_comparison_semantics_contract_identity_v1",
+    "comparative_result_link_recovery": "comparative_result_link_recovery_contract_identity_v1",
+    "comparative_link_candidate_edge": "comparative_link_candidate_edge_contract_identity_v1",
+    "measurement_method_recovery": "measurement_method_recovery_contract_identity_v1",
+    "measurement_method_context_link": "measurement_method_context_link_contract_identity_v1",
+    "measurement_method_missing_reason": "measurement_method_missing_reason_contract_identity_v1",
+    "experimental_linkage_completeness_v2": "experimental_linkage_completeness_contract_identity_v2",
+    "experimental_linkage_metric_reconciliation": "experimental_linkage_metric_reconciliation_contract_identity_v1",
+    "experimental_observation_machine_reuse_v2": "experimental_observation_machine_reuse_contract_identity_v2",
+    "experimental_core_projection_readiness": "experimental_core_projection_readiness_contract_identity_v1",
+    "experimental_core_remediation_v2": "experimental_core_remediation_contract_identity_v2",
+    "projection_v2_downstream_compatibility": "projection_v2_downstream_compatibility_contract_identity_v1",
+    "experimental_core_projection_repair_orchestration": "experimental_core_projection_repair_orchestration_contract_identity_v1",
+}
 
 
 def core_identity(kind: str, payload: dict[str, Any]) -> str:
@@ -34,9 +67,11 @@ def core_identity(kind: str, payload: dict[str, Any]) -> str:
 def contract_identity(name: str) -> dict[str, Any]:
     if name not in CONTRACT_NAMES:
         raise ValueError(f"unknown experimental-core contract: {name}")
-    suffix = "" if name.endswith("_v2") else "_v1"
+    contract_name = CONTRACT_IDENTITY_NAMES.get(
+        name, f"{name}_contract_identity{'' if name.endswith('_v2') else '_v1'}"
+    )
     canonical = {
-        "contract_name": f"{name}_contract_identity{suffix}",
+        "contract_name": contract_name,
         "identity_algorithm": "sha256_canonical_json_v1",
         "immutable_revision_policy": True,
         "historical_mutation_allowed": False,
@@ -53,4 +88,3 @@ def contract_identity(name: str) -> dict[str, Any]:
         "recomputed_sha256": digest,
         "identity_match": True,
     }
-
