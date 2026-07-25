@@ -1,0 +1,288 @@
+{
+  "$defs": {
+    "IdentityProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "IdentityProvenance",
+      "type": "object"
+    },
+    "ValueState": {
+      "enum": [
+        "present",
+        "explicitly_absent",
+        "not_mentioned",
+        "not_extracted",
+        "unknown",
+        "ambiguous",
+        "not_applicable",
+        "invalid",
+        "unavailable",
+        "legacy_null_unresolved"
+      ],
+      "title": "ValueState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "anchor_status": {
+      "enum": [
+        "exact",
+        "sentence_only",
+        "ambiguous",
+        "unresolved",
+        "not_supplied"
+      ],
+      "title": "Anchor Status",
+      "type": "string"
+    },
+    "anchor_validation_status": {
+      "title": "Anchor Validation Status",
+      "type": "string"
+    },
+    "canonical_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Canonical Identity"
+    },
+    "canonical_value": {
+      "default": null,
+      "title": "Canonical Value"
+    },
+    "character_spans": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "integer"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Character Spans",
+      "type": "array"
+    },
+    "evidence_anchor_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Anchor Ids",
+      "type": "array"
+    },
+    "extracted_value": {
+      "default": null,
+      "title": "Extracted Value"
+    },
+    "field_evidence_id": {
+      "title": "Field Evidence Id",
+      "type": "string"
+    },
+    "field_path": {
+      "title": "Field Path",
+      "type": "string"
+    },
+    "field_role": {
+      "title": "Field Role",
+      "type": "string"
+    },
+    "field_schema_status": {
+      "title": "Field Schema Status",
+      "type": "string"
+    },
+    "field_validation_status": {
+      "title": "Field Validation Status",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "migration_record": {
+      "default": false,
+      "title": "Migration Record",
+      "type": "boolean"
+    },
+    "normalization_status": {
+      "title": "Normalization Status",
+      "type": "string"
+    },
+    "observation_candidate_id": {
+      "title": "Observation Candidate Id",
+      "type": "string"
+    },
+    "paragraph_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Paragraph Id"
+    },
+    "parsed_candidate_revision_identity": {
+      "title": "Parsed Candidate Revision Identity",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/IdentityProvenance"
+    },
+    "provider_uncertainty": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Uncertainty"
+    },
+    "provider_value": {
+      "default": null,
+      "title": "Provider Value"
+    },
+    "raw_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Text"
+    },
+    "rejection_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rejection Reason Codes",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "extraction_field_evidence_v1",
+      "default": "extraction_field_evidence_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_basis": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope Basis"
+    },
+    "sentence_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sentence Id"
+    },
+    "source_block_id": {
+      "title": "Source Block Id",
+      "type": "string"
+    },
+    "source_snapshot_identity": {
+      "title": "Source Snapshot Identity",
+      "type": "string"
+    },
+    "token_spans": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "integer"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Token Spans",
+      "type": "array"
+    },
+    "unresolved_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved Reason Codes",
+      "type": "array"
+    },
+    "value_state": {
+      "$ref": "#/$defs/ValueState"
+    }
+  },
+  "required": [
+    "field_evidence_id",
+    "parsed_candidate_revision_identity",
+    "observation_candidate_id",
+    "field_path",
+    "field_role",
+    "value_state",
+    "source_snapshot_identity",
+    "source_block_id",
+    "anchor_status",
+    "anchor_validation_status",
+    "field_schema_status",
+    "field_validation_status",
+    "normalization_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ExtractionFieldEvidence",
+  "type": "object"
+}

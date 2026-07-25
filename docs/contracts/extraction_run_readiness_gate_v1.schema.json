@@ -1,0 +1,105 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cache_resume_tests_passed": {
+      "title": "Cache Resume Tests Passed",
+      "type": "boolean"
+    },
+    "call_dedup_enabled": {
+      "title": "Call Dedup Enabled",
+      "type": "boolean"
+    },
+    "coverage_ledger_available": {
+      "title": "Coverage Ledger Available",
+      "type": "boolean"
+    },
+    "field_evidence_contract_available": {
+      "title": "Field Evidence Contract Available",
+      "type": "boolean"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "parsed_revision_immutable": {
+      "title": "Parsed Revision Immutable",
+      "type": "boolean"
+    },
+    "parser_failure_paid_retry_disabled": {
+      "title": "Parser Failure Paid Retry Disabled",
+      "type": "boolean"
+    },
+    "prompt_identity_recomputable": {
+      "title": "Prompt Identity Recomputable",
+      "type": "boolean"
+    },
+    "raw_before_parser": {
+      "title": "Raw Before Parser",
+      "type": "boolean"
+    },
+    "real_smoke_evidence_available": {
+      "default": false,
+      "title": "Real Smoke Evidence Available",
+      "type": "boolean"
+    },
+    "rendered_prompt_persisted": {
+      "title": "Rendered Prompt Persisted",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "extraction_run_readiness_gate_v1",
+      "default": "extraction_run_readiness_gate_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secrets_persisted": {
+      "title": "Secrets Persisted",
+      "type": "boolean"
+    },
+    "selective_reextraction_planner_available": {
+      "title": "Selective Reextraction Planner Available",
+      "type": "boolean"
+    },
+    "source_snapshot_persisted": {
+      "title": "Source Snapshot Persisted",
+      "type": "boolean"
+    },
+    "status": {
+      "enum": [
+        "ready_for_smoke",
+        "blocked_archive_incomplete",
+        "blocked_dedup_missing",
+        "blocked_raw_persistence_missing",
+        "blocked_secret_redaction",
+        "blocked_parser_retry_risk",
+        "blocked_schema_gap",
+        "rejected"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "value_state_contract_available": {
+      "title": "Value State Contract Available",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "source_snapshot_persisted",
+    "rendered_prompt_persisted",
+    "prompt_identity_recomputable",
+    "call_dedup_enabled",
+    "raw_before_parser",
+    "parser_failure_paid_retry_disabled",
+    "parsed_revision_immutable",
+    "field_evidence_contract_available",
+    "value_state_contract_available",
+    "coverage_ledger_available",
+    "secrets_persisted",
+    "selective_reextraction_planner_available",
+    "cache_resume_tests_passed",
+    "status",
+    "identity"
+  ],
+  "title": "ExtractionRunReadinessGate",
+  "type": "object"
+}

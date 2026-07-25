@@ -1,0 +1,171 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "call_dedup_identity": {
+      "title": "Call Dedup Identity",
+      "type": "string"
+    },
+    "credential_present_boolean": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Credential Present Boolean"
+    },
+    "credential_source_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Credential Source Name"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "max_tokens": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Tokens"
+    },
+    "model_name": {
+      "title": "Model Name",
+      "type": "string"
+    },
+    "model_provider": {
+      "title": "Model Provider",
+      "type": "string"
+    },
+    "model_version_if_known": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Version If Known"
+    },
+    "non_secret_parameters": {
+      "additionalProperties": true,
+      "title": "Non Secret Parameters",
+      "type": "object"
+    },
+    "parser_contract_identity": {
+      "title": "Parser Contract Identity",
+      "type": "string"
+    },
+    "prompt_identity": {
+      "title": "Prompt Identity",
+      "type": "string"
+    },
+    "prompt_template_identity": {
+      "title": "Prompt Template Identity",
+      "type": "string"
+    },
+    "provider_call_spec_id": {
+      "title": "Provider Call Spec Id",
+      "type": "string"
+    },
+    "rendered_prompt_sha256": {
+      "title": "Rendered Prompt Sha256",
+      "type": "string"
+    },
+    "response_format": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Response Format"
+    },
+    "response_schema_identity": {
+      "title": "Response Schema Identity",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "provider_call_specification_v1",
+      "default": "provider_call_specification_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_snapshot_identity": {
+      "title": "Source Snapshot Identity",
+      "type": "string"
+    },
+    "temperature": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Temperature"
+    },
+    "tool_schema_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tool Schema Identity"
+    },
+    "top_p": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Top P"
+    }
+  },
+  "required": [
+    "provider_call_spec_id",
+    "source_snapshot_identity",
+    "prompt_identity",
+    "prompt_template_identity",
+    "rendered_prompt_sha256",
+    "response_schema_identity",
+    "model_provider",
+    "model_name",
+    "parser_contract_identity",
+    "call_dedup_identity",
+    "identity"
+  ],
+  "title": "ProviderCallSpecification",
+  "type": "object"
+}

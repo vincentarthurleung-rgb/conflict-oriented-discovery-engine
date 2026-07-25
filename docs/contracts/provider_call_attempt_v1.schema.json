@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "AttemptStatus": {
+      "enum": [
+        "prepared",
+        "cache_hit",
+        "provider_in_flight",
+        "provider_transport_failed",
+        "provider_http_failed",
+        "raw_response_received",
+        "raw_response_persistence_failed",
+        "raw_response_persisted",
+        "parse_pending",
+        "parsed",
+        "parse_failed",
+        "validation_pending",
+        "schema_validation_failed",
+        "scientific_validation_failed",
+        "completed",
+        "abandoned",
+        "superseded"
+      ],
+      "title": "AttemptStatus",
+      "type": "string"
+    },
+    "IdentityProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "IdentityProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "attempt_sequence": {
+      "title": "Attempt Sequence",
+      "type": "integer"
+    },
+    "call_dedup_identity": {
+      "title": "Call Dedup Identity",
+      "type": "string"
+    },
+    "failure_kind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Kind"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "paid_retry_automatic": {
+      "default": false,
+      "title": "Paid Retry Automatic",
+      "type": "boolean"
+    },
+    "provenance": {
+      "$ref": "#/$defs/IdentityProvenance"
+    },
+    "provider_call_attempt_id": {
+      "title": "Provider Call Attempt Id",
+      "type": "string"
+    },
+    "provider_call_spec_identity": {
+      "title": "Provider Call Spec Identity",
+      "type": "string"
+    },
+    "provider_request_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Request Id"
+    },
+    "provider_response_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Response Id"
+    },
+    "raw_response_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Response Identity"
+    },
+    "real_api_call": {
+      "default": false,
+      "title": "Real Api Call",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "provider_call_attempt_v1",
+      "default": "provider_call_attempt_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "state_history": {
+      "items": {
+        "type": "string"
+      },
+      "title": "State History",
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/AttemptStatus"
+    }
+  },
+  "required": [
+    "provider_call_attempt_id",
+    "provider_call_spec_identity",
+    "call_dedup_identity",
+    "attempt_sequence",
+    "status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ProviderCallAttempt",
+  "type": "object"
+}

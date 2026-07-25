@@ -1,0 +1,192 @@
+{
+  "$defs": {
+    "ReplayabilityStatus": {
+      "enum": [
+        "fully_replayable_zero_api",
+        "replayable_from_raw_response",
+        "replayable_from_parsed_candidate_only",
+        "partially_replayable",
+        "provider_reextraction_required",
+        "source_reingestion_required",
+        "invalid"
+      ],
+      "title": "ReplayabilityStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "anchor_revalidation_possible": {
+      "title": "Anchor Revalidation Possible",
+      "type": "boolean"
+    },
+    "anchors_available": {
+      "title": "Anchors Available",
+      "type": "boolean"
+    },
+    "assessment_id": {
+      "title": "Assessment Id",
+      "type": "string"
+    },
+    "blocking_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reasons",
+      "type": "array"
+    },
+    "derived_artifact_recompute_possible": {
+      "title": "Derived Artifact Recompute Possible",
+      "type": "boolean"
+    },
+    "field_evidence_available": {
+      "title": "Field Evidence Available",
+      "type": "boolean"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "model_metadata_available": {
+      "title": "Model Metadata Available",
+      "type": "boolean"
+    },
+    "non_secret_parameters_available": {
+      "title": "Non Secret Parameters Available",
+      "type": "boolean"
+    },
+    "normalization_replay_possible": {
+      "title": "Normalization Replay Possible",
+      "type": "boolean"
+    },
+    "parsed_candidate_available": {
+      "title": "Parsed Candidate Available",
+      "type": "boolean"
+    },
+    "parsed_candidate_revision_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parsed Candidate Revision Identity"
+    },
+    "parser_identity_available": {
+      "title": "Parser Identity Available",
+      "type": "boolean"
+    },
+    "parser_replay_possible": {
+      "title": "Parser Replay Possible",
+      "type": "boolean"
+    },
+    "prompt_available": {
+      "title": "Prompt Available",
+      "type": "boolean"
+    },
+    "prompt_identity_valid": {
+      "title": "Prompt Identity Valid",
+      "type": "boolean"
+    },
+    "provider_call_spec_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Call Spec Identity"
+    },
+    "provider_reextraction_required": {
+      "title": "Provider Reextraction Required",
+      "type": "boolean"
+    },
+    "raw_response_available": {
+      "title": "Raw Response Available",
+      "type": "boolean"
+    },
+    "raw_response_hash_valid": {
+      "title": "Raw Response Hash Valid",
+      "type": "boolean"
+    },
+    "rendered_prompt_available": {
+      "title": "Rendered Prompt Available",
+      "type": "boolean"
+    },
+    "replayability_status": {
+      "$ref": "#/$defs/ReplayabilityStatus"
+    },
+    "schema_revalidation_possible": {
+      "title": "Schema Revalidation Possible",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "extraction_replayability_assessment_v1",
+      "default": "extraction_replayability_assessment_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_hash_valid": {
+      "title": "Source Hash Valid",
+      "type": "boolean"
+    },
+    "source_reingestion_required": {
+      "title": "Source Reingestion Required",
+      "type": "boolean"
+    },
+    "source_snapshot_available": {
+      "title": "Source Snapshot Available",
+      "type": "boolean"
+    },
+    "source_snapshot_complete": {
+      "title": "Source Snapshot Complete",
+      "type": "boolean"
+    },
+    "source_snapshot_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Snapshot Identity"
+    }
+  },
+  "required": [
+    "assessment_id",
+    "source_snapshot_available",
+    "source_snapshot_complete",
+    "prompt_available",
+    "rendered_prompt_available",
+    "prompt_identity_valid",
+    "model_metadata_available",
+    "non_secret_parameters_available",
+    "raw_response_available",
+    "raw_response_hash_valid",
+    "parsed_candidate_available",
+    "parser_identity_available",
+    "field_evidence_available",
+    "anchors_available",
+    "source_hash_valid",
+    "parser_replay_possible",
+    "schema_revalidation_possible",
+    "anchor_revalidation_possible",
+    "normalization_replay_possible",
+    "derived_artifact_recompute_possible",
+    "provider_reextraction_required",
+    "source_reingestion_required",
+    "replayability_status",
+    "identity"
+  ],
+  "title": "ReplayabilityAssessment",
+  "type": "object"
+}

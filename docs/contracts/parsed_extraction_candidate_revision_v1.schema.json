@@ -1,0 +1,179 @@
+{
+  "$defs": {
+    "IdentityProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "IdentityProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "extraction_schema_name": {
+      "title": "Extraction Schema Name",
+      "type": "string"
+    },
+    "extraction_schema_version": {
+      "title": "Extraction Schema Version",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "immutable": {
+      "const": true,
+      "default": true,
+      "title": "Immutable",
+      "type": "boolean"
+    },
+    "parse_status": {
+      "enum": [
+        "parsed",
+        "parse_failed"
+      ],
+      "title": "Parse Status",
+      "type": "string"
+    },
+    "parsed_candidate_revision_id": {
+      "title": "Parsed Candidate Revision Id",
+      "type": "string"
+    },
+    "parsed_payload": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "items": {},
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Parsed Payload"
+    },
+    "parsed_payload_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Parsed Payload Sha256"
+    },
+    "parser_contract_identity": {
+      "title": "Parser Contract Identity",
+      "type": "string"
+    },
+    "parser_error_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Parser Error Codes",
+      "type": "array"
+    },
+    "parser_name": {
+      "title": "Parser Name",
+      "type": "string"
+    },
+    "parser_version": {
+      "title": "Parser Version",
+      "type": "string"
+    },
+    "parser_warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Parser Warnings",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/IdentityProvenance"
+    },
+    "provider_call_spec_identity": {
+      "title": "Provider Call Spec Identity",
+      "type": "string"
+    },
+    "raw_response_identity": {
+      "title": "Raw Response Identity",
+      "type": "string"
+    },
+    "response_fragment_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Response Fragment Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "parsed_extraction_candidate_revision_v1",
+      "default": "parsed_extraction_candidate_revision_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_snapshot_identity": {
+      "title": "Source Snapshot Identity",
+      "type": "string"
+    },
+    "supersedes_parsed_revision_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Parsed Revision Id"
+    }
+  },
+  "required": [
+    "parsed_candidate_revision_id",
+    "raw_response_identity",
+    "source_snapshot_identity",
+    "provider_call_spec_identity",
+    "parser_name",
+    "parser_version",
+    "parser_contract_identity",
+    "extraction_schema_name",
+    "extraction_schema_version",
+    "parsed_payload",
+    "parsed_payload_sha256",
+    "parse_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "ParsedExtractionCandidateRevision",
+  "type": "object"
+}

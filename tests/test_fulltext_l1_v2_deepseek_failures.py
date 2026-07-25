@@ -214,9 +214,9 @@ def test_deepseek_client_preserves_parse_cause_raw_response_and_finish_reason():
         with pytest.raises(DeepSeekExtractionError) as raised:
             DeepSeekClient("fake", max_retries=1, sleep_fn=lambda _: None).extract_json("prompt")
     error = raised.value
-    assert post.call_count == 2
-    assert error.error_kind == "malformed_json"
-    assert error.retryable is True
+    assert post.call_count == 1
+    assert error.error_kind == "output_truncated"
+    assert error.retryable is False
     assert error.raw_response == raw
     assert error.finish_reason == "length"
     assert error.cause is error.__cause__

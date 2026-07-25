@@ -35,6 +35,7 @@ from code_engine.fulltext.fulltext_l1_draft_hydration_v3 import (
 )
 from code_engine.fulltext.experimental_semantics_registry import REGISTRY_VERSION
 from code_engine.fulltext.evidence_anchors import EVIDENCE_ANCHOR_VERSION, EvidenceAnchor, generate_evidence_anchors
+from code_engine.extraction_assets.adapters import raw_response_sink
 
 V2_SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v2"
 SCHEMA_VERSION = "fulltext_l1_experimental_observation_schema_v3"
@@ -687,9 +688,19 @@ def run_fulltext_l1_v2_extraction(*, run_dir: Path, fulltext_candidates_path: Pa
                 response_received = False
                 try:
                     call = getattr(client, "extract_json_result", client.extract_json)
-                    response = call(build_prompt(paper, block), model=l1_model, temperature=0, top_p=1,
-                                    timeout=read_timeout_seconds, max_retries=max_retries,
-                                    max_tokens=effective_max_tokens, thinking_mode=configured_thinking_mode)
+                    call_kwargs = {
+                        "model": l1_model, "temperature": 0, "top_p": 1,
+                        "timeout": read_timeout_seconds, "max_retries": max_retries,
+                        "max_tokens": effective_max_tokens, "thinking_mode": configured_thinking_mode,
+                    }
+                    # The native provider transport supports this pre-parser
+                    # durability hook. Test/fake clients remain untouched.
+                    if type(client).__module__ == "code_engine.extraction.deepseek_client":
+                        call_kwargs["raw_response_sink"] = raw_response_sink(
+                            cache / "raw_provider_response_archive_v1",
+                            f"legacy_cache_key:{key}",
+                        )
+                    response = call(build_prompt(paper, block), **call_kwargs)
                     response_received = True
                     scientific_payload, transport = split_transport_metadata(response)
                     api_calls += 1; actual_llm_calls += int(transport.get("attempt_count") or 1)

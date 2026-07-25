@@ -1,0 +1,288 @@
+{
+  "$defs": {
+    "IdentityProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "IdentityProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "block_id": {
+      "title": "Block Id",
+      "type": "string"
+    },
+    "block_sequence": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Block Sequence"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "doi": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Doi"
+    },
+    "extraction_scope": {
+      "title": "Extraction Scope",
+      "type": "string"
+    },
+    "following_context_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Following Context Ref"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "input_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Input Text"
+    },
+    "input_text_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Input Text Sha256"
+    },
+    "paragraph_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Paragraph Id"
+    },
+    "pmcid": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pmcid"
+    },
+    "pmid": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pmid"
+    },
+    "preceding_context_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preceding Context Ref"
+    },
+    "provenance": {
+      "$ref": "#/$defs/IdentityProvenance"
+    },
+    "schema_version": {
+      "const": "source_snapshot_v1",
+      "default": "source_snapshot_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "section_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Section Id"
+    },
+    "sentence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sentence Ids",
+      "type": "array"
+    },
+    "source_access_metadata": {
+      "additionalProperties": true,
+      "title": "Source Access Metadata",
+      "type": "object"
+    },
+    "source_file_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source File Identity"
+    },
+    "source_file_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source File Sha256"
+    },
+    "source_kind": {
+      "title": "Source Kind",
+      "type": "string"
+    },
+    "source_manifest_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Manifest Identity"
+    },
+    "source_snapshot_completeness": {
+      "enum": [
+        "complete",
+        "incomplete"
+      ],
+      "title": "Source Snapshot Completeness",
+      "type": "string"
+    },
+    "source_snapshot_id": {
+      "title": "Source Snapshot Id",
+      "type": "string"
+    },
+    "text_truncation_status": {
+      "default": "not_truncated",
+      "title": "Text Truncation Status",
+      "type": "string"
+    },
+    "text_window_end": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Text Window End"
+    },
+    "text_window_start": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Text Window Start"
+    }
+  },
+  "required": [
+    "source_snapshot_id",
+    "document_id",
+    "source_kind",
+    "block_id",
+    "input_text",
+    "input_text_sha256",
+    "extraction_scope",
+    "source_snapshot_completeness",
+    "identity",
+    "provenance"
+  ],
+  "title": "SourceSnapshot",
+  "type": "object"
+}

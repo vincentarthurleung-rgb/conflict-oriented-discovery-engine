@@ -1,0 +1,204 @@
+{
+  "$defs": {
+    "SourcePresence": {
+      "enum": [
+        "confirmed_present",
+        "confirmed_absent",
+        "unknown",
+        "not_assessed"
+      ],
+      "title": "SourcePresence",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "anchor_supplied": {
+      "title": "Anchor Supplied",
+      "type": "boolean"
+    },
+    "anchor_validated": {
+      "title": "Anchor Validated",
+      "type": "boolean"
+    },
+    "blocking_reason_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reason Codes",
+      "type": "array"
+    },
+    "canonical_value_available": {
+      "title": "Canonical Value Available",
+      "type": "boolean"
+    },
+    "capture_profile_identity": {
+      "title": "Capture Profile Identity",
+      "type": "string"
+    },
+    "coverage_record_id": {
+      "title": "Coverage Record Id",
+      "type": "string"
+    },
+    "deterministic_validation_available": {
+      "title": "Deterministic Validation Available",
+      "type": "boolean"
+    },
+    "extracted_value_available": {
+      "title": "Extracted Value Available",
+      "type": "boolean"
+    },
+    "field_evidence_record_present": {
+      "title": "Field Evidence Record Present",
+      "type": "boolean"
+    },
+    "field_path": {
+      "title": "Field Path",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "normalization_available": {
+      "title": "Normalization Available",
+      "type": "boolean"
+    },
+    "normalization_replay_possible": {
+      "title": "Normalization Replay Possible",
+      "type": "boolean"
+    },
+    "observation_candidate_id": {
+      "title": "Observation Candidate Id",
+      "type": "string"
+    },
+    "parsed_candidate_revision_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parsed Candidate Revision Identity"
+    },
+    "parser_replay_possible": {
+      "title": "Parser Replay Possible",
+      "type": "boolean"
+    },
+    "preserved_in_parsed_payload": {
+      "title": "Preserved In Parsed Payload",
+      "type": "boolean"
+    },
+    "preserved_in_raw_response": {
+      "title": "Preserved In Raw Response",
+      "type": "boolean"
+    },
+    "provider_reextraction_required": {
+      "title": "Provider Reextraction Required",
+      "type": "boolean"
+    },
+    "raw_response_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Response Identity"
+    },
+    "raw_text_available": {
+      "title": "Raw Text Available",
+      "type": "boolean"
+    },
+    "representable_in_response_schema": {
+      "title": "Representable In Response Schema",
+      "type": "boolean"
+    },
+    "requested_by_prompt": {
+      "title": "Requested By Prompt",
+      "type": "boolean"
+    },
+    "returned_by_provider": {
+      "title": "Returned By Provider",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "extraction_coverage_ledger_v1",
+      "default": "extraction_coverage_ledger_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_presence_status": {
+      "$ref": "#/$defs/SourcePresence",
+      "default": "unknown"
+    },
+    "source_reingestion_required": {
+      "title": "Source Reingestion Required",
+      "type": "boolean"
+    },
+    "source_snapshot_identity": {
+      "title": "Source Snapshot Identity",
+      "type": "string"
+    },
+    "source_text_scope_sufficient": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Text Scope Sufficient"
+    },
+    "validation_replay_possible": {
+      "title": "Validation Replay Possible",
+      "type": "boolean"
+    },
+    "value_state_available": {
+      "title": "Value State Available",
+      "type": "boolean"
+    },
+    "zero_api_schema_migration_possible": {
+      "title": "Zero Api Schema Migration Possible",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "coverage_record_id",
+    "source_snapshot_identity",
+    "observation_candidate_id",
+    "field_path",
+    "capture_profile_identity",
+    "requested_by_prompt",
+    "representable_in_response_schema",
+    "returned_by_provider",
+    "preserved_in_raw_response",
+    "preserved_in_parsed_payload",
+    "field_evidence_record_present",
+    "anchor_supplied",
+    "anchor_validated",
+    "value_state_available",
+    "raw_text_available",
+    "extracted_value_available",
+    "canonical_value_available",
+    "deterministic_validation_available",
+    "normalization_available",
+    "parser_replay_possible",
+    "validation_replay_possible",
+    "normalization_replay_possible",
+    "zero_api_schema_migration_possible",
+    "provider_reextraction_required",
+    "source_reingestion_required",
+    "identity"
+  ],
+  "title": "ExtractionCoverageRecord",
+  "type": "object"
+}

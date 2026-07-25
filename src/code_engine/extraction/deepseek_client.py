@@ -6,7 +6,7 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, Callable, Literal, TypeAlias, cast
 
 import httpx
 
@@ -113,9 +113,11 @@ def _error_metadata(exc: Exception) -> tuple[str, bool, int | None]:
 
     if isinstance(exc, GenericJSONResponseError):
         kind = "malformed_json" if exc.error_type == "json_parse_failed" else "schema_parse_failure"
-        return kind, True, None
+        # A response was received. Retrying the provider cannot be justified by
+        # a local parser/schema failure; archive and replay it offline.
+        return kind, False, None
     if isinstance(exc, json.JSONDecodeError):
-        return "malformed_json", True, None
+        return "malformed_json", False, None
     if isinstance(exc, httpx.HTTPStatusError):
         status = exc.response.status_code
         if status == 401:
@@ -134,7 +136,7 @@ def _error_metadata(exc: Exception) -> tuple[str, bool, int | None]:
     if isinstance(exc, httpx.TransportError):
         return "transport", True, None
     if isinstance(exc, KeyError):
-        return "schema_parse_failure", True, None
+        return "schema_parse_failure", False, None
     return "unknown", False, None
 
 
@@ -154,7 +156,9 @@ class DeepSeekClient:
     def extract_json_result(self, prompt: Any, model: str = "deepseek-v4-pro",
                             temperature: float = 0.0, top_p: float = 1.0,
                             max_tokens: int | None = None, retry_on_length: bool = False,
-                            thinking_mode: ThinkingMode = "provider_default", **_: Any) -> JSONExtractionResult:
+                            thinking_mode: ThinkingMode = "provider_default",
+                            raw_response_sink: Callable[[bytes], Any] | None = None,
+                            **_: Any) -> JSONExtractionResult:
         from code_engine.extraction.l1_response import GenericJSONResponseError, parse_json_object_response
         request_payload = build_deepseek_request_payload(
             prompt, model=model, temperature=temperature, top_p=top_p,
@@ -205,6 +209,10 @@ class DeepSeekClient:
                     empty = ValueError("empty_json_content")
                     empty.error_type = "empty_json_content"  # type: ignore[attr-defined]
                     raise empty
+                if raw_response_sink is not None:
+                    # Billing boundary: exact provider content must reach durable
+                    # storage before any JSON/parser work begins.
+                    raw_response_sink(str(content).encode("utf-8"))
                 try:
                     parsed, warnings = parse_json_object_response(content)
                 except GenericJSONResponseError as exc:
@@ -243,7 +251,9 @@ class DeepSeekClient:
         if getattr(last_exception, "error_type", None) == "empty_json_content":
             error_kind, retryable = "empty_json_content", True
         if last_finish_reason == "length":
-            error_kind, retryable = ("malformed_json", True) if retry_on_length else ("output_truncated", False)
+            # The caller may deterministically split the source block, but the
+            # transport client must never turn parser truncation into a paid retry.
+            error_kind, retryable = "output_truncated", False
         error = DeepSeekExtractionError(
             "deepseek_extraction_failed", last_error, attempts,
             error_kind=error_kind, retryable=retryable,

@@ -1,0 +1,192 @@
+{
+  "$defs": {
+    "IdentityProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "IdentityProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "automatic_execution_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Execution Authorized",
+      "type": "boolean"
+    },
+    "block_id": {
+      "title": "Block Id",
+      "type": "string"
+    },
+    "budget_authorization_present": {
+      "const": false,
+      "default": false,
+      "title": "Budget Authorization Present",
+      "type": "boolean"
+    },
+    "current_parsed_revision_identities": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Current Parsed Revision Identities",
+      "type": "array"
+    },
+    "current_prompt_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Prompt Identity"
+    },
+    "current_raw_response_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Raw Response Identity"
+    },
+    "dedup_group_identity": {
+      "title": "Dedup Group Identity",
+      "type": "string"
+    },
+    "document_id": {
+      "title": "Document Id",
+      "type": "string"
+    },
+    "estimated_call_count": {
+      "default": 1,
+      "title": "Estimated Call Count",
+      "type": "integer"
+    },
+    "historical_payload_mutation_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Historical Payload Mutation Authorized",
+      "type": "boolean"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "minimal_block_set": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Minimal Block Set",
+      "type": "array"
+    },
+    "minimal_text_scope": {
+      "title": "Minimal Text Scope",
+      "type": "string"
+    },
+    "missing_capture_profile_fields": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Capture Profile Fields",
+      "type": "array"
+    },
+    "network_call_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Network Call Authorized",
+      "type": "boolean"
+    },
+    "observation_candidate_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Observation Candidate Ids",
+      "type": "array"
+    },
+    "priority": {
+      "title": "Priority",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/IdentityProvenance"
+    },
+    "provider_call_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Provider Call Authorized",
+      "type": "boolean"
+    },
+    "reextraction_reason": {
+      "title": "Reextraction Reason",
+      "type": "string"
+    },
+    "reextraction_requirement_id": {
+      "title": "Reextraction Requirement Id",
+      "type": "string"
+    },
+    "requirement_status": {
+      "title": "Requirement Status",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "selective_reextraction_requirement_v1",
+      "default": "selective_reextraction_requirement_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_snapshot_identity": {
+      "title": "Source Snapshot Identity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "reextraction_requirement_id",
+    "source_snapshot_identity",
+    "document_id",
+    "block_id",
+    "observation_candidate_ids",
+    "missing_capture_profile_fields",
+    "reextraction_reason",
+    "minimal_text_scope",
+    "minimal_block_set",
+    "dedup_group_identity",
+    "priority",
+    "requirement_status",
+    "identity",
+    "provenance"
+  ],
+  "title": "SelectiveReextractionRequirement",
+  "type": "object"
+}

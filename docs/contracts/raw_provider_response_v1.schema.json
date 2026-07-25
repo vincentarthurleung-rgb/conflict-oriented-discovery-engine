@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "IdentityProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": true,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "producer": {
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Artifact Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version"
+      ],
+      "title": "IdentityProvenance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "call_dedup_identity": {
+      "title": "Call Dedup Identity",
+      "type": "string"
+    },
+    "identity": {
+      "title": "Identity",
+      "type": "string"
+    },
+    "immutable": {
+      "const": true,
+      "default": true,
+      "title": "Immutable",
+      "type": "boolean"
+    },
+    "provenance": {
+      "$ref": "#/$defs/IdentityProvenance"
+    },
+    "provider_call_attempt_identity": {
+      "title": "Provider Call Attempt Identity",
+      "type": "string"
+    },
+    "provider_call_spec_identity": {
+      "title": "Provider Call Spec Identity",
+      "type": "string"
+    },
+    "provider_error_metadata": {
+      "additionalProperties": true,
+      "title": "Provider Error Metadata",
+      "type": "object"
+    },
+    "provider_finish_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Finish Reason"
+    },
+    "provider_request_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Request Id"
+    },
+    "provider_response_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider Response Id"
+    },
+    "raw_response_byte_count": {
+      "title": "Raw Response Byte Count",
+      "type": "integer"
+    },
+    "raw_response_content_type": {
+      "default": "application/octet-stream",
+      "title": "Raw Response Content Type",
+      "type": "string"
+    },
+    "raw_response_encoding": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Raw Response Encoding"
+    },
+    "raw_response_id": {
+      "title": "Raw Response Id",
+      "type": "string"
+    },
+    "raw_response_path": {
+      "title": "Raw Response Path",
+      "type": "string"
+    },
+    "raw_response_sha256": {
+      "title": "Raw Response Sha256",
+      "type": "string"
+    },
+    "response_complete": {
+      "title": "Response Complete",
+      "type": "boolean"
+    },
+    "response_received_at": {
+      "title": "Response Received At",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "raw_provider_response_v1",
+      "default": "raw_provider_response_v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secret_redaction_applied": {
+      "title": "Secret Redaction Applied",
+      "type": "boolean"
+    },
+    "truncation_detected": {
+      "title": "Truncation Detected",
+      "type": "boolean"
+    },
+    "usage_metadata": {
+      "additionalProperties": true,
+      "title": "Usage Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "raw_response_id",
+    "provider_call_attempt_identity",
+    "provider_call_spec_identity",
+    "call_dedup_identity",
+    "response_received_at",
+    "raw_response_path",
+    "raw_response_sha256",
+    "raw_response_byte_count",
+    "response_complete",
+    "truncation_detected",
+    "secret_redaction_applied",
+    "identity",
+    "provenance"
+  ],
+  "title": "RawProviderResponse",
+  "type": "object"
+}

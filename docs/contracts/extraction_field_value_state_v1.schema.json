@@ -1,0 +1,16 @@
+{
+  "enum": [
+    "present",
+    "explicitly_absent",
+    "not_mentioned",
+    "not_extracted",
+    "unknown",
+    "ambiguous",
+    "not_applicable",
+    "invalid",
+    "unavailable",
+    "legacy_null_unresolved"
+  ],
+  "title": "ValueState",
+  "type": "string"
+}
