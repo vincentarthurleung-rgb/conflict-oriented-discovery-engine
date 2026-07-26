@@ -36,6 +36,21 @@ CONTRACT_NAMES = (
     "experimental_core_remediation_v2",
     "projection_v2_downstream_compatibility",
     "experimental_core_projection_repair_orchestration",
+    "source_grounded_resolution_envelope",
+    "source_resolution_scope_completeness",
+    "comparator_unresolved_set_reconciliation",
+    "source_grounded_comparator_resolution",
+    "source_grounded_factor_measurement_resolution",
+    "source_grounded_measurement_method_resolution",
+    "source_resolution_provider_candidate_policy",
+    "experimental_linkage_annotation_target",
+    "measurement_method_annotation_target",
+    "experimental_annotation_pilot_selection",
+    "experimental_annotation_gold_candidate_policy",
+    "source_reingestion_requirement",
+    "experimental_core_remediation_v3",
+    "experimental_observation_machine_reuse_v3_candidate",
+    "source_grounded_resolution_orchestration",
 )
 
 CONTRACT_IDENTITY_NAMES = {
@@ -54,6 +69,21 @@ CONTRACT_IDENTITY_NAMES = {
     "experimental_core_remediation_v2": "experimental_core_remediation_contract_identity_v2",
     "projection_v2_downstream_compatibility": "projection_v2_downstream_compatibility_contract_identity_v1",
     "experimental_core_projection_repair_orchestration": "experimental_core_projection_repair_orchestration_contract_identity_v1",
+    "source_grounded_resolution_envelope": "source_grounded_resolution_envelope_contract_identity_v1",
+    "source_resolution_scope_completeness": "source_resolution_scope_completeness_contract_identity_v1",
+    "comparator_unresolved_set_reconciliation": "comparator_unresolved_set_reconciliation_contract_identity_v2",
+    "source_grounded_comparator_resolution": "source_grounded_comparator_resolution_contract_identity_v2",
+    "source_grounded_factor_measurement_resolution": "source_grounded_factor_measurement_resolution_contract_identity_v1",
+    "source_grounded_measurement_method_resolution": "source_grounded_measurement_method_resolution_contract_identity_v2",
+    "source_resolution_provider_candidate_policy": "source_resolution_provider_candidate_policy_contract_identity_v1",
+    "experimental_linkage_annotation_target": "experimental_linkage_annotation_target_contract_identity_v1",
+    "measurement_method_annotation_target": "measurement_method_annotation_target_contract_identity_v1",
+    "experimental_annotation_pilot_selection": "experimental_annotation_pilot_selection_contract_identity_v1",
+    "experimental_annotation_gold_candidate_policy": "experimental_annotation_gold_candidate_policy_contract_identity_v1",
+    "source_reingestion_requirement": "source_reingestion_requirement_contract_identity_v1",
+    "experimental_core_remediation_v3": "experimental_core_remediation_contract_identity_v3",
+    "experimental_observation_machine_reuse_v3_candidate": "experimental_observation_machine_reuse_contract_identity_v3_candidate",
+    "source_grounded_resolution_orchestration": "source_grounded_resolution_orchestration_contract_identity_v1",
 }
 
 
