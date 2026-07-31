@@ -52,12 +52,12 @@ test('owner pages render in their content region without runtime failures', asyn
   const issues = runtimeAudit(page);
   await login(page, 'owner', 'Owner');
   const pages = [
-    ['/owner', '现在需要处理'],
+    ['/owner', '今天需要处理什么'],
     ['/owner/system', 'System State'],
-    ['/owner/people', '创建账号'],
+    ['/owner/people', '用户总览'],
     ['/owner/invites', '创建角色化邀请'],
-    ['/owner/projects', 'Pilot Setup Wizard'],
-    ['/owner/assignments', 'Assignments'],
+    ['/owner/projects', '选择要运营的项目'],
+    ['/owner/assignments', '创建审核批次'],
     ['/owner/adjudication', '仲裁管理状态'],
     ['/owner/gold', 'Blocking reasons'],
     ['/owner/evaluation', '当前不能运行'],
@@ -243,33 +243,33 @@ test('owner completes access management and Pilot creation in the temporary data
   await login(page, 'owner', 'Owner');
 
   await page.goto('/owner/users');
-  await page.locator('#ou-username').fill('browser-managed');
-  await page.locator('#ou-display').fill('Browser Managed');
-  await page.locator('#ou-role').selectOption('reviewer');
-  await page.getByRole('button', { name: '创建临时密码账号' }).click();
-  await expect(page.locator('#ou-created')).toContainText('Credential shown once');
-  await page.getByRole('button', { name: 'Copy temporary password' }).click();
-  await expect(page.getByRole('button', { name: 'Copy temporary password' })).toContainText('已复制');
+  await page.getByRole('button', { name: '创建用户' }).click();
+  await page.locator('#create-user-username').fill('browser-managed');
+  await page.locator('#create-user-display').fill('Browser Managed');
+  await page.locator('#create-user-role').selectOption('reviewer');
+  await page.locator('[data-create-user-submit]').click();
+  await expect(page.locator('#create-user-result')).toContainText('临时密码仅本次显示');
   await page.reload();
   let row = page.getByRole('row').filter({ hasText: 'browser-managed' });
-  await row.getByLabel('Role for browser-managed').selectOption('pharma');
+  await row.locator('[data-open-user]').first().click();
+  await page.locator('#drawer-role').selectOption('researcher');
   page.once('dialog', dialog => dialog.accept());
-  await row.getByRole('button', { name: '修改角色并撤销旧 Session' }).click();
-  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' }).getByLabel('Role for browser-managed')).toHaveValue('pharma');
+  await page.locator('[data-change-role]').click();
+  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('科研阅读者');
 
   row = page.getByRole('row').filter({ hasText: 'browser-managed' });
+  await row.locator('[data-open-user]').first().click();
   page.once('dialog', dialog => dialog.accept());
-  await row.getByRole('button', { name: 'Disable' }).click();
-  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('disabled');
+  await page.getByRole('button', { name: '禁用账号' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('已禁用');
   row = page.getByRole('row').filter({ hasText: 'browser-managed' });
-  page.once('dialog', dialog => dialog.accept());
-  await row.getByRole('button', { name: 'Enable' }).click();
-  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('pending_first_login');
-  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' }).getByRole('button', { name: 'Disable' })).toBeVisible();
+  await row.locator('[data-open-user]').first().click();
+  await page.getByRole('button', { name: '启用账号' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'browser-managed' })).toContainText('待完成注册');
   row = page.getByRole('row').filter({ hasText: 'browser-managed' });
-  page.once('dialog', dialog => dialog.accept());
-  await row.getByRole('button', { name: 'Revoke sessions' }).click();
-  await expect(page.getByText('Sessions revoked')).toBeVisible();
+  await row.locator('[data-open-user]').first().click();
+  await page.getByRole('button', { name: '撤销所有 Session' }).click();
+  await expect(page.locator('.toast').last()).toContainText('用户账号已更新');
 
   await page.goto('/owner/invites');
   await page.locator('#oi-label').fill('Browser internal pilot');
@@ -284,15 +284,7 @@ test('owner completes access management and Pilot creation in the temporary data
   await expect(page.getByRole('row').filter({ hasText: 'Browser internal pilot' })).toContainText('disabled');
 
   await page.goto('/owner/projects');
-  await page.locator('#pilot-name').fill('Browser Created Pilot');
-  await selectOptionContaining(page, '#pilot-primary', 'primary');
-  await selectOptionContaining(page, '#pilot-secondary', 'secondary');
-  await selectOptionContaining(page, '#pilot-adjudicator', 'adjudicator');
-  await page.locator('#pilot-batch').fill('1');
-  await page.getByRole('button', { name: 'Preview assignments' }).click();
-  await expect(page.locator('#pilot-preview')).toContainText('Preview');
-  page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Create Pilot from preview' }).click();
-  await expect(page.locator('#pilot-preview')).toContainText('Pilot created');
+  await expect(page.locator('.project-card-grid')).toContainText('Operations Pilot');
+  await expect(page.getByRole('link', { name: '创建审核批次' }).first()).toBeVisible();
   expect(issues).toEqual([]);
 });

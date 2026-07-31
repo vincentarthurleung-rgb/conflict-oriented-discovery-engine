@@ -14,8 +14,8 @@ from .explorer_api import ExplorerAPI
 from code_engine.system_b.persistence.database import ATLAS_SCHEMA_HEAD, create_atlas_engine, database_url as resolve_database_url, session_factory, session_scope, sqlite_health
 from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User, UserOnboardingAcknowledgement
 from code_engine.system_b.persistence.services.adjudication_service import adjudication_detail, adjudication_queue, adjudication_summary, submit_adjudication
-from code_engine.system_b.persistence.services.admin_service import admin_change_role, admin_create_invite, admin_create_user, admin_invites, admin_overview, admin_pilot_preview, admin_projects, admin_quality, admin_set_invite_enabled, admin_update_user, admin_users
-from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items, my_review_metrics, my_review_workspace
+from code_engine.system_b.persistence.services.admin_service import admin_bulk_update_users, admin_change_role, admin_create_invite, admin_create_user, admin_invites, admin_issue_reset_link, admin_overview, admin_pilot_preview, admin_projects, admin_quality, admin_revoke_sessions, admin_set_invite_enabled, admin_update_user, admin_user_workload, admin_users
+from code_engine.system_b.persistence.services.assignment_service import assignment_batch_preview, create_assignment_batch, create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items, my_review_metrics, my_review_workspace, operations_batches
 from code_engine.system_b.persistence.services.auth_service import AuthError, authenticate_user, change_password, complete_password_reset, identity_from_user, load_identity, register_with_invite
 from code_engine.system_b.persistence.services.evaluation_service import evaluation_readiness, run_evaluation
 from code_engine.system_b.persistence.services.gold_service import freeze_gold, gold_candidates, gold_readiness, supersede_gold
@@ -279,18 +279,46 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             body=request.get_json(silent=True) or {};ident=current_identity()
             try:
                 with session_scope(db_factory) as dbs:
-                    if path=="/api/admin/overview":return jsonify(admin_overview(dbs))
-                    if path=="/api/admin/users":return jsonify(admin_users(dbs)) if request.method=="GET" else (jsonify(admin_create_user(dbs,admin=ident,username=body.get("username"),display_name=body.get("display_name"),role=body.get("role"))),201)
+                    if path=="/api/admin/overview":
+                        value=admin_overview(dbs)
+                        value["sampling_frame_status"]=api.sampling_frames()["current"]["status"]
+                        return jsonify(value)
+                    if path=="/api/admin/users":
+                        return jsonify(admin_users(dbs,q=request.args.get("q"),role=request.args.get("role"),enabled=request.args.get("enabled"),onboarding=request.args.get("onboarding"),has_tasks=request.args.get("has_tasks"),project_id=request.args.get("project_id"),never_logged_in=request.args.get("never_logged_in"),recent_days=int(request.args.get("recent_days") or 0) or None,sort_by=request.args.get("sort_by"),sort_direction=request.args.get("sort_direction"))) if request.method=="GET" else (jsonify(admin_create_user(dbs,admin=ident,username=body.get("username"),display_name=body.get("display_name"),role=body.get("role"))),201)
+                    if path=="/api/admin/users/bulk" and request.method=="POST":return jsonify(admin_bulk_update_users(dbs,admin=ident,user_ids=body.get("user_ids") or [],action=body.get("action") or ""))
+                    if path.startswith("/api/admin/users/") and path.endswith("/workload") and request.method=="GET":
+                        user_id=path.removeprefix("/api/admin/users/").removesuffix("/workload").strip("/")
+                        return jsonify(admin_user_workload(dbs,user_id=user_id))
                     if path.startswith("/api/admin/user/"):
                         tail=path.removeprefix("/api/admin/user/").strip("/");parts=tail.split("/");user_id=parts[0];action=parts[1] if len(parts)>1 else ""
+                        if len(parts)==1 and request.method=="GET":return jsonify(admin_user_workload(dbs,user_id=user_id))
                         if action=="enable" and request.method=="POST":return jsonify(admin_update_user(dbs,admin=ident,user_id=user_id,enabled=True))
                         if action=="disable" and request.method=="POST":return jsonify(admin_update_user(dbs,admin=ident,user_id=user_id,enabled=False))
                         if action=="change-role" and request.method=="POST":return jsonify(admin_change_role(dbs,admin=ident,user_id=user_id,role=body.get("role")))
+                        if action=="revoke-sessions" and request.method=="POST":return jsonify(admin_revoke_sessions(dbs,admin=ident,user_id=user_id))
+                        if action=="issue-password-reset" and request.method=="POST":return jsonify(admin_issue_reset_link(dbs,admin=ident,user_id=user_id,base_url=request.host_url.rstrip("/")))
                     if path=="/api/admin/invites":return jsonify(admin_invites(dbs)) if request.method=="GET" else (jsonify(admin_create_invite(dbs,admin=ident,label=body.get("label"),role=body.get("role") or "researcher",max_uses=int(body.get("max_uses") or 1),project_scope=body.get("project_scope") or {},notes=body.get("notes") or "",base_url=request.host_url.rstrip("/"))),201)
                     if path.startswith("/api/admin/invite/"):
                         tail=path.removeprefix("/api/admin/invite/").strip("/");parts=tail.split("/");invite_id=parts[0];action=parts[1] if len(parts)>1 else ""
                         if action in {"enable","disable"} and request.method=="POST":return jsonify(admin_set_invite_enabled(dbs,admin=ident,invite_id=invite_id,enabled=action=="enable"))
                     if path=="/api/admin/projects":return jsonify(admin_projects(dbs))
+                    if path=="/api/admin/review-items":
+                        project=dbs.get(EvaluationProject,request.args.get("project_id"))
+                        if not project or project.namespace!="pilot":return jsonify({"error":"project_not_found"}),404
+                        rows=dbs.execute(select(ReviewItem).where(ReviewItem.namespace==project.namespace).order_by(ReviewItem.case_id,ReviewItem.review_item_id)).scalars().all()
+                        return jsonify({"items":[{"review_item_id":row.review_item_id,"case_id":row.case_id,"item_type":row.item_type,"source_scope":row.source_scope or "unknown"} for row in rows],"total":len(rows)})
+                    if path=="/api/admin/batches" and request.method=="GET":return jsonify(operations_batches(dbs,pilot_only=True))
+                    if path in {"/api/admin/batches/preview","/api/admin/batches"} and request.method=="POST":
+                        frame=api.sampling_frames()["current"]
+                        expected=body.get("expected_frame_hash") or ""
+                        if expected and expected!=frame.get("frame_hash"):return jsonify({"error":"sampling_frame_changed","blockers":[{"code":"sampling_frame_changed","message":"Sampling Frame 已变化，请重新预览。"}]}),409
+                        kwargs=dict(project_id=body.get("project_id"),item_ids=body.get("item_ids") or [],primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),strategy=body.get("strategy") or "workload_balance",sampling_batch_id=body.get("sampling_batch_id"),expected_frame_hash=expected)
+                        if path.endswith("/preview"):return jsonify(assignment_batch_preview(dbs,actor_role="admin",**kwargs))
+                        result=create_assignment_batch(dbs,actor=ident,batch_name=body.get("batch_name") or "Pilot 审核批次",source=body.get("source") or "existing_review_items",**kwargs)
+                        return jsonify(result),201
+                    if path in {"/api/admin/sampling/frames","/api/admin/sampling/preview","/api/admin/sampling/create"}:
+                        status,value=api.dispatch(path,request.args.to_dict(flat=False),method=request.method,body=body)
+                        return jsonify(value),status
                     if path=="/api/admin/quality":return jsonify(admin_quality(dbs))
                     if path=="/api/admin/pilot/preview" and request.method=="POST":return jsonify(admin_pilot_preview(dbs,case_ids=body.get("case_ids"),item_types=body.get("item_types"),source_scope=body.get("source_scope"),item_ids=body.get("item_ids"),primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),batch_size=int(body.get("batch_size") or 20),random_seed=body.get("random_seed")))
                     if path=="/api/admin/pilot/create" and request.method=="POST":
@@ -309,10 +337,20 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             ident=current_identity()
             try:
                 with session_scope(db_factory) as dbs:
-                    if path in {"/api/owner/claim-evaluation/readiness","/api/owner/claim-evaluation/pilot-samples"}:
+                    if path in {"/api/owner/claim-evaluation/readiness","/api/owner/claim-evaluation/pilot-samples","/api/owner/sampling/frames","/api/owner/sampling/preview","/api/owner/sampling/create"}:
                         status,value=api.dispatch(path,request.args.to_dict(flat=False),method=request.method,body=body)
                         return jsonify(value),status
-                    if path=="/api/owner/overview":return jsonify(owner_overview(dbs))
+                    if path=="/api/owner/overview":
+                        value=owner_overview(dbs);value["operations"]=admin_overview(dbs);value["sampling_frame_status"]=api.sampling_frames()["current"]["status"]
+                        return jsonify(value)
+                    if path=="/api/owner/operations/users":
+                        value=admin_users(dbs,q=request.args.get("q"),role=request.args.get("role"),enabled=request.args.get("enabled"),onboarding=request.args.get("onboarding"),has_tasks=request.args.get("has_tasks"),project_id=request.args.get("project_id"),never_logged_in=request.args.get("never_logged_in"),recent_days=int(request.args.get("recent_days") or 0) or None,sort_by=request.args.get("sort_by"),sort_direction=request.args.get("sort_direction"))
+                        for row in value["items"]:row["admin_mutable"]=row["role"]!="owner"
+                        return jsonify(value)
+                    if path.startswith("/api/owner/operations/users/") and path.endswith("/workload") and request.method=="GET":
+                        user_id=path.removeprefix("/api/owner/operations/users/").removesuffix("/workload").strip("/")
+                        return jsonify(admin_user_workload(dbs,user_id=user_id))
+                    if path=="/api/owner/operations/users/bulk" and request.method=="POST":return jsonify(admin_bulk_update_users(dbs,admin=ident,user_ids=body.get("user_ids") or [],action=body.get("action") or ""))
                     if path=="/api/owner/users":return jsonify(owner_users(dbs,q=request.args.get("q"),role=request.args.get("role"),enabled=request.args.get("enabled"))) if request.method=="GET" else (jsonify(owner_create_user(dbs,owner=ident,username=body.get("username"),display_name=body.get("display_name"),role=body.get("role"),temporary_password=True)),201)
                     if path.startswith("/api/owner/user/"):
                         tail=path.removeprefix("/api/owner/user/").strip("/")
@@ -338,6 +376,19 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         if action=="usage":return jsonify(owner_invite_usage(dbs,invite_id=invite_id))
                     if path=="/api/owner/projects/correct-pilot-namespace" and request.method=="POST":return jsonify(correct_empty_pilot_project_namespace(dbs,owner=ident,project_id=body.get("project_id")))
                     if path=="/api/owner/projects":return jsonify(owner_projects(dbs))
+                    if path=="/api/owner/operations/review-items":
+                        project=dbs.get(EvaluationProject,request.args.get("project_id"))
+                        if not project:return jsonify({"error":"project_not_found"}),404
+                        rows=dbs.execute(select(ReviewItem).where(ReviewItem.namespace==project.namespace).order_by(ReviewItem.case_id,ReviewItem.review_item_id)).scalars().all()
+                        return jsonify({"items":[{"review_item_id":row.review_item_id,"case_id":row.case_id,"item_type":row.item_type,"source_scope":row.source_scope or "unknown"} for row in rows],"total":len(rows)})
+                    if path=="/api/owner/operations/batches" and request.method=="GET":return jsonify(operations_batches(dbs,pilot_only=False))
+                    if path in {"/api/owner/operations/batches/preview","/api/owner/operations/batches"} and request.method=="POST":
+                        frame=api.sampling_frames()["current"];expected=body.get("expected_frame_hash") or ""
+                        if expected and expected!=frame.get("frame_hash"):return jsonify({"error":"sampling_frame_changed","blockers":[{"code":"sampling_frame_changed","message":"Sampling Frame 已变化，请重新预览。"}]}),409
+                        kwargs=dict(project_id=body.get("project_id"),item_ids=body.get("item_ids") or [],primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),strategy=body.get("strategy") or "workload_balance",sampling_batch_id=body.get("sampling_batch_id"),expected_frame_hash=expected)
+                        if path.endswith("/preview"):return jsonify(assignment_batch_preview(dbs,actor_role="owner",**kwargs))
+                        result=create_assignment_batch(dbs,actor=ident,batch_name=body.get("batch_name") or "审核批次",source=body.get("source") or "existing_review_items",**kwargs)
+                        return jsonify(result),201
                     if path=="/api/owner/adjudication/status":return jsonify(owner_adjudication_status(dbs,project_id=request.args.get("project_id")))
                     if path=="/api/owner/system-state":return jsonify(owner_system_state(dbs,database_path=str(resolve_database_url(database_url or "sqlite:///data/code_atlas.db")).replace("sqlite:///",""),schema_head=sqlite_health(db_engine).get("schema_version") if db_engine else None))
                     if path=="/api/owner/pilot/preview" and request.method=="POST":
@@ -467,6 +518,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
         if isinstance(value,dict) and "_raw" in value:return Response(value["_raw"],status,mimetype=value["_content_type"].split(";")[0],headers={"Content-Disposition":f'attachment; filename="{value["_filename"]}"'})
         return jsonify(redact_debug(value)),status
     @app.route("/app.js")
+    @app.route("/admin_operations.js")
     @app.route("/style.css")
     @app.route("/design_tokens.css")
     def asset():return send_from_directory(static,request.path.lstrip("/"))
@@ -479,7 +531,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
     @app.before_request
     def workspace_rbac():
         if not require_auth:return None
-        if not authenticated() or request.path.startswith("/api/") or request.path in {"/login","/logout","/register","/app.js","/style.css","/design_tokens.css","/healthz"}:return None
+        if not authenticated() or request.path.startswith("/api/") or request.path in {"/login","/logout","/register","/app.js","/admin_operations.js","/style.css","/design_tokens.css","/healthz"}:return None
         if request.path.startswith("/adjudication"):
             return None if can_use_adjudication() else forbidden_page()
         if not page_allowed(current_role(),request.path):return forbidden_page()

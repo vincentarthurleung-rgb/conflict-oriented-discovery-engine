@@ -96,14 +96,37 @@ def owner_projects(session: Session) -> dict:
     rows = session.execute(select(EvaluationProject).order_by(EvaluationProject.created_at.desc(), EvaluationProject.name)).scalars().all()
     items = []
     for project in rows:
-        assignments = session.execute(select(func.count()).select_from(Assignment).where(Assignment.project_id == project.project_id)).scalar() or 0
+        assignment_rows = session.execute(select(Assignment).where(Assignment.project_id == project.project_id)).scalars().all()
+        assignments = len(assignment_rows)
         unique_items = session.execute(select(func.count(func.distinct(Assignment.review_item_id))).where(Assignment.project_id == project.project_id)).scalar() or 0
+        if not assignments:
+            unique_items = session.execute(select(func.count()).select_from(ReviewItem).where(ReviewItem.namespace == project.namespace)).scalar() or 0
+        available_items = session.execute(select(ReviewItem).where(ReviewItem.namespace == project.namespace)).scalars().all()
         unique_cases = session.execute(
             select(func.count(func.distinct(ReviewItem.case_id)))
             .join(Assignment, Assignment.review_item_id == ReviewItem.review_item_id)
             .where(Assignment.project_id == project.project_id)
         ).scalar() or 0
         frozen = session.execute(select(func.max(GoldRecord.gold_dataset_version)).where(GoldRecord.project_id == project.project_id, GoldRecord.status == "frozen")).scalar()
+        schema_ids = sorted({
+            schema.schema_id
+            for row in available_items
+            for schema in [schema_for_item_type(row.item_type)]
+            if schema
+        })
+        missing_schema_types = sorted({
+            row.item_type for row in available_items if not schema_for_item_type(row.item_type)
+        })
+        completed = sum(row.status in {"submitted", "completed", "skipped"} for row in assignment_rows)
+        blockers = []
+        if project.status != "active":
+            blockers.append("project_not_active")
+        if frozen:
+            blockers.append("project_gold_frozen")
+        if not available_items:
+            blockers.append("no_review_items")
+        if missing_schema_types or not schema_ids:
+            blockers.append("schema_missing")
         items.append({
             "project_id": project.project_id,
             "name": project.name,
@@ -112,9 +135,16 @@ def owner_projects(session: Session) -> dict:
             "status": project.status,
             "created_at": project.created_at.isoformat() if project.created_at else "",
             "assignment_count": assignments,
+            "completed_assignment_count": completed,
+            "completion_fraction": completed / assignments if assignments else None,
             "unique_review_items": unique_items,
+            "available_review_items": len(available_items),
             "unique_cases": unique_cases,
             "gold_dataset_version": frozen,
+            "schema_ids": schema_ids,
+            "schema_missing_item_types": missing_schema_types,
+            "can_create_batch": not blockers,
+            "batch_creation_blockers": blockers,
         })
     return {"items": items, "total": len(items)}
 

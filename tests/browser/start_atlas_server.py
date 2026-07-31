@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from code_engine.system_b.explorer.auth import hash_password
 from code_engine.system_b.explorer.explorer_server import create_app
 from code_engine.system_b.persistence.database import create_atlas_engine, session_factory, session_scope
-from code_engine.system_b.persistence.models import SystemSetting, User
+from code_engine.system_b.persistence.models import EvaluationProject, SystemSetting, User
+from code_engine.system_b.evaluation.claim_sampling import evaluation_readiness
 from code_engine.system_b.persistence.services.assignment_service import create_project_with_assignments
 from tests.atlas_db_test_utils import add_review_item, migrate
 from tests.test_system_b_knowledge_explorer import KnowledgeExplorerTests
@@ -58,7 +60,35 @@ def main() -> None:
             batch_size=1,
             item_ids=[item1.review_item_id],
         )
+        session.add(EvaluationProject(
+            name="Operations Pilot",
+            description="Empty Pilot used by the browser operations workflow.",
+            namespace="pilot",
+            status="active",
+            created_by_user_id=owner.user_id,
+            created_at=datetime(2000, 1, 1, tzinfo=timezone.utc),
+        ))
     app = create_app(root, None, require_auth=True, secret_key="browser-test-secret", allow_registration=True, database_url=url, require_database=True, testing=False)
+    sampling_rows = []
+    for index in range(12):
+        sampling_rows.append({
+            "source_unit_id": f"browser-source-unit-{index + 1}",
+            "review_item_id": item1.review_item_id if index % 2 == 0 else item2.review_item_id,
+            "case_id": f"case-{chr(97 + index % 3)}",
+            "paper_id": f"PMID-{1000 + index // 2}",
+            "source_scope": "abstract" if index % 3 == 0 else "fulltext",
+            "section_type": "abstract" if index % 3 == 0 else ("results" if index % 2 else "discussion"),
+            "domain_snapshot": {"domain_id": ["pathway_biology", "clinical_outcome", "drug_target_binding"][index % 3]},
+            "text": f"Browser source unit {index + 1} contains a testable biomedical claim.",
+            "text_hash": f"browser-text-hash-{index + 1}",
+            "predicted_claim_count": 1,
+            "schema_supported": True,
+            "case_active": True,
+        })
+    atlas_api = app.extensions["atlas_api"]
+    atlas_api.source_text_unit_frame = sampling_rows
+    atlas_api.claim_evaluation_readiness = evaluation_readiness(sampling_rows)
+    atlas_api.claim_sampling_root = Path(tmp.name) / "sampling_batches"
     app.run(host="127.0.0.1", port=int(os.environ.get("ATLAS_E2E_PORT", "18765")), debug=False, use_reloader=False)
 
 

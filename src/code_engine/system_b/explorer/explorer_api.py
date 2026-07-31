@@ -12,7 +12,7 @@ from .dossier_projection import DossierProjection
 from .graph_projection import GraphProjection
 from code_engine.system_b.annotation_schemas import schema_for_item_type
 from code_engine.system_b.annotation_schemas.render_projection import form_projection
-from code_engine.system_b.evaluation.claim_sampling import create_pilot_sample
+from code_engine.system_b.evaluation.claim_sampling import create_pilot_sample, preview_sample, sampling_frame_stats
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
 CASE_CATALOG = {
@@ -133,33 +133,72 @@ class ExplorerAPI:
         return {"cases":len(self.cases),"display_entities":len(self.entities),"display_triples":len(self.triples),"display_chains":len(self.chains),"fulltext_evidence_count":fulltext,"conflict_lens_records":len(self.conflicts),"review_queue_count":len(self.review),"warnings":warnings,"scientific_boundary":BOUNDARY}
 
     def _create_claim_pilot_sample(self, body):
-        if not self.source_text_unit_frame:
-            raise ValueError("source-unit sampling frame is unavailable")
+        preview = self._preview_claim_pilot_sample(body)
+        if preview["blocked"]:
+            raise ValueError("; ".join(row["code"] for row in preview["blockers"]))
+        identity = {
+            "schema_version": preview["schema_version"],
+            "frame_hash": preview["frame_hash"],
+            "configuration_hash": preview["configuration_hash"],
+            "random_seed": preview["random_seed"],
+        }
+        batch_id = "claim-pilot-" + hashlib.sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:20]
+        target = self.claim_sampling_root / (batch_id + ".json")
+        if target.is_file():
+            existing = _json(target)
+            existing["creation_status"] = "no_op"
+            existing["reused"] = True
+            return existing
+        payload = {
+            **preview,
+            "batch_id": batch_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "creation_status": "created",
+            "reused": False,
+            "conditional_only": True,
+            "metric_boundary": "Claim Recall/F1 remain blocked until exhaustive source-unit Gold is complete.",
+        }
+        self.claim_sampling_root.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(".json.tmp")
+        temporary.write_bytes(json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8") + b"\n")
+        temporary.replace(target)
+        return payload
+
+    def sampling_frames(self):
+        stats = sampling_frame_stats(self.source_text_unit_frame, projection=self.current_projection_registry)
+        return {"items": [stats] if stats["supported"] else [], "current": stats, "total": int(stats["supported"])}
+
+    def _preview_claim_pilot_sample(self, body):
+        if not isinstance(body, dict):
+            raise ValueError("sampling request must be an object")
         try:
-            sample_size=int(body.get("sample_size",50));random_seed=int(body.get("random_seed",20260717))
+            configuration = {
+                **body,
+                "sample_size": int(body.get("sample_size", 50)),
+                "random_seed": int(body.get("random_seed", 20260717)),
+                "min_per_domain": int(body.get("min_per_domain") or 0),
+                "min_per_case": int(body.get("min_per_case") or 0),
+                "max_per_case": int(body.get("max_per_case") or 0),
+                "max_per_paper": int(body.get("max_per_paper") or 0),
+                "min_abstract_ratio": float(body.get("min_abstract_ratio") or 0),
+                "min_fulltext_ratio": float(body.get("min_fulltext_ratio") or 0),
+            }
         except (TypeError,ValueError) as error:
-            raise ValueError("sample_size and random_seed must be integers") from error
+            raise ValueError("sampling numeric fields must be integers") from error
         def values(key):
             value=body.get(key,[])
             if value is None:return []
             if not isinstance(value,list) or any(not isinstance(item,str) for item in value):raise ValueError(key+" must be a list of strings")
             return value
-        sample=create_pilot_sample(
-            self.source_text_unit_frame,sample_size=sample_size,random_seed=random_seed,
-            domain_ids=values("domain_ids"),source_scopes=values("source_scopes"),section_types=values("section_types"),
-        )
-        identity={key:sample[key] for key in ("schema_version","frame_hash","random_seed","requested_sample_size","filters")}
-        batch_id="claim-pilot-"+hashlib.sha256(json.dumps(identity,ensure_ascii=False,sort_keys=True,separators=(",", ":")).encode("utf-8")).hexdigest()[:20]
-        target=self.claim_sampling_root/(batch_id+".json")
-        if target.is_file():
-            existing=_json(target);existing["creation_status"]="no_op";return existing
-        payload={**sample,"batch_id":batch_id,"created_at":datetime.now(timezone.utc).isoformat(),"creation_status":"created","conditional_only":True,
-                 "metric_boundary":"This batch can support conditional Claim Precision after annotation. Claim Recall/F1 remain blocked without exhaustive source-unit Gold."}
-        self.claim_sampling_root.mkdir(parents=True,exist_ok=True)
-        temporary=target.with_suffix(".json.tmp")
-        temporary.write_bytes(json.dumps(payload,ensure_ascii=False,sort_keys=True,indent=2).encode("utf-8")+b"\n")
-        temporary.replace(target)
-        return payload
+        configuration["domain_ids"] = values("domain_ids")
+        configuration["source_scopes"] = values("source_scopes")
+        configuration["section_types"] = values("section_types")
+        configuration["relation_types"] = values("relation_types")
+        configuration["confidence_bands"] = values("confidence_bands")
+        exclusions = configuration.get("exclusions")
+        if exclusions is not None and not isinstance(exclusions, dict):
+            raise ValueError("exclusions must be an object")
+        return preview_sample(self.source_text_unit_frame, configuration=configuration)
 
     def dispatch(self,path,params=None,method="GET",body=None):
         self._refresh_if_needed()
@@ -174,7 +213,11 @@ class ExplorerAPI:
             if len(parts)>1 and parts[1] in {"summary","graph-overview"}:return 200,value
             return 200,value
         if path in {"/api/claim-evaluation/readiness","/api/owner/claim-evaluation/readiness"}:return 200,self.claim_evaluation_readiness
-        if path=="/api/owner/claim-evaluation/pilot-samples" and method=="POST":
+        if path in {"/api/admin/sampling/frames","/api/owner/sampling/frames"}:return 200,self.sampling_frames()
+        if path in {"/api/admin/sampling/preview","/api/owner/sampling/preview"} and method=="POST":
+            try:return 200,self._preview_claim_pilot_sample(body or {})
+            except ValueError as error:return 400,{"error":"invalid_claim_sample_request","detail":str(error)}
+        if path in {"/api/admin/sampling/create","/api/owner/sampling/create","/api/owner/claim-evaluation/pilot-samples"} and method=="POST":
             try:return 201,self._create_claim_pilot_sample(body or {})
             except ValueError as error:return 400,{"error":"invalid_claim_sample_request","detail":str(error)}
         if path=="/api/cases":return 200,{"items":[self._case_summary(x) for x in self.cases],"total":len(self.cases)}
