@@ -15,7 +15,7 @@ from code_engine.system_b.persistence.database import ATLAS_SCHEMA_HEAD, create_
 from code_engine.system_b.persistence.models import Annotation, Assignment, EvaluationProject, ReviewItem, User, UserOnboardingAcknowledgement
 from code_engine.system_b.persistence.services.adjudication_service import adjudication_detail, adjudication_queue, adjudication_summary, submit_adjudication
 from code_engine.system_b.persistence.services.admin_service import admin_bulk_update_users, admin_change_role, admin_create_invite, admin_create_user, admin_invites, admin_issue_reset_link, admin_overview, admin_pilot_preview, admin_projects, admin_quality, admin_revoke_sessions, admin_set_invite_enabled, admin_update_user, admin_user_workload, admin_users
-from code_engine.system_b.persistence.services.assignment_service import assignment_batch_preview, create_assignment_batch, create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items, my_review_metrics, my_review_workspace, operations_batches
+from code_engine.system_b.persistence.services.assignment_service import AssignmentStrategyNotSupported, assignment_batch_preview, assignment_capability, create_assignment_batch, create_project_with_assignments, my_assignments, my_batches, my_progress, my_review_items, my_review_metrics, my_review_workspace, operations_batches
 from code_engine.system_b.persistence.services.auth_service import AuthError, authenticate_user, change_password, complete_password_reset, identity_from_user, load_identity, register_with_invite
 from code_engine.system_b.persistence.services.evaluation_service import evaluation_readiness, run_evaluation
 from code_engine.system_b.persistence.services.gold_service import freeze_gold, gold_candidates, gold_readiness, supersede_gold
@@ -302,6 +302,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         tail=path.removeprefix("/api/admin/invite/").strip("/");parts=tail.split("/");invite_id=parts[0];action=parts[1] if len(parts)>1 else ""
                         if action in {"enable","disable"} and request.method=="POST":return jsonify(admin_set_invite_enabled(dbs,admin=ident,invite_id=invite_id,enabled=action=="enable"))
                     if path=="/api/admin/projects":return jsonify(admin_projects(dbs))
+                    if path=="/api/admin/assignment-capabilities":return jsonify(assignment_capability())
                     if path=="/api/admin/review-items":
                         project=dbs.get(EvaluationProject,request.args.get("project_id"))
                         if not project or project.namespace!="pilot":return jsonify({"error":"project_not_found"}),404
@@ -312,7 +313,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         frame=api.sampling_frames()["current"]
                         expected=body.get("expected_frame_hash") or ""
                         if expected and expected!=frame.get("frame_hash"):return jsonify({"error":"sampling_frame_changed","blockers":[{"code":"sampling_frame_changed","message":"Sampling Frame 已变化，请重新预览。"}]}),409
-                        kwargs=dict(project_id=body.get("project_id"),item_ids=body.get("item_ids") or [],primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),strategy=body.get("strategy") or "workload_balance",sampling_batch_id=body.get("sampling_batch_id"),expected_frame_hash=expected)
+                        kwargs=dict(project_id=body.get("project_id"),item_ids=body.get("item_ids") or [],primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),strategy=body.get("strategy") or "fixed_review_triad",sampling_batch_id=body.get("sampling_batch_id"),expected_frame_hash=expected)
                         if path.endswith("/preview"):return jsonify(assignment_batch_preview(dbs,actor_role="admin",**kwargs))
                         result=create_assignment_batch(dbs,actor=ident,batch_name=body.get("batch_name") or "Pilot 审核批次",source=body.get("source") or "existing_review_items",**kwargs)
                         return jsonify(result),201
@@ -326,6 +327,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         if preview.get("blocked"):return jsonify({"error":"pilot_preview_blocked","preview":preview}),422
                         result=create_project_with_assignments(dbs,owner=ident,name=body.get("name") or "Admin-created Pilot",namespace="pilot",annotation_schema_version=body.get("annotation_schema_version") or "atlas_annotation_v1",primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),batch_size=int(body.get("batch_size") or 20),case_ids=body.get("case_ids"),item_ids=preview.get("selected_review_item_ids"))
                         return jsonify({"project":result,"preview":preview}),201
+            except AssignmentStrategyNotSupported as error:return jsonify({"error":error.code,"blockers":error.blockers,"assignment_capability":assignment_capability()}),422
             except PermissionError as error:return jsonify({"error":str(error)}),403
             except KeyError:return jsonify({"error":"not_found"}),404
             except (ValueError,TypeError) as error:return jsonify({"error":str(error)}),400
@@ -376,6 +378,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                         if action=="usage":return jsonify(owner_invite_usage(dbs,invite_id=invite_id))
                     if path=="/api/owner/projects/correct-pilot-namespace" and request.method=="POST":return jsonify(correct_empty_pilot_project_namespace(dbs,owner=ident,project_id=body.get("project_id")))
                     if path=="/api/owner/projects":return jsonify(owner_projects(dbs))
+                    if path=="/api/owner/operations/assignment-capabilities":return jsonify(assignment_capability())
                     if path=="/api/owner/operations/review-items":
                         project=dbs.get(EvaluationProject,request.args.get("project_id"))
                         if not project:return jsonify({"error":"project_not_found"}),404
@@ -385,7 +388,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                     if path in {"/api/owner/operations/batches/preview","/api/owner/operations/batches"} and request.method=="POST":
                         frame=api.sampling_frames()["current"];expected=body.get("expected_frame_hash") or ""
                         if expected and expected!=frame.get("frame_hash"):return jsonify({"error":"sampling_frame_changed","blockers":[{"code":"sampling_frame_changed","message":"Sampling Frame 已变化，请重新预览。"}]}),409
-                        kwargs=dict(project_id=body.get("project_id"),item_ids=body.get("item_ids") or [],primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),strategy=body.get("strategy") or "workload_balance",sampling_batch_id=body.get("sampling_batch_id"),expected_frame_hash=expected)
+                        kwargs=dict(project_id=body.get("project_id"),item_ids=body.get("item_ids") or [],primary_reviewer_user_id=body.get("primary_reviewer_user_id"),secondary_reviewer_user_id=body.get("secondary_reviewer_user_id"),adjudicator_user_id=body.get("adjudicator_user_id"),strategy=body.get("strategy") or "fixed_review_triad",sampling_batch_id=body.get("sampling_batch_id"),expected_frame_hash=expected)
                         if path.endswith("/preview"):return jsonify(assignment_batch_preview(dbs,actor_role="owner",**kwargs))
                         result=create_assignment_batch(dbs,actor=ident,batch_name=body.get("batch_name") or "审核批次",source=body.get("source") or "existing_review_items",**kwargs)
                         return jsonify(result),201
@@ -409,6 +412,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
                     if path=="/api/owner/gold/supersede" and request.method=="POST":return jsonify(supersede_gold(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version"))))
                     if path=="/api/owner/evaluation/readiness":return jsonify(evaluation_readiness(dbs,project_id=request.args.get("project_id") or body.get("project_id"),gold_version=int(request.args.get("gold_version") or body.get("gold_version") or 0) or None))
                     if path=="/api/owner/evaluation/run" and request.method=="POST":return jsonify(run_evaluation(dbs,owner=ident,project_id=body.get("project_id"),gold_version=int(body.get("gold_version")),predictions=body.get("predictions") if isinstance(body.get("predictions"),dict) else None))
+            except AssignmentStrategyNotSupported as error:return jsonify({"error":error.code,"blockers":error.blockers,"assignment_capability":assignment_capability()}),422
             except PermissionError as error:return jsonify({"error":str(error)}),403
             except KeyError as error:return jsonify({"error":str(error)}),404
             except (ValueError,TypeError) as error:return jsonify({"error":str(error)}),400

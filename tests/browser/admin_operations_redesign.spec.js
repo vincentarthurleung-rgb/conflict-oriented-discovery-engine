@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 
-const output = 'test-results/admin-operations-redesign';
+const output = 'test-results/pilot-capability-hardening';
 const password = 'correct horse battery staple';
 fs.mkdirSync(output, { recursive: true });
 
@@ -22,7 +22,7 @@ async function openAssignmentPeople(page, captureSource = false) {
   }
   await page.locator('[data-assignment-source="existing_review_items"]').click();
   await page.locator('[data-assignment-next]').click();
-  await expect(page.getByRole('heading', { name: '选择人员和分配策略' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '选择固定三人审核组' })).toBeVisible();
 }
 
 test('Admin operations overview and user management are action-oriented', async ({ page }, testInfo) => {
@@ -89,8 +89,41 @@ test('assignment wizard validates workload and creates atomically', async ({ pag
   const secondaryId = await page.locator('#assignment-secondary option').filter({ hasText: 'Secondary' }).getAttribute('value');
   const adjudicatorId = await page.locator('#assignment-adjudicator option').filter({ hasText: 'Adjudicator' }).getAttribute('value');
   await page.locator('#assignment-primary').selectOption(primaryId);
-  await page.locator('#assignment-secondary').selectOption(primaryId);
+  await page.locator('#assignment-secondary').selectOption(secondaryId);
   await page.locator('#assignment-adjudicator').selectOption(adjudicatorId);
+  await expect(page.locator('#assignment-strategy option')).toHaveCount(1);
+  await expect(page.locator('#assignment-strategy')).toHaveValue('fixed_review_triad');
+  await expect(page.locator('.workload-hint')).toContainText('当前版本不会执行跨人员自动路由');
+  await expect(page.locator('.scientific-boundary')).toContainText('尚未考虑文本长度、任务难度或个人完成速度');
+  await page.screenshot({ path: `${output}/assignment-fixed-triad.png`, fullPage: true });
+  await page.locator('.future-capabilities').getByText('为什么没有').click();
+  await expect(page.locator('.future-capabilities')).toContainText('提交这些策略会被后端拒绝');
+  await page.screenshot({ path: `${output}/unsupported-strategy-blocker.png`, fullPage: true });
+
+  const projectPayload = await page.request.get('/api/admin/projects').then(response => response.json());
+  const selectedProjectId = projectPayload.items.find(row => row.name === 'Operations Pilot').project_id;
+  const selectedItems = await page.request.get(`/api/admin/review-items?project_id=${encodeURIComponent(selectedProjectId)}`).then(response => response.json());
+  const unsupported = await page.evaluate(async ({ projectId, itemIds, primaryId, secondaryId, adjudicatorId }) => {
+    const session = await fetch('/api/session').then(r => r.json());
+    const response = await fetch('/api/admin/batches/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf_token },
+      body: JSON.stringify({
+        project_id: projectId, item_ids: itemIds,
+        primary_reviewer_user_id: primaryId, secondary_reviewer_user_id: secondaryId,
+        adjudicator_user_id: adjudicatorId, strategy: 'domain'
+      })
+    });
+    return { status: response.status, body: await response.json() };
+  }, {
+    projectId: selectedProjectId,
+    itemIds: selectedItems.items.map(row => row.review_item_id),
+    primaryId, secondaryId, adjudicatorId
+  });
+  expect(unsupported.status).toBe(422);
+  expect(unsupported.body.blockers[0].code).toBe('assignment_strategy_not_supported');
+
+  await page.locator('#assignment-secondary').selectOption(primaryId);
   await page.locator('[data-assignment-next]').click();
   await expect(page.locator('.validation-list.blockers')).toContainText('Primary 与 Secondary');
   await expect(page.locator('[data-assignment-create]')).toBeDisabled();
@@ -103,6 +136,9 @@ test('assignment wizard validates workload and creates atomically', async ({ pag
   await expect(page.locator('.operations-loading')).toHaveCount(0);
   await expect(page.locator('.preview-metrics')).toContainText('Review Items');
   await expect(page.locator('table')).toContainText('分配后待办');
+  await expect(page.locator('.scientific-boundary')).toContainText('open_assignment_count_v1');
+  await expect(page.locator('.scientific-boundary')).toContainText('不是难度加权或智能调度');
+  await page.screenshot({ path: `${output}/assignment-workload-disclaimer.png`, fullPage: true });
   await page.screenshot({ path: `${output}/assignment-workload-preview.png`, fullPage: true });
   await page.screenshot({ path: `${output}/assignment-final-preview.png`, fullPage: true });
   await expect(page.locator('[data-assignment-create]')).toBeEnabled();
@@ -116,6 +152,10 @@ test('assignment wizard validates workload and creates atomically', async ({ pag
   await page.getByRole('button', { name: '用户负载' }).click();
   await expect(page.locator('#batch-tab-body')).toContainText('Primary');
   await page.screenshot({ path: `${output}/batch-detail.png`, fullPage: true });
+  await page.getByRole('button', { name: '抽样配置' }).click();
+  await expect(page.locator('#batch-tab-body')).toContainText('实际执行模式');
+  await expect(page.locator('#batch-tab-body')).toContainText('fixed_review_triad');
+  await page.screenshot({ path: `${output}/batch-effective-mode.png`, fullPage: true });
 
   const changed = await page.evaluate(async () => {
     const session = await fetch('/api/session').then(r => r.json());
@@ -138,11 +178,36 @@ test('sampling wizard separates purpose, previews distributions, and reuses iden
   test.skip(testInfo.project.name !== 'chromium-1366', 'The sampling write workflow runs once.');
   await login(page);
   await page.goto('/admin/sampling');
-  await expect(page.getByText('预测 Claim 精度审核')).toBeVisible();
+  await expect(page.getByText('基于源文本单元聚类的预测 Claim 精度审核')).toBeVisible();
   await expect(page.getByText('Source-unit 穷尽 Gold')).toBeVisible();
-  await expect(page.getByText('不能单独评估 Recall / 完整 F1')).toBeVisible();
-  await page.screenshot({ path: `${output}/sampling-purpose.png`, fullPage: true });
+  await expect(page.getByText(/不是每条预测 Claim 独立等概率抽样/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /独立预测 Claim 随机审核/ })).toBeDisabled();
+  const frameCapabilities = await page.request.get('/api/admin/sampling/frames').then(response => response.json());
+  expect(frameCapabilities.claim_level_uniform_frame.status).toBe('unavailable');
+  expect(frameCapabilities.claim_level_uniform_frame.reason).toBe('stable_predicted_claim_frame_not_provided');
+  const unavailableCreate = await page.evaluate(async () => {
+    const session = await fetch('/api/session').then(r => r.json());
+    const response = await fetch('/api/admin/sampling/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf_token },
+      body: JSON.stringify({ purpose: 'predicted_claim_uniform', sample_size: 2, random_seed: 1 })
+    });
+    return { status: response.status, body: await response.json() };
+  });
+  expect(unavailableCreate.status).toBe(400);
+  expect(JSON.stringify(unavailableCreate.body)).toContain('claim_level_uniform_frame_unavailable');
+  await page.locator('#sampling-wizard').screenshot({ path: `${output}/sampling-cluster-purpose.png` });
+  await page.getByRole('button', { name: /独立预测 Claim 随机审核/ }).screenshot({ path: `${output}/claim-level-frame-unavailable.png` });
+  await page.locator('[data-sampling-purpose="predicted_claim_precision"]').click();
+  await page.locator('[data-sampling-next]').click();
+  await expect(page.locator('.frame-card')).toContainText('抽样单位：源文本单元');
+  await expect(page.locator('.frame-card')).toContainText('审核对象：抽中单元中的预测 Claims');
+  await expect(page.locator('.frame-card')).toContainText('不是每条预测 Claim 独立等概率抽样');
+  await page.screenshot({ path: `${output}/sampling-unit-explanation.png`, fullPage: true });
+  await page.locator('[data-sampling-back]').click();
   await page.locator('[data-sampling-purpose="source_unit_exhaustive_gold"]').click();
+  await expect(page.getByText(/selected_for_l1_extraction/)).toBeVisible();
+  await page.locator('#sampling-wizard').screenshot({ path: `${output}/source-unit-gold-boundary.png` });
   await page.locator('[data-sampling-next]').click();
   await expect(page.locator('.frame-card')).toContainText('12');
   await expect(page.locator('.frame-card')).toContainText('selected_for_l1_extraction');
@@ -196,10 +261,14 @@ test('role permissions and operations payload remain blind', async ({ browser },
     const page = await context.newPage();
     await login(page, username);
     const result = await page.evaluate(async () => {
-      const response = await fetch('/api/admin/users');
-      return { status: response.status, text: await response.text() };
+      const responses = await Promise.all([
+        fetch('/api/admin/users'),
+        fetch('/api/admin/assignment-capabilities'),
+        fetch('/api/admin/sampling/frames')
+      ]);
+      return Promise.all(responses.map(async response => ({ status: response.status, text: await response.text() })));
     });
-    expect(result.status).toBe(403);
+    expect(result.every(row => row.status === 403)).toBe(true);
     await context.close();
   }
   const adminContext = await browser.newContext();

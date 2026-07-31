@@ -12,7 +12,13 @@ from .dossier_projection import DossierProjection
 from .graph_projection import GraphProjection
 from code_engine.system_b.annotation_schemas import schema_for_item_type
 from code_engine.system_b.annotation_schemas.render_projection import form_projection
-from code_engine.system_b.evaluation.claim_sampling import create_pilot_sample, preview_sample, sampling_frame_stats
+from code_engine.system_b.evaluation.claim_sampling import (
+    claim_level_frame_capability,
+    create_pilot_sample,
+    preview_sample,
+    sampling_frame_stats,
+    sampling_purpose_capabilities,
+)
 
 BOUNDARY = "C.O.D.E. Atlas supports evidence navigation and triage. Outputs require human review and are not biological validation."
 CASE_CATALOG = {
@@ -92,6 +98,7 @@ class ExplorerAPI:
         case_metadata=_json(self.root/"case_metadata.json")
         self.case_metadata={row.get("case_id"):row for row in case_metadata.get("items",[]) if isinstance(row,dict) and row.get("case_id")}
         self.source_text_unit_frame=_jsonl(self.root/"evaluation_staging"/"source_text_unit_frame.jsonl")
+        self.predicted_claim_frame=_jsonl(self.root/"evaluation_staging"/"predicted_claim_frame.jsonl")
         self.claim_evaluation_readiness=_json(self.root/"evaluation_staging"/"claim_evaluation_readiness.json")
         self.claim_sampling_root=(self.configured_root/"sampling_batches") if self.registry_path else (self.root.parent/(self.root.name+"_sampling_batches"))
         self.cases=sorted({case for x in self.case_triples for case in [x["case_id"]]}|{case for x in self.triples for case in x.get("case_ids",[])}|set(self.case_metadata))
@@ -166,11 +173,23 @@ class ExplorerAPI:
 
     def sampling_frames(self):
         stats = sampling_frame_stats(self.source_text_unit_frame, projection=self.current_projection_registry)
-        return {"items": [stats] if stats["supported"] else [], "current": stats, "total": int(stats["supported"])}
+        return {
+            "items": [stats] if stats["supported"] else [],
+            "current": stats,
+            "total": int(stats["supported"]),
+            "purposes": sampling_purpose_capabilities(self.predicted_claim_frame),
+            "claim_level_uniform_frame": claim_level_frame_capability(self.predicted_claim_frame),
+        }
 
     def _preview_claim_pilot_sample(self, body):
         if not isinstance(body, dict):
             raise ValueError("sampling request must be an object")
+        if body.get("purpose") in {"predicted_claim_uniform", "independent_predicted_claim"}:
+            capability = claim_level_frame_capability(self.predicted_claim_frame)
+            raise ValueError(
+                "claim_level_uniform_frame_unavailable:"
+                + str(capability.get("reason") or "uniform_claim_sampler_not_implemented")
+            )
         try:
             configuration = {
                 **body,

@@ -13,7 +13,7 @@
   const operationState = {
     actor: "admin", userData: null, selectedUsers: new Set(),
     userSummaryFilter: "",
-    assignment: { step: 1, source: "existing_review_items", strategy: "workload_balance", itemIds: [], preview: null },
+    assignment: { step: 1, source: "existing_review_items", strategy: "fixed_review_triad", itemIds: [], preview: null },
     sampling: { step: 1, purpose: "", preview: null, frame: null }
   };
 
@@ -331,7 +331,7 @@
         ["existing_review_items", "使用已有 Review Items", "适合对当前项目现有审核对象继续分配。"],
         ["sampling_batch", "使用已保存的抽样批次", "保留评估目的、Frame 与分布配置。"],
         ["source_units", "从 Source-unit Frame 创建", "用于穷尽标注 Gold，可支持 Precision / Recall / F1。"],
-        ["predicted_claims", "从 Predicted Claims 创建", "用于 Claim Precision、字段正确性和 Evidence Grounding；不能单独评估 Recall / F1。"],
+        ["predicted_claims", "创建聚类式预测 Claim 审核", "先抽取 source unit，再审核其中的预测 Claims；不是每条 Claim 独立等概率抽样。"],
         ["case_manual", "按 Case 手动选择", "按研究 Case 组织任务。"],
         ["id_import", "导入 Review Item ID 列表", "仅用于已审核过的内部清单。"]
       ];
@@ -351,14 +351,14 @@
       }).join("") + '</div>' + sourceConfiguration + '<div class="scientific-boundary callout">Source-unit 抽样框为 <b>selected_for_l1_extraction</b>，不代表完整论文端到端 Recall。</div>';
     } else if (state.step === 3) {
       const options = function (rows, selected) { return '<option value="">请选择</option>' + rows.map(function (row) { return '<option value="' + esc(row.user_id) + '" ' + (selected === row.user_id ? "selected" : "") + ">" + esc(row.display_name) + " · 当前待办 " + esc(row.pending_assignment_count || 0) + "</option>"; }).join(""); };
-      content = '<h3>选择人员和分配策略</h3><div class="assignment-people-grid"><label>Primary Reviewer<select id="assignment-primary">' + options(reviewers, state.primary) + '</select></label><label>Secondary Reviewer<select id="assignment-secondary">' + options(reviewers, state.secondary) + '</select></label><label>Adjudicator<select id="assignment-adjudicator">' + options(adjudicators, state.adjudicator) + '</select></label><label>分配策略<select id="assignment-strategy"><option value="workload_balance">按当前工作量平衡（推荐）</option><option value="even">均匀分配</option><option value="fixed_pair">固定双人组</option><option value="domain">按领域分组</option><option value="case">按 Case 分组</option><option value="paper">按 Paper 分组</option></select></label></div><div class="workload-hint">预览时会重新读取每位用户的当前待办，显示新增和分配后负载。</div>';
+      content = '<h3>选择固定三人审核组</h3><div class="assignment-people-grid"><label>Primary Reviewer<select id="assignment-primary">' + options(reviewers, state.primary) + '</select></label><label>Secondary Reviewer<select id="assignment-secondary">' + options(reviewers, state.secondary) + '</select></label><label>Adjudicator<select id="assignment-adjudicator">' + options(adjudicators, state.adjudicator) + '</select></label><label>分配模式<select id="assignment-strategy"><option value="fixed_review_triad">固定三人审核组</option></select></label></div><div class="workload-hint"><strong>真实执行方式：</strong>本批次的全部任务将由同一位 Primary、同一位 Secondary 和同一位 Adjudicator 处理。当前版本不会执行跨人员自动路由。</div><div class="scientific-boundary callout"><strong>开放任务数量提示</strong><br>当前负载按开放 Assignment 数量估算，尚未考虑文本长度、任务难度或个人完成速度。</div><details class="future-capabilities"><summary>为什么没有均匀分配或按 Domain / Case / Paper 路由？</summary><div class="validation-list blockers"><div><strong>当前不支持</strong><span>需要启用多 Reviewer 候选池后才能使用。提交这些策略会被后端拒绝，不会静默降级。</span></div></div></details>';
     } else if (state.step === 4) {
       if (!state.preview) content = '<div class="operations-loading"><span class="loading-dot"></span><p>正在重新校验项目、人员、重复任务和负载…</p></div>';
       else {
         const p = state.preview;
         content = '<h3>预览与校验</h3>' + alertList(p.blockers, "blockers") + alertList(p.warnings, "warnings") +
           '<div class="preview-metrics"><div><strong>' + esc(p.review_item_count) + '</strong>Review Items</div><div><strong>' + esc(p.assignment_count) + '</strong>Assignments</div><div><strong>' + esc(p.unique_domains) + '</strong>Domains</div><div><strong>' + esc(p.unique_cases) + '</strong>Cases</div><div><strong>' + esc(p.unique_papers) + '</strong>Papers</div><div><strong>' + esc(p.duplicate_assignments) + '</strong>重复任务</div></div>' +
-          '<div class="table-scroll"><table><thead><tr><th>用户</th><th>职责</th><th>当前待办</th><th>新增</th><th>分配后待办</th></tr></thead><tbody>' + (p.workloads || []).map(function (row) { return "<tr><td>" + esc(row.display_name) + "</td><td>" + esc(row.role) + "</td><td>" + row.current_pending + "</td><td>+" + row.new_assignments + "</td><td><strong>" + row.pending_after + "</strong></td></tr>"; }).join("") + "</tbody></table></div>";
+          '<div class="table-scroll"><table><thead><tr><th>用户</th><th>职责</th><th>当前待办</th><th>本次新增</th><th>分配后待办</th></tr></thead><tbody>' + (p.workloads || []).map(function (row) { return "<tr><td>" + esc(row.display_name) + "</td><td>" + esc(row.role) + "</td><td>" + esc(row.current_open_assignments) + "</td><td>+" + esc(row.incoming_assignments) + "</td><td><strong>" + esc(row.projected_open_assignments) + "</strong></td></tr>"; }).join("") + '</tbody></table></div><p class="scientific-boundary">任务量预览模型：open_assignment_count_v1。仅按开放 Assignment 数量估算，不是难度加权或智能调度。</p>';
       }
     } else {
       const result = state.result;
@@ -370,7 +370,7 @@
     loading(host);
     const projectEndpoint = operationState.actor === "owner" ? "/api/owner/projects" : "/api/admin/projects";
     const userEndpoint = operationState.actor === "owner" ? "/api/owner/operations/users" : "/api/admin/users";
-    const values = await Promise.all([api(projectEndpoint), api(userEndpoint)]);
+    const values = await Promise.all([api(projectEndpoint), api(userEndpoint), api(prefix() + "/assignment-capabilities")]);
     const state = operationState.assignment;
     try {
       const handoff = JSON.parse(sessionStorage.getItem("atlas_assignment_handoff") || "null");
@@ -380,12 +380,13 @@
       }
     } catch (error) {}
     if (!state.projectId) state.projectId = new URLSearchParams(location.search).get("project") || "";
-    state.data = { projects: values[0].items || [], users: values[1].items || [] };
+    state.data = { projects: values[0].items || [], users: values[1].items || [], assignmentCapability: values[2] };
+    state.strategy = "fixed_review_triad";
     if (!state.projectId && state.source === "sampling_batch") {
       const recommended = state.data.projects.find(function (row) { return row.can_create_batch !== false && row.status === "active" && (operationState.actor === "owner" || row.namespace === "pilot"); });
       if (recommended) state.projectId = recommended.project_id;
     }
-    host.innerHTML = '<section class="operations-page-head"><div><span class="eyebrow">任务与批次</span><h2>创建审核批次</h2><p>按运营任务完成选择、人员平衡和创建前校验，无需理解 Assignment 数据表。</p></div><a class="button-sm" href="' + (operationState.actor === "owner" ? "/owner/" : "/admin/") + 'batches">查看全部批次</a></section><div id="assignment-wizard">' + assignmentBody(state.data) + "</div>";
+    host.innerHTML = '<section class="operations-page-head"><div><span class="eyebrow">任务与批次</span><h2>创建审核批次</h2><p>选择固定三人审核组并查看任务数量提示，无需理解 Assignment 数据表。</p></div><a class="button-sm" href="' + (operationState.actor === "owner" ? "/owner/" : "/admin/") + 'batches">查看全部批次</a></section><div id="assignment-wizard">' + assignmentBody(state.data) + "</div>";
   }
   async function assignmentNext() {
     const state = operationState.assignment;
@@ -458,12 +459,12 @@
 
   function purposeCards(selected) {
     const purposes = [
-      ["predicted_claim_precision", "预测 Claim 精度审核", "从系统已预测的 Claims 中抽样。", ["Claim Precision", "字段正确性", "Evidence Grounding", "Entity Linking Precision"], "不能单独评估 Recall / 完整 F1"],
+      ["predicted_claim_precision", "基于源文本单元聚类的预测 Claim 精度审核", "先抽取源文本单元，再审核抽中单元中的预测 Claims。", ["聚类样本内预测正确性", "字段准确性", "Evidence Grounding"], "不是每条预测 Claim 独立等概率抽样；不能评估 Recall / 完整 F1"],
       ["source_unit_exhaustive_gold", "Source-unit 穷尽 Gold", "从源文本单元中抽样，Reviewer 标注所有符合规则的 Claims。", ["Precision", "Recall", "F1"], "当前抽样框是 selected_for_l1_extraction，不代表全文端到端 Recall"]
     ];
     return '<div class="purpose-grid">' + purposes.map(function (row) {
       return '<button type="button" class="purpose-card ' + (selected === row[0] ? "selected" : "") + '" data-sampling-purpose="' + row[0] + '"><span class="purpose-icon">' + (row[0] === "predicted_claim_precision" ? "P" : "G") + '</span><strong>' + row[1] + '</strong><p>' + row[2] + '</p><div class="can-measure"><b>可以评估</b>' + row[3].map(function (item) { return "<span>✓ " + item + "</span>"; }).join("") + '</div><div class="cannot-measure">' + row[4] + "</div></button>";
-    }).join("") + "</div>";
+    }).join("") + '<button type="button" class="purpose-card unavailable" disabled aria-disabled="true"><span class="purpose-icon">C</span><strong>独立预测 Claim 随机审核</strong><p>独立 Claim 等概率抽样尚不可用。当前 projection 未提供完整、稳定的 claim-level frame。</p><div class="cannot-measure">不可创建；请使用基于 source-unit 的聚类审核。</div></button></div>';
   }
   function distributionTable(population, sample) {
     const keys = Array.from(new Set(Object.keys(population || {}).concat(Object.keys(sample || {})))).sort();
@@ -477,7 +478,7 @@
     let content = "";
     if (state.step === 1) content = '<h3>选择评估目的</h3><p>先明确要回答的科学评估问题，再配置抽样参数。</p>' + purposeCards(state.purpose);
     if (state.step === 2) content = '<h3>选择 Sampling Frame</h3>' + (frame.supported ?
-      '<button type="button" class="frame-card selected"><header><span class="status-pill status-active">' + esc(frame.status) + '</span><strong>' + (state.purpose === "predicted_claim_precision" ? "预测 Claim 的 Source-unit Cluster Frame" : "Source-unit Exhaustive Gold Frame") + '</strong></header><div class="preview-metrics"><div><strong>' + frame.source_unit_count + '</strong>Source Units</div><div><strong>' + frame.predicted_claim_count + '</strong>Predicted Claims</div><div><strong>' + frame.paper_count + '</strong>Papers</div><div><strong>' + frame.case_count + '</strong>Cases</div><div><strong>' + frame.domain_count + '</strong>Domains</div><div><strong>' + esc((frame.source_scope_distribution || {}).abstract || 0) + '</strong>Abstract</div><div><strong>' + esc((frame.source_scope_distribution || {}).fulltext || 0) + '</strong>Fulltext</div></div><p>Section Types：' + esc(Object.entries(frame.section_type_distribution || {}).map(function (row) { return row[0] + " " + row[1]; }).join("、") || "未提供") + '</p><p>' + esc(frame.notice) + '</p><details><summary>高级信息</summary><dl><div><dt>Frame Version</dt><dd>' + esc(frame.frame_version) + '</dd></div><div><dt>Frame Hash</dt><dd><code>' + esc(frame.frame_hash) + '</code></dd></div><div><dt>Projection ID</dt><dd>' + esc(frame.projection_id || "未提供") + '</dd></div><div><dt>Adapter Version</dt><dd>' + esc(frame.adapter_version || "未提供") + '</dd></div><div><dt>Artifact Hash</dt><dd><code>' + esc(frame.artifact_hash || "未提供") + '</code></dd></div><div><dt>Generated from</dt><dd>' + esc(frame.generated_from || "current projection") + "</dd></div></dl></details></button>" :
+      '<button type="button" class="frame-card selected"><header><span class="status-pill status-active">' + esc(frame.status) + '</span><strong>' + (state.purpose === "predicted_claim_precision" ? "Source-unit Clustered Predicted-Claim Frame" : "Source-unit Exhaustive Gold Frame") + '</strong></header><div class="preview-metrics"><div><strong>' + frame.source_unit_count + '</strong>Source Units</div><div><strong>' + frame.predicted_claim_count + '</strong>Predicted Claims</div><div><strong>' + frame.paper_count + '</strong>Papers</div><div><strong>' + frame.case_count + '</strong>Cases</div><div><strong>' + frame.domain_count + '</strong>Domains</div><div><strong>' + esc((frame.source_scope_distribution || {}).abstract || 0) + '</strong>Abstract</div><div><strong>' + esc((frame.source_scope_distribution || {}).fulltext || 0) + '</strong>Fulltext</div></div><p>Section Types：' + esc(Object.entries(frame.section_type_distribution || {}).map(function (row) { return row[0] + " " + row[1]; }).join("、") || "未提供") + '</p>' + (state.purpose === "predicted_claim_precision" ? '<div class="scientific-boundary callout"><strong>抽样单位：源文本单元</strong><br>审核对象：抽中单元中的预测 Claims。不同 Claim 的纳入概率受其所在 source unit 影响；该设计不是每条预测 Claim 独立等概率抽样。当前未提供 claim-level inclusion probability。</div>' : '') + '<p>' + esc(frame.notice) + '</p><details><summary>高级信息</summary><dl><div><dt>Frame Version</dt><dd>' + esc(frame.frame_version) + '</dd></div><div><dt>Frame Hash</dt><dd><code>' + esc(frame.frame_hash) + '</code></dd></div><div><dt>Projection ID</dt><dd>' + esc(frame.projection_id || "未提供") + '</dd></div><div><dt>Adapter Version</dt><dd>' + esc(frame.adapter_version || "未提供") + '</dd></div><div><dt>Artifact Hash</dt><dd><code>' + esc(frame.artifact_hash || "未提供") + '</code></dd></div><div><dt>Generated from</dt><dd>' + esc(frame.generated_from || "current projection") + "</dd></div></dl></details></button>" :
       '<div class="readiness-hero is-blocked"><h3>Sampling Frame 不可用</h3><p>当前投影没有可用源文本单元，不能把 0 显示为评估指标，也不能创建 F1 Pilot。</p><button class="button-sm" type="button" onclick="route()">重试</button></div>');
     if (state.step === 3) content = '<h3>选择分层与覆盖规则</h3><div class="preset-row"><button class="preset selected" data-sampling-preset="proportional" type="button">按总体比例</button><button class="preset" data-sampling-preset="domain" type="button">领域均衡</button><button class="preset" data-sampling-preset="case" type="button">Case 最低覆盖</button><button class="preset" data-sampling-preset="scope" type="button">Abstract / Fulltext 分层</button><button class="preset" data-sampling-preset="custom" type="button">自定义</button></div><div class="sampling-form-grid"><label>每个 Domain 最少<input id="sample-min-domain" type="number" min="0" value="' + esc(state.minDomain || 0) + '"><small>避免领域完全缺席。</small></label><label>每个 Case 最少<input id="sample-min-case" type="number" min="0" value="' + esc(state.minCase || 0) + '"><small>保证关键 Case 的最低覆盖。</small></label><label>每个 Case 最多<input id="sample-case-cap" type="number" min="0" value="' + esc(state.caseCap || 0) + '"><small>0 表示不设上限。</small></label><label>每篇 Paper 最多<input id="sample-paper-cap" type="number" min="0" value="' + esc(state.paperCap || 3) + '"><small>防止单篇论文支配样本。</small></label><label>Abstract 最低比例<input id="sample-abstract-ratio" type="number" min="0" max="100" value="' + esc(state.abstractRatio || 0) + '"><small>百分比，无法满足时阻断。</small></label><label>Fulltext 最低比例<input id="sample-fulltext-ratio" type="number" min="0" max="100" value="' + esc(state.fulltextRatio || 0) + '"><small>百分比，无法满足时阻断。</small></label></div><details><summary>高级分层变量</summary><p>当前后端还支持 Source Scope、Section Type、Relation Type 与 Confidence Band 过滤；未选择时保持总体范围。</p></details>';
     if (state.step === 4) content = '<h3>样本量、排除与随机种子</h3><div class="sampling-form-grid"><label>总样本量<input id="sample-size" type="number" min="1" value="' + esc(state.sampleSize || Math.min(50, frame.source_unit_count || 50)) + '"></label><label>随机种子<input id="sample-seed" type="number" value="' + esc(state.seed || 20260731) + '"></label></div><fieldset class="exclusion-grid"><legend>排除项</legend><label><input type="checkbox" data-exclusion="exclude_annotated" checked> 已标注单元</label><label><input type="checkbox" data-exclusion="exclude_duplicate_source_unit" checked> 重复 source_unit_id</label><label><input type="checkbox" data-exclusion="exclude_duplicate_text_hash" checked> 重复 text_hash</label><label><input type="checkbox" data-exclusion="exclude_no_text" checked> 无文本</label><label><input type="checkbox" data-exclusion="exclude_unsupported_schema" checked> unsupported schema</label><label><input type="checkbox" data-exclusion="exclude_inactive_case" checked> inactive Case</label><label><input type="checkbox" data-exclusion="exclude_legacy_invalid" checked> legacy-invalid source</label></fieldset><div class="seed-note"><strong>为什么保留 Seed？</strong><p>相同 Sampling Frame、配置和 Seed 会生成相同结果；Frame Hash 改变时，即使 Seed 相同，结果也可能变化。</p></div>';
@@ -491,6 +492,9 @@
     if (state.step === 6) {
       const result = state.result;
       content = result ? '<div class="creation-result"><span class="success-mark">✓</span><h3>' + (result.reused ? "已复用相同抽样批次" : "抽样批次已创建") + '</h3><p>' + (result.purpose === "predicted_claim_precision" ? "预测 Claim 精度审核" : "Source-unit 穷尽 Gold") + ' · ' + esc(result.creation_status) + '</p><div class="preview-metrics"><div><strong>' + result.sample_size + '</strong>样本量</div><div><strong>' + result.coverage.domains + '</strong>Domains</div><div><strong>' + result.coverage.cases + '</strong>Cases</div><div><strong>' + result.coverage.papers + '</strong>Papers</div></div><div class="metric-readiness"><p>Claim Precision <span class="status">' + esc(result.metric_readiness.claim_precision.status) + ' · null</span></p><p>Claim Recall <span class="status status-needs_exhaustive_gold">' + esc(result.metric_readiness.claim_recall.status) + ' · null</span></p><p>Claim F1 <span class="status status-needs_exhaustive_gold">' + esc(result.metric_readiness.claim_f1.status) + ' · null</span></p></div><details><summary>高级信息</summary><p>Sampling Batch：<code>' + esc(result.batch_id) + '</code></p><p>Sampling unit：' + esc(result.sampling_unit) + '</p><p>Seed：' + result.random_seed + '</p><p>Frame Hash：<code>' + esc(result.frame_hash) + '</code></p><p>Configuration Hash：<code>' + esc(result.configuration_hash) + '</code></p></details><div class="toolbar"><button class="button" type="button" data-sampling-to-assignment>立即分配审核人员</button><button class="button-sm" data-copy-text="' + esc("抽样批次 " + result.batch_id + "，样本 " + result.sample_size) + '">复制批次摘要</button></div></div>' : '<div class="error">创建结果不可用。</div>';
+    }
+    if (state.result && state.result.purpose === "predicted_claim_precision") {
+      content = content.replace("预测 Claim 精度审核", "基于源文本单元聚类的预测 Claim 精度审核");
     }
     return '<section class="wizard-card sampling-wizard">' + wizardSteps(state.step, ["评估目的", "Sampling Frame", "分层覆盖", "样本量与 Seed", "预览", "创建 Pilot"]) + '<div class="wizard-content">' + content + '</div><p class="draft-note">配置仅保存在当前浏览器会话；尚未创建前不会写数据库。</p><footer class="wizard-footer">' + (state.step > 1 && state.step < 6 ? '<button class="button-sm" type="button" data-sampling-back>上一步</button>' : "<span></span>") + (state.step < 5 ? '<button class="button" type="button" data-sampling-next ' + ((state.step === 1 && !state.purpose) || (state.step === 2 && !frame.supported) ? "disabled" : "") + '>继续</button>' : state.step === 5 ? '<button class="button" type="button" data-sampling-create ' + ((!state.preview || state.preview.blocked) ? "disabled" : "") + '>确认创建抽样批次</button>' : "") + "</footer></section>";
   }
@@ -550,7 +554,7 @@
   function samplingToAssignment() {
     const sample = operationState.sampling.result;
     operationState.assignment = {
-      step: 1, source: "sampling_batch", strategy: "workload_balance",
+      step: 1, source: "sampling_batch", strategy: "fixed_review_triad",
       itemIds: (sample.units || []).map(function (row) { return row.review_item_id; }),
       samplingBatchId: sample.batch_id, expectedFrameHash: sample.frame_hash, preview: null,
       samplingPurpose: sample.purpose, samplingSchema: sample.schema_version,
@@ -586,7 +590,7 @@
     return rows.length ? '<div class="distribution-chips">' + rows.map(function (row) { return '<span><b>' + esc(row[1]) + '</b>' + esc(row[0]) + "</span>"; }).join("") + "</div>" : '<p class="muted">' + esc(empty || "暂无数据") + "</p>";
   }
   function batchTabBody(row, tab) {
-    if (tab === "sampling") return '<h3>抽样配置</h3><dl class="result-summary"><div><dt>来源</dt><dd>' + esc(row.source) + '</dd></div><div><dt>策略</dt><dd>' + esc((row.config || {}).strategy || "fixed_pair") + '</dd></div><div><dt>Sampling Batch</dt><dd>' + esc((row.config || {}).sampling_batch_id ? "已关联" : "未关联") + '</dd></div></dl><details><summary>高级创建配置</summary><pre>' + esc(JSON.stringify(row.config || {}, null, 2)) + "</pre></details>";
+    if (tab === "sampling") return '<h3>抽样与分配配置</h3><dl class="result-summary"><div><dt>来源</dt><dd>' + esc(row.source) + '</dd></div><div><dt>实际执行模式</dt><dd>固定三人审核组</dd></div><div><dt>历史记录策略</dt><dd>' + esc(row.recorded_strategy || "未记录") + ' · ' + esc(row.strategy_execution_status || "legacy_fixed_triad") + '</dd></div><div><dt>Sampling Batch</dt><dd>' + esc((row.config || {}).sampling_batch_id ? "已关联" : "未关联") + '</dd></div></dl><p class="scientific-boundary">effective_assignment_mode = fixed_review_triad。历史 strategy 仅按原值展示，不代表曾执行多 Reviewer 池路由。</p><details><summary>高级创建配置</summary><pre>' + esc(JSON.stringify(row.config || {}, null, 2)) + "</pre></details>";
     if (tab === "distribution") return '<h3>样本分布</h3><h4>Domain</h4>' + keyValueRows((row.sample_distribution || {}).domains) + '<h4>Case</h4>' + keyValueRows((row.sample_distribution || {}).cases) + '<h4>Paper</h4>' + keyValueRows((row.sample_distribution || {}).papers);
     if (tab === "workload") return '<h3>用户负载</h3><div class="workload-cards">' + Object.entries(row.roles || {}).map(function (entry) { const role = entry[0], value = entry[1]; return '<article><span>' + esc(role) + '</span><strong>' + esc(value.display_name || "未知用户") + '</strong><p>' + esc(value.completed || 0) + " / " + esc(value.count || 0) + " 已完成</p><progress max=\"" + esc(value.count || 1) + '" value="' + esc(value.completed || 0) + '"></progress></article>'; }).join("") + "</div>";
     if (tab === "status") return '<h3>任务状态</h3>' + keyValueRows(row.status_distribution) + '<div class="preview-metrics"><div><strong>' + esc(row.waiting_secondary || 0) + '</strong>等待第二审核</div><div><strong>' + esc(row.waiting_adjudication || 0) + "</strong>仲裁角色待办</div></div>";

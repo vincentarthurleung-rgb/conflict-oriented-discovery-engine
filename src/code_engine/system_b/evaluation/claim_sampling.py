@@ -16,6 +16,81 @@ from typing import Any
 
 FRAME_SCOPE = "selected_for_l1_extraction"
 SAMPLING_PURPOSES = {"predicted_claim_precision", "source_unit_exhaustive_gold"}
+CLUSTER_PRECISION_PURPOSE = {
+    "purpose_id": "predicted_claim_cluster_precision_audit",
+    "legacy_purpose_id": "predicted_claim_precision",
+    "display_name": "基于源文本单元聚类的预测 Claim 精度审核",
+    "sampling_unit": "source_unit_cluster",
+    "review_target": "predicted_claims_within_sampled_units",
+    "claim_level_equal_probability": False,
+    "supports": [
+        "cluster_sampled_audit_precision",
+        "field_accuracy",
+        "evidence_grounding",
+    ],
+    "does_not_support": [
+        "claim_level_uniform_precision_without_weighting",
+        "claim_recall",
+        "complete_claim_f1",
+    ],
+    "estimate_scope": "sampled_source_unit_clusters",
+    "sampling_design": "clustered",
+    "claim_level_inclusion_probability": "unavailable",
+}
+
+
+def claim_level_frame_capability(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Declare claim-level sampling only when every row has a complete stable identity."""
+    rows = rows or []
+    required = {
+        "stable_claim_identity": lambda row: row.get("predicted_claim_id") or row.get("prediction_claim_key") or row.get("claim_identity_hash"),
+        "source_unit_id": lambda row: row.get("source_unit_id"),
+        "paper_id": lambda row: row.get("paper_id"),
+        "case_id": lambda row: row.get("case_id"),
+        "domain_id": lambda row: (row.get("domain_snapshot") or {}).get("domain_id") or row.get("domain_id"),
+        "subject": lambda row: row.get("subject"),
+        "relation": lambda row: row.get("relation") or row.get("relation_type"),
+        "object": lambda row: row.get("object"),
+        "sign_or_negation": lambda row: row.get("sign") is not None or row.get("negated") is not None,
+        "confidence": lambda row: row.get("confidence") is not None or row.get("confidence_band"),
+        "source_artifact_hash": lambda row: row.get("source_artifact_hash") or row.get("artifact_sha256"),
+    }
+    missing = sorted(
+        key for key, getter in required.items()
+        if not rows or any(not getter(row) for row in rows)
+    )
+    if missing:
+        return {
+            "status": "unavailable",
+            "reason": "stable_predicted_claim_frame_not_provided",
+            "missing_fields": missing,
+            "creation_supported": False,
+        }
+    return {
+        "status": "available",
+        "frame_version": "predicted_claim_uniform_frame_v1",
+        "sampling_unit": "predicted_claim",
+        "claim_level_equal_probability_capable": True,
+        "creation_supported": False,
+        "reason": "uniform_claim_sampler_not_implemented",
+        "row_count": len(rows),
+    }
+
+
+def sampling_purpose_capabilities(
+    predicted_claim_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "predicted_claim_cluster_precision_audit": dict(CLUSTER_PRECISION_PURPOSE),
+        "source_unit_exhaustive_gold": {
+            "purpose_id": "source_unit_exhaustive_gold",
+            "sampling_unit": "source_unit",
+            "review_target": "all_eligible_claims_within_sampled_units",
+            "frame_scope": FRAME_SCOPE,
+            "end_to_end_recall_supported": False,
+        },
+        "claim_level_uniform_frame": claim_level_frame_capability(predicted_claim_rows),
+    }
 
 
 def _canonical(value: Any) -> bytes:
@@ -84,6 +159,7 @@ def sampling_frame_stats(rows: list[dict[str, Any]], *, projection: dict[str, An
         "domain_distribution": dict(domains),
         "conditional_only": True,
         "notice": "抽样框仅包含 selected_for_l1_extraction，不代表完整论文端到端 Claim Discovery Recall。",
+        "precision_audit_contract": dict(CLUSTER_PRECISION_PURPOSE),
     }
 
 
@@ -308,8 +384,15 @@ def preview_sample(rows: list[dict[str, Any]], *, configuration: dict[str, Any])
     } for row in selected]
     return {
         "schema_version": "predicted_claim_precision_cluster_sample_v1" if purpose == "predicted_claim_precision" else "source_unit_exhaustive_gold_sample_v1",
-        "sampling_unit": "source_unit_cluster_with_predicted_claims" if purpose == "predicted_claim_precision" else "source_unit",
+        "sampling_unit": "source_unit_cluster" if purpose == "predicted_claim_precision" else "source_unit",
         "purpose": purpose,
+        "purpose_id": "predicted_claim_cluster_precision_audit" if purpose == "predicted_claim_precision" else purpose,
+        "purpose_contract": dict(CLUSTER_PRECISION_PURPOSE) if purpose == "predicted_claim_precision" else sampling_purpose_capabilities()["source_unit_exhaustive_gold"],
+        "review_target": "predicted_claims_within_sampled_units" if purpose == "predicted_claim_precision" else "all_eligible_claims_within_sampled_units",
+        "claim_level_equal_probability": False,
+        "claim_level_inclusion_probability": "unavailable" if purpose == "predicted_claim_precision" else "not_applicable",
+        "estimate_scope": "sampled_source_unit_clusters" if purpose == "predicted_claim_precision" else FRAME_SCOPE,
+        "sampling_design": "clustered" if purpose == "predicted_claim_precision" else "source_unit_exhaustive",
         "frame_scope": FRAME_SCOPE,
         "frame_hash": frame_hash,
         "configuration_hash": config_hash,

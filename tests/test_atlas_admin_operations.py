@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
 
 from code_engine.system_b.evaluation.claim_sampling import (
+    claim_level_frame_capability,
     evaluation_readiness,
     preview_sample,
     sampling_frame_stats,
+    sampling_purpose_capabilities,
 )
 from code_engine.system_b.explorer.explorer_api import ExplorerAPI
-from code_engine.system_b.persistence.models import Assignment, EvaluationProject
+from code_engine.system_b.persistence.models import Assignment, AssignmentBatch, EvaluationProject
 from code_engine.system_b.persistence.services.admin_service import (
     admin_change_role,
     admin_overview,
@@ -20,8 +23,11 @@ from code_engine.system_b.persistence.services.admin_service import (
     admin_users,
 )
 from code_engine.system_b.persistence.services.assignment_service import (
+    AssignmentStrategyNotSupported,
+    assignment_capability,
     assignment_batch_preview,
     create_assignment_batch,
+    operations_batches,
 )
 from tests.atlas_db_test_utils import add_review_item, add_user, migrate, session_for
 from tests.test_system_b_knowledge_explorer import KnowledgeExplorerTests
@@ -105,6 +111,8 @@ def test_admin_user_workload(tmp_path):
         assert result["blind_payload_included"] is False
         assert result["assignment_role_distribution"] == {"primary": 0, "secondary": 0, "adjudicator": 0}
         assert result["recent_7_days_completed"] == 0
+        assert result["workload_model"] == "open_assignment_count_v1"
+        assert result["difficulty_weighted"] is False
         assert "password_hash" not in repr(result)
 
 
@@ -152,13 +160,48 @@ def test_assignment_duplicate_detection(tmp_path):
         assert result["duplicate_assignments"] == len(ids["items"]) * 3
 
 
-def test_assignment_workload_balancing(tmp_path):
+def test_assignment_capability_fixed_triad():
+    result = assignment_capability()
+    assert result["assignment_mode"] == "fixed_review_triad"
+    assert result["reviewer_pool_routing_supported"] is False
+    assert result["supported_distribution_strategies"] == ["fixed_review_triad"]
+
+
+@pytest.mark.parametrize("strategy", ["balanced", "workload_balance", "even", "domain", "case", "paper"])
+def test_unsupported_assignment_strategy_fails_closed(tmp_path, strategy):
     factory, ids = _db(tmp_path)
     with factory() as session:
-        result = _preview(session, ids, strategy="workload_balance")
-        assert result["strategy"] == "workload_balance"
+        with pytest.raises(AssignmentStrategyNotSupported):
+            _preview(session, ids, strategy=strategy)
+
+
+def test_fixed_triad_does_not_claim_pool_balancing(tmp_path):
+    factory, ids = _db(tmp_path)
+    with factory() as session:
+        result = _preview(session, ids, strategy="fixed_review_triad")
+        assert result["strategy"] == "fixed_review_triad"
+        assert result["effective_assignment_mode"] == "fixed_review_triad"
+        assert result["assignment_capability"]["reviewer_pool_routing_supported"] is False
         assert {row["role"] for row in result["workloads"]} == {"primary", "secondary", "adjudicator"}
-        assert all(row["pending_after"] == len(ids["items"]) for row in result["workloads"])
+        assert all(row["projected_open_assignments"] == len(ids["items"]) for row in result["workloads"])
+
+
+def test_workload_model_is_open_assignment_count(tmp_path):
+    factory, ids = _db(tmp_path)
+    with factory() as session:
+        result = _preview(session, ids)
+        assert result["workload_model"] == "open_assignment_count_v1"
+        for row in result["workloads"]:
+            assert row["projected_open_assignments"] == row["current_open_assignments"] + row["incoming_assignments"]
+            assert row["difficulty_weighted"] is False
+
+
+def test_workload_payload_declares_not_difficulty_weighted(tmp_path):
+    factory, ids = _db(tmp_path)
+    with factory() as session:
+        result = _preview(session, ids)
+        assert result["difficulty_weighted"] is False
+        assert all(row["difficulty_weighted"] is False for row in result["workloads"])
 
 
 def test_sampling_purpose_contract():
@@ -233,8 +276,12 @@ def test_precision_sample_is_cluster_scoped_and_not_recall_ready():
         "sample_size": 4,
         "random_seed": 5,
     })
-    assert result["sampling_unit"] == "source_unit_cluster_with_predicted_claims"
+    assert result["sampling_unit"] == "source_unit_cluster"
     assert result["schema_version"] == "predicted_claim_precision_cluster_sample_v1"
+    assert result["review_target"] == "predicted_claims_within_sampled_units"
+    assert result["claim_level_equal_probability"] is False
+    assert result["claim_level_inclusion_probability"] == "unavailable"
+    assert result["estimate_scope"] == "sampled_source_unit_clusters"
     assert result["metric_readiness"]["claim_recall"] == {
         "status": "not_supported_by_precision_sample",
         "value": None,
@@ -258,6 +305,94 @@ def test_claim_f1_remains_blocked_without_gold():
     assert readiness["claim_recall"]["value"] is None
     assert readiness["claim_f1"]["status"] == "needs_exhaustive_gold"
     assert readiness["claim_f1"]["value"] is None
+
+
+def test_source_unit_gold_boundary_unchanged():
+    result = preview_sample(_rows(), configuration={
+        "purpose": "source_unit_exhaustive_gold", "sample_size": 4, "random_seed": 23,
+    })
+    assert result["sampling_unit"] == "source_unit"
+    assert result["frame_scope"] == "selected_for_l1_extraction"
+    assert result["metric_readiness"]["claim_recall"]["status"] == "needs_exhaustive_gold"
+    assert result["metric_readiness"]["claim_f1"]["value"] is None
+
+
+def test_cluster_precision_sampling_unit_contract():
+    contract = sampling_purpose_capabilities()["predicted_claim_cluster_precision_audit"]
+    assert contract["sampling_unit"] == "source_unit_cluster"
+    assert contract["review_target"] == "predicted_claims_within_sampled_units"
+    assert contract["claim_level_equal_probability"] is False
+    assert "claim_level_uniform_precision_without_weighting" in contract["does_not_support"]
+
+
+def test_claim_level_frame_unavailable_without_stable_claim_identity():
+    result = claim_level_frame_capability([{
+        "prediction_claim_key": "stable-key",
+        "paper_id": "paper",
+        "case_id": "case",
+        "relation_type": "activates",
+        "confidence_band": "high",
+        "negated": False,
+        "artifact_sha256": "artifact",
+    }])
+    assert result["status"] == "unavailable"
+    assert result["reason"] == "stable_predicted_claim_frame_not_provided"
+    assert {"source_unit_id", "subject", "object"}.issubset(result["missing_fields"])
+
+
+def test_claim_level_frame_only_exposed_when_real():
+    row = {
+        "prediction_claim_key": "stable-key", "source_unit_id": "unit", "paper_id": "paper",
+        "case_id": "case", "domain_snapshot": {"domain_id": "domain"}, "subject": "A",
+        "relation_type": "activates", "object": "B", "negated": False,
+        "confidence_band": "high", "artifact_sha256": "artifact",
+    }
+    result = claim_level_frame_capability([row])
+    assert result["status"] == "available"
+    assert result["sampling_unit"] == "predicted_claim"
+    assert result["claim_level_equal_probability_capable"] is True
+    assert result["creation_supported"] is False
+    assert result["reason"] == "uniform_claim_sampler_not_implemented"
+
+
+def test_historical_batch_effective_assignment_mode(tmp_path):
+    factory, ids = _db(tmp_path)
+    with factory.begin() as session:
+        created = create_assignment_batch(
+            session, actor=_actor(ids), batch_name="Current", project_id=ids["project"],
+            item_ids=ids["items"], primary_reviewer_user_id=ids["primary"],
+            secondary_reviewer_user_id=ids["secondary"], adjudicator_user_id=ids["adjudicator"],
+        )
+        assert created["effective_assignment_mode"] == "fixed_review_triad"
+    with factory() as session:
+        result = operations_batches(session, pilot_only=True)["items"][0]
+        assert result["effective_assignment_mode"] == "fixed_review_triad"
+        assert result["recorded_strategy"] == "fixed_review_triad"
+        assert result["strategy_execution_status"] == "executed"
+
+
+def test_historical_unexecuted_strategy_is_read_only_truth(tmp_path):
+    factory, ids = _db(tmp_path)
+    with factory.begin() as session:
+        create_assignment_batch(
+            session, actor=_actor(ids), batch_name="Legacy", project_id=ids["project"],
+            item_ids=ids["items"], primary_reviewer_user_id=ids["primary"],
+            secondary_reviewer_user_id=ids["secondary"], adjudicator_user_id=ids["adjudicator"],
+        )
+        for batch in session.execute(select(AssignmentBatch)).scalars():
+            config = json.loads(batch.filter_json)
+            config["strategy"] = "domain"
+            batch.filter_json = json.dumps(config)
+    with factory() as session:
+        result = operations_batches(session, pilot_only=True)["items"][0]
+        assert result["recorded_strategy"] == "domain"
+        assert result["effective_assignment_mode"] == "fixed_review_triad"
+        assert result["strategy_execution_status"] == "recorded_not_executed"
+
+
+def test_formal_db_hash_unchanged():
+    path = Path("data/code_atlas.db")
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == "14c9b6ea49df24dade25276158853851d6a3b7429de19f03737b0f263fe107db"
 
 
 def test_admin_cannot_create_production(tmp_path):

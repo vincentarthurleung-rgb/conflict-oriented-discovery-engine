@@ -148,6 +148,36 @@ def create_project_with_assignments(
 
 
 OPEN_ASSIGNMENT_STATUSES = {"assigned", "in_progress", "revisit"}
+ASSIGNMENT_MODE = "fixed_review_triad"
+WORKLOAD_MODEL = "open_assignment_count_v1"
+
+
+class AssignmentStrategyNotSupported(ValueError):
+    """Raised when a client claims a routing capability this deployment lacks."""
+
+    code = "assignment_strategy_not_supported"
+    message = "当前部署仅支持固定三人审核组，不支持多 Reviewer 池自动路由。"
+
+    @property
+    def blockers(self) -> list[dict]:
+        return [{"code": self.code, "message": self.message}]
+
+
+def assignment_capability() -> dict:
+    """Return the executable assignment contract; the UI must not infer it."""
+    return {
+        "assignment_mode": ASSIGNMENT_MODE,
+        "reviewer_pool_routing_supported": False,
+        "supported_distribution_strategies": [ASSIGNMENT_MODE],
+        "workload_preview": WORKLOAD_MODEL,
+        "difficulty_weighted": False,
+        "description": "全部 Review Items 使用同一位 Primary、同一位 Secondary 和同一位 Adjudicator。",
+    }
+
+
+def _validate_assignment_strategy(strategy: str) -> None:
+    if strategy != ASSIGNMENT_MODE:
+        raise AssignmentStrategyNotSupported(strategy)
 
 
 def _item_metadata(item: ReviewItem) -> dict:
@@ -170,14 +200,12 @@ def assignment_batch_preview(
     secondary_reviewer_user_id: str,
     adjudicator_user_id: str,
     actor_role: str,
-    strategy: str = "workload_balance",
+    strategy: str = ASSIGNMENT_MODE,
     sampling_batch_id: str | None = None,
     expected_frame_hash: str | None = None,
 ) -> dict:
     """Validate a proposed Pilot assignment batch without writing state."""
-    allowed_strategies = {"fixed_pair", "even", "workload_balance", "domain", "case", "paper"}
-    if strategy not in allowed_strategies:
-        raise ValueError("unsupported_assignment_strategy")
+    _validate_assignment_strategy(strategy)
     project = session.get(EvaluationProject, project_id)
     blockers: list[dict] = []
     warnings: list[dict] = []
@@ -233,6 +261,12 @@ def assignment_batch_preview(
             "user_id": user.user_id,
             "display_name": user.display_name,
             "role": assignment_role,
+            "workload_model": WORKLOAD_MODEL,
+            "current_open_assignments": pending,
+            "incoming_assignments": len(rows),
+            "projected_open_assignments": pending + len(rows),
+            "difficulty_weighted": False,
+            # Backward-compatible aliases for older read-only clients.
             "current_pending": pending,
             "new_assignments": len(rows),
             "pending_after": pending + len(rows),
@@ -269,7 +303,7 @@ def assignment_batch_preview(
     pending_values = [row["pending_after"] for row in workloads if row["role"] in {"primary", "secondary"}]
     if len(pending_values) == 2 and min(pending_values) and max(pending_values) / min(pending_values) > 1.25:
         imbalance = round((max(pending_values) - min(pending_values)) / min(pending_values) * 100)
-        warnings.append({"code": "workload_imbalance", "message": f"分配后两位 Reviewer 的待办差异约 {imbalance}%。"})
+        warnings.append({"code": "assignment_count_difference", "message": f"任务数量差异提示：分配后两位 Reviewer 的开放任务数相差约 {imbalance}%。"})
     metadata = [_item_metadata(row) for row in rows]
     by_case = dict(Counter(row.case_id for row in rows))
     by_domain = dict(Counter(row["domain"] for row in metadata))
@@ -281,6 +315,10 @@ def assignment_batch_preview(
     return {
         "project": {"project_id": project.project_id, "name": project.name, "namespace": project.namespace, "status": project.status} if project else None,
         "strategy": strategy,
+        "assignment_capability": assignment_capability(),
+        "effective_assignment_mode": ASSIGNMENT_MODE,
+        "workload_model": WORKLOAD_MODEL,
+        "difficulty_weighted": False,
         "sampling_batch_id": sampling_batch_id or "",
         "expected_frame_hash": expected_frame_hash or "",
         "review_item_count": len(rows),
@@ -317,7 +355,7 @@ def create_assignment_batch(
     primary_reviewer_user_id: str,
     secondary_reviewer_user_id: str,
     adjudicator_user_id: str,
-    strategy: str = "workload_balance",
+    strategy: str = ASSIGNMENT_MODE,
     source: str = "existing_review_items",
     sampling_batch_id: str | None = None,
     expected_frame_hash: str | None = None,
@@ -346,6 +384,8 @@ def create_assignment_batch(
         "batch_name": batch_name,
         "source": source,
         "strategy": strategy,
+        "effective_assignment_mode": ASSIGNMENT_MODE,
+        "workload_model": WORKLOAD_MODEL,
         "sampling_batch_id": sampling_batch_id or "",
         "sampling_frame_hash": expected_frame_hash or "",
         "item_ids": preview["selected_review_item_ids"],
@@ -423,6 +463,16 @@ def operations_batches(session: Session, *, pilot_only: bool = False) -> dict:
             "project_name": project.name,
             "namespace": project.namespace,
             "source": config.get("source") or "existing_review_items",
+            "recorded_strategy": config.get("strategy") or "",
+            "effective_assignment_mode": ASSIGNMENT_MODE,
+            "strategy_execution_status": (
+                "executed"
+                if config.get("strategy") == ASSIGNMENT_MODE
+                else "recorded_not_executed"
+                if config.get("strategy")
+                else "legacy_fixed_triad"
+            ),
+            "assignment_capability": assignment_capability(),
             "status": batch.status,
             "created_at": batch.assigned_at.isoformat() if batch.assigned_at else "",
             "roles": {},
