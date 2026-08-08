@@ -7,8 +7,9 @@ import pytest
 from alembic import command
 from alembic.config import Config
 
-from code_engine.cli.atlas_db_repair_orphans import repair
+from code_engine.cli.atlas_db_repair_orphans import PROTECTED_TABLES, _table_hashes, repair
 from code_engine.system_b.persistence.database import create_atlas_engine, sqlite_health
+from sqlalchemy import create_engine
 
 
 def migrate(url, revision="0008_system_a_ingestion_ledger"):
@@ -45,6 +46,21 @@ def write_orphan_fixture(tmp_path: Path) -> tuple[Path, str, Path]:
     import hashlib
 
     digest = hashlib.sha256(sha).hexdigest()
+    protected = sorted(PROTECTED_TABLES)
+    with create_engine(url, future=True).connect() as conn:
+        row_hash_before = _table_hashes(conn, protected)
+    quarantine = tmp_path / "orphan-quarantine-export.json"
+    quarantine.write_text(json.dumps({"rows": ["event-1", "protocol-1"]}), encoding="utf-8")
+    import hashlib
+    quarantine_sha = hashlib.sha256(quarantine.read_bytes()).hexdigest()
+    manifest = tmp_path / "orphan-quarantine-manifest.json"
+    manifest.write_text(json.dumps({
+        "schema_version": "fk_orphan_quarantine_manifest_v1",
+        "database_sha256": digest,
+        "export_path": str(quarantine),
+        "export_sha256": quarantine_sha,
+        "row_counts": {"annotation_events": 1, "evaluation_protocols": 1},
+    }), encoding="utf-8")
     plan = {
         "schema_version": "fk_orphan_repair_plan_v1",
         "database_sha256": digest,
@@ -54,22 +70,15 @@ def write_orphan_fixture(tmp_path: Path) -> tuple[Path, str, Path]:
             {"table": "annotation_events", "rowid": 1, "parent_table": "annotations", "fk_id": 2},
             {"table": "evaluation_protocols", "rowid": 1, "parent_table": "evaluation_projects", "fk_id": 0},
         ],
-        "protected_tables": [
-            "users",
-            "evaluation_projects",
-            "review_items",
-            "assignments",
-            "annotations",
-            "adjudications",
-            "gold_records",
-            "metric_runs",
-            "metric_results",
-        ],
+        "protected_tables": protected,
+        "row_hash_before": row_hash_before,
         "delete_actions": [
             {"table": "annotation_events", "rowid": 1, "match": {"event_id": "event-1", "annotation_id": "missing-annotation", "project_id": "missing-project"}},
             {"table": "evaluation_protocols", "rowid": 1, "match": {"protocol_id": "protocol-1", "project_id": "missing-protocol-project"}},
         ],
         "expected_count_changes": {"annotation_events": -1, "evaluation_protocols": -1},
+        "quarantine_export": {"manifest_path": str(manifest), "path": str(quarantine), "sha256": quarantine_sha},
+        "requires_human_approval": True,
     }
     plan_path = tmp_path / "repair-plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
@@ -128,6 +137,49 @@ def test_orphan_repair_unknown_violation_fails_closed(tmp_path):
     payload["database_sha256"] = digest
     plan.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="foreign_key_violations_do_not_match_plan"):
+        repair(f"sqlite:///{db}", plan, apply=True, expected_sha=digest)
+
+
+def test_orphan_repair_rejects_incomplete_protected_tables(tmp_path):
+    db, digest, plan = write_orphan_fixture(tmp_path)
+    payload = json.loads(plan.read_text(encoding="utf-8"))
+    payload["protected_tables"].remove("source_artifacts")
+    plan.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="protected_tables_incomplete"):
+        repair(f"sqlite:///{db}", plan, apply=True, expected_sha=digest)
+
+
+def test_orphan_repair_rejects_quarantine_hash_mismatch(tmp_path):
+    db, digest, plan = write_orphan_fixture(tmp_path)
+    payload = json.loads(plan.read_text(encoding="utf-8"))
+    Path(payload["quarantine_export"]["path"]).write_text("changed", encoding="utf-8")
+    with pytest.raises(ValueError, match="quarantine_export_sha256_mismatch"):
+        repair(f"sqlite:///{db}", plan, apply=True, expected_sha=digest)
+
+
+def test_orphan_repair_rejects_unapproved_table_or_match_columns(tmp_path):
+    db, digest, plan = write_orphan_fixture(tmp_path)
+    payload = json.loads(plan.read_text(encoding="utf-8"))
+    payload["delete_actions"][0]["table"] = "users"
+    plan.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="delete_target_not_allowed"):
+        repair(f"sqlite:///{db}", plan, apply=True, expected_sha=digest)
+
+    (tmp_path / "columns").mkdir()
+    db, digest, plan = write_orphan_fixture(tmp_path / "columns")
+    payload = json.loads(plan.read_text(encoding="utf-8"))
+    payload["delete_actions"][0]["match"] = {"event_id": "event-1"}
+    plan.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="match_columns_invalid"):
+        repair(f"sqlite:///{db}", plan, apply=True, expected_sha=digest)
+
+
+def test_orphan_repair_rejects_protected_hash_mismatch(tmp_path):
+    db, digest, plan = write_orphan_fixture(tmp_path)
+    payload = json.loads(plan.read_text(encoding="utf-8"))
+    payload["row_hash_before"]["users"] = "0" * 64
+    plan.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="protected_hash_mismatch"):
         repair(f"sqlite:///{db}", plan, apply=True, expected_sha=digest)
 
 
