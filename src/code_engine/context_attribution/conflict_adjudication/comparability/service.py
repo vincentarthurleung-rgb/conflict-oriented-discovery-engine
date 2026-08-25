@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from typing import Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
+
 from ...context_difference.migration import ContextDifferenceMigrationBinding
 from ...context_difference.models import ContextDifference
 from .identities import factor_comparability_identity
@@ -11,7 +17,9 @@ def create_pending_factor_comparability(
     difference: ContextDifference,
     difference_binding: ContextDifferenceMigrationBinding,
     factor_id: str,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> FactorComparabilityAssessment:
+    require_scientific_entity_integrity("l4b_comparability", entity_integrity_decisions)
     if difference.validation_status != "validated":
         raise ValueError("factor_comparability_requires_validated_difference")
     if difference_binding.validation_status != "validated":

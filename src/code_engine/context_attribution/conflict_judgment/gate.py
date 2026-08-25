@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from typing import Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
+
 from ..conflict_candidate.models import ConflictCandidate
 from ..conflict_comparability.models import ConflictComparabilityAssessment
 from ..context_difference.models import ContextDifference
@@ -16,7 +22,9 @@ def stage_formal_conflict_decision(
     candidate: ConflictCandidate,
     difference: ContextDifference | None,
     comparability: ConflictComparabilityAssessment | None,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> FormalConflictDecision:
+    require_scientific_entity_integrity("formal_judgment", entity_integrity_decisions)
     gate_identity = layer_identity(
         "formal_gate_policy",
         FORMAL_GATE_POLICY_VERSION,

@@ -18,8 +18,8 @@ ActivationStatus = Literal[
     "not_required_explicit", "not_activated", "no_consumer_requirement_declared",
 ]
 EvidenceState = Literal[
-    "direct", "safe_inherited", "derived", "unresolved", "ambiguous",
-    "not_reported", "source_scope_insufficient",
+    "direct", "safe_inherited", "derived_authorized", "derived", "unresolved", "ambiguous",
+    "not_reported_with_adequate_scope", "not_reported", "source_scope_insufficient",
 ]
 PairSatisfaction = Literal[
     "satisfied", "partially_satisfied", "unsatisfied", "not_applicable",
@@ -73,12 +73,24 @@ class PairContextRequirementActivationV1(StrictModel):
     consumer_version: str
     dimension: str
     activation_status: ActivationStatus
+    activation_class: ActivationStatus | None = None
     trigger_state: Literal["matched", "not_matched", "not_declared", "unconditional"]
+    trigger_type: Literal[
+        "proposition_scope", "experimental_contrast", "evidence_family_semantics",
+        "measurement_result_semantics", "supported_pair_difference",
+        "none_declared", "unconditional_explicit", "legacy_structured_condition",
+    ] = "legacy_structured_condition"
     trigger_evidence: dict[str, Any]
     blocking_semantics: str
     source_contract_ref: str
     source_code_ref: str
     requirement_identity: str
+
+    @model_validator(mode="after")
+    def activation_names_are_consistent(self):
+        if self.activation_class is not None and self.activation_class != self.activation_status:
+            raise ValueError("activation_class_must_equal_activation_status")
+        return self
 
 
 class PairContextRequirementSatisfactionV1(StrictModel):
@@ -103,6 +115,48 @@ class PairContextReadinessV1Candidate(StrictModel):
     active_requirement_ids: list[str]
     candidate_only: bool = True
     historical_context_modified: bool = False
+
+
+class PairContextReadinessV1(StrictModel):
+    schema_version: Literal["pair_context_readiness_v1"] = "pair_context_readiness_v1"
+    pair_id: str
+    consumer: str
+    consumer_version: str
+    status: PairReadiness
+    active_requirement_ids: list[str]
+    historical_context_modified: bool = False
+
+
+class PairContextTriggerFactV1(StrictModel):
+    """Auditable structured fact capable of activating one pair requirement."""
+
+    schema_version: Literal["pair_context_trigger_fact_v1"] = "pair_context_trigger_fact_v1"
+    pair_id: str
+    dimension: str
+    trigger_type: Literal[
+        "proposition_scope", "experimental_contrast", "evidence_family_semantics",
+        "measurement_result_semantics", "supported_pair_difference",
+    ]
+    structurally_established: bool
+    trigger_evidence: dict[str, Any]
+    source_contract_ref: str
+    source_code_ref: str
+
+
+def conditional_activation_for(
+    *, dimension: str, trigger_facts: list[PairContextTriggerFactV1],
+) -> tuple[ActivationStatus, Literal["matched", "not_matched"], str | None]:
+    """Activate only from a typed, structurally established matching fact."""
+    matches = [
+        fact for fact in trigger_facts
+        if fact.dimension == dimension and fact.structurally_established
+    ]
+    if not matches:
+        return "not_activated", "not_matched", None
+    trigger_types = {fact.trigger_type for fact in matches}
+    if len(trigger_types) != 1:
+        raise ValueError("one_requirement_activation_requires_one_trigger_type")
+    return "conditionally_required_active", "matched", next(iter(trigger_types))
 
 
 def activation_for(
@@ -135,7 +189,9 @@ def satisfaction_for_pair(
         "required_active", "conditionally_required_active", "optional_explicit"
     }:
         return "not_applicable"
-    satisfying = {"direct", "safe_inherited", "derived"}
+    # ``derived`` is retained as a legacy evidence spelling but is not enough
+    # to satisfy v1.  Only an explicitly authorized derivation can satisfy.
+    satisfying = {"direct", "safe_inherited", "derived_authorized"}
     states = (side_a, side_b)
     resolved = sum(x in satisfying for x in states)
     if resolved == 2:
@@ -179,4 +235,3 @@ def readiness_for_pair(
     if any(x.satisfaction_status != "satisfied" for x in optional_rows):
         return "ready_with_nonblocking_context_gap"
     return "ready_all_active_requirements_satisfied"
-

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
 
 from ..conflict_candidate.models import ConflictCandidate
 from ..observation_context.models import ObservationContext
@@ -21,8 +25,10 @@ def adapt_legacy_pair_to_context_difference(
     context_b: ObservationContext,
     factor_registry_identity: str,
     legacy_prompt_identity: str | None,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> tuple[ContextDifference, dict[str, Any]]:
     """Project factual fields only; no repair, effect interpretation, or salvage."""
+    require_scientific_entity_integrity("l4a_context_difference", entity_integrity_decisions)
     source = deepcopy(payload)
     if source.get("schema_version") not in {
         "context_pair_attribution_v2",

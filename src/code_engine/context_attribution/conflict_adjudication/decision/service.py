@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from typing import Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
+
 from ...claim_alignment.models import AlignedClaimGroup
 from ...conflict_candidate.contradiction import ContradictionSignal
 from ...conflict_candidate.models import ConflictCandidate
@@ -25,7 +31,9 @@ def adjudicate_pair_staging(
     comparability: list[FactorComparabilityAssessment],
     explanations: list[FactorDivergenceExplanation],
     qualification: ConflictCandidateQualificationV1 | None = None,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> ConflictAdjudicationDecision:
+    require_scientific_entity_integrity("formal_judgment", entity_integrity_decisions)
     gate_identity = layer_identity(
         "conflict_adjudication_gate_policy",
         "conflict_adjudication_staging_gate_policy_v1",

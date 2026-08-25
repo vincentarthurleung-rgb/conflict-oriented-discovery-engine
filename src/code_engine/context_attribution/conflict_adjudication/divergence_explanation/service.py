@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from typing import Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
+
 from ...conflict_candidate.contradiction import ContradictionSignal
 from ...context_difference.migration import ContextDifferenceMigrationBinding
 from ...context_difference.models import ContextDifference
@@ -13,7 +19,11 @@ def create_pending_divergence_explanation(
     difference_binding: ContextDifferenceMigrationBinding,
     signal: ContradictionSignal,
     factor_id: str,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> FactorDivergenceExplanation:
+    require_scientific_entity_integrity(
+        "divergence_explanatory_power", entity_integrity_decisions
+    )
     if difference.validation_status != "validated":
         raise ValueError("explanation_requires_validated_difference")
     if signal.validation_status != "validated":

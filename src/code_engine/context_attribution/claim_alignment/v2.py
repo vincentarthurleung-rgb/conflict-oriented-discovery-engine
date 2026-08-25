@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 from pydantic import BaseModel, ConfigDict
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
 from ..layer_identity import layer_identity
 from ..observation_semantics.models import PropositionCoreView
 from .granularity import GranularityBridgeAssessment
@@ -45,7 +48,10 @@ class ClaimAlignmentRecordV2(BaseModel):
 def align_semantic_views(*, observation_a_id: str, observation_b_id: str,
                          core_a: PropositionCoreView, core_b: PropositionCoreView,
                          bridges: list[GranularityBridgeAssessment], legacy_identity: str,
-                         role_taxonomy_identity: str) -> ClaimAlignmentRecordV2:
+                         role_taxonomy_identity: str,
+                         entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
+                         ) -> ClaimAlignmentRecordV2:
+    require_scientific_entity_integrity("claim_alignment", entity_integrity_decisions)
     keys = ("canonical_subject_identity","canonical_relation_family",
             "canonical_endpoint_identity","outcome_variable_identity")
     comparisons = []

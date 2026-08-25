@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
 
 from .identities import authority_sidecar_identity, qualification_identity, scientific_pair_identity
 from .models import (
@@ -14,7 +18,9 @@ from .validation import VALIDATOR_IDENTITY, validate_qualification
 def build_scientific_pair(
     *, claim_a: str, claim_b: str, core_a: str, core_b: str,
     signal_type: str, contract_identity: str,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> ScientificCandidatePairIdentityV1:
+    require_scientific_entity_integrity("bridge_candidate", entity_integrity_decisions)
     basis = {
         "endpoint_claim_identity_a": claim_a,
         "endpoint_claim_identity_b": claim_b,
@@ -32,8 +38,10 @@ def build_scientific_pair(
 def qualify_candidate(*, candidate: dict[str, Any], alignment: dict[str, Any],
                       signal: dict[str, Any], pair: ScientificCandidatePairIdentityV1,
                       contract_identity: str, generation_policy_identity: str,
-                      context_a: str | None = None, context_b: str | None = None
+                      context_a: str | None = None, context_b: str | None = None,
+                      entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
                       ) -> ConflictCandidateQualificationV1:
+    require_scientific_entity_integrity("candidate_qualification", entity_integrity_decisions)
     errors: list[str] = []
     if not candidate.get("claim_a_identity") or not candidate.get("claim_b_identity"):
         errors.append("endpoint_identity_incomplete")
@@ -112,4 +120,3 @@ def build_authority_sidecar(record: ConflictCandidateQualificationV1) -> Qualifi
     return QualifiedCandidateAuthoritySidecarV1(
         **basis, identity=authority_sidecar_identity(basis)
     )
-

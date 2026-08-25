@@ -1,6 +1,9 @@
 from __future__ import annotations
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 from pydantic import BaseModel, ConfigDict
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
 from ..claim_alignment.v2 import ClaimAlignmentRecordV2
 from ..layer_identity import layer_identity
 from ..observation_semantics.models import ContradictionResultView
@@ -47,7 +50,10 @@ class ContradictionSignalV2(BaseModel):
 def build_contradiction_signal_v2(*, alignment: ClaimAlignmentRecordV2,
                                   result_a: ContradictionResultView,
                                   result_b: ContradictionResultView,
-                                  historical_candidate: bool) -> ContradictionSignalV2:
+                                  historical_candidate: bool,
+                                  entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
+                                  ) -> ContradictionSignalV2:
+    require_scientific_entity_integrity("contradiction_signal", entity_integrity_decisions)
     a, b = result_a.direction, result_b.direction
     opposed = a in {"positive","negative"} and b in {"positive","negative"} and a != b
     structural = bool(opposed)

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
+
+from code_engine.extraction_assets.scientific_entity_integrity import (
+    ScientificEntityIntegrityGateResultV1, require_scientific_entity_integrity,
+)
 
 from ..conflict_candidate.models import ConflictCandidate
 from ..layer_identity import layer_identity
@@ -22,9 +26,11 @@ def _dimension(
 
 
 def align_legacy_candidate_endpoints(
-    source: dict[str, Any], *, candidate: ConflictCandidate
+    source: dict[str, Any], *, candidate: ConflictCandidate,
+    entity_integrity_decisions: Sequence[ScientificEntityIntegrityGateResultV1] | None = None,
 ) -> tuple[AlignedClaimGroup, dict[str, Any]]:
     """Read-only migration assessment from existing canonical candidate facts."""
+    require_scientific_entity_integrity("claim_alignment", entity_integrity_decisions)
     subject_match = source.get("subject_family_match")
     relation_match = source.get("relation_family_match")
     object_match = source.get("object_family_match")
