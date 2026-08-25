@@ -17,6 +17,21 @@ class ResultDimensionComparison(BaseModel):
     comparison: Literal["opposed","same","different","unresolved"]
 
 
+def compare_result_directions_v2(
+    direction_a: str | None,
+    direction_b: str | None,
+) -> Literal["opposed", "same", "unresolved"]:
+    """Apply the deterministic v2 direction policy without creating a signal.
+
+    Proposition compatibility is intentionally outside this helper.  Callers
+    must establish it before using direction to assess contradiction.
+    """
+    supported = {"positive", "negative"}
+    if direction_a not in supported or direction_b not in supported:
+        return "unresolved"
+    return "same" if direction_a == direction_b else "opposed"
+
+
 class ContradictionSignalV2(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal["contradiction_signal_v2"] = "contradiction_signal_v2"
@@ -55,7 +70,8 @@ def build_contradiction_signal_v2(*, alignment: ClaimAlignmentRecordV2,
                                   ) -> ContradictionSignalV2:
     require_scientific_entity_integrity("contradiction_signal", entity_integrity_decisions)
     a, b = result_a.direction, result_b.direction
-    opposed = a in {"positive","negative"} and b in {"positive","negative"} and a != b
+    direction_relation = compare_result_directions_v2(a, b)
+    opposed = direction_relation == "opposed"
     structural = bool(opposed)
     scope = ("legacy_preserved" if historical_candidate
              else "future_standard" if alignment.alignment_status == "aligned" and structural
