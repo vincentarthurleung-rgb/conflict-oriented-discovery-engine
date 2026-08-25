@@ -327,6 +327,8 @@ class ResolverCascade:
         if llm_cleaner_result is not None:
             llm_cleaner_context = {
                 "llm_cleaner_status": llm_cleaner_result.llm_cleaner_status,
+                "entity_integrity_status": llm_cleaner_result.entity_integrity_status,
+                "boundary_integrity_warnings": llm_cleaner_result.boundary_integrity_warnings,
                 "llm_cleaned_entities": [
                     {"surface": h.surface, "entity_type": h.entity_type, "ontology_routes": h.ontology_routes}
                     for h in llm_cleaner_result.cleaned_head_entities
@@ -354,6 +356,8 @@ class ResolverCascade:
                 "final_decision": llm_cleaner_result.final_decision,
                 "high_confidence_graph_allowed": llm_cleaner_result.high_confidence_graph_allowed,
                 "rejection_reason": llm_cleaner_result.rejection_reason,
+                "entity_integrity_status": llm_cleaner_result.entity_integrity_status,
+                "boundary_integrity_warnings": llm_cleaner_result.boundary_integrity_warnings,
             }
 
             # Determine selected_source based on how we got here

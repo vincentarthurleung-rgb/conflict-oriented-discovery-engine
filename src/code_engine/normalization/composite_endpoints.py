@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 SCHEMA_VERSION = "observation_endpoint_schema.v1"
-DECOMPOSITION_VERSION = "endpoint_decomposition.deterministic.v1"
+DECOMPOSITION_VERSION = "endpoint_decomposition.deterministic.v2"
 DIMENSION_CLASSIFIER_VERSION = "measurement_dimension_classifier.v1"
 PROJECTION_RULE_VERSION = "core_projection_rules.v1"
 GRAPH_PROJECTION_VERSION = "graph_projection.v1"
@@ -72,6 +72,26 @@ def _clean_entity(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip(" -:;,.")
 
 
+def phosphorylation_prefix_target(value: str) -> tuple[str | None, str | None]:
+    """Return a phospho target only when the prefix is structurally explicit.
+
+    An earlier case-insensitive ``p[-\\s]?`` rule made the separator optional,
+    so every entity beginning with ``P`` could lose its first character.  A
+    delimited prefix is unambiguous.  The common compact form is accepted only
+    when it uses a lowercase modifier followed by an uppercase symbol of at
+    least two characters; this preserves ordinary uppercase entity names and
+    short names such as p53.
+    """
+    text = _clean_entity(value)
+    explicit = re.fullmatch(r"[pP][\-\s]+(.+)", text)
+    if explicit:
+        return _clean_entity(explicit.group(1)), "explicit_delimited_phosphorylation_prefix"
+    compact = re.fullmatch(r"p([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*)", text)
+    if compact and len(compact.group(1)) >= 2:
+        return _clean_entity(compact.group(1)), "compact_case_marked_phosphorylation_prefix"
+    return None, None
+
+
 def decompose_endpoint(raw: str, endpoint_type: str | None = None) -> EndpointDecomposition:
     text = _clean_entity(raw)
     etype = endpoint_type or "unknown"
@@ -88,6 +108,20 @@ def decompose_endpoint(raw: str, endpoint_type: str | None = None) -> EndpointDe
                 non_molecular_readout=True,
             )
 
+    phospho_target, phospho_rule = phosphorylation_prefix_target(text)
+    if phospho_target:
+        return EndpointDecomposition(
+            endpoint_raw=text,
+            endpoint_type="assay_readout" if etype in {"", "unknown"} else etype,
+            measured_entity_raw=phospho_target,
+            measured_entity_cleaned=phospho_target,
+            measurement_dimension="phosphorylation",
+            measurement_state="phosphorylated",
+            endpoint_decomposition_status="decomposed",
+            endpoint_decomposition_method=f"deterministic:{phospho_rule}",
+            endpoint_decomposition_confidence=0.95,
+        )
+
     rules: tuple[tuple[re.Pattern[str], str, str | None, str | None], ...] = (
         (re.compile(r"^(.+?)\s+mRNA expression$", re.I), "expression", None, "mRNA"),
         (re.compile(r"^(.+?)\s+protein expression$", re.I), "expression", None, "protein"),
@@ -97,7 +131,6 @@ def decompose_endpoint(raw: str, endpoint_type: str | None = None) -> EndpointDe
         (re.compile(r"^(.+?)\s+abundance$", re.I), "abundance", None, None),
         (re.compile(r"^(.+?)\s+phosphorylation$", re.I), "phosphorylation", None, None),
         (re.compile(r"^phosphorylated\s+(.+?)$", re.I), "phosphorylation", "phosphorylated", None),
-        (re.compile(r"^p[-\s]?(.+?)$", re.I), "phosphorylation", "phosphorylated", None),
         (re.compile(r"^(.+?)\s+activation$", re.I), "activity", "activated", None),
         (re.compile(r"^(.+?)\s+activity$", re.I), "activity", None, None),
         (re.compile(r"^(.+?)\s+localization$", re.I), "localization", None, None),

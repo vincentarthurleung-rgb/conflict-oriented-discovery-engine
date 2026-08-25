@@ -185,7 +185,23 @@ def classify_collision(
 
     # A versioned revision grounded in local XML is positive evidence that the
     # colliding historical value is non-authoritative.
-    if revisions:
+    local_xml_current_value = False
+    if identifier_type in {"pmid", "pmcid", "doi"} and local_xml:
+        counterpart_fields = {
+            "pmid": ("pmcid", "doi"),
+            "pmcid": ("pmid", "doi"),
+            "doi": ("pmid", "pmcid"),
+        }[identifier_type]
+        authoritative_counterparts = {
+            str(row.get(field)) for row in local_xml for field in counterpart_fields
+            if row.get(field)
+        }
+        local_xml_current_value = bool(
+            authoritative_counterparts
+            and authoritative_counterparts.intersection(set(map(str, incompatible_values)))
+        )
+
+    if revisions or local_xml_current_value:
         primary: CollisionClass = "historical_alias_collision"
         resolution = "benign"
     # Two incompatible publication descriptions sharing an identifier are a
@@ -220,4 +236,3 @@ def classify_collision(
 
 def is_external_verified(authority: ClosureAuthority) -> bool:
     return authority in {"closed_exact_verified", "closed_verified_alias"}
-

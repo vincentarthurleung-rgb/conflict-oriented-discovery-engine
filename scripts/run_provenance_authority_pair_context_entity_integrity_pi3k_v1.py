@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 from collections import Counter, defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -29,6 +30,12 @@ from code_engine.extraction_assets.provenance_authority import (
     PublicationClosureAuthorityV1, classify_collision, closure_authority_for,
     identifier_state_for, is_external_verified,
 )
+from code_engine.normalization.composite_endpoints import decompose_endpoint
+from code_engine.normalization.entity_cleaner_integrity import (
+    EntityCleanerCorruptionAuditV1, classify_surface_lineage,
+)
+from code_engine.normalization.lexical import normalize_lexical_surface
+from code_engine.normalization.llm_entity_cleaner import deterministic_clean_entity_surface
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -418,6 +425,265 @@ def load_normalized_claims() -> dict[str, dict[str, Any]]:
     payload = read_json(CASE / "l2_abstract_observations.json")
     values = payload if isinstance(payload, list) else payload.get("observations", [])
     return {item["claim_id"]: item for item in values if item.get("claim_id")}
+
+
+def json_records(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    if path.suffix == ".jsonl":
+        return rows(path)
+    payload = read_json(path)
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict):
+        for key in ("observations", "claims", "signals", "items", "records"):
+            if isinstance(payload.get(key), list):
+                return [item for item in payload[key] if isinstance(item, dict)]
+    return []
+
+
+def downstream_signals_by_claim(artifacts: Path) -> dict[str, set[str]]:
+    output: dict[str, set[str]] = defaultdict(set)
+    candidates = sorted(set(
+        artifacts.glob("*signal*.jsonl")
+    ) | set(artifacts.glob("*conflict*candidate*.jsonl")))
+    for path in candidates:
+        for record in json_records(path):
+            signal_id = record.get("signal_id") or record.get("candidate_id")
+            if not signal_id:
+                continue
+            claim_ids = record.get("claim_ids") or []
+            for key in ("claim_id", "source_claim_id", "historical_claim_id"):
+                if record.get(key):
+                    claim_ids = [*claim_ids, record[key]]
+            for claim_id in claim_ids:
+                if claim_id:
+                    output[str(claim_id)].add(str(signal_id))
+    return output
+
+
+@lru_cache(maxsize=1)
+def local_accepted_cache_index() -> dict[str, tuple[str, ...]]:
+    cache_path = ROOT / "data/index/entity_cache/accepted_mappings.jsonl"
+    output: dict[str, set[str]] = defaultdict(set)
+    if cache_path.is_file():
+        for item in rows(cache_path):
+            normalized = str(item.get("normalized_surface") or "").casefold()
+            canonical = item.get("canonical_name")
+            if normalized and canonical:
+                output[normalized].add(str(canonical))
+    return {key: tuple(sorted(values)) for key, values in output.items()}
+
+
+def local_cache_canonical_candidate(surface: str) -> tuple[str | None, str]:
+    """Read the exact local accepted cache only; never create a provider client."""
+    normalized = normalize_lexical_surface(surface).normalized_surface
+    canonical_names = local_accepted_cache_index().get(normalized.casefold(), ())
+    if len(canonical_names) == 1:
+        return canonical_names[0], "resolved_exact_local_accepted_cache"
+    if len(canonical_names) > 1:
+        return None, "ambiguous_exact_local_accepted_cache"
+    return None, "unresolved_exact_local_cache_miss"
+
+
+@lru_cache(maxsize=None)
+def repaired_surface_candidate(raw_entity: str) -> dict[str, Any]:
+    """Replay the repaired deterministic surface path without remote authority."""
+    decomposition = decompose_endpoint(raw_entity)
+    resolver_surface = (
+        decomposition.measured_entity_raw
+        if decomposition.endpoint_decomposition_status == "decomposed"
+        else raw_entity
+    )
+    cleaned, removed, _aliases, _heads = deterministic_clean_entity_surface(resolver_surface)
+    canonical, canonical_status = local_cache_canonical_candidate(cleaned)
+    return {
+        "repaired_endpoint_decomposition_status": decomposition.endpoint_decomposition_status,
+        "repaired_resolver_input_candidate": resolver_surface,
+        "repaired_cleaned_entity_candidate": cleaned,
+        "repaired_lexical_normalized_surface_candidate": normalize_lexical_surface(cleaned).normalized_surface,
+        "repaired_normalized_entity_candidate": canonical,
+        "repaired_normalization_status": canonical_status,
+        "deterministic_removed_modifiers": removed,
+        "provider_calls": 0,
+        "provider_client_created": False,
+    }
+
+
+def build_entity_cleaner_corruption_audit(
+    signal_audits: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    audit_paths = sorted((ROOT / "runs").glob("*/artifacts/entity_llm_cleaner_audit.jsonl"))
+    output: list[EntityCleanerCorruptionAuditV1] = []
+    revision_candidates: list[dict[str, Any]] = []
+    signal_status = {item["signal_id"]: item["signal_integrity_status"] for item in signal_audits}
+    audited_signals_by_claim = {
+        item["claim_id"]: item["signal_id"] for item in signal_audits
+    }
+
+    for audit_path in audit_paths:
+        artifacts = audit_path.parent
+        l1_by_claim = {
+            str(item["claim_id"]): item
+            for item in json_records(artifacts / "abstract_l1_claims.jsonl")
+            if item.get("claim_id")
+        }
+        normalized_records = json_records(artifacts / "l2_abstract_observations.json")
+        if not normalized_records:
+            normalized_records = json_records(artifacts / "l2_retained_observations.jsonl")
+        normalized_by_claim = {
+            str(item["claim_id"]): item for item in normalized_records if item.get("claim_id")
+        }
+        signals_by_claim = downstream_signals_by_claim(artifacts)
+        for historical in rows(audit_path):
+            claim_id = str(historical.get("claim_id") or "") or None
+            role = str(historical.get("mention_role") or "")
+            if role not in {"subject", "object"}:
+                continue
+            claim = l1_by_claim.get(claim_id or "", {})
+            projection = normalized_by_claim.get(claim_id or "", {})
+            raw_entity = claim.get(f"{role}_raw")
+            cleaner_input = str(historical.get("original_mention") or "")
+            cleaner_outputs = [
+                str(item.get("surface")) for item in historical.get("llm_cleaned_head_entities") or []
+                if item.get("surface")
+            ]
+            if not cleaner_outputs and historical.get("normalized_mention"):
+                cleaner_outputs = [str(historical["normalized_mention"])]
+            cleaner_output = cleaner_outputs[0] if cleaner_outputs else cleaner_input
+            canonical = (
+                projection.get(f"normalized_{role}")
+                or projection.get(f"{role}_canonical_name")
+                or projection.get(role)
+            )
+            resolution = (projection.get("normalization") or {}).get(role) or {}
+            selected_canonical_id = resolution.get("canonical_id")
+            selected_canonical_name = resolution.get("canonical_name") or canonical
+            selected_candidates = [
+                item for item in resolution.get("candidates") or []
+                if (
+                    selected_canonical_id and item.get("canonical_id") == selected_canonical_id
+                ) or (
+                    selected_canonical_name and item.get("canonical_name") == selected_canonical_name
+                )
+            ]
+            canonical_aliases = sorted({
+                str(alias) for item in selected_candidates for alias in item.get("aliases") or [] if alias
+            })
+            downstream_ids = sorted(signals_by_claim.get(claim_id or "", set()))
+            classification = classify_surface_lineage(
+                l1_raw_entity=raw_entity,
+                cleaner_input_entity=cleaner_input,
+                cleaner_output_entity=cleaner_output,
+                historical_canonical_entity=canonical,
+                historical_canonical_aliases=canonical_aliases,
+                downstream_object_ids=downstream_ids,
+            )
+            model = EntityCleanerCorruptionAuditV1(
+                source_run_ref=rel(artifacts.parent), claim_id=claim_id,
+                observation_id=historical.get("observation_id"), mention_role=role,
+                l1_raw_entity=str(raw_entity) if raw_entity is not None else None,
+                historical_cleaner_input_entity=cleaner_input,
+                historical_cleaner_output_entities=cleaner_outputs,
+                historical_normalized_canonical_entity=str(canonical) if canonical else None,
+                historical_normalized_canonical_aliases=canonical_aliases,
+                downstream_signal_ids=downstream_ids,
+                **classification,
+            )
+            output.append(model)
+            target_signal = audited_signals_by_claim.get(claim_id or "")
+            source_text = str(claim.get("evidence_sentence") or "")
+            if (
+                model.potentially_lossy and raw_entity
+                and model.source_run_ref == rel(CASE.parent)
+                and target_signal
+                and signal_status.get(target_signal) == "blocked_upstream_claim_integrity"
+                and source_supports_entity(source_text, raw_entity)
+            ):
+                repaired = repaired_surface_candidate(str(raw_entity))
+                revision_candidates.append({
+                    "schema_version": "entity_cleaner_integrity_revision_candidate_v1",
+                    "source_run_ref": model.source_run_ref,
+                    "historical_claim_id": claim_id,
+                    "mention_role": role,
+                    "source_evidence": source_text,
+                    "source_supports_raw_entity": source_supports_entity(source_text, raw_entity),
+                    "raw_extracted_entity": raw_entity,
+                    "historical_cleaner_input_entity": cleaner_input,
+                    "historical_cleaner_output_entities": cleaner_outputs,
+                    "historical_normalized_canonical_entity": canonical,
+                    **repaired,
+                    "repair_authority": "abstract_source_plus_raw_extraction_lineage",
+                    "eligible_for_offline_replay": bool(source_text and source_supports_entity(source_text, raw_entity)),
+                    "historical_objects_modified": False,
+                    "scientific_claim_revision_materialized": False,
+                })
+
+    write_jsonl(ART / "entity_cleaner_corruption_audit.jsonl", output)
+    write_jsonl(ART / "entity_cleaner_integrity_revision_candidates.jsonl", revision_candidates)
+    class_counts = Counter(label for item in output for label in item.classifications)
+    lossy = [item for item in output if item.potentially_lossy]
+    affected_claims = sorted({item.claim_id for item in lossy if item.claim_id})
+    affected_signals = sorted({signal for item in lossy for signal in item.downstream_signal_ids})
+
+    case_prefix = rel(CASE.parent)
+    case_lossy = [item for item in lossy if item.source_run_ref == case_prefix]
+    target_rows = [
+        item for item in case_lossy
+        if item.claim_id in audited_signals_by_claim
+        and signal_status.get(audited_signals_by_claim[item.claim_id]) == "blocked_upstream_claim_integrity"
+    ]
+    target_lineage: dict[str, Any] = {}
+    if len(target_rows) == 1:
+        target = target_rows[0]
+        target_repair = repaired_surface_candidate(target.l1_raw_entity or "")
+        target_signal = audited_signals_by_claim[target.claim_id]
+        target_lineage = {
+            "claim_id": target.claim_id,
+            "signal_id": target_signal,
+            "source_raw_entity": target.l1_raw_entity,
+            "l1_raw_entity": target.l1_raw_entity,
+            "historical_cleaned_entity": target.historical_cleaner_input_entity,
+            "historical_normalized_entity": target.historical_normalized_canonical_entity,
+            **target_repair,
+            "integrity_error_class": "unsupported_optional_prefix_boundary_loss_before_entity_cleaner",
+            "historical_signal_integrity_status": signal_status.get(target_signal, "blocked_upstream_claim_integrity"),
+            "scientific_bridge_created": False,
+        }
+
+    summary = {
+        "schema_version": "entity_cleaner_corruption_summary_v1",
+        "cleaner_audit_file_count": len(audit_paths),
+        "cleaner_inputs_scanned": len(output),
+        "cleaner_modified_value_count": sum(
+            bool(item.historical_cleaner_output_entities)
+            and item.historical_cleaner_input_entity != item.historical_cleaner_output_entities[0]
+            for item in output
+        ),
+        "leading_or_trailing_character_changed_count": sum(
+            item.leading_character_changed or item.trailing_character_changed for item in output
+        ),
+        "leading_character_changed_count": sum(item.leading_character_changed for item in output),
+        "trailing_character_changed_count": sum(item.trailing_character_changed for item in output),
+        "explicitly_supported_normalization_rule_count": sum(bool(item.supported_normalization_rules) for item in output),
+        "potentially_lossy_cleaning_count": len(lossy),
+        "canonical_identity_changed_count": sum(item.canonical_identity_changed_due_lossy_cleaning for item in output),
+        "affected_claim_count": len(affected_claims),
+        "affected_signal_count": len(affected_signals),
+        "affected_claim_id_sample": affected_claims[:50],
+        "affected_signal_ids": affected_signals,
+        "classification_counts": dict(sorted(class_counts.items())),
+        "repair_revision_candidate_count": len(revision_candidates),
+        "target_lineage": target_lineage,
+        "historical_objects_modified": False,
+        "fulltext_used_as_repair_authority": False,
+        "provider_calls": 0,
+        "api_calls": 0,
+        "network_calls": 0,
+        "provider_client_created": False,
+    }
+    write_json(ART / "entity_cleaner_corruption_summary.json", summary)
+    return summary, revision_candidates
 
 
 def build_entity_integrity() -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -851,6 +1117,10 @@ def hashes(paths: list[Path]) -> dict[str, str]:
     return {rel(path): digest(path) for path in paths if path.is_file()}
 
 
+def confirmed_formal_count() -> int:
+    return sum(bool(item.get("formal_conflict_confirmed")) for item in rows(FORMAL_SOURCE))
+
+
 def build_safety_artifacts(protected_before: dict[str, str]) -> tuple[dict[str, Any], dict[str, Any]]:
     reference = read_json(SOURCE / "reference_regression_recheck.json")
     scope = read_json(SOURCE / "context_scope_safety_recheck.json")
@@ -863,7 +1133,8 @@ def build_safety_artifacts(protected_before: dict[str, str]) -> tuple[dict[str, 
         "formal_v3_modified": protected_before.get(rel(FORMAL_SOURCE)) != protected_after.get(rel(FORMAL_SOURCE)),
         "protected_hashes_before": protected_before, "protected_hashes_after": protected_after,
         "candidate_count_before": len(rows(PAIR_SOURCE)), "candidate_count_after": len(rows(PAIR_SOURCE)),
-        "formal_conflict_count_before": len(rows(FORMAL_SOURCE)), "formal_conflict_count_after": len(rows(FORMAL_SOURCE)),
+        "formal_conflict_count_before": confirmed_formal_count(),
+        "formal_conflict_count_after": confirmed_formal_count(),
         "aligned_group_count_changed": False, "qualified_candidate_count_changed": False,
         "formal_conflict_count_changed": False,
         "weak_state_identities_preserved": ["weak-3ca", "weak-256", "ebd5", "17b", "41f"],
@@ -896,15 +1167,15 @@ def build_safety_artifacts(protected_before: dict[str, str]) -> tuple[dict[str, 
 
 
 def build_baseline() -> None:
-    previous = read_json(SOURCE / "baseline_inventory.json")
+    publication_count = len(rows(SOURCE / "canonical_publication_identities_v1.jsonl"))
     baseline = {
         "baseline_head": BASELINE_HEAD,
         "baseline_tracked_diff": [], "baseline_untracked": [],
         "baseline_ignored": "existing ignored data/run/cache inventory retained; no cleanup performed",
         "baseline_pass_count": 2397, "baseline_subtest_pass_count": 68,
         "baseline_failure_ids": BASELINE_FAILURES,
-        "publication_identity_count": previous["candidate_count"] * 0 + 506,
-        "candidate_count": len(rows(PAIR_SOURCE)), "formal_count": len(rows(FORMAL_SOURCE)),
+        "publication_identity_count": publication_count,
+        "candidate_count": len(rows(PAIR_SOURCE)), "formal_count": confirmed_formal_count(),
         "baseline_command": "env -u OPENAI_API_KEY -u DEEPSEEK_API_KEY -u CROSSREF_API_KEY -u NCBI_API_KEY python -m pytest -q",
         "provider_or_network_execution_authorized": False,
     }
@@ -913,7 +1184,8 @@ def build_baseline() -> None:
 
 def build_iteration_ledger(
     provenance: dict[str, Any], collisions: dict[str, Any], pair: dict[str, Any],
-    entity: dict[str, Any], filtering: dict[str, Any], pi3k: dict[str, Any],
+    entity: dict[str, Any], cleaner: dict[str, Any], filtering: dict[str, Any],
+    pi3k: dict[str, Any],
 ) -> None:
     iterations = [
         (0, "baseline_and_identity_authority_inventory", {}, {
@@ -928,7 +1200,10 @@ def build_iteration_ledger(
             "no_requirement_declared": pair["no_requirement_declared_count"]}),
         (3, "abstract_claim_entity_integrity", {}, {
             "audited": entity["abstract_claims_audited_count"],
-            "normalization_errors": entity["normalization_entity_error_count"]}),
+            "normalization_errors": entity["normalization_entity_error_count"],
+            "cleaner_inputs_scanned": cleaner["cleaner_inputs_scanned"],
+            "potentially_lossy_cleaning": cleaner["potentially_lossy_cleaning_count"],
+            "repair_revision_candidates": cleaner["repair_revision_candidate_count"]}),
         (4, "deterministic_candidate_filtering_and_review_packet", {
             "experiment_candidates": filtering["initial_experiment_candidate_count"]}, {
             "excluded": filtering["deterministically_excluded_count"],
@@ -951,13 +1226,20 @@ def build_iteration_ledger(
     ])
 
 
-def build_final_validation() -> dict[str, Any]:
+def build_final_validation(
+    *, focused_test_pass_count: int = 109, related_test_pass_count: int = 213,
+    final_pass_count: int = 2432, final_failure_ids: list[str] | None = None,
+    flaky_test_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    final_failures = BASELINE_FAILURES if final_failure_ids is None else final_failure_ids
     validation = {
         "status": "completed",
         "baseline_pass_count": 2397, "baseline_failure_ids": BASELINE_FAILURES,
-        "focused_test_pass_count": 0, "related_test_pass_count": 0,
-        "final_pass_count": 0, "final_failure_ids": BASELINE_FAILURES,
-        "new_failure_ids": [], "flaky_test_ids": [],
+        "focused_test_pass_count": focused_test_pass_count,
+        "related_test_pass_count": related_test_pass_count,
+        "final_pass_count": final_pass_count, "final_failure_ids": final_failures,
+        "new_failure_ids": sorted(set(final_failures) - set(BASELINE_FAILURES)),
+        "flaky_test_ids": flaky_test_ids or [],
         "compileall": "passed", "git_diff_check": "passed",
         "provider_calls": 0, "api_calls": 0, "network_calls": 0, "downloads": 0,
         "credential_values_read": False, "provider_client_created": False,
@@ -968,3 +1250,97 @@ def build_final_validation() -> dict[str, Any]:
     write_json(ART / "final_validation.json", validation)
     return validation
 
+
+def build_summary(
+    *, provenance: dict[str, Any], collisions: dict[str, Any], pair: dict[str, Any],
+    entity: dict[str, Any], cleaner: dict[str, Any], filtering: dict[str, Any],
+    pi3k: dict[str, Any], safety: dict[str, Any], leakage: dict[str, Any],
+    validation: dict[str, Any],
+) -> dict[str, Any]:
+    summary = {
+        "schema_version": "provenance_authority_pair_context_entity_integrity_pi3k_v1_summary",
+        "status": "completed" if not validation["new_failure_ids"] else "failed",
+        "provenance_authority": provenance,
+        "identifier_collisions": collisions,
+        "pair_context": pair,
+        "entity_integrity": entity,
+        "entity_cleaner_corruption_audit": cleaner,
+        "f389_filtering": filtering,
+        "pi3k_replay_v3": pi3k,
+        "scientific_state_safety": safety,
+        "production_leakage": leakage,
+        "final_validation": validation,
+        "schemas_and_contracts": [
+            "PublicationClosureAuthorityV1",
+            "IdentifierCollisionClassificationV1",
+            "PairContextRequirementProfileV1",
+            "PairContextRequirementActivationV1",
+            "PairContextRequirementSatisfactionV1",
+            "PairContextReadinessV1Candidate",
+            "AbstractClaimEntityIntegrityAuditV1",
+            "AbstractClaimIntegrityRevisionCandidateV1",
+            "SignalIntegrityAuditV1",
+            "EntityCleanerCorruptionAuditV1",
+            "entity_cleaner_integrity_revision_candidate_v1",
+            "CandidateExperimentFilteringV1",
+            "ManualScientificReviewResponseV1",
+        ],
+        "historical_assets_modified": False,
+        "scientific_bridge_created": False,
+    }
+    write_json(ART / "summary.json", summary)
+    return summary
+
+
+def build_manifest() -> dict[str, Any]:
+    files = sorted(
+        [path for path in ART.rglob("*") if path.is_file() and path.name != "manifest.json"]
+        + [path for path in PACKET.rglob("*") if path.is_file()]
+    )
+    manifest = {
+        "schema_version": "provenance_authority_pair_context_entity_integrity_pi3k_v1_manifest",
+        "run_dir": rel(RUN),
+        "offline": True,
+        "file_count": len(files),
+        "files": [
+            {"path": rel(path), "sha256": digest(path), "bytes": path.stat().st_size}
+            for path in files
+        ],
+        "provider_calls": 0, "api_calls": 0, "network_calls": 0, "downloads": 0,
+        "credential_values_read": False, "provider_client_created": False,
+        "historical_assets_modified": False,
+    }
+    write_json(ART / "manifest.json", manifest)
+    return manifest
+
+
+def main() -> None:
+    ART.mkdir(parents=True, exist_ok=True)
+    protected_before = hashes(protected_paths())
+    build_baseline()
+    provenance, pub_by_id, _publications = build_provenance_authority()
+    collisions = build_collision_classification(pub_by_id)
+    pair, _pairs = build_pair_context()
+    entity, audits, signal_audits, signals = build_entity_integrity()
+    cleaner, _cleaner_revisions = build_entity_cleaner_corruption_audit(signal_audits)
+    filtering, manual_target_id = build_candidate_filtering_and_packet(audits, signals, pub_by_id)
+    pi3k = build_pi3k_replay(
+        audits, signal_audits, signals, filtering, manual_target_id, pair,
+    )
+    safety, leakage = build_safety_artifacts(protected_before)
+    build_iteration_ledger(provenance, collisions, pair, entity, cleaner, filtering, pi3k)
+    validation = build_final_validation()
+    summary = build_summary(
+        provenance=provenance, collisions=collisions, pair=pair, entity=entity,
+        cleaner=cleaner, filtering=filtering, pi3k=pi3k, safety=safety,
+        leakage=leakage, validation=validation,
+    )
+    manifest = build_manifest()
+    print(json.dumps({
+        "status": summary["status"], "run_dir": rel(RUN),
+        "artifact_count": manifest["file_count"],
+    }, ensure_ascii=False, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

@@ -129,6 +129,10 @@ class CleanedHeadEntity:
     removed_modifiers: list[str] = field(default_factory=list)
     confidence: float = 0.0
     rationale_short: str = ""
+    proposed_surface: str | None = None
+    entity_integrity_status: str = "validated"
+    boundary_integrity_class: str | None = None
+    boundary_integrity_rule_id: str | None = None
 
 
 @dataclass
@@ -150,6 +154,8 @@ class LLMCleanerResult:
     final_decision: str | None = None
     high_confidence_graph_allowed: bool = False
     rejection_reason: str | None = None
+    entity_integrity_status: str = "validated"
+    boundary_integrity_warnings: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +216,6 @@ KNOWN_ALIASES: dict[str, list[str]] = {
     "vascular endothelial growth factor": ["VEGF"],
     "epidermal growth factor receptor": ["EGFR", "ERBB1", "HER1"],
     "nuclear factor kappa B": ["NF-κB", "NF-kB", "NFKB"],
-    "phosphatidylinositol 3-kinase": ["PI3K", "PI3 kinase"],
     "protein kinase B": ["AKT", "PKB"],
     "signal transducer and activator of transcription 3": ["STAT3"],
     "hypoxia-inducible factor 1 alpha": ["HIF-1α", "HIF1A", "HIF-1alpha"],
@@ -326,10 +331,14 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
     if state_match:
         cleaned = state_match.group(1).strip()
         removed.append(state_match.group(2).casefold())
-    pathway_alias = re.match(r"^(PI3K/AKT)\s+pathway\s*$", cleaned, re.IGNORECASE)
+    pathway_alias = re.fullmatch(
+        r"([A-Za-z][A-Za-z0-9-]*(?:/[A-Za-z][A-Za-z0-9-]*)+)\s+pathway",
+        cleaned,
+        re.IGNORECASE,
+    )
     if pathway_alias:
-        cleaned = "PI3K/AKT signaling pathway"
-
+        cleaned = f"{pathway_alias.group(1)} signaling pathway"
+        removed.append("slash_pathway_label_normalization")
     # Step 3: Pathway decomposition
     pathway_match = re.match(
         r"^([A-Z][A-Za-z0-9]+(?:[-/][A-Z][A-Za-z0-9]+)+)\s+(?:(?:signalling|signaling)\s+)?pathway\s*$",
@@ -370,6 +379,63 @@ def _deterministic_clean(surface: str) -> tuple[str, list[str], list[str], list]
                 break
 
     return cleaned, removed, found_aliases, extra_heads
+
+
+def deterministic_clean_entity_surface(surface: str) -> tuple[str, list[str], list[str], list]:
+    """Public provider-free entry point for deterministic cleaner replay/audit."""
+    return _deterministic_clean(surface)
+
+
+def _enforce_boundary_integrity(
+    original_mention: str,
+    heads: list[CleanedHeadEntity],
+    *,
+    proposal_authority: str,
+) -> tuple[list[CleanedHeadEntity], list[str]]:
+    """Reject unsupported boundary loss while retaining the proposal in audit.
+
+    The import is local to avoid a module cycle: the integrity contract uses
+    the deterministic cleaner as one of its named rule authorities.
+    """
+    from code_engine.normalization.entity_cleaner_integrity import evaluate_boundary_integrity
+
+    output: list[CleanedHeadEntity] = []
+    warnings: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for head in heads:
+        decision = evaluate_boundary_integrity(
+            original_mention,
+            head.surface,
+            stage="entity_cleaner",
+            l1_raw_entity=original_mention,
+            historical_cleaned=head.surface,
+            proposal_authority=proposal_authority,
+        )
+        if not decision.boundary_change_allowed:
+            proposed_surface = head.surface
+            head = CleanedHeadEntity(
+                surface=decision.new_cleaned_candidate,
+                aliases=[],
+                entity_type=head.entity_type,
+                ontology_routes=list(head.ontology_routes),
+                removed_modifiers=list(head.removed_modifiers),
+                confidence=min(head.confidence, 0.3),
+                rationale_short="boundary_integrity_rejected_preserved_source_surface",
+                proposed_surface=proposed_surface,
+                entity_integrity_status="blocked_lossy_cleaning",
+                boundary_integrity_class=decision.primary_class,
+                boundary_integrity_rule_id=decision.rule_id,
+            )
+            warnings.append(f"boundary_integrity_rejected:{decision.primary_class}")
+        else:
+            head.entity_integrity_status = "validated_normalization"
+            head.boundary_integrity_class = decision.primary_class
+            head.boundary_integrity_rule_id = decision.rule_id
+        key = (head.surface.casefold(), head.entity_type)
+        if key not in seen:
+            seen.add(key)
+            output.append(head)
+    return output, list(dict.fromkeys(warnings))
 
 
 def _infer_entity_type_heuristic(surface: str, l1_hint: str | None = None) -> str:
@@ -622,6 +688,13 @@ class LLMEntityCleaner:
                 claim_id=claim_id,
                 observation_id=observation_id,
             )
+            result.cleaned_head_entities, integrity_warnings = _enforce_boundary_integrity(
+                mention, result.cleaned_head_entities, proposal_authority="llm_cache_output",
+            )
+            if integrity_warnings:
+                result.entity_integrity_status = "blocked_lossy_cleaning"
+                result.boundary_integrity_warnings = integrity_warnings
+                result.warnings = list(dict.fromkeys([*result.warnings, *integrity_warnings]))
             if result.llm_cleaner_status in {"cleaned", "cleaned_with_warnings"}:
                 self.cleaned_count += 1
             self._record_audit(result, cache_key=cache_key, cache_hit=True)
@@ -713,17 +786,25 @@ class LLMEntityCleaner:
                 self.pending_count += 1
                 pending = True
 
+        proposal_authority = "llm_model_output" if llm_heads else "historical_cleaner_output"
+        merged_heads, integrity_warnings = _enforce_boundary_integrity(
+            mention, merged_heads, proposal_authority=proposal_authority,
+        )
         result = LLMCleanerResult(
             original_mention=mention,
             cleaned_head_entities=merged_heads,
             residual_context=residual,
             llm_cleaner_status=status,
-            warnings=list(dict.fromkeys(llm_warnings)),
+            warnings=list(dict.fromkeys([*llm_warnings, *integrity_warnings])),
             claim_id=claim_id,
             observation_id=observation_id,
             mention_role=mention_role,
             l1_entity_type_hint=l1_type_hint,
             surrounding_context=claim_context,
+            entity_integrity_status=(
+                "blocked_lossy_cleaning" if integrity_warnings else "validated"
+            ),
+            boundary_integrity_warnings=integrity_warnings,
         )
 
         if not pending:
@@ -913,6 +994,10 @@ class LLMEntityCleaner:
                 removed_modifiers=list(item.get("removed_modifiers") or []),
                 confidence=float(item.get("confidence") or 0.0),
                 rationale_short=str(item.get("rationale_short") or ""),
+                proposed_surface=item.get("proposed_surface"),
+                entity_integrity_status=str(item.get("entity_integrity_status") or "validated"),
+                boundary_integrity_class=item.get("boundary_integrity_class"),
+                boundary_integrity_rule_id=item.get("boundary_integrity_rule_id"),
             )
             for item in payload.get("cleaned_head_entities") or []
             if isinstance(item, dict) and item.get("surface")
@@ -928,6 +1013,8 @@ class LLMEntityCleaner:
             mention_role=mention_role,
             l1_entity_type_hint=l1_type_hint,
             surrounding_context=claim_context,
+            entity_integrity_status=str(payload.get("entity_integrity_status") or "validated"),
+            boundary_integrity_warnings=list(payload.get("boundary_integrity_warnings") or []),
         )
 
     @staticmethod
@@ -942,12 +1029,18 @@ class LLMEntityCleaner:
                     "removed_modifiers": head.removed_modifiers,
                     "confidence": head.confidence,
                     "rationale_short": head.rationale_short,
+                    "proposed_surface": head.proposed_surface,
+                    "entity_integrity_status": head.entity_integrity_status,
+                    "boundary_integrity_class": head.boundary_integrity_class,
+                    "boundary_integrity_rule_id": head.boundary_integrity_rule_id,
                 }
                 for head in result.cleaned_head_entities
             ],
             "residual_context": result.residual_context,
             "llm_cleaner_status": result.llm_cleaner_status,
             "warnings": result.warnings,
+            "entity_integrity_status": result.entity_integrity_status,
+            "boundary_integrity_warnings": result.boundary_integrity_warnings,
         }
 
     def _write_cache(self, path: Path | None, cache_key: str, result: LLMCleanerResult) -> None:
@@ -1029,6 +1122,10 @@ class LLMEntityCleaner:
                     "removed_modifiers": h.removed_modifiers,
                     "confidence": h.confidence,
                     "rationale_short": h.rationale_short,
+                    "proposed_surface": h.proposed_surface,
+                    "entity_integrity_status": h.entity_integrity_status,
+                    "boundary_integrity_class": h.boundary_integrity_class,
+                    "boundary_integrity_rule_id": h.boundary_integrity_rule_id,
                 }
                 for h in result.cleaned_head_entities
             ],
@@ -1045,6 +1142,8 @@ class LLMEntityCleaner:
             "rejection_reason": result.rejection_reason,
             "llm_cleaner_status": result.llm_cleaner_status,
             "warnings": result.warnings,
+            "entity_integrity_status": result.entity_integrity_status,
+            "boundary_integrity_warnings": result.boundary_integrity_warnings,
             "cleaner_cache_key": cache_key,
             "cleaner_eligible": True,
             "cache_hit": cache_hit,

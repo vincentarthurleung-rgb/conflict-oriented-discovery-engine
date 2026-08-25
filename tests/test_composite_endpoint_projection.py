@@ -4,7 +4,9 @@ from pathlib import Path
 
 from code_engine.evidence_graph.builders import build_merged_evidence_graph_from_run_artifacts
 from code_engine.normalization.core_eligibility import core_graph_eligibility
-from code_engine.normalization.composite_endpoints import decompose_endpoint, projection_relation
+from code_engine.normalization.composite_endpoints import (
+    decompose_endpoint, phosphorylation_prefix_target, projection_relation,
+)
 from code_engine.workflow.steps import run_l2_abstract_step
 
 
@@ -33,6 +35,27 @@ def test_endpoint_decomposition_rules_are_conservative():
     phospho = decompose_endpoint("phosphorylated AKT")
     assert phospho.measured_entity_raw == "AKT"
     assert phospho.measurement_state == "phosphorylated"
+
+    # A leading P is part of many valid entity names.  It is not a phospho
+    # modifier unless the syntax carries explicit, generic evidence.
+    preserved = decompose_endpoint("PAR1", "receptor")
+    assert preserved.endpoint_decomposition_status == "not_composite"
+    assert preserved.measured_entity_raw is None
+    assert phosphorylation_prefix_target("PAKT") == (None, None)
+
+    compact = decompose_endpoint("pAKT", "protein")
+    assert compact.measured_entity_raw == "AKT"
+    assert compact.measurement_dimension == "phosphorylation"
+
+
+def test_phosphorylation_prefix_does_not_strip_meaningful_leading_characters():
+    for surface in ("PAR1", "PTEN", "PD-L1", "Physical segregation", "p53"):
+        result = decompose_endpoint(surface)
+        assert result.endpoint_decomposition_status != "decomposed"
+        assert result.measured_entity_raw is None
+
+    assert decompose_endpoint("P-AKT").measured_entity_raw == "AKT"
+    assert decompose_endpoint("P C-MYC").measured_entity_raw == "C-MYC"
 
     viability = decompose_endpoint("cell viability")
     assert viability.endpoint_decomposition_status == "unsupported"

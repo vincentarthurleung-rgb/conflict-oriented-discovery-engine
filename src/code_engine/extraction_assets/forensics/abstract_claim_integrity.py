@@ -39,7 +39,8 @@ def source_supports_entity(source_text: str, entity: Any) -> bool:
     source, target = normalize_surface(source_text), normalize_surface(entity)
     if not source or not target:
         return False
-    # Token boundaries prevent AR1 from being treated as PAR1.
+    # Token boundaries prevent a shorter identifier from matching inside a
+    # distinct longer identifier.
     return re.search(rf"(?:^| )({re.escape(target)})(?: |$)", source) is not None
 
 
@@ -199,4 +200,3 @@ def filter_experiment_candidate(facts: ExperimentCompatibilityFactsV1) -> Candid
         candidate_status=status,
         evidence_refs=facts.deterministic_evidence_refs,
     )
-
