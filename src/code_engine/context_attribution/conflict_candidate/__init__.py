@@ -19,6 +19,24 @@ from .scientific_regeneration_v1_candidate import (
     ScientificPropositionBlockV1,
     generate_bounded_diagnostic_pairs_v1,
 )
+from .proposition_authority_v1_candidate import (
+    MinimumScientificPropositionProfileV1,
+    ObservationScientificReadinessAxesV1,
+    PropositionAuthorityRecoveryV1,
+    PropositionSufficiencyAssessmentV1,
+    evaluate_minimum_proposition_sufficiency_v1,
+    measurement_semantic_family_v1,
+    profile_for_observation_type_v1,
+    recover_exact_local_alias_v1,
+    repository_proposition_profiles_v1,
+)
+from .entity_identity_authority_v1_candidate import (
+    EntityMentionEvidenceV1,
+    LocalEntityEquivalenceDecisionV1,
+    decide_local_equivalence_v1,
+    exact_surface_v1,
+    local_identity_key_v1,
+)
 
 __all__ = [
     "ConflictCandidate",
@@ -39,4 +57,18 @@ __all__ = [
     "ScientificConflictCandidateV2Candidate",
     "ScientificPropositionBlockV1",
     "generate_bounded_diagnostic_pairs_v1",
+    "MinimumScientificPropositionProfileV1",
+    "ObservationScientificReadinessAxesV1",
+    "PropositionAuthorityRecoveryV1",
+    "PropositionSufficiencyAssessmentV1",
+    "evaluate_minimum_proposition_sufficiency_v1",
+    "measurement_semantic_family_v1",
+    "profile_for_observation_type_v1",
+    "recover_exact_local_alias_v1",
+    "repository_proposition_profiles_v1",
+    "EntityMentionEvidenceV1",
+    "LocalEntityEquivalenceDecisionV1",
+    "decide_local_equivalence_v1",
+    "exact_surface_v1",
+    "local_identity_key_v1",
 ]
