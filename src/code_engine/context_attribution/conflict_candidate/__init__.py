@@ -45,6 +45,12 @@ from .proposition_frontier_v1_candidate import (
     deterministic_result_semantic_family_v1,
     field_is_required_v2_candidate,
 )
+from .cross_publication_frontier_v1_candidate import (
+    CrossPublicationCompatibilityEnvelopeV1,
+    PartialDimensionV1,
+    PartialScientificPropositionSignatureV1,
+    compare_cross_publication_envelope_v1,
+)
 
 __all__ = [
     "ConflictCandidate",
@@ -85,4 +91,8 @@ __all__ = [
     "deterministic_relation_effect_family_v1",
     "deterministic_result_semantic_family_v1",
     "field_is_required_v2_candidate",
+    "CrossPublicationCompatibilityEnvelopeV1",
+    "PartialDimensionV1",
+    "PartialScientificPropositionSignatureV1",
+    "compare_cross_publication_envelope_v1",
 ]
