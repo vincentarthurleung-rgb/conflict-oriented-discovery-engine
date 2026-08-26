@@ -37,6 +37,14 @@ from .entity_identity_authority_v1_candidate import (
     exact_surface_v1,
     local_identity_key_v1,
 )
+from .proposition_frontier_v1_candidate import (
+    FrontierSemanticRecoveryV1,
+    PropositionSufficiencyBlockerV1,
+    deterministic_measurement_property_family_v1,
+    deterministic_relation_effect_family_v1,
+    deterministic_result_semantic_family_v1,
+    field_is_required_v2_candidate,
+)
 
 __all__ = [
     "ConflictCandidate",
@@ -71,4 +79,10 @@ __all__ = [
     "decide_local_equivalence_v1",
     "exact_surface_v1",
     "local_identity_key_v1",
+    "FrontierSemanticRecoveryV1",
+    "PropositionSufficiencyBlockerV1",
+    "deterministic_measurement_property_family_v1",
+    "deterministic_relation_effect_family_v1",
+    "deterministic_result_semantic_family_v1",
+    "field_is_required_v2_candidate",
 ]
