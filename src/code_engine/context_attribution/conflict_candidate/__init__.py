@@ -51,6 +51,17 @@ from .cross_publication_frontier_v1_candidate import (
     PartialScientificPropositionSignatureV1,
     compare_cross_publication_envelope_v1,
 )
+from .targeted_expansion_v1_candidate import (
+    BoundedTargetExpansionBudgetV1,
+    EVALUATION_LEVELS_V1,
+    PlannedQueryComponentsV1,
+    TargetedRetrievalSpecificationV1,
+    primary_contradiction_term_count_v1,
+)
+from .targeted_network_discovery_v1_candidate import (
+    ProviderExtractionCandidateV1,
+    contains_all_groups_v1,
+)
 
 __all__ = [
     "ConflictCandidate",
@@ -95,4 +106,11 @@ __all__ = [
     "PartialDimensionV1",
     "PartialScientificPropositionSignatureV1",
     "compare_cross_publication_envelope_v1",
+    "BoundedTargetExpansionBudgetV1",
+    "EVALUATION_LEVELS_V1",
+    "PlannedQueryComponentsV1",
+    "TargetedRetrievalSpecificationV1",
+    "primary_contradiction_term_count_v1",
+    "ProviderExtractionCandidateV1",
+    "contains_all_groups_v1",
 ]
