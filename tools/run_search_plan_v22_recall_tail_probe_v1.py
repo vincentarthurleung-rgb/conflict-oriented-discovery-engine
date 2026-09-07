@@ -168,6 +168,11 @@ def execute(network_enabled):
     if RUN.exists() and any(p.name not in REQUIRED and p.name != "retrieval_assets" for p in RUN.iterdir()):
         raise RuntimeError("Probe run contains unrelated files")
     RUN.mkdir(parents=True, exist_ok=True); ASSETS.mkdir(parents=True, exist_ok=True)
+    existing_baseline = readj(RUN / "baseline.json") if (RUN / "baseline.json").exists() else {}
+    current_git_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
+                                      capture_output=True, check=True).stdout.strip()
+    authorized_git_head = existing_baseline.get("git_head_at_authorized_execution",
+                                                existing_baseline.get("git_head", current_git_head))
     protected_before = protected_hashes()
     sources_before = source_state()
     plans = {x["case_id"]: x for x in readl(SOURCE / "frozen_search_plans.jsonl")}
@@ -190,8 +195,9 @@ def execute(network_enabled):
                 "continuation_consistency_limit": "The preserved run has no PubMed WebEnv/cursor. Frozen query text, sort, order, and next retstart are preserved, but the live PubMed relevance index may have shifted since the original first pages.",
                 "frozen_source_hashes": sources_before, "protected_tree_digest_before": objhash(protected_before),
                 "protected_file_count": len(protected_before),
-                "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
-                                           capture_output=True, check=True).stdout.strip()}
+                "git_head_at_authorized_execution": authorized_git_head,
+                "git_head_at_latest_replay": current_git_head,
+                "external_git_head_change_since_authorized_execution": authorized_git_head != current_git_head}
     writej(RUN / "baseline.json", baseline)
     network = Network(network_enabled)
 
@@ -519,7 +525,11 @@ def execute(network_enabled):
               "search_plan_tuning_performed": False, "case_specific_fix_performed": False,
               "production_behavior_modified": False, "formal_v3_modified": False, "atlas_activated": False,
               "active_pointer_changed": False, "provider_calls": 0, "llm_calls": 0,
-              "experimental_extraction_invoked": False, "git_commit_created": False}
+              "experimental_extraction_invoked": False, "git_commit_created_by_probe": False,
+              "git_head_at_authorized_execution": authorized_git_head,
+              "git_head_at_completion": current_git_head,
+              "external_concurrent_git_commit_detected": authorized_git_head != current_git_head,
+              "external_git_commit_detection_basis": "HEAD and reflog changed during the saved-response replay; the probe invoked no git mutation command"}
     writej(RUN / "scientific_state_safety_audit.json", safety)
 
     per_case = []
@@ -556,7 +566,8 @@ def execute(network_enabled):
                "per_case": per_case, "candidate_future_budget_policy": policy,
                "manual_relevance_status": "pending", "heldout_v22_validation": False,
                "budget_calibration_only": True, "provider_calls": 0, "llm_calls": 0,
-               "experimental_extraction_calls": 0, "historical_assets_modified": bool(changed)}
+               "experimental_extraction_calls": 0, "historical_assets_modified": bool(changed),
+               "external_concurrent_git_commit_detected": authorized_git_head != current_git_head}
     writej(RUN / "summary.json", summary)
 
     checks = {"exact_probe_cases": {x["case_id"] for x in per_case} == set(CASES),
