@@ -120,14 +120,15 @@ def execute(network_enabled):
             "source_selection_plan_ref": rel(PLAN), "source_selection_plan_sha256": plan_hash,
             "replacement_used": False, "pubmed_search_performed": False, "metadata_depth_extended": False}
         try:
-            raw, request_made = network.get(BASE + "?" + urllib.parse.urlencode(params), path,
-                                            {"planned_selection_order": row["planned_selection_order"],
-                                             "case_id": row["case_id"], "pmid": pmid, "pmcid": pmcid})
+            raw, _request_made = network.get(BASE + "?" + urllib.parse.urlencode(params), path,
+                                             {"planned_selection_order": row["planned_selection_order"],
+                                              "case_id": row["case_id"], "pmid": pmid, "pmcid": pmcid})
             root = ET.fromstring(raw); article_ok = root.find(".//article") is not None or root.tag.endswith("article")
             xml_pmids = ["".join(x.itertext()).strip() for x in root.findall(".//article-id[@pub-id-type='pmid']")]
             identity_ok = not xml_pmids or pmid in xml_pmids
             status = "fulltext_acquired" if article_ok and identity_ok else ("fulltext_identity_mismatch" if article_ok else "fulltext_retrieval_failed")
-            result = {**base, "status": status, "network_request_made": request_made,
+            result = {**base, "status": status,
+                "network_request_made": any(e["snapshot_ref"] == rel(path) for e in network.events),
                 "pmc_article_present": article_ok, "pmid_identity_valid": identity_ok, "xml_pmids": xml_pmids,
                 "snapshot_ref": rel(path), "content_hash": sha(path), "bytes": path.stat().st_size,
                 "source_identity": "NCBI PMC efetch", "scientific_extraction_performed": False}
