@@ -1,0 +1,56 @@
+{
+  "batch_count": 5,
+  "batch_size": 14,
+  "evaluator_facing_repository_links_added": false,
+  "files": [
+    {
+      "path": "pass_b_evaluator_instruction.md",
+      "sha256": "9e6dd5c3bd62e08506020a56acc8131c190b1acd8fe5b96a42f6f95e9a399cf1",
+      "sha256_scope": "exact_file_bytes"
+    },
+    {
+      "path": "heldout_relevance_blind_batch_01.md",
+      "sha256": "569a5126d58d27aaf242cdef29231484b05600ce33616915ba5b44686ec9dfcc",
+      "sha256_scope": "exact_file_bytes"
+    },
+    {
+      "path": "heldout_relevance_blind_batch_02.md",
+      "sha256": "6eeb4da8d6598958110c77077c66eb4214b0e3fd971ec405159f7619427ea7a8",
+      "sha256_scope": "exact_file_bytes"
+    },
+    {
+      "path": "heldout_relevance_blind_batch_03.md",
+      "sha256": "1da571429521b81aa80aa3ebfb484a80b1e6aca3546fa32dbd55fe0dc82571a1",
+      "sha256_scope": "exact_file_bytes"
+    },
+    {
+      "path": "heldout_relevance_blind_batch_04.md",
+      "sha256": "545b8fed9fa1d86146f7ec432bfc7a77cb523ac6d77643a64fe1b04c0d08b1ca",
+      "sha256_scope": "exact_file_bytes"
+    },
+    {
+      "path": "heldout_relevance_blind_batch_05.md",
+      "sha256": "bb8a6f14e7bbdff8ea6b591ec7686ecc866779fc372511012bd3ce4ddff12fc0",
+      "sha256_scope": "exact_file_bytes"
+    },
+    {
+      "path": "evaluator_workspace_manifest.json",
+      "sha256": "f3d2d22904f0ab0a3e9bd4e167b2e5463b7b1a2277c00c6b421c853bf13566e4",
+      "sha256_scope": "canonical manifest payload with this sha256 value set to null"
+    }
+  ],
+  "manifest_self_hash_convention": "A file cannot contain its own exact byte hash without self-reference. The manifest entry binds its canonical payload with that entry null; the external workspace_exposure_audit.json records the final manifest file hash.",
+  "packet_count": 70,
+  "physical_copies_only": true,
+  "reviewer_type": "model_retrieval_adjudicator",
+  "source_blind_batches_byte_identical": true,
+  "symlinks_present": false,
+  "unique_packet_count": 70,
+  "upstream_frozen_hashes": {
+    "heldout_v1_blinded_adjudication_views_sha256": "2940e058b63df5dc02fb6ed07d970f651a74f9a000c9b6784affe3e6fac1dc0e",
+    "heldout_v1_pass_a_acquisition_adjudications_sha256": "333fc6f20bab33b21387f2453905c2c9c11d92797177688a9e75cc2bab2e52df",
+    "heldout_v1_protocol_sha256": "2aac90361272de64eb055099602ae68e696c760628fec3835c0f29eca63ca127",
+    "heldout_v1_review_corpus_sha256": "f2cfe4f1657667a66b18d3123e82d76cc4bf1af9da2863ac6b10f9efc3d092fb"
+  },
+  "workspace_purpose": "primary_blinded_pass_b_relevance_adjudication"
+}
