@@ -1,0 +1,31 @@
+{
+  "allow_alias": true,
+  "allow_broader_container": false,
+  "allow_descendant": true,
+  "allow_exact": true,
+  "allow_model_of": true,
+  "background_role_patterns": [
+    "\\bbackground\\b",
+    "\\b(?:is|are|has been|have been) (?:widely )?known\\b",
+    "\\bprevious (?:work|studies|reports)\\b"
+  ],
+  "biological_unit_compatibility_version": "BiologicalUnitCompatibilityV1",
+  "decision_mode": "deterministic",
+  "enabled": true,
+  "experimental_role_patterns": [
+    "\\b(?:we|our|this study|here we|methods|results)\\b",
+    "\\b(?:cells?|tissues?|samples?|animals?|patients?|mice|rats) (?:were|was) (?:used|treated|exposed|cultured|isolated|collected|analyzed|analysed|examined|transfected|stimulated)\\b",
+    "\\b(?:experiments?|assays?|analysis|analyses) (?:in|using|of)\\b"
+  ],
+  "incompatible_reject_counterfactual_only": true,
+  "policy_version": "SearchPlanV23Alpha1BiologicalUnitPolicyV1",
+  "require_anatomical_region_match_when_specified": true,
+  "search_plan_version": "v2.3-alpha1",
+  "shadow_only": true,
+  "source_evidence_fields": [
+    "ScientificPropositionTargetV1.context_qualifiers",
+    "publication.title",
+    "publication.abstract",
+    "publication.publication_types"
+  ]
+}

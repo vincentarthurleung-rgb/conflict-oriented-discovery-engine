@@ -1,0 +1,39 @@
+{
+  "registry_version": "BiologicalUnitRegistryV1_1-alpha1.1",
+  "base_registry_path": "configs/search_plans/biological_unit_registry_v1.json",
+  "base_registry_sha256": "ec3cf188855230f5d6b8e2449d1fea383f4384122f655542bb0774fa1a282cfd",
+  "description": "Context-dimension overlay for the immutable V1 registry. It adds no aliases, units, hierarchy edges, or model-of relations.",
+  "dimension_defaults_by_unit_type": {
+    "cell_type": ["BIOLOGICAL_UNIT"],
+    "cell_line": ["BIOLOGICAL_UNIT"],
+    "tissue": ["BIOLOGICAL_UNIT"],
+    "organ": ["BIOLOGICAL_UNIT"],
+    "anatomical_region": ["ANATOMICAL_REGION"],
+    "mixed": ["UNRESOLVED_CONTEXT_DIMENSION"],
+    "unknown": ["UNRESOLVED_CONTEXT_DIMENSION"]
+  },
+  "context_dimension_annotations": [
+    {
+      "canonical_id": "BU:MODEL:EGFR_MUTANT_NSCLC",
+      "context_dimensions": ["DISEASE_CONTEXT", "GENOTYPE_CONTEXT"],
+      "provenance": "Scientific-type audit of the existing local registry entry; no external canonical identity is asserted.",
+      "scientific_rationale": "Non-small-cell lung cancer names a disease/model context and EGFR-mutant names a genotype context; neither alone is a cell identity.",
+      "generic_applicability": "All target or observed uses of this registry concept."
+    },
+    {
+      "canonical_id": "BU:MODEL:AML",
+      "context_dimensions": ["DISEASE_CONTEXT"],
+      "provenance": "Scientific-type audit of the existing local registry entry; no external canonical identity is asserted.",
+      "scientific_rationale": "Acute myeloid leukemia is represented here as disease/model context rather than canonical cell identity.",
+      "generic_applicability": "All target or observed uses of this registry concept."
+    },
+    {
+      "canonical_id": "BU:MODEL:MANTLE_CELL_LYMPHOMA",
+      "context_dimensions": ["DISEASE_CONTEXT"],
+      "provenance": "Scientific-type audit of the existing local registry entry; no external canonical identity is asserted.",
+      "scientific_rationale": "Mantle cell lymphoma is represented here as disease/model context rather than canonical cell identity.",
+      "generic_applicability": "All target or observed uses of this registry concept."
+    }
+  ],
+  "relations_added_or_changed": []
+}

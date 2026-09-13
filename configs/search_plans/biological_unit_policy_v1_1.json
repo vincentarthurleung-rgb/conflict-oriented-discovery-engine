@@ -1,0 +1,33 @@
+{
+  "policy_version": "SearchPlanV23Alpha1_1BiologicalUnitPolicyV1_1",
+  "biological_unit_compatibility_version": "BiologicalUnitCompatibilityV1_1",
+  "base_policy_path": "configs/search_plans/biological_unit_policy_v1.json",
+  "base_policy_sha256": "2a2d4a8ac281114a1ca7cfa1c3c9553bbad75b3ecd1cc01d936845b0a74a0d21",
+  "search_plan_version": "v2.3-alpha1.1",
+  "enabled": true,
+  "shadow_only": true,
+  "decision_mode": "deterministic",
+  "genotype_context_patterns": [
+    "\\b[a-z0-9-]+[- ]mutant\\b",
+    "\\b[a-z0-9-]+ mutation(?:s)?\\b",
+    "\\bgenotype\\b"
+  ],
+  "treatment_context_patterns": [
+    "\\btreated with\\b",
+    "\\btherapy\\b",
+    "\\bdrug exposure\\b"
+  ],
+  "incompatible_requires": [
+    "applicable_resolved_target_unit_or_region_constraint",
+    "resolved_relevant_experimental_observed_unit",
+    "positive_curated_directional_incompatibility",
+    "no_exact_alias_subtype_or_model_of_authorization",
+    "not_background_or_incidental_mention"
+  ],
+  "non_applicable_state": "UNRESOLVED",
+  "unresolved_is_rejection": false,
+  "production_rejection_enabled": false,
+  "production_tier_behavior_changed": false,
+  "production_acquisition_behavior_changed": false,
+  "outcome_informed_development_only": true
+}
