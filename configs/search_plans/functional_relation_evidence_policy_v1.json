@@ -1,0 +1,135 @@
+{
+  "policy_version": "SearchPlanV23Alpha2FunctionalRelationEvidencePolicyV1",
+  "functional_relation_evidence_version": "FunctionalRelationEvidenceV1",
+  "search_plan_version": "v2.3-alpha2",
+  "enabled": true,
+  "shadow_only": true,
+  "decision_mode": "deterministic",
+  "relation_semantics": {
+    "contributes_to": {"family": "positive_regulation", "sign": 1, "semantic_kind": "functional"},
+    "sensitizes": {"family": "positive_regulation", "sign": 1, "semantic_kind": "functional"},
+    "increases_sensitivity_to": {"family": "positive_regulation", "sign": 1, "semantic_kind": "functional"},
+    "confers_resistance": {"family": "positive_regulation", "sign": 1, "semantic_kind": "functional"},
+    "associated_with": {"family": "association", "sign": 0, "semantic_kind": "association"},
+    "correlates_with": {"family": "association", "sign": 0, "semantic_kind": "association"}
+  },
+  "current_study_patterns": [
+    "\\bwe (?:show|found|demonstrate|report|observed|tested|investigated)\\b",
+    "\\b(?:this|the present) study\\b",
+    "\\bhere(?:in)? we\\b",
+    "\\bour (?:results|data|findings|experiments|analysis|analyses)\\b",
+    "\\bresults (?:showed|show|demonstrated|indicated)\\b"
+  ],
+  "background_patterns": [
+    "\\bprevious(?:ly)? (?:studies|work|reports|shown|reported)\\b",
+    "\\bhas been (?:shown|reported|demonstrated|known)\\b",
+    "\\bis (?:widely )?known to\\b",
+    "\\bbackground\\b"
+  ],
+  "discussion_speculation_patterns": [
+    "\\bmay (?:mediate|regulate|affect|increase|decrease|promote|inhibit|contribute)\\b",
+    "\\bmight (?:mediate|regulate|affect|increase|decrease|promote|inhibit|contribute)\\b",
+    "\\bcould (?:mediate|regulate|affect|increase|decrease|promote|inhibit|contribute)\\b",
+    "\\bwe speculate\\b",
+    "\\bpossibly\\b"
+  ],
+  "association_patterns": [
+    "\\bcorrelat(?:e|es|ed|ion|ions)\\b",
+    "\\bassociat(?:e|es|ed|ion|ions) with\\b",
+    "\\blinked to\\b",
+    "\\bpredict(?:s|ed|ive)?\\b",
+    "\\benriched (?:in|among)\\b",
+    "\\bco-?expression\\b"
+  ],
+  "resistant_sensitive_association_patterns": [
+    "\\b(?:higher|lower|elevated|reduced) in (?:resistant|sensitive)\\b",
+    "\\b(?:resistant|sensitive)[ -](?:cells|samples|tumou?r)\\b"
+  ],
+  "multi_target_patterns": [
+    "\\bmulti[- ](?:target|kinase)\\b",
+    "\\bpan[- ](?:kinase|inhibitor)\\b",
+    "\\bmultiple (?:targets|kinases|pathways)\\b",
+    "\\bbroad[- ]spectrum\\b",
+    "\\bnonselective\\b",
+    "\\bdual (?:inhibitor|inhibition|blockade|targeting)\\b",
+    "\\b(?:activation|inhibition|silencing|knockdown|knock[- ]?out|targeting) of both\\b"
+  ],
+  "positive_perturbation_patterns": [
+    "activat(?:e|es|ed|ion)",
+    "stimulat(?:e|es|ed|ion)",
+    "over[- ]?express(?:ed|ion)?",
+    "re-express(?:ed|ion)?",
+    "gain[- ]of[- ]function",
+    "agonist(?:s)?",
+    "treatment(?: with)?",
+    "exposure to",
+    "addition of"
+  ],
+  "negative_perturbation_patterns": [
+    "knockdown",
+    "knock[- ]?out",
+    "silenc(?:e|es|ed|ing)",
+    "deplet(?:e|es|ed|ion)",
+    "inhibit(?:s|ed|ion|or)?",
+    "block(?:s|ed|ade|ing)",
+    "antagonist(?:s)?",
+    "degrad(?:e|es|ed|ation|er|ers)",
+    "loss[- ]of[- ]function",
+    "deficien(?:t|cy)",
+    "delet(?:e|es|ed|ion)"
+  ],
+  "positive_response_patterns": [
+    "increas(?:e|es|ed|ing)",
+    "upregulat(?:e|es|ed|ion)",
+    "enhanc(?:e|es|ed|ing)",
+    "promot(?:e|es|ed|ing)",
+    "augment(?:s|ed|ation)?",
+    "restor(?:e|es|ed|ation)",
+    "rescu(?:e|es|ed|ing)",
+    "sensitiz(?:e|es|ed|ation)",
+    "induc(?:e|es|ed|tion)",
+    "activat(?:e|es|ed|ion)",
+    "phosphorylat(?:e|es|ed|ion)"
+  ],
+  "negative_response_patterns": [
+    "decreas(?:e|es|ed|ing)",
+    "reduc(?:e|es|ed|tion|ing)",
+    "suppress(?:es|ed|ion|ing)?",
+    "attenuat(?:e|es|ed|ion)",
+    "abolish(?:es|ed|ing)?",
+    "impair(?:s|ed|ment)?",
+    "prevent(?:s|ed|ion)?",
+    "inhibit(?:s|ed|ion|or)?",
+    "block(?:s|ed|ade|ing)",
+    "loss of"
+  ],
+  "rescue_patterns": [
+    "\\brescu(?:e|es|ed|ing)\\b",
+    "\\bre-express(?:ed|ion)?\\b",
+    "\\brestor(?:e|es|ed|ation)\\b",
+    "\\brevers(?:e|es|ed|al)\\b"
+  ],
+  "chain_link_patterns": [
+    "\\bthereby\\b",
+    "\\bresult(?:s|ed|ing)? in\\b",
+    "\\bthrough\\b",
+    "\\bvia\\b",
+    "\\bdownstream\\b",
+    "\\bmediated by\\b",
+    "\\bin turn\\b"
+  ],
+  "endpoint_contrast_pairs": [
+    {"target_contains": "resistance", "observed_contains": "sensitivity", "direction_multiplier": -1},
+    {"target_contains": "resistance", "observed_contains": "sensitiz", "direction_multiplier": -1},
+    {"target_contains": "sensitivity", "observed_contains": "resistance", "direction_multiplier": -1},
+    {"target_contains": "viability", "observed_contains": "apoptosis", "direction_multiplier": -1},
+    {"target_contains": "apoptosis", "observed_contains": "viability", "direction_multiplier": -1}
+  ],
+  "maximum_subject_cue_gap_chars": 48,
+  "maximum_endpoint_response_gap_chars": 64,
+  "adjacent_sentence_chain_window": 1,
+  "unresolved_is_blocker": false,
+  "production_rejection_enabled": false,
+  "production_tier_behavior_changed": false,
+  "production_acquisition_behavior_changed": false
+}

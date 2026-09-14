@@ -1,0 +1,102 @@
+{
+  "policy_version": "SearchPlanV23Alpha2_1FunctionalRelationEvidencePolicyV1_1",
+  "functional_relation_evidence_version": "FunctionalRelationEvidenceV1_1",
+  "search_plan_version": "v2.3-alpha2.1",
+  "base_policy_sha256": "70462b30f3620c3cc2f43b87bb98f0579aec70f525cf563c539ee9b892642c8d",
+  "enabled": true,
+  "shadow_only": true,
+  "decision_mode": "deterministic",
+  "association_requires_positive_language": true,
+  "cochange_without_resolved_functional_link": "UNRESOLVED",
+  "maximum_local_composition_sentence_distance": 1,
+  "require_same_abstract_field_for_composition": true,
+  "require_shared_intervention_or_explicit_anaphor": true,
+  "positive_perturbation_patterns": [
+    "constitutively active",
+    "constitutive activation",
+    "gain[- ]of[- ]function",
+    "over[- ]?express(?:ed|ion|ing)?",
+    "re[- ]?express(?:ed|ion|ing)?",
+    "agonist(?:s)?",
+    "treatment(?: with)?",
+    "exposure to",
+    "addition of",
+    "activat(?:e|es|ed|ion)"
+  ],
+  "negative_perturbation_patterns": [
+    "dominant[- ](?:negative|interfering)",
+    "knock[- ]?down",
+    "knock[- ]?out",
+    "shrna silencing",
+    "silenc(?:e|es|ed|ing)",
+    "deficien(?:t|cy)",
+    "deplet(?:e|es|ed|ion)",
+    "inhibit(?:s|ed|ion|or|ors)?",
+    "block(?:s|ed|ade|ing)",
+    "loss of",
+    "degrad(?:e|es|ed|ation|er|ers)"
+  ],
+  "positive_response_patterns": [
+    "increas(?:e|es|ed|ing)",
+    "enhanc(?:e|es|ed|ing)",
+    "augment(?:s|ed|ation)?",
+    "potentiat(?:e|es|ed|ing|ion)",
+    "promot(?:e|es|ed|ing)",
+    "induc(?:e|es|ed|tion)",
+    "restor(?:e|es|ed|ation)",
+    "rescu(?:e|es|ed|ing)",
+    "protect(?:s|ed|ing|ion)?",
+    "preserv(?:e|es|ed|ing|ation)",
+    "sensitiz(?:e|es|ed|ation)"
+  ],
+  "negative_response_patterns": [
+    "decreas(?:e|es|ed|ing)",
+    "reduc(?:e|es|ed|tion|ing)",
+    "suppress(?:es|ed|ion|ing)?",
+    "attenuat(?:e|es|ed|ion)",
+    "abolish(?:es|ed|ing)?",
+    "abrogat(?:e|es|ed|ion)",
+    "prevent(?:s|ed|ing|ion)?",
+    "impair(?:s|ed|ment)?",
+    "fail(?:s|ed)? to",
+    "loss of"
+  ],
+  "necessity_patterns": [
+    "dependent on",
+    "required for",
+    "requires",
+    "essential for",
+    "-dependent"
+  ],
+  "rescue_patterns": [
+    "re[- ]?express",
+    "restor",
+    "rescu",
+    "revers",
+    "reinstat"
+  ],
+  "explicit_anaphor_patterns": [
+    "this (?:effect|process|intervention|treatment|response)",
+    "these (?:effects|results)",
+    "the effect"
+  ],
+  "current_result_patterns": [
+    "we (?:show|showed|found|demonstrate|demonstrated|report|reported|observed|confirmed|revealed)",
+    "we (?:activated|inhibited|knocked|silenced|treated|expressed|depleted|blocked)",
+    "our (?:results|data|findings|experiments)",
+    "(?:results|findings) (?:show|showed|demonstrate|demonstrated|indicate|indicated)",
+    "(?:treatment|cells|mice|macrophages|fibroblasts) (?:with|treated|lacking|deficient)",
+    "(?:dose|concentration)[- ]dependent"
+  ],
+  "multi_target_patterns": [
+    "multi[- ](?:target|kinase)",
+    "pan[- ](?:kinase|inhibitor)",
+    "broad[- ]spectrum",
+    "nonselective",
+    "dual (?:inhibitor|inhibition|blockade|targeting)",
+    "(?:silencing|knockdown|knockout|inhibition|blocking) of both"
+  ],
+  "production_rejection_enabled": false,
+  "production_tier_behavior_changed": false,
+  "production_acquisition_behavior_changed": false
+}

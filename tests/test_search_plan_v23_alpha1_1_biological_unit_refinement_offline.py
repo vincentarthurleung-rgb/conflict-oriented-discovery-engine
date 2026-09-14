@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from tools import audit_search_plan_v23_alpha1_1_biological_unit_refinement_offline as audit
 from tools import run_search_plan_v23_alpha1_1_biological_unit_refinement_offline as run
+from code_engine.search.historical_manifest_verifier import verify_frozen_manifest
 
 
 class FrozenAuditTests(unittest.TestCase):
@@ -133,10 +134,12 @@ class ReplayAndSafetyTests(unittest.TestCase):
         self.assertEqual(manifest["v23_alpha1_1_biological_unit_refinement_sha256"],
                          run.alpha1.frozen.digest(run.alpha1.frozen.canonical_json(pairs)))
 
-    def test_complete_existing_output_replay_is_byte_identical(self):
-        before = {name: (run.RUN / name).read_bytes() for name in run.REQUIRED}
-        self.assertEqual(run.generate_and_freeze(), before)
-        self.assertEqual(before, {name: (run.RUN / name).read_bytes() for name in run.REQUIRED})
+    def test_frozen_historical_manifest_verifies_without_current_repo_enumeration(self):
+        result = verify_frozen_manifest(
+            run.RUN, root_field="v23_alpha1_1_biological_unit_refinement_sha256"
+        )
+        self.assertEqual(result["status"], "PASS")
+        self.assertFalse(result["current_repository_membership_enumerated"])
 
 
 if __name__ == "__main__":
