@@ -1,0 +1,40 @@
+{
+  "tier_b_policy_version": "TierBAcquisitionPolicyV1",
+  "search_plan_version": "v2.3-alpha4",
+  "enabled": true,
+  "shadow_only": true,
+  "subtier_order": [
+    "B1_SUPPORTED_OR_SINGLE_UNCERTAINTY",
+    "B2_MULTI_UNRESOLVED",
+    "B3_RELATION_WEAK",
+    "INCOMPATIBLE_DIAGNOSTIC"
+  ],
+  "recall_tail_principle": "Tier B is not equivalent to irrelevant. B1 and B2 preserve the acquisition path for unresolved candidates that may be scientifically valuable.",
+  "policies": {
+    "POLICY_A_MINIMAL": {
+      "tier_a_eligibility_rule_applies": true,
+      "fulltext_priority_order": "historical_order_unchanged",
+      "hard_reject_states": [],
+      "all_original_tier_a_b_candidates_retainable": true
+    },
+    "POLICY_B_CONSERVATIVE_PRIORITY": {
+      "tier_a_eligibility_rule_applies": true,
+      "fulltext_priority_order": ["TIER_A_ELIGIBLE", "B1_SUPPORTED_OR_SINGLE_UNCERTAINTY", "B2_MULTI_UNRESOLVED", "B3_RELATION_WEAK", "INCOMPATIBLE_DIAGNOSTIC"],
+      "hard_reject_states": [],
+      "all_original_tier_a_b_candidates_retainable": true
+    },
+    "POLICY_C_STRICT_FULLTEXT_ELIGIBILITY": {
+      "tier_a_eligibility_rule_applies": true,
+      "fulltext_eligible_subtiers": ["B1_SUPPORTED_OR_SINGLE_UNCERTAINTY", "B2_MULTI_UNRESOLVED"],
+      "metadata_only_subtiers": ["B3_RELATION_WEAK", "INCOMPATIBLE_DIAGNOSTIC"],
+      "automatic_production_selection": false
+    }
+  },
+  "retrospective_affected_definitions": {
+    "POLICY_A_MINIMAL": "An acquired candidate is affected only when it was originally Tier A and loses shadow Tier-A eligibility.",
+    "POLICY_B_CONSERVATIVE_PRIORITY": "An acquired candidate is affected when it was originally Tier A and loses shadow Tier-A eligibility, or when its conservative priority class is B2, B3, or INCOMPATIBLE_DIAGNOSTIC rather than Tier-A-eligible or B1.",
+    "POLICY_C_STRICT_FULLTEXT_ELIGIBILITY": "An acquired candidate is affected when it was originally Tier A and loses shadow Tier-A eligibility, or when Policy C makes it fulltext-ineligible."
+  },
+  "production_policy_selected": null,
+  "production_activation": false
+}

@@ -1,0 +1,33 @@
+{
+  "policy_version": "CompositePreAcquisitionPolicyV1",
+  "search_plan_version": "v2.3-alpha4",
+  "composite_preacquisition_profile_version": "v1",
+  "enabled": true,
+  "shadow_only": true,
+  "decision_mode": "deterministic",
+  "original_eligible_dispositions": ["TIER_A", "TIER_B"],
+  "never_resurrect_dispositions": ["REJECT", "ABSTAIN"],
+  "positive_unit_incompatibility_states": ["INCOMPATIBLE"],
+  "positive_endpoint_incompatibility_states": ["INCOMPATIBLE"],
+  "relation_weak_states": ["ASSOCIATION_ONLY", "BACKGROUND_ONLY", "MULTI_TARGET_AMBIGUOUS"],
+  "strong_relation_states": ["DIRECT_FUNCTIONAL", "FUNCTIONAL_CHAIN"],
+  "compatible_unit_states": ["EXACT", "AUTHORIZED_COMPATIBLE"],
+  "unit_uncertainty_states": ["UNRESOLVED"],
+  "relation_uncertainty_states": ["UNRESOLVED"],
+  "endpoint_positive_support_states": ["EXACT", "AUTHORIZED_EQUIVALENT"],
+  "endpoint_nonblocking_states": ["PARTIAL", "UNRESOLVED"],
+  "endpoint_uncertainty_counts_toward_tier_b_split": false,
+  "tier_a_eligibility_requires": {
+    "no_positive_incompatibility": true,
+    "no_relation_weak_state": true,
+    "strong_relation_required": false,
+    "resolved_unit_required": false,
+    "positive_endpoint_support_required": false
+  },
+  "numeric_scientific_score": false,
+  "trained_classifier": false,
+  "optimized_thresholds": false,
+  "production_rejection_enabled": false,
+  "production_tier_behavior_changed": false,
+  "production_acquisition_behavior_changed": false
+}

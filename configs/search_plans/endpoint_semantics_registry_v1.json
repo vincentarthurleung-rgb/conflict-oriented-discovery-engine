@@ -1,0 +1,103 @@
+{
+  "registry_version": "EndpointSemanticsRegistryV1",
+  "search_plan_version": "v2.3-alpha3",
+  "concept_patterns": {
+    "measurement_property": {
+      "abundance": ["abundance", "protein levels?", "levels?", "amount", "concentration"],
+      "expression": ["expression", "expressed"],
+      "activation": ["activation", "activity", "activated"],
+      "phosphorylation": ["phosphorylation", "phosphorylated", "phospho[- ]?[a-z0-9]+"],
+      "density": ["density"],
+      "number": ["number"],
+      "count": ["count"],
+      "morphology": ["morphology", "shape", "width", "length", "size"],
+      "sensitivity": ["sensitivity", "sensitive"],
+      "resistance": ["resistance", "resistant"],
+      "drug_response": ["drug response", "treatment response", "response contrast"],
+      "viability": ["viability", "cell survival"],
+      "apoptosis": ["apoptosis", "apoptotic"],
+      "growth": ["growth", "proliferation"]
+    },
+    "measurement_process": {
+      "secretion": ["secretion", "secreted"],
+      "release": ["release", "released"],
+      "transcription": ["transcription", "transcript", "mrna", "gene expression"],
+      "translation": ["translation", "protein synthesis"],
+      "production": ["production", "synthesis"],
+      "uptake": ["uptake", "internalization"],
+      "transport": ["transport", "transport pathway"],
+      "localization": ["localization", "localized"],
+      "translocation": ["translocation", "translocated"]
+    },
+    "measurement_state": {
+      "mature": ["mature", "maturation"],
+      "precursor": ["precursor", "pro[- ][a-z0-9]+", "proform", "pro-form"],
+      "phosphorylated": ["phosphorylated", "phospho[- ]?[a-z0-9]+"],
+      "activated": ["activated", "active"],
+      "cleaved": ["cleaved", "cleavage"],
+      "total": ["total"]
+    },
+    "measurement_compartment": {
+      "extracellular": ["extracellular", "supernatant", "secreted", "released", "release"],
+      "intracellular": ["intracellular", "cell lysate", "whole-cell"],
+      "membrane": ["membrane", "cell surface"],
+      "cytosol": ["cytosol", "cytoplasm", "cytoplasmic"],
+      "nucleus": ["nucleus", "nuclear"]
+    },
+    "measurement_condition": {
+      "glucose_stimulated": ["glucose-stimulated", "glucose stimulated", "gsis", "high glucose", "glucose challenge"],
+      "basal": ["basal", "baseline", "unstimulated"],
+      "stimulated": ["stimulated", "stimulation", "challenge"],
+      "drug_treated": ["drug-treated", "drug treated", "treated with"]
+    },
+    "assay_family": {
+      "immunoblot": ["immunoblot", "western blot"],
+      "elisa": ["elisa"],
+      "qpcr": ["qpcr", "q-pcr", "rt-pcr"],
+      "imaging": ["imaging", "microscopy"],
+      "uptake_assay": ["uptake assay", "2-deoxyglucose", "2-dg"]
+    }
+  },
+  "authorized_equivalences": [
+    {
+      "dimension": "measurement_process",
+      "source_concept": "release",
+      "target_concept": "secretion",
+      "relation": "authorized_endpoint_equivalence",
+      "directionality": "bidirectional",
+      "scientific_rationale": "Explicit biological release and secretion wording may denote the same measured export process when compartment and state constraints also match.",
+      "provenance_comment": "Generic EndpointSemanticsV1 registry relation."
+    },
+    {
+      "dimension": "measurement_property",
+      "source_concept": "count",
+      "target_concept": "number",
+      "relation": "authorized_endpoint_equivalence",
+      "directionality": "bidirectional",
+      "scientific_rationale": "Count and number are alternative labels for the same enumerative property.",
+      "provenance_comment": "Generic EndpointSemanticsV1 registry relation."
+    }
+  ],
+  "incompatible_pairs": [
+    {"dimension": "measurement_property", "left": "abundance", "right": "activation", "reason_code": "ABUNDANCE_NOT_ACTIVATION"},
+    {"dimension": "measurement_property", "left": "expression", "right": "activation", "reason_code": "ABUNDANCE_NOT_ACTIVATION"},
+    {"dimension": "measurement_property", "left": "abundance", "right": "phosphorylation", "reason_code": "ABUNDANCE_NOT_ACTIVATION"},
+    {"dimension": "measurement_property", "left": "expression", "right": "phosphorylation", "reason_code": "ABUNDANCE_NOT_ACTIVATION"},
+    {"dimension": "measurement_property", "left": "morphology", "right": "density", "reason_code": "MORPHOLOGY_NOT_DENSITY"},
+    {"dimension": "measurement_property", "left": "morphology", "right": "number", "reason_code": "MORPHOLOGY_NOT_DENSITY"},
+    {"dimension": "measurement_property", "left": "viability", "right": "sensitivity", "reason_code": "VIABILITY_NOT_DRUG_SENSITIVITY"},
+    {"dimension": "measurement_property", "left": "viability", "right": "resistance", "reason_code": "VIABILITY_NOT_DRUG_SENSITIVITY"},
+    {"dimension": "measurement_process", "left": "transcription", "right": "secretion", "reason_code": "TRANSCRIPTION_NOT_SECRETION"},
+    {"dimension": "measurement_process", "left": "production", "right": "secretion", "reason_code": "TRANSCRIPTION_NOT_SECRETION"},
+    {"dimension": "measurement_process", "left": "translocation", "right": "uptake", "reason_code": "TRANSLOCATION_NOT_UPTAKE"},
+    {"dimension": "measurement_process", "left": "localization", "right": "uptake", "reason_code": "TRANSLOCATION_NOT_UPTAKE"},
+    {"dimension": "measurement_process", "left": "transport", "right": "uptake", "reason_code": "TRANSLOCATION_NOT_UPTAKE"},
+    {"dimension": "measurement_state", "left": "precursor", "right": "mature", "reason_code": "PRECURSOR_NOT_MATURE_PRODUCT"},
+    {"dimension": "measurement_state", "left": "total", "right": "phosphorylated", "reason_code": "ABUNDANCE_NOT_ACTIVATION"},
+    {"dimension": "measurement_state", "left": "total", "right": "activated", "reason_code": "ABUNDANCE_NOT_ACTIVATION"},
+    {"dimension": "measurement_compartment", "left": "intracellular", "right": "extracellular", "reason_code": "INTRACELLULAR_NOT_EXTRACELLULAR"},
+    {"dimension": "measurement_compartment", "left": "cytosol", "right": "extracellular", "reason_code": "INTRACELLULAR_NOT_EXTRACELLULAR"},
+    {"dimension": "measurement_condition", "left": "basal", "right": "glucose_stimulated", "reason_code": "CONDITION_INCOMPATIBLE"},
+    {"dimension": "measurement_condition", "left": "basal", "right": "stimulated", "reason_code": "CONDITION_INCOMPATIBLE"}
+  ]
+}

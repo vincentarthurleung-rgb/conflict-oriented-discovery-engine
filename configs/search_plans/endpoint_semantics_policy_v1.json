@@ -1,0 +1,37 @@
+{
+  "policy_version": "EndpointSemanticsPolicyV1",
+  "endpoint_semantics_version": "EndpointSemanticsV1",
+  "search_plan_version": "v2.3-alpha3",
+  "enabled": true,
+  "shadow_only": true,
+  "decision_mode": "deterministic",
+  "background_patterns": [
+    "previous studies", "prior studies", "has been shown", "have been shown", "is known to", "was previously", "established that"
+  ],
+  "discussion_patterns": [
+    "we propose", "we speculate", "may indicate", "might indicate", "could explain", "suggesting that", "future studies"
+  ],
+  "current_study_patterns": [
+    "we (?:show|showed|found|demonstrate|demonstrated|report|reported|observed|measured|quantified|assessed|examined)",
+    "our (?:results|data|findings|experiments)",
+    "(?:results|findings) (?:show|showed|demonstrate|demonstrated|indicate|indicated)",
+    "(?:increased|decreased|reduced|enhanced|suppressed|abolished|restored|potentiated|induced|prevented|abrogated)",
+    "(?:was|were) (?:measured|quantified|assessed|examined|detected|observed)"
+  ],
+  "measurement_patterns": [
+    "measur(?:e|es|ed|ing|ement)", "quantif(?:y|ies|ied|ication)", "assay(?:ed)?", "assess(?:ed|ment)?", "determin(?:e|ed|ation)", "evaluat(?:e|ed|ion)", "analys(?:e|ed|is)", "analyz(?:e|ed|ing)", "observ(?:e|ed|ation)", "show(?:s|ed)?", "demonstrat(?:e|es|ed|ion)"
+  ],
+  "surrogate_pairs": [
+    {"observed_dimension": "measurement_process", "observed": "translocation", "required": "uptake"},
+    {"observed_dimension": "measurement_process", "observed": "localization", "required": "uptake"},
+    {"observed_dimension": "measurement_process", "observed": "transcription", "required": "secretion"},
+    {"observed_dimension": "measurement_property", "observed": "abundance", "required": "activation"},
+    {"observed_dimension": "measurement_property", "observed": "expression", "required": "activation"},
+    {"observed_dimension": "measurement_property", "observed": "morphology", "required": "density"},
+    {"observed_dimension": "measurement_property", "observed": "viability", "required": "sensitivity"},
+    {"observed_dimension": "measurement_property", "observed": "viability", "required": "resistance"}
+  ],
+  "production_rejection_enabled": false,
+  "production_tier_behavior_changed": false,
+  "production_acquisition_behavior_changed": false
+}

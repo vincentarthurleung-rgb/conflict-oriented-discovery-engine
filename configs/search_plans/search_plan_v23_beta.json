@@ -1,0 +1,88 @@
+{
+  "artifact_schema_version": "SearchPlanV23BetaConfigV1",
+  "search_plan_version": "v2.3-beta",
+  "candidate_status": "production_candidate_not_activated",
+  "selected_policy": "POLICY_A_MINIMAL",
+  "module_versions": {
+    "biological_unit_compatibility_version": "v1.1",
+    "functional_relation_evidence_version": "v1.1",
+    "endpoint_semantics_version": "v1",
+    "composite_policy_version": "policy-a-v1",
+    "tier_b_policy": "recall-tail-preserved-v1"
+  },
+  "composition_inputs": [
+    "frozen_v22_disposition",
+    "BiologicalUnitCompatibilityV1_1",
+    "FunctionalRelationEvidenceV1_1",
+    "EndpointSemanticsV1"
+  ],
+  "original_disposition_policy": {
+    "TIER_A": "apply_tier_a_blockers_then_preserve_or_demote_to_tier_b",
+    "TIER_B": "preserve_tier_b",
+    "REJECT": "preserve_reject",
+    "ABSTAIN": "preserve_abstain"
+  },
+  "tier_a_blockers": {
+    "biological_unit_states": ["INCOMPATIBLE"],
+    "functional_relation_states": [
+      "ASSOCIATION_ONLY",
+      "BACKGROUND_ONLY",
+      "MULTI_TARGET_AMBIGUOUS"
+    ],
+    "endpoint_states": ["INCOMPATIBLE"]
+  },
+  "explicit_nonblocking_states": {
+    "biological_unit_states": ["UNRESOLVED"],
+    "functional_relation_states": ["UNRESOLVED"],
+    "endpoint_states": ["PARTIAL", "UNRESOLVED"]
+  },
+  "tier_a_blocker_action": "DEMOTE_TIER_A_TO_TIER_B",
+  "hard_rejection_enabled": false,
+  "tier_b_to_tier_a_promotion_enabled": false,
+  "tier_b_recall_tail_preserved": true,
+  "tier_b_subtiers": {
+    "values": [
+      "B1_SUPPORTED_OR_SINGLE_UNCERTAINTY",
+      "B2_MULTI_UNRESOLVED",
+      "B3_RELATION_WEAK",
+      "INCOMPATIBLE_DIAGNOSTIC"
+    ],
+    "role": "annotation_only",
+    "changes_acquisition_priority": false,
+    "changes_fulltext_eligibility": false
+  },
+  "acquisition_ordering": {
+    "tier_order": ["TIER_A", "TIER_B"],
+    "within_tier_order": ["metadata_depth_ascending", "numeric_pmid_ascending"],
+    "ordering_semantics_version": "v2.2-unchanged",
+    "tier_b_subtier_priority_enabled": false,
+    "composite_score_enabled": false,
+    "learned_weight_enabled": false,
+    "new_outcome_derived_tie_breaker_enabled": false
+  },
+  "query_and_budget_design": {
+    "query_design_version": "SearchPlanV2.2-frozen",
+    "query_compiler_version": "SearchPlanV2.2-unchanged",
+    "query_compiler_source_ref": "tools/generate_search_plan_v2_multicase_stress_test_offline.py",
+    "query_compiler_source_sha256": "2ed6e963d9c74e78ee2a03e458808d213e712f0cec264557efc053c376f72f32",
+    "query_families_per_case": 6,
+    "query_family_definitions": [
+      {"family_code": "A", "family_order": 1, "architecture": "exact_entity_endpoint"},
+      {"family_code": "B", "family_order": 2, "architecture": "broader_endpoint_recall_family"},
+      {"family_code": "C", "family_order": 3, "architecture": "relation_terminology"},
+      {"family_code": "D", "family_order": 4, "architecture": "measurement_terminology"},
+      {"family_code": "E", "family_order": 5, "architecture": "disease_context_expansion"},
+      {"family_code": "F", "family_order": 6, "architecture": "authorized_alias_variants"}
+    ],
+    "metadata_soft_tail_per_case": 120,
+    "metadata_hard_tail_per_case": 180,
+    "oa_acquisition_rule": "legal_NCBI_PMC_OA_fulltext_with_preserved_PMCID_only",
+    "fulltext_maximum_per_case": 10,
+    "adaptive_stopping_enabled": false,
+    "general_web_fallback_enabled": false,
+    "publisher_fallback_enabled": false
+  },
+  "heldout_v1_role": "seen_development_evidence_closed_to_further_tuning",
+  "production_activated": false,
+  "activation_requires": "heldout_v2_protocol_execution_and_post_freeze_decision"
+}
