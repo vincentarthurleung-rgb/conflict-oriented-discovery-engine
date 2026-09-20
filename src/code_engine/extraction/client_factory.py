@@ -53,7 +53,7 @@ def resolve_l1_provider_settings(*, provider: str | None = None, model_name: str
     selected_thinking = thinking_mode or os.getenv("FULLTEXT_L1_V2_THINKING_MODE") or DEFAULT_THINKING_MODE
     selected_max_tokens = int(max_tokens if max_tokens is not None else
                               os.getenv("FULLTEXT_L1_V2_MAX_TOKENS", DEFAULT_MAX_TOKENS))
-    if selected_provider not in {"deepseek", "openai"}:
+    if selected_provider != "deepseek":
         raise ValueError(f"unsupported L1 provider: {selected_provider}")
     validate_thinking_mode(selected_thinking)
     if selected_max_tokens <= 0:
@@ -132,11 +132,9 @@ class ConfiguredJSONClient:
 
 
 def _select_json_provider(provider: str | None = None) -> str:
-    selected = (provider or "").casefold()
-    deepseek_key, openai_key = os.getenv("DEEPSEEK_API_KEY"), os.getenv("OPENAI_API_KEY")
-    if not selected:
-        selected = "deepseek" if deepseek_key else "openai" if openai_key else ""
-    return selected
+    # Credential presence is never a provider-selection policy. In particular,
+    # an OpenAI key cannot silently replace missing DeepSeek configuration.
+    return (provider or os.getenv("L1_PROVIDER") or "deepseek").casefold()
 
 
 def build_json_client_from_config(provider: str | None = None, model_name: str | None = None,
@@ -145,16 +143,15 @@ def build_json_client_from_config(provider: str | None = None, model_name: str |
                                   max_retries: int | None = None) -> Any | None:
     """Return a configured JSON client without making a network request."""
     selected = _select_json_provider(provider)
-    deepseek_key, openai_key = os.getenv("DEEPSEEK_API_KEY"), os.getenv("OPENAI_API_KEY")
-    configured_model = model_name or os.getenv("MODEL_NAME")
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    from code_engine.extraction.policy import DEFAULT_L1_MODEL_NAME
+    configured_model = model_name or os.getenv("MODEL_NAME") or DEFAULT_L1_MODEL_NAME
     timeout_config = resolve_l1_timeout_config(connect_timeout_seconds=connect_timeout_seconds,
                                                read_timeout_seconds=read_timeout_seconds,
                                                max_retries=max_retries)
     if selected == "deepseek" and deepseek_key:
         from code_engine.extraction.deepseek_client import DeepSeekClient
         return ConfiguredJSONClient(DeepSeekClient(deepseek_key, **timeout_config), configured_model)
-    if selected == "openai" and openai_key:
-        return OpenAIJSONClient(openai_key, configured_model or "gpt-4.1-mini")
     return None
 
 
@@ -175,16 +172,17 @@ def build_l1_client_from_env_or_config(provider: str | None = None, model_name: 
 def diagnose_json_provider(provider: str | None = None, model_name: str | None = None, *, api_enabled: bool = True,
                            network_enabled: bool = True, config_source: str = "env", scope: str = "json") -> dict[str, Any]:
     selected = _select_json_provider(provider)
-    credential = {"deepseek": "DEEPSEEK_API_KEY", "openai": "OPENAI_API_KEY"}.get(selected)
+    credential = {"deepseek": "DEEPSEEK_API_KEY"}.get(selected)
     present = bool(credential and os.getenv(credential))
-    configured_model = model_name or os.getenv("MODEL_NAME")
+    from code_engine.extraction.policy import DEFAULT_L1_MODEL_NAME
+    configured_model = model_name or os.getenv("MODEL_NAME") or DEFAULT_L1_MODEL_NAME
     if not api_enabled:
         error = "api_disabled"
     elif not network_enabled:
         error = "network_disabled"
     elif not selected:
         error = "provider_not_configured"
-    elif selected not in {"deepseek", "openai"}:
+    elif selected != "deepseek":
         error = "provider_unsupported"
     elif not configured_model:
         error = "model_not_configured"
@@ -240,15 +238,15 @@ def diagnose_entity_cleaner_provider(provider: str | None = None, model_name: st
 
 def diagnose_l1_provider(provider: str | None = None, model_name: str | None = None, *, api_enabled: bool=True,
                          network_enabled: bool=True, config_source: str="env") -> dict[str, Any]:
-    selected=(provider or os.getenv("L1_PROVIDER") or "").casefold()
-    if not selected:selected="deepseek" if os.getenv("DEEPSEEK_API_KEY") else "openai" if os.getenv("OPENAI_API_KEY") else ""
-    credential={"deepseek":"DEEPSEEK_API_KEY","openai":"OPENAI_API_KEY"}.get(selected)
+    from code_engine.extraction.policy import DEFAULT_L1_MODEL_NAME
+    selected=(provider or os.getenv("L1_PROVIDER") or "deepseek").casefold()
+    credential={"deepseek":"DEEPSEEK_API_KEY"}.get(selected)
     present=bool(credential and os.getenv(credential))
-    available=bool(api_enabled and network_enabled and selected in {"deepseek","openai"} and present)
-    return {"scope":"fulltext","provider":selected or None,"model":model_name or os.getenv("MODEL_NAME"),
+    available=bool(api_enabled and network_enabled and selected=="deepseek" and present)
+    return {"scope":"fulltext","provider":selected or None,"model":model_name or os.getenv("MODEL_NAME") or DEFAULT_L1_MODEL_NAME,
         "provider_config_source":config_source,"provider_available":available,"credential_checked":bool(credential),
         "credential_name_checked":credential,"credential_name":credential,"credential_present":present,
-        "provider_error":None if available else "api_disabled" if not api_enabled else "network_disabled" if not network_enabled else "provider_not_configured" if not selected else "credential_missing"}
+        "provider_error":None if available else "api_disabled" if not api_enabled else "network_disabled" if not network_enabled else "provider_unsupported" if selected!="deepseek" else "credential_missing"}
 
 
 __all__ = [

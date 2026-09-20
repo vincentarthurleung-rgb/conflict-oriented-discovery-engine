@@ -229,6 +229,8 @@ def execute_targeted_recovery(
     )
     if errors:
         raise RuntimeError("targeted_recovery_execution_blocked:" + ",".join(errors))
+    if not test_only and plan.get("provider_execution_identity", {}).get("provider") != "deepseek":
+        raise RuntimeError("prospective scientific recovery requires DeepSeek; no OpenAI fallback")
     artifacts = target_run / "artifacts"
     if target_run.exists() and not resume and any(target_run.iterdir()):
         raise FileExistsError(f"recovery output is not empty: {target_run}")

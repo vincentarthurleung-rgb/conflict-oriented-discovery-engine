@@ -7,7 +7,8 @@ class ReadinessTests(unittest.TestCase):
     def test_missing_llm_env_blocks_before_execution(self):
         with patch.dict(os.environ, {}, clear=True):
             report=check_case_readiness("configs/case_profiles/metformin_ampk_cancer.case_profile.json","configs/search_plans/metformin_ampk_cancer_2000_2020.llm_v1.frozen.json")
-        self.assertFalse(report["ready"]); self.assertIn("missing L1_PROVIDER",report["blocking_reasons"])
+        self.assertFalse(report["ready"]); self.assertIn("missing DEEPSEEK_API_KEY",report["blocking_reasons"])
+        self.assertEqual(report["llm"]["provider"], "deepseek")
     def test_fixture_lincs_summary_is_detected(self):
         with tempfile.TemporaryDirectory() as td, patch.dict(os.environ,{"L1_PROVIDER":"deepseek","MODEL_NAME":"m","DEEPSEEK_API_KEY":"x"},clear=True):
             root=Path(td); index=root/"lincs_l1000/index/GSE70138"; index.mkdir(parents=True)

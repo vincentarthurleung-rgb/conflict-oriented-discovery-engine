@@ -22,28 +22,35 @@ def validate_thinking_mode(value: str) -> ThinkingMode:
     return cast(ThinkingMode, value)
 
 
-def build_deepseek_request_payload(prompt: Any, *, model: str, temperature: float = 0.0,
-                                   top_p: float = 1.0,
+def build_deepseek_request_payload(prompt: Any, *, model: str, temperature: float | None = 0.0,
+                                   top_p: float | None = 1.0,
                                    max_tokens: int | None = None,
-                                   thinking_mode: ThinkingMode = "provider_default") -> dict[str, Any]:
+                                   thinking_mode: ThinkingMode = "provider_default",
+                                   reasoning_effort: str | None = None) -> dict[str, Any]:
     """Build the exact request body used by :class:`DeepSeekClient`.
 
     ``provider_default`` preserves legacy behavior by omitting the provider
     field. Enabled and disabled are explicit, mutually exclusive body values.
     """
     effective_mode = validate_thinking_mode(thinking_mode)
+    if reasoning_effort is not None and (effective_mode != "enabled" or reasoning_effort != "high"):
+        raise ValueError("high reasoning requires explicitly enabled DeepSeek thinking")
     messages = prompt if isinstance(prompt, list) else [{"role": "system", "content": prompt}]
     payload: dict[str, Any] = {
         "model": model,
         "messages": messages,
         "response_format": dict(DEEPSEEK_JSON_RESPONSE_FORMAT),
-        "temperature": temperature,
-        "top_p": top_p,
     }
+    if temperature is not None:
+        payload["temperature"] = temperature
+    if top_p is not None:
+        payload["top_p"] = top_p
     if max_tokens is not None:
         payload["max_tokens"] = int(max_tokens)
     if effective_mode != "provider_default":
         payload["thinking"] = {"type": effective_mode}
+    if reasoning_effort is not None:
+        payload["reasoning_effort"] = reasoning_effort
     return payload
 
 
@@ -53,7 +60,7 @@ def deepseek_thinking_mode_audit(thinking_mode: ThinkingMode = "provider_default
     payload = build_deepseek_request_payload("audit", model="deepseek-audit", thinking_mode=mode)
     sent = "thinking" in payload
     request_value = payload.get("thinking")
-    verified = mode == "disabled" and request_value == {"type": "disabled"}
+    verified = mode in {"enabled", "disabled"} and request_value == {"type": mode}
     return {
         "configured_thinking_mode": mode,
         "effective_mode": mode,
@@ -154,15 +161,17 @@ class DeepSeekClient:
         self.sleep_fn = sleep_fn
 
     def extract_json_result(self, prompt: Any, model: str = "deepseek-v4-pro",
-                            temperature: float = 0.0, top_p: float = 1.0,
+                            temperature: float | None = 0.0, top_p: float | None = 1.0,
                             max_tokens: int | None = None, retry_on_length: bool = False,
                             thinking_mode: ThinkingMode = "provider_default",
+                            reasoning_effort: str | None = None,
                             raw_response_sink: Callable[[bytes], Any] | None = None,
                             **_: Any) -> JSONExtractionResult:
         from code_engine.extraction.l1_response import GenericJSONResponseError, parse_json_object_response
         request_payload = build_deepseek_request_payload(
             prompt, model=model, temperature=temperature, top_p=top_p,
             max_tokens=max_tokens, thinking_mode=thinking_mode,
+            reasoning_effort=reasoning_effort,
         )
         body = json.dumps(request_payload).encode("utf-8")
         last_error = "unknown_error"
@@ -174,6 +183,7 @@ class DeepSeekClient:
             "provider": "deepseek", "request_endpoint": self.endpoint, "model": model,
             "response_format": dict(DEEPSEEK_JSON_RESPONSE_FORMAT),
             "json_output_enabled": True, "max_tokens": max_tokens,
+            "reasoning_effort": reasoning_effort,
             **deepseek_thinking_mode_audit(thinking_mode),
         }
         attempts = self.max_retries + 1
@@ -199,6 +209,7 @@ class DeepSeekClient:
                     "provider": "deepseek", "request_endpoint": self.endpoint, "model": model,
                     "response_format": {"type": "json_object"},
                     "json_output_enabled": True, "max_tokens": max_tokens,
+                    "reasoning_effort": reasoning_effort,
                     "http_status": getattr(response, "status_code", None),
                     "latency_seconds": time.monotonic() - started,
                     "reasoning_content_present": reasoning_content not in (None, ""),

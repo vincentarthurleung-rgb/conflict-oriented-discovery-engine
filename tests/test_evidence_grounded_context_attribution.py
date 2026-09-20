@@ -443,12 +443,10 @@ def test_shared_provider_defaults_and_explicit_overrides(tmp_path, monkeypatch):
     assert (default["provider"], default["model"], default["thinking_mode"]) == (
         "deepseek", "deepseek-v4-pro", "disabled")
     assert default["provider_configuration_source"]["provider"] == "L1_PROVIDER"
-    override = run_context_attribution(input_run=source, output_run=tmp_path / "override", mode="combined",
-        profiles=["generic", "biomedical"], purpose="smoke",
-        provider="openai", model="gpt-test", thinking_mode="provider_default")
-    assert (override["provider"], override["model"], override["thinking_mode"]) == (
-        "openai", "gpt-test", "provider_default")
-    assert set(override["provider_configuration_source"].values()) >= {"override"}
+    with pytest.raises(ValueError, match="unsupported L1 provider: openai"):
+        run_context_attribution(input_run=source, output_run=tmp_path / "override", mode="combined",
+            profiles=["generic", "biomedical"], purpose="smoke",
+            provider="openai", model="gpt-test", thinking_mode="provider_default")
 
 class _RecordingContextClient:
     def __init__(self):

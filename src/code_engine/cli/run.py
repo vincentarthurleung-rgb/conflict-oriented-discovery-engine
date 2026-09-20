@@ -91,7 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-l1-input-tokens-per-prompt", type=int)
     parser.add_argument("--l1-budget-usd", type=float)
     parser.add_argument("--l1-pricing-profile", default="deepseek_default")
-    parser.add_argument("--l1-provider", choices=("deepseek", "openai"))
+    parser.add_argument("--l1-provider", choices=("deepseek",))
     parser.add_argument("--l1-model")
     parser.add_argument("--l1-read-timeout-seconds", type=float)
     parser.add_argument("--l1-connect-timeout-seconds", type=float)

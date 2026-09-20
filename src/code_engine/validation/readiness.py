@@ -19,13 +19,14 @@ def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
                          external_data_root: str | Path = "data/external", *, network_allowed: bool = False,
                          smoke_report_file: str | Path = "external_api_smoke_reports/external_api_smoke_summary.json") -> dict[str, Any]:
     blocking: list[str] = []
-    provider, model = os.getenv("L1_PROVIDER", "").strip().lower(), os.getenv("MODEL_NAME", "").strip()
-    key_name = "DEEPSEEK_API_KEY" if provider == "deepseek" else "OPENAI_API_KEY" if provider == "openai" else None
+    provider, model = os.getenv("L1_PROVIDER", "deepseek").strip().lower(), os.getenv("MODEL_NAME", "deepseek-v4-pro").strip()
+    key_name = "DEEPSEEK_API_KEY" if provider == "deepseek" else None
     missing = []
     if not provider: missing.append("L1_PROVIDER")
     if not model: missing.append("MODEL_NAME")
     key_present = bool(key_name and os.getenv(key_name))
-    if not key_present: missing.append(key_name or "DEEPSEEK_API_KEY or OPENAI_API_KEY")
+    if provider != "deepseek": missing.append("unsupported provider: only DeepSeek is permitted")
+    if not key_present: missing.append(key_name or "DEEPSEEK_API_KEY")
     blocking.extend(f"missing {x}" for x in missing)
     llm = {"ready": not missing, "provider": provider or None, "model": model or None,
            "api_key_present": key_present, "missing_env": missing, "blocking_reasons": [f"missing {x}" for x in missing]}

@@ -37,7 +37,7 @@ def parser() -> argparse.ArgumentParser:
                        help="Deterministic representative pair target for smoke purpose.")
     value.add_argument("--max-extraction-calls", type=int, default=50)
     value.add_argument("--max-comparison-calls", type=int, default=50)
-    value.add_argument("--provider", choices=("deepseek", "openai"),
+    value.add_argument("--provider", choices=("deepseek",),
                        help="Advanced override; defaults to the shared L1 provider configuration.")
     value.add_argument("--model", help="Advanced override; defaults to the shared L1 model configuration.")
     value.add_argument("--thinking-mode", choices=("enabled", "disabled", "provider_default"),

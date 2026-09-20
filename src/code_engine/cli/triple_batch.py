@@ -32,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--enable-conflict-timeline", action="store_true", default=True)
     parser.add_argument("--enable-evidence-graph", action="store_true", default=True)
     parser.add_argument("--pilot-profile", choices=("ketamine",))
-    parser.add_argument("--l1-provider", choices=("deepseek", "openai"))
+    parser.add_argument("--l1-provider", choices=("deepseek",))
     parser.add_argument("--l1-model")
     parser.add_argument("--max-papers", type=int)
     parser.add_argument("--until", choices=STEP_ORDER, default="report")
