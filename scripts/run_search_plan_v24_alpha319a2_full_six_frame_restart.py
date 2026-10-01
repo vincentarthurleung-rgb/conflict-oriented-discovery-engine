@@ -201,6 +201,8 @@ class ResponseAwareTransport:
             write_bytes(raw_path, raw)
             verdict = validity.validate_response(status, raw, offset, 50)
             decision = retry_decision(verdict, attempt, self.retry)
+            if error == "RuntimeError:NCBI_REDIRECT_FORBIDDEN":
+                decision = "FAIL_CLOSED_NETWORK_SCOPE_VIOLATION"
             record = {"request_ordinal": ordinal, "request_key": request_key,
                 "frame_index": query["ordinal"], "stratum_id": query["stratum_id"],
                 "retstart": offset, "attempt": attempt, "method": "GET",
@@ -240,7 +242,15 @@ def run_frames(state: dict, transport: ResponseAwareTransport, counts: dict):
             pages = []
             for offset in (0, 50, 100, 150):
                 ordinal = ordinal_by_page[(query["ordinal"], offset)]
-                raw, verdict, attempts = transport.fetch_page(ordinal, query, offset)
+                try:
+                    raw, verdict, attempts = transport.fetch_page(ordinal, query, offset)
+                except FrameFailure as exc:
+                    page_results.append({"request_ordinal": ordinal,
+                        "frame_index": query["ordinal"], "stratum_id": query["stratum_id"],
+                        "retstart": offset, "query_sha256": query["query_sha256"],
+                        "terminal_state": "FAILED_CLOSED", "failure_class": exc.failure_class,
+                        "attempts": exc.attempts})
+                    raise
                 page_results.append({"request_ordinal": ordinal,
                     "frame_index": query["ordinal"], "stratum_id": query["stratum_id"],
                     "retstart": offset, "query_sha256": query["query_sha256"],
@@ -370,6 +380,16 @@ def main():
         run_frames(state, transport, counts)
     except FrameFailure as exc:
         finalize("failed_closed", exc, counts, transport)
+        return
+    except Exception as exc:
+        last = transport.log[-1] if transport.log else None
+        failure = FrameFailure(
+            "UNCLASSIFIED_RUNTIME_FAILURE:" + type(exc).__name__ + ":" + str(exc),
+            last["frame_index"] if last else 0,
+            last["retstart"] if last else 0,
+            [last] if last else [],
+        )
+        finalize("failed_closed", failure, counts, transport)
         return
     finalize("completed", None, counts, transport)
 
