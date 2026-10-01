@@ -1,6 +1,6 @@
 # Runtime Config Summary
 
-> **Last verified:** 2026-07-05
+> **Historical snapshot:** 2026-07-05. Prospective DeepSeek model binding updated for alpha3.18C on 2026-10-01; provider availability has not been reverified offline.
 > **Branch:** main / HEAD
 > **Purpose:** Quick-reference for current CLI arguments, environment variables, provider config, and recommended commands.
 
@@ -13,7 +13,7 @@
 | Variable | Status | Used By | Required For | Notes |
 |---|---|---|---|---|
 | `L1_PROVIDER` | `SET` | `run_case`, `run_case_batch`, `run`, `replay_case_stages`, `check_l1_provider`, `readiness` | All L1 extraction | Currently `deepseek` |
-| `MODEL_NAME` | `SET` | Same as above | All L1 extraction | Currently `deepseek-v4-pro` |
+| `MODEL_NAME` | `SET` | Same as above | All L1 extraction | Prospective default `deepseek-flash` |
 | `DEEPSEEK_API_KEY` | `SET` | `client_factory`, `DeepSeekClient` | `--execute --api` | Required for L1 calls |
 | `OPENAI_API_KEY` | `MISSING` | `client_factory`, `OpenAIJSONClient` | OpenAI provider | Not needed when using DeepSeek |
 
@@ -360,10 +360,10 @@ The following arguments do NOT exist in the current CLI code (checked via `--hel
 | Field | Value |
 |---|---|
 | Provider | `deepseek` |
-| Model | `deepseek-v4-pro` |
+| Model | `deepseek-flash` (prospective; remote acceptance not verified offline) |
 | API Key (`DEEPSEEK_API_KEY`) | `SET` |
 | API Key (`OPENAI_API_KEY`) | `MISSING` |
-| Provider available | `true` (verified via `check_l1_provider`) |
+| Provider available | Historical check was `true`; `deepseek-flash` remote acceptance is unverified offline |
 | Endpoint | `https://api.deepseek.com/v1/chat/completions` |
 | Default timeout (connect) | 20s |
 | Default timeout (read) | 120s |

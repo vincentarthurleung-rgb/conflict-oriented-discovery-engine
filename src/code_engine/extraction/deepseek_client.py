@@ -160,7 +160,7 @@ class DeepSeekClient:
         self.read_timeout_seconds = float(read_timeout_seconds)
         self.sleep_fn = sleep_fn
 
-    def extract_json_result(self, prompt: Any, model: str = "deepseek-v4-pro",
+    def extract_json_result(self, prompt: Any, model: str = "deepseek-flash",
                             temperature: float | None = 0.0, top_p: float | None = 1.0,
                             max_tokens: int | None = None, retry_on_length: bool = False,
                             thinking_mode: ThinkingMode = "provider_default",

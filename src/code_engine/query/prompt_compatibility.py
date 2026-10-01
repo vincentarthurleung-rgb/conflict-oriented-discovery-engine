@@ -235,6 +235,6 @@ def build_required_fingerprint_for_intent(intent: ResearchIntent) -> PromptProfi
         prompt_version="2.0",
         output_schema_version="l1_v2_evidence_mechanism_schema",
         extraction_policy_version="evidence_grounded_v2",
-        model_name="deepseek-v4-pro",
+        model_name="deepseek-flash",
         model_family="deepseek",
     )

@@ -13,7 +13,7 @@ class L1PromptFingerprintTests(unittest.TestCase):
             "domain_id": "neuropharmacology", "prompt_profile_id": "neuropharmacology",
             "prompt_version": "2.0", "output_schema_version": "l1_v2_evidence_mechanism_schema",
             "extraction_policy_version": "evidence_grounded_v2",
-            "model_name": "deepseek-v4-pro", "model_family": "deepseek",
+            "model_name": "deepseek-flash", "model_family": "deepseek",
         }
 
     def assert_change_changes_key(self, field, value):

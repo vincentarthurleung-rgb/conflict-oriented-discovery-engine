@@ -1,9 +1,11 @@
 {
   "schema_version": "runtime_config_summary_v1",
   "last_checked": "2026-07-05",
+  "prospective_model_identifier_migration_date": "2026-10-01",
+  "prospective_model_remote_acceptance_verified": false,
   "provider": {
     "l1_provider": "deepseek",
-    "model_name": "deepseek-v4-pro",
+    "model_name": "deepseek-flash",
     "deepseek_api_key": "SET",
     "openai_api_key": "MISSING"
   },
@@ -17,7 +19,7 @@
   },
   "env_variables": [
     {"name": "L1_PROVIDER", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1", "run_case", "readiness"], "required_for": "all L1 extraction", "safe_to_leave_empty": false, "notes": "currently 'deepseek'"},
-    {"name": "MODEL_NAME", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1", "run_case", "readiness"], "required_for": "all L1 extraction", "safe_to_leave_empty": false, "notes": "currently 'deepseek-v4-pro'"},
+    {"name": "MODEL_NAME", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1", "run_case", "readiness"], "required_for": "all L1 extraction", "safe_to_leave_empty": false, "notes": "prospective default 'deepseek-flash'; remote acceptance unverified offline"},
     {"name": "DEEPSEEK_API_KEY", "status": "SET", "used_by": ["abstract_l1", "fulltext_l1"], "required_for": "--execute --api with deepseek provider", "safe_to_leave_empty": false, "notes": ""},
     {"name": "OPENAI_API_KEY", "status": "MISSING", "used_by": ["abstract_l1", "fulltext_l1"], "required_for": "--execute --api with openai provider", "safe_to_leave_empty": true, "notes": "not needed when using deepseek"},
     {"name": "NCBI_EMAIL", "status": "SET", "used_by": ["pubmed", "validator"], "required_for": "PubMed/E-utilities API", "safe_to_leave_empty": false, "notes": ""},

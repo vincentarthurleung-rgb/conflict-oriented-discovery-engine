@@ -38,7 +38,7 @@ class ClientFactoryTests(unittest.TestCase):
         with patch.dict(os.environ, {"L1_PROVIDER": "deepseek", "DEEPSEEK_API_KEY": "fake"}, clear=True):
             diagnostic = diagnose_entity_cleaner_provider()
             self.assertTrue(diagnostic["provider_available"])
-            self.assertEqual(diagnostic["model"], "deepseek-v4-pro")
+            self.assertEqual(diagnostic["model"], "deepseek-flash")
             self.assertIsNotNone(build_entity_cleaner_client_from_config())
 
 

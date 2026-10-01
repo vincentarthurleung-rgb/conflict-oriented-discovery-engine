@@ -10,7 +10,7 @@ DEFAULT_L1_TOP_P = 1.0
 DEFAULT_L1_MAX_RETRIES = 2
 DEFAULT_L1_SCHEMA_VERSION = "l1_v2_evidence_mechanism_schema"
 DEFAULT_L1_POLICY_VERSION = "evidence_grounded_v2"
-DEFAULT_L1_MODEL_NAME = "deepseek-v4-pro"
+DEFAULT_L1_MODEL_NAME = "deepseek-flash"
 DEFAULT_L1_MODEL_FAMILY = "deepseek"
 
 

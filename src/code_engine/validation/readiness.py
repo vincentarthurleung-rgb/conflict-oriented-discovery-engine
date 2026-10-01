@@ -19,7 +19,7 @@ def check_case_readiness(case_profile: str | Path, search_plan_file: str | Path,
                          external_data_root: str | Path = "data/external", *, network_allowed: bool = False,
                          smoke_report_file: str | Path = "external_api_smoke_reports/external_api_smoke_summary.json") -> dict[str, Any]:
     blocking: list[str] = []
-    provider, model = os.getenv("L1_PROVIDER", "deepseek").strip().lower(), os.getenv("MODEL_NAME", "deepseek-v4-pro").strip()
+    provider, model = os.getenv("L1_PROVIDER", "deepseek").strip().lower(), os.getenv("MODEL_NAME", "deepseek-flash").strip()
     key_name = "DEEPSEEK_API_KEY" if provider == "deepseek" else None
     missing = []
     if not provider: missing.append("L1_PROVIDER")
