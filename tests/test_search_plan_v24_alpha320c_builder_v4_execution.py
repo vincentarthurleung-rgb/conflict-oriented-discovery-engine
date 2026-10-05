@@ -6,7 +6,8 @@ from pathlib import Path
 from scripts import run_search_plan_v24_alpha320c_builder_v4_execution as c
 
 
-def test_frozen_preflight_is_read_only():
+def test_frozen_preflight_is_read_only(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(c, "OUT", tmp_path / "not_created")
     state = c.verify_preflight()
     assert len(state["rows"]) == 42
     assert state["variant_ids"] == [
@@ -24,8 +25,8 @@ def test_failure_classification_is_conservative():
 
 
 def test_mocked_42_cell_run_never_uses_network(monkeypatch, tmp_path: Path):
-    state = c.verify_preflight()
     monkeypatch.setattr(c, "OUT", tmp_path / "mock_alpha320c")
+    state = c.verify_preflight()
     calls = []
 
     class FakeResponse:
