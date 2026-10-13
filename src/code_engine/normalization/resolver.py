@@ -122,7 +122,9 @@ class ResolverCascade:
         providers = []
         if registry is not None:
             providers.append(LocalCuratedProvider(registry=registry))
-        elif registry_path is not None and Path(registry_path) != DEFAULT_REGISTRY_PATH:
+        elif registry_path is not None:
+            # Explicit paths are authoritative even when named like the empty
+            # default. Never silently skip a requested registry or missing file.
             providers.append(LocalCuratedProvider(registry_path=registry_path))
         # An explicitly selected curated registry is authoritative for a bounded
         # pilot and must not become ambiguous with stale cache namespaces.
