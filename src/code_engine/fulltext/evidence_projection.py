@@ -16,14 +16,17 @@ from code_engine.corpus.io import atomic_write_json, atomic_write_jsonl, iter_js
 from code_engine.normalization.adjudicator import adjudicate_entity_candidates
 from code_engine.normalization.candidates import EntityCandidate, EntityResolutionRequest
 from code_engine.normalization.core_eligibility import core_graph_eligibility
-from code_engine.normalization.intervention_semantics import apply_evidence_semantics
+from code_engine.normalization.intervention_semantics import EvidenceSemantics, apply_evidence_semantics
+from code_engine.normalization.formal_relations import normalize_formal_relation
+from code_engine.normalization.experimental_admission import experimental_admission_blocks
 from code_engine.schemas.evidence_chain import EvidenceReasoningChain
 
 from .profiles import FULLTEXT_EVIDENCE_PROJECTION
+from .experimental_projection_handoff import prepare_experimental_handoff, structured_experiment_chain
 
 
-SCHEMA_VERSION = "fulltext_evidence_projection_v1.0.8"
-ADJUDICATION_VERSION = "fulltext_l2_readjudication_v1.0.8"
+SCHEMA_VERSION = "fulltext_evidence_projection_v1.0.10"
+ADJUDICATION_VERSION = "fulltext_l2_readjudication_v1.0.10"
 CELL_LINE_SPECIES = {
     "hela": "human", "a549": "human", "hek293": "human", "293t": "human",
     "mcf7": "human", "mda-mb-231": "human", "hct116": "human", "sw480": "human",
@@ -85,6 +88,14 @@ def bind_observation_context(
     sources: list[tuple[str, dict[str, Any]]] = []
     explicit = observation.get("context_slots") or observation.get("context") or {}
     sources.append(("evidence_span", explicit if isinstance(explicit, dict) else {}))
+    formal = observation.get("formal_v3_native_payload")
+    if formal:
+        experiment = formal["experiment"]
+        sources.append(("formal_v3_experiment", {
+            name.removesuffix("_raw"): experiment.get(name)
+            for name in ("species_raw", "model_system_raw", "tissue_raw", "genotype_raw",
+                         "disease_model_raw", "comparison_arm_raw", "control_arm_raw")
+        }))
     if chain:
         system = chain.get("experimental_system") or {}
         chain_context = {**system}
@@ -335,6 +346,14 @@ def readjudicate_entity(
 
 
 def _measurement_dimension(observation: dict[str, Any], chain: dict[str, Any] | None) -> str | None:
+    formal = observation.get("formal_v3_native_payload")
+    if formal:
+        measurement = formal["measurement"]
+        # An explicit unresolved V3 classification cannot fall through to the
+        # legacy keyword classifier or count as a known reasoning dimension.
+        if measurement["normalization_status"] != "resolved" or measurement["measurement_dimension"] == "unknown":
+            return None
+        return measurement["measurement_dimension"]
     existing = observation.get("measurement_dimension")
     if existing:
         return str(existing)
@@ -366,6 +385,13 @@ def build_reasoning_chain(
     enriched["context_slots"] = context
     enriched["evidence_scope"] = "fulltext"
     enriched["active_scientific_profile"] = FULLTEXT_EVIDENCE_PROJECTION.profile_id
+    formal = enriched.get("formal_v3_native_payload")
+    if formal:
+        # Native experiment/Core records take precedence over a legacy linked
+        # chain; retain the legacy link as lineage, not replacement evidence.
+        enriched["legacy_linked_chain_id"] = (chain or {}).get("chain_id")
+        chain = structured_experiment_chain(enriched)
+    lexical_direction = enriched.get("direction")
     # Do not carry the abstract/reentry gate's false value into the semantic
     # adjudicator.  This is a candidate flag; the deterministic fulltext core
     # gate below remains authoritative.
@@ -373,7 +399,41 @@ def build_reasoning_chain(
     dimension = _measurement_dimension(enriched, chain)
     if dimension:
         enriched["measurement_dimension"] = dimension
-    enriched = apply_evidence_semantics(enriched)
+    relation = normalize_formal_relation({"relation_raw": enriched.get("relation_raw")})
+    data_only = bool(formal and (
+        not formal["eligibility"]["strict_core_eligible"]
+        or experimental_admission_blocks(enriched)
+        or (relation and relation.semantic_kind == "intervention_event")
+    ))
+    if data_only:
+        # Consume the experiment as an outcome record. No scalar causal
+        # inversion or regex interpretation may authorize this native draft.
+        interventions = formal["interventions"]
+        single = interventions[0] if len(interventions) == 1 else {}
+        sem = EvidenceSemantics(
+            evidence_design=formal["experiment"]["design_type"],
+            lexical_relation=enriched.get("relation_raw") or "", lexical_direction=lexical_direction,
+            observed_outcome_sign={"positive": 1, "negative": -1, "neutral": 0}.get(lexical_direction, 0),
+            intervention_target=single.get("target_mention"), intervention_type=single.get("intervention_type", "unknown"),
+            measured_entity=formal["measurement"].get("measured_entity_mention"), measurement_dimension=dimension,
+            retained_layer="intervention_observation" if interventions else "causal_reviewable",
+            retention_reason="structured_outcome_retained_without_causal_authority",
+            measurement_projection_valid=dimension is not None,
+            semantic_hard_exclusions=list(dict.fromkeys([
+                *formal["eligibility"]["exclusion_reasons"], "structured_causal_direction_unresolved",
+                *experimental_admission_blocks(enriched),
+            ])),
+        )
+        payload = sem.to_dict()
+        enriched.update(evidence_semantics=payload, scientific_semantics_decision=payload,
+            scientific_edge_layer=sem.retained_layer, retained_layer=sem.retained_layer,
+            observed_outcome_sign=sem.observed_outcome_sign, derived_causal_sign=None,
+            causal_direction_provenance="unresolved", causal_direction_eligible=False,
+            evidence_design=sem.evidence_design, inference_type="unknown",
+            intervention_target=sem.intervention_target, intervention_type=sem.intervention_type,
+            conflict_eligible=False, hypothesis_eligible=False)
+    else:
+        enriched = apply_evidence_semantics(enriched)
     sign = enriched.get("derived_causal_sign")
     chain_interventions = (chain or {}).get("interventions") or []
     grouped_intervention = len(chain_interventions) > 1
@@ -385,7 +445,7 @@ def build_reasoning_chain(
     evidence_id = str(enriched.get("observation_id") or enriched.get("claim_id") or "")
     experiment_id = str((chain or {}).get("chain_id") or enriched.get("chunk_id") or evidence_id)
     paper_id = str(enriched.get("pmid") or enriched.get("paper_id") or (chain or {}).get("paper_id") or "")
-    family_id = _stable_hash([paper_id, experiment_id], "ef_")
+    family_id = str(formal["experiment"]["evidence_family_id"]) if formal else _stable_hash([paper_id, experiment_id], "ef_")
     anchors = (chain or {}).get("evidence_anchors") or []
     if not anchors and enriched.get("evidence_sentence"):
         anchors = [{
@@ -415,23 +475,40 @@ def build_reasoning_chain(
         comparison_arm=(chain or {}).get("comparators") or [], measurements=(chain or {}).get("measurements") or [],
         measured_entity=enriched.get("measured_entity") or enriched.get("object_raw"), measurement_dimension=dimension,
         observed_results=(chain or {}).get("observed_results") or [], observed_outcome_sign=enriched.get("observed_outcome_sign"),
-        lexical_direction=str(enriched.get("direction") or "unknown"), derived_causal_sign=sign,
+        lexical_direction=str(lexical_direction or "unknown"), derived_causal_sign=sign,
         derived_relation="positive_regulation" if sign == 1 else "negative_regulation" if sign == -1 else None,
         final_formal_polarity="positive" if sign == 1 else "negative" if sign == -1 else "unknown",
         direction_provenance=enriched.get("causal_direction_provenance") or "unresolved",
         author_interpretation=(chain or {}).get("author_interpretation") or {},
-        system_interpretation="intervention algebra is authoritative" if intervention_derived else "validated direct causal sign",
+        system_interpretation=("causal direction unresolved; experimental outcome retained" if sign not in {-1, 1}
+                               else "intervention algebra is authoritative" if intervention_derived else "validated direct causal sign"),
         conclusion_scope=enriched.get("section_type"), context=context, provenance=anchors,
         supporting_evidence_ids=[evidence_id] if evidence_id else [], uncertainty=warnings, warnings=warnings,
         chain_complete=complete,
+        **({"experimental_factors": chain["experimental_factors"], "experimental_linkages": chain["experimental_linkages"],
+            "experimental_core_projection": chain["experimental_core_projection"],
+            "source_formal_eligibility": formal["eligibility"],
+            "observed_direction_provenance": {
+                "source": "formal_v3_candidate_relation", "normalization_status": formal["candidate_relation"]["normalization_status"],
+                "normalization_rule_id": formal["candidate_relation"].get("normalization_rule_id"),
+                "evidence_span_ids": formal["observation"]["evidence_span_ids"],
+                "result_record_refs": [r["identity"] for r in (enriched.get("experimental_core") or {}).get("results", [])],
+                "causal_authority": False,
+            },
+            "source_annotation_class": enriched.get("annotation_class"),
+            "source_scientific_authorization": enriched.get("scientific_authorization"),
+            "source_human_gold": enriched.get("human_gold"),
+        } if formal else {}),
     ).model_dump(mode="json")
     enriched.update({
         "reasoning_chain_id": payload["chain_id"], "evidence_family_id": family_id,
         "final_formal_polarity": payload["final_formal_polarity"],
-        "direction": payload["final_formal_polarity"],
+        "direction": lexical_direction if formal else payload["final_formal_polarity"],
         "polarity": payload["final_formal_polarity"],
         "direction_source": payload["direction_provenance"], "reasoning_chain_complete": complete,
     })
+    if formal:
+        enriched["observed_direction_provenance"] = payload["observed_direction_provenance"]
     return enriched, payload
 
 
@@ -537,6 +614,7 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
     observations = _rows(artifacts / "l2_fulltext_observations.jsonl")
     if not observations:
         observations = _rows(artifacts / "l35_fulltext_l1_claims.jsonl")
+    observations = [prepare_experimental_handoff(row, source) for row in observations]
     consolidations = {str(x.get("claim_id")): x for x in _rows(artifacts / "fulltext_context_consolidations.jsonl")}
     chains = {str(x.get("chain_id")): x for x in _rows(artifacts / "experimental_evidence_chains.jsonl")}
     links: dict[str, list[str]] = defaultdict(list)
@@ -549,6 +627,13 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
         "source": str(source), "schema": SCHEMA_VERSION,
         "observation_ids": [str(x.get("observation_id") or x.get("claim_id")) for x in observations],
         "context_hashes": [x.get("source_record_hash") for x in consolidations.values()],
+        "input_artifact_hashes": {
+            name: hashlib.sha256((artifacts / name).read_bytes()).hexdigest()
+            for name in ("l2_fulltext_observations.jsonl", "l35_fulltext_l1_claims.jsonl",
+                         "fulltext_context_consolidations.jsonl", "experimental_evidence_chains.jsonl",
+                         "claim_evidence_links.jsonl", "entity_resolution_candidates.jsonl", "l2_retained_observations.jsonl")
+            if (artifacts / name).is_file()
+        },
     }
     digest = _stable_hash(input_identity)
     root = Path(output_root).resolve() if output_root else source.parent
@@ -604,6 +689,21 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
             and row.get("scientific_edge_layer") == "strict_causal_core"
         )
         gate = core_graph_eligibility(row)
+        formal = row.get("formal_v3_native_payload")
+        source_blocks = []
+        if formal:
+            if not formal["eligibility"]["strict_core_eligible"]:
+                source_blocks.extend(["source_formal_v3_not_strict_core_eligible", *formal["eligibility"]["exclusion_reasons"]])
+            if row.get("scientific_authorization") is False:
+                source_blocks.append("scientific_authorization_not_granted")
+            core_audit = row.get("experimental_core_handoff_audit")
+            if core_audit and core_audit["linkage"]["full_machine_reuse_linkage"].startswith("blocked_"):
+                source_blocks.append(core_audit["linkage"]["full_machine_reuse_linkage"])
+        if source_blocks:
+            gate = {**gate, "eligible": False, "conflict_eligible": False,
+                    "reasons": list(dict.fromkeys([*gate["reasons"], *source_blocks])), "reason": source_blocks[0]}
+        if formal:
+            gate["conflict_eligible"] = bool(gate["conflict_eligible"] and formal["eligibility"]["conflict_eligible"])
         if not chain_payload["chain_complete"]:
             gate = {**gate, "eligible": False, "conflict_eligible": False, "reason": "missing_evidence_reasoning_chain", "reasons": list(dict.fromkeys([*(gate.get("reasons") or []), "missing_evidence_reasoning_chain"]))}
         semantic_layer = str(row.get("scientific_edge_layer") or "causal_reviewable")
@@ -622,6 +722,8 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
         row.update({
             "core_gate": gate, "formal_core_graph_eligible": bool(gate["eligible"]),
             "conflict_eligible": bool(gate["conflict_eligible"]),
+            "hypothesis_eligible": bool(gate["eligible"] and row.get("hypothesis_eligible")
+                                        and (not formal or formal["eligibility"]["hypothesis_eligible"])),
             "primary_layer": "strict_causal_core" if gate["eligible"] else non_core_layer,
             "semantic_tags": sorted(semantic_tags),
             "core_exclusion_reasons": [] if gate["eligible"] else gate.get("reasons") or [gate.get("reason")],

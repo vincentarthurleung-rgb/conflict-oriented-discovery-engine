@@ -80,7 +80,7 @@ Atlas projection 目录不可变；staging 是待验证候选。activation 只�
 | Cache identity | `fulltext_l1_v2_cache_identity_v6_results_anchor_contract` | `fulltext/fulltext_l1_v2.py` |
 | Reentry native mode | `formal_v3_native` | `fulltext/reentry.py` |
 | Reentry legacy mode | `legacy_compatibility` | `fulltext/reentry.py` |
-| Evidence projection | `fulltext_evidence_projection_v1.0.8` | `fulltext/evidence_projection.py` |
+| Evidence projection | `fulltext_evidence_projection_v1.0.10` | `fulltext/evidence_projection.py` |
 | Atlas fulltext adapter | `fulltext_reentry_v5_adapter_v5` | `system_b/adapters/fulltext_reentry_v5.py` |
 | Atlas projection schema | `atlas_projection_v2` | `system_b/system_a_sync.py` |
 | Atlas DB head | `0010_role_workspaces` | `system_b/persistence/database.py` |

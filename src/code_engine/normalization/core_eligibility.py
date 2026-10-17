@@ -7,6 +7,7 @@ from typing import Any
 from .endpoint_accessors import resolve_graph_endpoint
 from .formal_relations import normalize_formal_relation
 from .intervention_semantics import STRICT_CAUSAL_CORE, interpret_evidence_semantics
+from .experimental_admission import experimental_admission_blocks
 
 
 def _endpoint_reason(endpoint: dict[str, Any], role: str) -> str | None:
@@ -65,7 +66,11 @@ def core_graph_eligibility(observation: dict[str, Any]) -> dict[str, Any]:
     if sem.get("causal_direction_eligible") and not sem.get("direction_provenance_consistent"):
         reasons.append("direction_provenance_inconsistent")
     if not sem.get("evidence_design_eligible"):
-        reasons.append("non_causal_evidence_design")
+        formal = observation.get("formal_v3_native_payload")
+        structured_experiment = bool(formal and formal.get("interventions")
+            and (formal.get("experiment") or {}).get("design_normalization_status") == "resolved")
+        reasons.append("experimental_design_not_authorized_for_causal_projection"
+                       if structured_experiment else "non_causal_evidence_design")
     if not sem.get("species_projection_valid"):
         reasons.append("species_projection_unverified")
     if not sem.get("granularity_projection_valid"):
@@ -74,6 +79,9 @@ def core_graph_eligibility(observation: dict[str, Any]) -> dict[str, Any]:
         reasons.append("measurement_projection_missing")
     for reason in sem.get("semantic_hard_exclusions") or []:
         reasons.append(reason)
+    # This gate is also called directly, without the fulltext projector.
+    # A serialized semantics/audit payload must not bypass native admission.
+    reasons.extend(experimental_admission_blocks(observation))
     if relation and derived_sign in {-1, 1} and relation.sign in {-1, 1} and relation.sign != derived_sign:
         reasons.append("direction_provenance_inconsistent")
     if observation.get("relation_family") == "association_only" and relation and relation.family in {"positive_regulation", "negative_regulation", "regulation"}:
