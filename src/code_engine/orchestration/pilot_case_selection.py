@@ -1,0 +1,37 @@
+"""Prespecified exploratory questions; not empirical contradiction claims."""
+from code_engine.discovery.ai_review_shadow import content_hash
+from code_engine.search.planner_authority_contract_split_v1 import validate_proposal_terms,deterministic_coverage,assemble_validated_plan
+from code_engine.search.query_compiler_v24_dev_validated_v1 import compile_validated_proposition_aware_plan
+
+DESIGNS=[
+ ('EGFR kinase inhibitor exposure','PD-L1','cell-surface protein abundance','non-small-cell lung cancer cells',['EGFR genotype','interferon-gamma co-exposure','dose and duration'],'surface flow cytometry; total protein or transcript are separate endpoints'),
+ ('glucocorticoid exposure','TNF','secreted protein concentration','primary human monocytes',['donor','LPS stimulation','dose and duration'],'supernatant immunoassay; TNF mRNA cannot substitute'),
+ ('interleukin-6 exposure','hepcidin','transcript abundance','human hepatocyte systems',['iron conditions','cell model','exposure time'],'transcript assays; circulating peptide concentration remains separate'),
+ ('TGF-beta exposure','E-cadherin','protein abundance','human mammary epithelial systems',['malignant status','ligand dose','exposure time'],'Western blot within method strata; localization and transcript are distinct endpoints'),
+ ('mTOR inhibitor exposure','LC3-II','lysosomal-blockade-dependent turnover','human neuronal cell systems',['nutrient state','inhibitor identity','exposure time'],'paired lysosomal-blockade flux design required; static LC3-II alone is insufficient'),
+ ('androgen receptor inhibitor exposure','clonogenic survival','colony-forming fraction','human prostate cancer cells',['androgen conditions','AR genotype','dose and duration'],'colony formation with explicit comparator; metabolic viability cannot substitute'),
+ ('PARP inhibitor exposure','clonogenic survival','colony-forming fraction','human ovarian cancer systems',['source-reported homologous-recombination status','organoid versus monolayer','compound and dose'],'matched colony-forming endpoint; BRCA status is not automatically equated to functional HR status'),
+ ('metformin exposure','AMPK Thr172','phosphorylation relative to total AMPK','human breast cancer cells',['glucose availability','dose','exposure duration'],'explicit phospho-to-total protein measure; total AMPK and pathway labels are insufficient'),
+ ('interferon-gamma exposure','HLA class I','pan-HLA-ABC cell-surface protein abundance','human tumor cell systems',['lineage','source-reported signaling competence','dose and duration'],'pan-HLA-ABC surface flow cytometry; allele-specific measurements require separate review'),
+ ('histone deacetylase inhibitor exposure','FOXP3','transcript abundance','primary human CD4 T cells',['activation conditions','inhibitor selectivity','dose and duration'],'transcript endpoint only; regulatory function or protein expression are separate')]
+
+def frozen_cases():
+ result=[]
+ for index,(intervention,entity,endpoint,system,strata,limits) in enumerate(DESIGNS,1):
+  cid=f'UNLIMITED-PILOT-{index:02d}';question=f'How does {intervention} affect {entity} {endpoint} in {system}, across prespecified context strata?'
+  scope={'intervention':intervention,'entity':entity,'endpoint':endpoint,'biological_system':system,'context_strata':strata,'endpoint_boundary':limits,'direction':'unrestricted'}
+  target={'artifact_schema_version':'ScientificPropositionTargetV1','scientific_proposition_target_id':cid+':planning_target','case_id':cid,'subject':intervention,'subject_intervention':intervention,'object':entity,'measurement_target':entity,'measurement_property_endpoint':endpoint,'relation_family':'affects','canonical_proposition_orientation':None,'context_qualifier_dimensions':{'biological_unit':[system]},'primary_proposition_meaning':question,'frozen':True,'planning_only':True,'external_canonical_identity_asserted':False,'retrieval_membership_grants_compatibility':False}
+  dimensions={'subject':intervention,'object_measurement_target':entity,'endpoint_property':endpoint,'biological_unit':system}
+  concepts=[{'concept_id':cid+':'+k,'concept_type':k,'canonical_anchor':None,'proposed_terms':[{'term_id':cid+':term:'+k,'term':v}]} for k,v in dimensions.items()]
+  roots=['EGFR','glucocorticoid','interleukin-6','TGF-beta','mTOR','androgen receptor','PARP','metformin','interferon-gamma','histone deacetylase']
+  concepts[0]['proposed_terms'].append({'term_id':cid+':term:subject_root','term':roots[index-1]})
+  required=['subject','relation','object_measurement_target','direction','evidence_mode'];optional=['endpoint_property','biological_unit']
+  blueprints=[{'blueprint_id':cid+':broad','concept_ids':[cid+':subject',cid+':object_measurement_target']},{'blueprint_id':cid+':endpoint','concept_ids':[cid+':subject',cid+':object_measurement_target',cid+':endpoint_property']}]
+  proposal={'retrieval_intents':[{'intent_id':cid+':direct','intent_type':'DIRECT_PERTURBATION','applicability':'APPLICABLE','applicability_rationale':'Prespecified intervention question, not a claim of a reported directional result.','scientific_rationale':'Different prespecified contexts and comparators may yield heterogeneous observations; no contradiction is assumed.','required_dimensions':required,'optional_dimensions':optional,'biological_unit_context':{'target_value':system,'planning_state':'PRESENT','separate_from_entity_identity':True},'search_concepts':concepts,'candidate_query_blueprints':blueprints}]}
+  receipts=validate_proposal_terms(proposal,target=target);coverage=deterministic_coverage(proposal,receipts,target=target)
+  validated=assemble_validated_plan(proposal,receipts,coverage,target=target,request_reference=question,planner_config_sha256=content_hash(scope),planner_prompt_template_version='owner_requested_offline_question_design_v1_not_model_extraction',planner_cache_key_sha256=content_hash(proposal))
+  compiled=compile_validated_proposition_aware_plan(validated)
+  queries=[{'query_id':q['query_id'],'query_string':q['query_string'],'source':'pubmed'} for q in compiled['compiled_queries']]
+  case={'case_id':cid,'question':question,'scope':scope,'paper_count_limit':None,'inclusion_criteria':['Independent primary study with explicit source-reported intervention, comparator and the named operational endpoint','All positive, negative, null and inconclusive findings meeting the same criteria','Exact bibliographic identity, provenance and legitimate full-text access; unresolved access retained as unavailable/uncertain'], 'exclusion_criteria':['Existing frozen historical SEEN identity or prior pilot exposure','Incompatible endpoint or biological system; no silent ontology equivalence','Retraction/correction, source-type or license rejection under existing gates; reviews/editorials are not original experiment evidence'], 'queries':queries,'validated_search_plan':validated,'query_compilation':compiled,'heterogeneity_rationale':'Prespecified strata '+', '.join(strata)+' create a defensible exploratory opportunity for context divergence, not evidence of published opposition.','selection_design':'exploratory_conflict_enriched_not_prevalence_representative','replace_after_observing_results':False,'new_pipeline_results_observed':False,'scientific_authorization':False,'execution_authorized':False,'novelty_status':'Newly specified question/scope; historical source exclusion required. No invented canonical identity or semantic-equivalence certification.'}
+  case['case_design_sha256']=content_hash(case);result.append(case)
+ return result

@@ -339,6 +339,21 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             ident=current_identity()
             try:
                 with session_scope(db_factory) as dbs:
+                    if path=="/api/owner/pilot-reviews/export" and request.method=="GET":
+                        project_id=request.args.get('project_id');project=dbs.get(EvaluationProject,project_id) if project_id else None
+                        if not project or project.namespace not in ('pilot','test'):return jsonify({'error':'pilot_project_required'}),400
+                        try:limit=min(500,max(1,int(request.args.get('limit','100'))));offset=max(0,int(request.args.get('offset','0')))
+                        except ValueError:return jsonify({'error':'invalid_page'}),400
+                        rows=dbs.execute(select(Annotation,ReviewItem).join(ReviewItem,Annotation.review_item_id==ReviewItem.review_item_id).where(Annotation.project_id==project_id,ReviewItem.item_type.in_(['ai_provisional_case_review','ai_provisional_pair_review','ai_provisional_case_attempt','ai_provisional_experimental_package'])).order_by(Annotation.annotation_id).limit(limit+1).offset(offset)).all()
+                        values=[]
+                        for annotation,item in rows[:limit]:
+                            value=annotation_to_dict(annotation);value['case_id']=item.case_id;value['review_item_source_hash']=item.source_hash;value['scientific_authorization']=False;value['human_gold']=False;values.append(value)
+                        from code_engine.discovery.ai_review_shadow import content_hash
+                        from code_engine.system_b.persistence.services.audit_service import write_audit_event
+                        export={'schema_version':'AtlasPilotReviewExportV1','project_id':project_id,'offset':offset,'has_more':len(rows)>limit,'items':values,'exported_by_user_id':ident.get('user_id'),'scientific_authorization':False,'human_gold':False}
+                        export['page_sha256']=content_hash(export)
+                        write_audit_event(dbs,action='pilot_review_export',object_type='evaluation_project',object_id=project_id,actor=ident,project_id=project_id,metadata={'offset':offset,'count':len(values),'page_sha256':export['page_sha256']})
+                        return jsonify(export),200
                     if path in {"/api/owner/claim-evaluation/readiness","/api/owner/claim-evaluation/pilot-samples","/api/owner/sampling/frames","/api/owner/sampling/preview","/api/owner/sampling/create"}:
                         status,value=api.dispatch(path,request.args.to_dict(flat=False),method=request.method,body=body)
                         return jsonify(value),status
@@ -426,7 +441,7 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             with session_scope(db_factory) as dbs:
                 if path=="/api/my/assignments":return jsonify({"items":my_assignments(dbs,user_id=ident.get("user_id"))})
                 if path=="/api/my/batches":return jsonify({"items":my_batches(dbs,user_id=ident.get("user_id"))})
-                if path=="/api/my/review-items":return jsonify({"items":redact_debug(my_review_items(dbs,user_id=ident.get("user_id")))})
+                if path=="/api/my/review-items":return jsonify({"items":redact_debug(my_review_items(dbs,user_id=ident.get("user_id"),summary=True,limit=min(100,max(1,int(request.args.get("limit","20")))),offset=max(0,int(request.args.get("offset","0")))))})
                 if path=="/api/my/progress":return jsonify(my_progress(dbs,user_id=ident.get("user_id")))
                 if path=="/api/my/onboarding":
                     rows=dbs.execute(select(Assignment,ReviewItem,EvaluationProject).join(ReviewItem,Assignment.review_item_id==ReviewItem.review_item_id).join(EvaluationProject,Assignment.project_id==EvaluationProject.project_id).where(Assignment.reviewer_user_id==ident.get("user_id"),Assignment.assignment_role.in_(["primary","secondary","expert"]))).all()
@@ -482,18 +497,30 @@ def create_app(display_kg_root,review_root=None,*,require_auth=False,users_file=
             if require_auth and path=="/api/review-items" and request.method=="GET":
                 ident=current_identity()
                 with session_scope(db_factory) as dbs:
-                    items=my_review_items(dbs,user_id=ident.get("user_id"),case_id=request.args.get("case_id"),item_type=request.args.get("item_type"),project_id=request.args.get("project_id"))
-                return jsonify({"items":redact_debug(items),"total":len(items)})
+                    limit=min(100,max(1,int(request.args.get('limit','20'))));offset=max(0,int(request.args.get('offset','0')))
+                    items=my_review_items(dbs,user_id=ident.get("user_id"),case_id=request.args.get("case_id"),item_type=request.args.get("item_type"),project_id=request.args.get("project_id"),limit=limit+1,offset=offset,summary=True)
+                return jsonify({"items":redact_debug(items[:limit]),"total":len(items[:limit]),"has_more":len(items)>limit,"offset":offset,"limit":limit})
             if require_auth and path.startswith("/api/review-item/") and request.method=="GET":
                 ident=current_identity()
                 item_id=path.removeprefix("/api/review-item/")
+                scientific_page_requested=item_id.endswith('/scientific-page')
+                if scientific_page_requested:item_id=item_id.removesuffix('/scientific-page')
                 with session_scope(db_factory) as dbs:
                     row=dbs.execute(select(Assignment,ReviewItem).join(ReviewItem,Assignment.review_item_id==ReviewItem.review_item_id).where(Assignment.reviewer_user_id==ident.get("user_id"),Assignment.assignment_role.in_(["primary","secondary","expert"]),Assignment.review_item_id==item_id)).first()
                     if not row:return jsonify({"error":"review_item_not_found"}),404
                     assignment,item=row
                     annotation=dbs.execute(select(Annotation).where(Annotation.project_id==assignment.project_id,Annotation.review_item_id==item.review_item_id,Annotation.reviewer_user_id==ident.get("user_id"))).scalar_one_or_none()
                     project=dbs.get(EvaluationProject,assignment.project_id)
-                    return jsonify(redact_debug(review_item_to_dict(item,annotation,assignment=assignment,project=project))),200
+                    value=review_item_to_dict(item,annotation,assignment=assignment,project=project)
+                    if scientific_page_requested:
+                        from code_engine.system_b.persistence.services.pilot_review_display import scientific_page
+                        if item.item_type not in ('ai_provisional_case_attempt','ai_provisional_case_review'):return jsonify({'error':'not_case_evidence'}),400
+                        try:return jsonify(scientific_page(value['review_package'],int(request.args.get('offset','0')),int(request.args.get('limit','1')))),200
+                        except ValueError:return jsonify({'error':'invalid_evidence_page'}),400
+                    if request.args.get('presentation')=='summary' and item.item_type in ('ai_provisional_case_attempt','ai_provisional_case_review'):
+                        from code_engine.system_b.persistence.services.pilot_review_display import case_display
+                        value['review_package']=case_display(value['review_package'])
+                    return jsonify(redact_debug(value)),200
             if path.startswith("/api/annotation/") and request.method=="POST":
                 item_id=path.removeprefix("/api/annotation/")
                 try:

@@ -575,6 +575,9 @@ def my_review_items(
     case_id: str | None = None,
     item_type: str | None = None,
     project_id: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+    summary: bool = False,
 ) -> list[dict]:
     query = (
         select(Assignment, ReviewItem, EvaluationProject, Annotation)
@@ -594,17 +597,18 @@ def my_review_items(
         query = query.where(ReviewItem.item_type == item_type)
     if project_id:
         query = query.where(Assignment.project_id == project_id)
+    if limit is not None:query=query.limit(limit).offset(offset)
     rows = session.execute(query).all()
     items = []
     for assignment, item, project, annotation in rows:
-        payload = review_item_to_dict(item, annotation, assignment=assignment, project=project)
+        payload = review_item_to_dict(item, annotation, assignment=assignment, project=project, summary=summary)
         payload["review_status"] = "reviewed" if assignment.status in {"submitted", "skipped", "revisit", "completed"} else "unreviewed"
         items.append(payload)
     return items
 
 
 def my_review_workspace(session: Session, *, user_id: str) -> dict:
-    items = my_review_items(session, user_id=user_id)
+    items = my_review_items(session, user_id=user_id, summary=True)
     cases: dict[str, dict] = {}
     for item in items:
         case_id = item.get("case_id") or "unknown"
@@ -621,6 +625,9 @@ def my_review_workspace(session: Session, *, user_id: str) -> dict:
             "invalid": 0,
             "unclear": 0,
         })
+        case["source_count"]=max(case.get("source_count",0),item.get("source_count",0))
+        case.setdefault("terminal_states",[])
+        if item.get("terminal_state") and item["terminal_state"] not in case["terminal_states"]:case["terminal_states"].append(item["terminal_state"])
         reviewed = item.get("review_status") == "reviewed"
         case["total"] += 1
         case["reviewed" if reviewed else "unreviewed"] += 1
@@ -637,7 +644,7 @@ def my_review_workspace(session: Session, *, user_id: str) -> dict:
 
 
 def my_review_metrics(session: Session, *, user_id: str) -> dict:
-    items = my_review_items(session, user_id=user_id)
+    items = my_review_items(session, user_id=user_id, summary=True)
     reviewed = [item for item in items if item.get("review_status") == "reviewed"]
     labels: dict[str, int] = {}
     dispositions: dict[str, int] = {}

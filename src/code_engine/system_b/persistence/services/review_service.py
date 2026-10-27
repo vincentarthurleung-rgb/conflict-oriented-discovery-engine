@@ -78,6 +78,15 @@ def import_review_items(session: Session, review_root: str | Path, *, namespace:
     unchanged = 0
     warnings = []
     for row in rows:
+        if row.get("item_type") in {"ai_provisional_experimental_package", "ai_provisional_case_attempt", "ai_provisional_case_review", "ai_provisional_pair_review"}:
+            from code_engine.orchestration.pilot_delivery import validate_case_package as validate_review_package
+            if namespace == "production":
+                raise ValueError("AI_provisional_package_production_import_disabled")
+            validate_review_package(row["review_package"])
+            package = row["review_package"]
+            if (row.get("case_id") != package["case_id"]
+                    or row.get("review_item_id") != ("ai_case:" if row.get("item_type") in {"ai_provisional_case_attempt", "ai_provisional_case_review"} else "ai_package:") + package["package_sha256"]):
+                raise ValueError("review_package_queue_identity_mismatch")
         item_id = row.get("review_item_id")
         if not item_id:
             continue
@@ -164,9 +173,14 @@ def review_item_schema_payload(item: ReviewItem) -> dict:
     return payload
 
 
-def review_item_to_dict(item: ReviewItem, annotation: Annotation | None = None, *, assignment: Assignment | None = None, project: EvaluationProject | None = None) -> dict:
+def review_item_to_dict(item: ReviewItem, annotation: Annotation | None = None, *, assignment: Assignment | None = None, project: EvaluationProject | None = None, summary: bool = False) -> dict:
     payload = json.loads(item.payload_json or "{}")
-    payload.update(review_item_schema_payload(item))
+    if summary:
+        package=payload.pop('review_package',None)
+        if package:
+            payload.update(source_count=len(package.get('sources',package.get('members',[]))),pair_count=len(package.get('pair_packages',[])),terminal_state=package['terminal_state'])
+    else:
+        payload.update(review_item_schema_payload(item))
     if annotation:
         payload["annotation"] = annotation_to_dict(annotation)
     if assignment:
@@ -288,6 +302,15 @@ def save_annotation(
         schema_field_ids = {field["field_id"] for field in schema.definition.get("fields", [])}
         if raw_fields is None:
             raw_fields = {key: payload[key] for key in schema_field_ids if key in payload}
+        if item.item_type in {"ai_provisional_experimental_package", "ai_provisional_case_attempt", "ai_provisional_case_review", "ai_provisional_pair_review"}:
+            from code_engine.orchestration.pilot_delivery import validate_case_package as validate_review_package
+            package = json.loads(item.payload_json)["review_package"]
+            validate_review_package(package)
+            if item.source_hash != sha256_text(item.payload_json):
+                raise ValueError("review_package_stored_hash_mismatch")
+            if raw_fields.get("package_sha256", package["package_sha256"]) != package["package_sha256"]:
+                raise ValueError("review_response_package_hash_mismatch")
+            raw_fields = {**raw_fields, "package_sha256": package["package_sha256"]}
         if "final_label" in schema_field_ids and "final_label" not in raw_fields and payload.get("final_label"):
             raw_fields["final_label"] = str(payload.get("final_label") or "").upper()
         try:

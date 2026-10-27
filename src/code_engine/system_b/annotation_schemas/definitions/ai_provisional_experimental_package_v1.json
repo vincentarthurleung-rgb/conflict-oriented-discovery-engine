@@ -1,0 +1,151 @@
+{
+  "schema_id": "ai_provisional_experimental_package_v1",
+  "version": "1.0.0",
+  "title": "AI 暂定实验证据包评审",
+  "description": "Review of bounded evidence and AI assessments. This does not authorize biological claims.",
+  "applicable_item_types": [
+    "ai_provisional_experimental_package"
+  ],
+  "fields": [
+    {
+      "field_id": "experimental_scope",
+      "label": "实验范围",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "factor_comparator",
+      "label": "干预与比较组",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "measurement_endpoint",
+      "label": "测量与操作性端点",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "observed_result",
+      "label": "来源支持的观察结果",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "evidence_linkage",
+      "label": "证据链接",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "missing_method_limits",
+      "label": "缺失方法的可接受性",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "permissible_interpretation",
+      "label": "允许的科学解释",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "alignment_context",
+      "label": "跨论文对齐与上下文",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "terminal_outcome",
+      "label": "流程终态",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "ACCEPT",
+        "REJECT",
+        "CLARIFICATION_REQUIRED"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "package_sha256",
+      "label": "Bound package hash",
+      "type": "short_text",
+      "required": true,
+      "internal_binding": true,
+      "gold_field": false
+    },
+    {
+      "field_id": "final_label",
+      "label": "评审包判断",
+      "type": "single_choice",
+      "required": true,
+      "allowed_values": [
+        "VALID",
+        "PARTIAL",
+        "INVALID",
+        "UNCLEAR"
+      ],
+      "gold_field": false
+    },
+    {
+      "field_id": "notes",
+      "label": "判断依据或待澄清内容",
+      "type": "long_text",
+      "required": false,
+      "gold_field": false
+    }
+  ],
+  "instructions": "Review this hash-bound AI-provisional package field by field. Accept, reject or request clarification for each experimental scope, factor/comparator, endpoint, result, linkage, missing-method limitation and permissible interpretation. Assess alignment/context and terminal outcome separately. Human responses are review records only; they do not confer scientific authorization, Strict Core or Human Gold. Test-account submissions in staging are synthetic workflow events, never human scientific validation.",
+  "instructions_version": "1.0.0",
+  "instructions_hash": "1343988aaec03eb371b7488ef546ce927dc23197057bb9d0e6b7683461d7febd",
+  "frozen": true
+}

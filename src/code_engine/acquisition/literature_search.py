@@ -34,6 +34,31 @@ class NCBILiteratureClient:
 
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
+    def search_page(self, query: dict, *, cursor: int, page_size: int) -> dict:
+        """Uncapped pilot transport; existing capped public search stays unchanged.
+
+        An API pagination error is a resumable coverage interruption, never
+        evidence that the search is exhausted. The frozen strategy may provide
+        date partitions to handle service-side pagination restrictions.
+        """
+        source=query.get('source','pubmed');db='pmc' if source=='pmc' else 'pubmed'
+        params=urllib.parse.urlencode({'db':db,'term':query['query_string'],'retmode':'json','retstart':cursor,'retmax':page_size})
+        with urllib.request.urlopen(f'{self.base_url}/esearch.fcgi?{params}',timeout=30) as response:payload=json.loads(response.read())
+        data=payload['esearchresult']
+        if data.get('ERROR') or payload.get('error'):raise ValueError('ESearch pagination failed: '+str(data.get('ERROR') or payload['error']))
+        total=int(data['count']);ids=data['idlist'];records=[{'paper_id':('PMC'+str(x)) if db=='pmc' else str(x),'pmid':str(x) if db=='pubmed' else None,'pmcid':'PMC'+str(x) if db=='pmc' else None,'source':source} for x in ids]
+        nxt=cursor+len(ids)
+        return {'records':records,'total':total,'next_cursor':nxt if nxt<total else None,'request':{'query':query,'cursor':cursor,'page_size':page_size},'response_sha256':hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+
+    def metadata(self, record: dict) -> dict:
+        if not record.get('pmid'):raise ValueError('PMC-only identity requires verified PubMed mapping; source retained unresolved')
+        raw=self.fetch({'pmid':str(record['pmid']),'paper_id':str(record['pmid'])},'pubmed');value=parse_pubmed_xml(raw,fallback_pmid=str(record['pmid']))
+        root=ET.fromstring(raw)
+        value['publication_types']=[_xml_text(x) for x in root.findall('.//PublicationType')]
+        value['correction_relationships']=[{'ref_type':x.get('RefType'), 'linked_pmid':_xml_text(x.find('PMID')) or None, 'ref_source':_xml_text(x.find('RefSource')) or None} for x in root.findall('.//CommentsCorrections')]
+        value['metadata_sha256']=hashlib.sha256(raw.encode()).hexdigest();value['metadata_xml']=raw
+        return value
+
     def search(self, query: str, source: str, max_results: int, year_from: int | None = None, year_to: int | None = None) -> list[dict[str, Any]]:
         db = "pmc" if source == "pmc" else "pubmed"
         term = query

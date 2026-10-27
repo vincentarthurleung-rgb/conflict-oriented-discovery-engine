@@ -27,6 +27,7 @@ from code_engine.schemas.fulltext_observation_draft import (
 HYDRATOR_VERSION = "fulltext_l1_draft_hydrator_v3_formal_v3_authoritative_anchors"
 COMPLETENESS_POLICY_VERSION = "fulltext_l1_formal_block_completeness_v2"
 OBSERVATION_ID_VERSION = "fulltext_l1_draft_observation_id_sha256_v2_anchor_stable"
+ANCHOR_BINDING_AUDIT_VERSION = "anchor_binding_audit_v2_global_observation_paths"
 
 
 class DraftHydrationV3Error(ValueError):
@@ -94,9 +95,10 @@ def resolve_draft_evidence(evidence: EvidenceTextDraft, context: TrustedDraftCon
     return spans, "authoritative_anchor"
 
 
-def iter_draft_evidence_references(draft: FulltextL1DraftResponse | ExperimentalObservationDraft):
+def iter_draft_evidence_references(draft: FulltextL1DraftResponse | ExperimentalObservationDraft,
+                                   *, observation_index_offset: int = 0):
     observations = (draft.experimental_observations if isinstance(draft, FulltextL1DraftResponse) else [draft])
-    for oi, observation in enumerate(observations):
+    for oi, observation in enumerate(observations, start=observation_index_offset):
         for ei, evidence in enumerate(observation.evidence_references):
             yield f"experimental_observations.{oi}.evidence_references.{ei}", evidence
         yield f"experimental_observations.{oi}.observation.evidence", observation.observation.evidence
@@ -111,14 +113,15 @@ def iter_draft_evidence_references(draft: FulltextL1DraftResponse | Experimental
 
 def audit_draft_anchor_bindings(draft: FulltextL1DraftResponse | ExperimentalObservationDraft,
                                 context: TrustedDraftContextV3,
-                                anchors: list[EvidenceAnchor] | None = None) -> dict[str, Any]:
+                                anchors: list[EvidenceAnchor] | None = None,
+                                *, observation_index_offset: int = 0) -> dict[str, Any]:
     """Audit identity failures separately from non-authoritative excerpt differences."""
     anchors = anchors or generate_evidence_anchors(
         block_id=context.block_id, source_document_id=context.source_document_id,
         block_text=context.block_text, section=context.section,
     )
     counts = Counter(); unique_ids: set[str] = set(); errors = []; warnings = []
-    for path, evidence in iter_draft_evidence_references(draft):
+    for path, evidence in iter_draft_evidence_references(draft, observation_index_offset=observation_index_offset):
         resolved: list[EvidenceAnchor] = []
         for anchor_id in evidence.evidence_anchor_ids:
             counts["anchor_reference_count"] += 1; unique_ids.add(anchor_id)
@@ -163,7 +166,8 @@ def audit_draft_anchor_bindings(draft: FulltextL1DraftResponse | ExperimentalObs
         "anchor_excerpt_mismatch_count", "anchor_excerpt_missing_count",
         "formal_evidence_binding_success_count", "formal_evidence_binding_failure_count",
     )
-    return {**{key: counts[key] for key in metric_keys}, "unique_anchor_id_count": len(unique_ids),
+    return {"audit_version": ANCHOR_BINDING_AUDIT_VERSION,
+            **{key: counts[key] for key in metric_keys}, "unique_anchor_id_count": len(unique_ids),
             "valid": not errors, "errors": errors, "warnings": warnings}
 
 
@@ -186,7 +190,8 @@ def hydrate_draft_observation_v3(draft: ExperimentalObservationDraft, context: T
                                  *, observation_index: int = 0) -> tuple[dict[str, Any], dict[str, Any]]:
     anchors = generate_evidence_anchors(block_id=context.block_id, source_document_id=context.source_document_id,
                                         block_text=context.block_text, section=context.section)
-    anchor_audit = audit_draft_anchor_bindings(draft, context, anchors)
+    anchor_audit = audit_draft_anchor_bindings(draft, context, anchors,
+                                               observation_index_offset=observation_index)
     if not anchor_audit["valid"]:
         first = anchor_audit["errors"][0]
         raise DraftHydrationV3Error("evidence_unresolved", str(first["reason"]))
@@ -354,6 +359,7 @@ def hydrate_draft_response_v3(response: FulltextL1DraftResponse, context: Truste
 
 
 __all__ = ["HYDRATOR_VERSION", "COMPLETENESS_POLICY_VERSION", "OBSERVATION_ID_VERSION",
+           "ANCHOR_BINDING_AUDIT_VERSION",
            "DraftHydrationV3Error", "TrustedDraftContextV3", "HydrationBatchV3",
            "resolve_draft_evidence", "iter_draft_evidence_references", "audit_draft_anchor_bindings",
            "hydrate_draft_observation_v3", "hydrate_draft_response_v3"]

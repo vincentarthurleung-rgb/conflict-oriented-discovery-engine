@@ -502,3 +502,20 @@ aside .close{position:sticky;top:0;float:right;z-index:2;margin:8px 8px 0 0}
 @media(max-width:1100px){.user-summary{grid-template-columns:repeat(4,1fr)}.filter-card{grid-template-columns:repeat(2,1fr)}.filter-card .search-field{grid-column:1/-1}}
 @media(max-width:800px){.operations-page-head,.operations-hero{align-items:flex-start;flex-direction:column}.operations-hero{padding:22px}.user-summary{grid-template-columns:repeat(2,1fr)}.wizard-steps{display:flex;overflow:auto}.wizard-steps li{min-width:130px}.wizard-content{padding:18px}.purpose-grid{grid-template-columns:1fr}.purpose-card{min-height:0}.project-stats{grid-template-columns:1fr}.bulk-bar{align-items:flex-start;flex-wrap:wrap}.bulk-bar span{width:100%}.progress-row{grid-template-columns:1fr}.user-drawer{width:100vw}.drawer-sections dl div{flex-direction:column;gap:3px}.drawer-sections dd{text-align:left}.secondary-filters,.result-summary{grid-template-columns:1fr}}
 @media(max-width:520px){.operations-main{padding-left:12px;padding-right:12px}.operations-metric-grid{grid-template-columns:repeat(2,1fr)}.filter-card{grid-template-columns:1fr}.filter-card .search-field{grid-column:auto}.assignment-people-grid,.sampling-form-grid{grid-template-columns:1fr}.wizard-footer{position:sticky;bottom:0;z-index:3}.drawer-metrics{grid-template-columns:1fr}}
+/* Scientific case review: original evidence and AI judgment remain distinct. */
+.scientific-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.scientific-split>section{min-width:0;padding:14px;border:1px solid var(--line);border-radius:8px}
+.scientific-split blockquote{margin:8px 0;padding:12px;border-left:3px solid var(--teal);overflow-wrap:anywhere}
+.scientific-split .ai-assessment{background:#f3f8f8}.ai-assessment article{padding:10px 0;border-bottom:1px solid var(--line)}
+.scientific-comparison{overflow:auto}.scientific-comparison table{width:100%;table-layout:fixed}.scientific-comparison td,.scientific-comparison th{vertical-align:top;overflow-wrap:anywhere}
+.evidence-anchor-link{display:inline-block;margin:3px 8px 3px 0}.evidence-highlight{background:var(--amber);outline:2px solid #b77818}
+.pilot-field-choices{display:flex;flex-wrap:wrap;gap:6px}.pilot-field-choices button[aria-pressed=true]{background:var(--teal);color:white}
+.pilot-original-select{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.review-pagination{display:flex;justify-content:space-between;gap:10px}
+#pilot-case-status-filter{width:100%;margin-bottom:12px}#case-scientific-page nav{display:flex;justify-content:space-between;margin:16px 0}
+@media(max-width:1100px){.scientific-split{grid-template-columns:1fr}.scientific-comparison table{min-width:500px}}
+/* Pilot review controls retain the schema select as data, not a wide overlay. */
+.schema-field-grid select.pilot-original-select{display:none}
+.review-case-card,.pilot-case-summary,.scientific-split,.scientific-comparison{overflow-wrap:anywhere;min-width:0}
+.scientific-split>section{max-height:65vh;overflow:auto;overscroll-behavior:contain}
+@media(min-width:1200px){.review-workspace{grid-template-columns:185px 155px minmax(0,1fr)}}
+@media(max-width:1100px){.scientific-split>section{max-height:none}.scientific-comparison table{min-width:0}}

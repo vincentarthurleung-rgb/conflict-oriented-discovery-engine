@@ -12,6 +12,10 @@ from typing import Any
 DEFINITIONS_DIR = Path(__file__).parent / "definitions"
 
 ITEM_TYPE_SCHEMA_MAP = {
+    "ai_provisional_pair_review": "ai_provisional_case_attempt_v2",
+    "ai_provisional_case_review": "ai_provisional_case_attempt_v2",
+    "ai_provisional_case_attempt": "ai_provisional_case_attempt_v1",
+    "ai_provisional_experimental_package": "ai_provisional_experimental_package_v1",
     "claim": "claim_review_v1",
     "fulltext_l1_claim": "claim_review_v1",
     "fulltext_reviewable_observation": "claim_review_v1",
