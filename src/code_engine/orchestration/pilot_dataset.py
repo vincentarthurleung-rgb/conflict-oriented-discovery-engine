@@ -10,7 +10,16 @@ from code_engine.discovery.ai_review_shadow import content_hash
 from code_engine.system_b.annotation_schemas.registry import canonical_json
 from code_engine.discovery.ai_review_shadow import ShadowAuthority
 
-TABLES={'scientific_inclusion':'Versioned paper/experiment/observation applicability decisions, exact source evidence and unresolved scope; no Core authority',
+TABLES={'publication_dependencies':'Publication/experiment/cohort grouping; missing experiment scopes and independent-publication group denominators',
+ 'validation_requirements':'Existing hypothesis validation requirement records; empty when no supported hypothesis exists',
+ 'missing_scientific_authority':'Explicit ordered formal qualification blockers; no policy or reviewer authority invented',
+ 'scientific_comparison_coverage':'Actual source-bound provisional comparison execution coverage, separate from formal qualification',
+ 'scientific_propositions':'B4 source-bound provisional propositions, native readiness and exact evidence; no new Core or identity authority',
+ 'scientific_comparison':'Eight-axis provisional alignment, detailed context, scientific abstention and dependency grouping',
+ 'context_attribution':'Source context differences versus modifier support versus explanation sufficiency',
+ 'hypothesis_constraints':'Explicit abstention or bounded falsifiable proposals, validation requirements and unscored run-local hyperedges',
+ 'scientific_qualification':'Provisional pair results and blocked ordered formal L4 qualification',
+ 'scientific_inclusion':'Versioned paper/experiment/observation applicability decisions, exact source evidence and unresolved scope; no Core authority',
  'scientific_inclusion_coverage':'Separate retrieval/access/inclusion/extraction/downstream coverage; no publication recall',
  'semantic_intake':'Frozen question-bound intake reuse or explicit deterministic degraded status; no new model execution',
  'linkage_stage_inputs':'Original V3 response lineage, exact source spans, scope/applicability assessments and unsigned candidate request',
@@ -43,7 +52,18 @@ def export_attempt_dataset(manifest,case_dir,output,*,pairs=(),human_reviews=())
  for p in sorted(case_dir.rglob('*.json')):
   if output in p.parents:continue
   name=p.name
-  if name=='scientific_inclusion_final.json':tables['scientific_inclusion'].extend(read(p)['rows'])
+  if name=='scientific_comparison.json':
+   d=read(p);tables['scientific_propositions'].extend(d['propositions']);tables['scientific_comparison'].append(d)
+   tables['publication_dependencies'].append({'publication_groups':d['dependence_inventory'],'independent_publication_pair_groups':d['publication_dependencies'],'denominators':d['denominators']})
+   tables['validation_requirements'].extend(d['validation_requirements'])
+   tables['missing_scientific_authority'].append({'blockers':d['formal_authority_blockers'],'scientific_authorization':False})
+   tables['scientific_comparison_coverage'].append(d['coverage'])
+   tables['evidence_index'].extend({'source':r['publication'],'span':span,'lane':'B4_provisional_diagnostic_only'} for r in d['propositions'] for span in r['source_evidence'])
+   tables['hypotheses'].extend(d['hypotheses'])
+  elif name=='scientific_context_attribution.json':tables['context_attribution'].append(read(p))
+  elif name=='scientific_hypothesis_constraints.json':tables['hypothesis_constraints'].append(read(p))
+  elif name=='scientific_qualification.json':tables['scientific_qualification'].append(read(p))
+  elif name=='scientific_inclusion_final.json':tables['scientific_inclusion'].extend(read(p)['rows'])
   elif name=='scientific_inclusion_coverage.json':tables['scientific_inclusion_coverage'].append(read(p))
   elif name=='semantic_intake_trace.json':tables['semantic_intake'].append(read(p))
   elif name.endswith('_linkage_input.json'):

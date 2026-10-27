@@ -60,7 +60,10 @@ def ar_case(path):
   elif i==0:vals={**common,'endpoint':('UNKNOWN','broad histological abnormalities'), 'timepoint':('UNKNOWN','7–42 dpi range')};reason='Broad morphology/time range does not establish the same quantitative CSA endpoint'
   else:vals={**common,'endpoint':('MISMATCH','ultrastructure' if i==1 else 'MuSC pool / PAX7 count'),'timepoint':('UNKNOWN','source-specific, not reassigned')};reason='Different measured endpoint; original timing/binding uncertainty remains unchanged'
   rows.append(assessment(req,source,'observation',f['observation_id'],spans,vals,context=context if i==2 else {},reason=reason))
-  rows.append(assessment(req,source,'experiment',f['experiment']['experiment_id'],spans,vals,context={'scope_authority':'native V3 experiment_id, candidate scope only; not a claim of independent experiments'},reason=reason))
+ # One native experiment scope is shared across all five endpoints; do not
+ # invent five experiments or apply the CSA inclusion decision to the scope.
+ mixed={**common,'endpoint':('UNKNOWN','multiple distinct histology, ultrastructure, CSA, force and MuSC endpoints'),'timepoint':('UNKNOWN','endpoint-specific 7 dpi / 28 dpi / wider repair schedule')}
+ rows.append(assessment(req,source,'experiment',allrecords[2]['ExperimentalObservationV3']['experiment']['experiment_id'],coretext+[caption('CAP_D')],mixed,context={'scope_authority':'one shared native V3 experiment_id, candidate scope only','mixed_endpoint_scope':True},reason='Single source-bound conditional-deletion design contains multiple endpoints and times; preserve scope uncertainty and assess observations individually'))
  bind_assessments(req,rows,Path(path)/'inclusion_assessments.json');return backend,cfg,req
 
 

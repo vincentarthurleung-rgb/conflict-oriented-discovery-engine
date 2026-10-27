@@ -385,6 +385,7 @@ function renderAICaseAttempt(p){
  html+='</ol><p>'+esc(p.costs.fixture_accounting_not_actual_API_spend?'离线计费夹具，实际付费调用为零。':'已记录费用与未结算预留。')+'</p><p>预算账本金额：'+esc(String((p.costs.accounted_nusd||0)/1000000000))+' USD</p><p>'+esc(p.costs.blocked_reason||'')+'</p><p>'+esc(p.uncertainty)+'</p></details>';
  (p.pair_packages||[]).forEach(function(pair){html+=renderAIProvisionalPackage(pair)});
  if(p.display_projection&&(p.pair_count||p.linkage_stage_count))html+='<div id="case-scientific-pager"><p>论文对 '+p.pair_count+' · 分页加载原文与 AI 判断。案例整体判断与单独分配的论文对判断分别保存。</p><div id="case-scientific-page"></div></div>';
+ (p.scientific_comparison_artifacts||[]).forEach(function(a){html+='<details><summary>命题、可比性与科学暂定诊断 · '+esc(a.role)+'</summary><pre>'+esc(a.utf8)+'</pre></details>'});
  (p.scientific_inclusion_artifacts||[]).forEach(function(a){html+='<details><summary>科学纳入与覆盖 · '+esc(a.role)+'</summary><pre>'+esc(a.utf8)+'</pre></details>'});
  if(p.linkage_stage_count)html+='<p>实验连接候选：'+esc(p.linkage_stage_count)+' 条观察记录。候选验证和物化拒绝保留在原始证据页；不构成科学授权。</p>';
  if(!(p.pair_packages||[]).length&&!p.pair_count)html+='<p>没有足够的已绑定双论文证据包；未补造实验结果、矛盾或假设。</p>';
@@ -413,10 +414,21 @@ function renderScientificComparison(pair){
  entries.forEach(function(e){var ids=new Set(e.packet.evidence_spans.map(function(s){return s.evidence_span_id}));html+='<h4>'+esc(e.member.pmcid)+'</h4><p>'+esc(e.review.model_family)+' · '+esc(e.review.independence_status)+'</p>';e.review.fields.forEach(function(f){html+='<article><strong>'+esc(f.field)+' — '+esc(f.verdict)+'</strong><p>'+esc(f.reasoning_summary)+'</p><p>不确定性：'+esc(f.uncertainty)+'</p>'+f.evidence_refs.map(function(ref){return ids.has(ref)?'<a class="evidence-anchor-link" href="#'+esc('passage-'+e.member.pmcid+'-'+ref)+'">查看原文证据</a>':'<span class="meta">'+esc(ref)+'</span>'}).join(' ')+'</article>'})});
  return html+'</section></div><p>假设：'+esc((pair.alignment.hypotheses||[]).length)+'。未满足既有条件时不生成。</p>';
 }
+function renderSourceBoundComparison(item){
+ if(item.kind==='provisional_scientific_proposition'){
+  var p=item.proposition;
+  var html='<section><h3>'+esc(p.publication.pmcid)+' · 源绑定命题</h3><p>纳入判断：'+esc(p.inclusion_decision)+'；原生 Core 就绪状态：'+esc((p.native_readiness||{}).status||'未建立')+'</p><p class="badge warn">AI 暂定，未独立验证</p><dl>';
+  Object.keys(p.facets).forEach(function(k){var f=p.facets[k];html+='<dt>'+esc(k)+'</dt><dd>'+esc(f.value||'未报告 / 未解决')+'<p class="meta">'+esc(f.uncertainty)+'</p></dd>'});
+  html+='</dl><p>观察结果：'+esc(p.result.description.value||'未解决')+'</p><p>未知事项：'+esc(p.missing_information.join('; '))+'</p>';
+  p.source_evidence.forEach(function(e){html+='<blockquote>'+esc(e.text)+'</blockquote><p class="meta">'+esc(e.evidence_span_id)+' · '+esc(e.char_start)+':'+esc(e.char_end)+' · '+esc(e.text_hash)+'</p>'});
+  return html+'</section>';
+ }
+ var p=item.pair;return '<section><h3>命题比较</h3><p>'+esc(p.proposition_keys.join(' / '))+'</p><p>对齐：'+esc(p.alignment)+'；暂定判别：'+esc(p.qualification)+'</p><p>'+esc(p.reason)+'</p><p>正式科学资格未授权；条件差异不等于因果解释。</p><details><summary>逐维度、上下文与授权限制</summary><pre>'+esc(JSON.stringify(p,null,2))+'</pre></details></section>';
+}
 async function loadCaseEvidencePage(offset){
  var target=document.querySelector('#case-scientific-page');if(!target||!_crItem)return;var id=_crItem.review_item_id;target.innerHTML='<p>正在加载本组原文与判断…</p>';
  try{var page=await api('/api/review-item/'+encodeURIComponent(id)+'/scientific-page?offset='+offset+'&limit=1');if(!_crItem||_crItem.review_item_id!==id)return;
- target.innerHTML=page.items.map(function(item){return item.kind==='provisional_linkage_evidence'?renderProvisionalLinkageEvidence(item):renderScientificComparison(item)}).join('')+(page.linkage_evidence_items||[]).map(renderProvisionalLinkageEvidence).join('')+'<nav aria-label="证据分页"><button id="evidence-prev" '+(offset===0?'disabled':'')+'>上一组</button><span> '+(offset+1)+' / '+page.total+' </span><button id="evidence-next" '+(offset+1>=page.total?'disabled':'')+'>下一组</button></nav>';
+ target.innerHTML=page.items.map(function(item){return item.kind==='provisional_linkage_evidence'?renderProvisionalLinkageEvidence(item):(item.kind==='provisional_scientific_proposition'||item.kind==='provisional_scientific_pair')?renderSourceBoundComparison(item):renderScientificComparison(item)}).join('')+(page.linkage_evidence_items||[]).map(renderProvisionalLinkageEvidence).join('')+'<nav aria-label="证据分页"><button id="evidence-prev" '+(offset===0?'disabled':'')+'>上一组</button><span> '+(offset+1)+' / '+page.total+' </span><button id="evidence-next" '+(offset+1>=page.total?'disabled':'')+'>下一组</button></nav>';
  target.querySelector('#evidence-prev').onclick=function(){loadCaseEvidencePage(offset-1)};target.querySelector('#evidence-next').onclick=function(){loadCaseEvidencePage(offset+1)};
  target.querySelectorAll('.evidence-anchor-link').forEach(function(a){a.onclick=function(ev){ev.preventDefault();var passage=document.getElementById(a.getAttribute('href').slice(1));if(passage){passage.scrollIntoView({block:'center',behavior:'smooth'});passage.focus();passage.classList.add('evidence-highlight');setTimeout(function(){passage.classList.remove('evidence-highlight')},3000)}}});
  }catch(e){target.innerHTML='<p class="error">无法加载证据：'+esc(e.message)+'</p>'}

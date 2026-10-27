@@ -16,7 +16,7 @@ DEFAULT_REVIEW_PROMPT = "runs/20261017_code_ai_first_scientific_review_shadow_se
 DEPENDENCIES = {
     "executor_and_product": (
         "orchestration/pilot_dependencies.py", "acquisition/pilot_corpus.py", "orchestration/pilot_runtime.py", "orchestration/pilot_case.py",
-        "orchestration/pilot_backend.py", "orchestration/pilot_linkage.py", "orchestration/pilot_inclusion.py", "orchestration/pilot_budget.py",
+        "orchestration/pilot_backend.py", "orchestration/pilot_linkage.py", "orchestration/pilot_inclusion.py", "orchestration/pilot_comparison.py", "orchestration/pilot_budget.py",
         "orchestration/pilot_model_cache.py", "orchestration/pilot_delivery.py", "orchestration/component_probe.py",
         "orchestration/pilot_dataset.py", "orchestration/pilot_replay.py",
         "discovery/pilot_acceptance.py", "system_b/annotation_schemas/registry.py",
@@ -63,10 +63,21 @@ DEPENDENCIES = {
     ),
     "review_shadow_alignment_context": (
         "discovery/ai_review_shadow.py", "discovery/lanes.py",
+        "context_attribution/claim_alignment/scientific_proposition_v1_candidate.py",
+        "context_attribution/claim_alignment/granularity.py", "context_attribution/layer_identity.py",
+        "context_attribution/context_difference/models.py",
+        "context_attribution/conflict_adjudication/comparability/models.py",
+        "context_attribution/conflict_adjudication/comparability/service.py",
+        "context_attribution/conflict_adjudication/divergence_explanation/models.py",
+        "context_attribution/conflict_adjudication/divergence_explanation/service.py",
+        "context_attribution/conflict_adjudication/decision/service.py",
+        "extraction_assets/scientific_entity_integrity.py",
+        "hypothesis/validation_requirements.py", "hypothesis/hyperedge_builder.py", "schemas/hypothesis_hyperedge.py",
         "system_b/persistence/services/pilot_review_display.py",
     ),
 }
 REPOSITORY_DEPENDENCIES = (
+    "docs/contracts/pilot_scientific_comparison_v1.md",
     "configs/normalization/entity_registry.json",
     "scripts/search_plan_v24_alpha318b_post_builder_prechecks.py",
     "scripts/search_plan_v24_alpha318a1_source_contracts.py",

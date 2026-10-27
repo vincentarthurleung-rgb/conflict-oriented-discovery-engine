@@ -135,3 +135,31 @@ def test_no_fulltext_in_actual_executor_retains_unavailable_unknown_scope(tmp_pa
  rows=json.loads(next(a['utf8'] for a in p['artifacts'] if a['role']=='scientific_inclusion_final.json'))['rows']
  assert len(rows)==1 and rows[0]['source_access_state']=='unavailable' and rows[0]['decision']=='UNCERTAIN'
  assert rows[0]['retrieval_eligibility']=='eligible' and not rows[0]['downstream_processing_permitted']
+
+
+def test_PMID_only_unavailable_sources_keep_independent_denominator(tmp_path):
+ b,cfg,req=hif_case(tmp_path/'inputs');b.catalog.specs=[]
+ b.coverage=lambda cid:{'case_id':cid,'partial':False,'papers':[{'metadata':{'pmid':pmid,'pmcid':None,'doi':None,'SOFTWARE_METADATA_ONLY':True},'status':'unavailable','decision':'eligible'} for pmid in ('11111111','22222222')]}
+ p=PilotCaseExecutor(tmp_path/'cases',seen(),ModelBudget(tmp_path/'b.sqlite',cfg,offline=True),b).run(req)
+ assert p['run_manifest']['scientific_inclusion_summary']['source_access_states']=={'unavailable':2}
+
+
+def test_real_window_accounting_distinguishes_exclusion_from_processing(tmp_path):
+ b,cfg,req=hif_case(tmp_path/'inputs')
+ req['question']='SOFTWARE ACCOUNTING FIXTURE ONLY: an intentionally incompatible endpoint'
+ req['scope']={'endpoint':'SOFTWARE_INCOMPATIBLE_ENDPOINT_NOT_BIOMEDICAL_EVIDENCE'}
+ req.pop('frozen_semantic_intake');req.pop('frozen_search_plan')
+ rows=[]
+ for s in b.catalog.specs:
+  article=json.loads(Path(s['article_path']).read_text());text=article['sections'][0]['text']
+  # A frozen source span is preserved; the mismatch label and fake query are
+  # explicit accounting fixtures, not a new scientific assessment.
+  span={'evidence_span_id':'SOFTWARE_ACCOUNTING_ANCHOR_'+s['identity']['pmcid'],'section_index':0,'char_start':0,'char_end':len(text),'text':text,'text_hash':__import__('hashlib').sha256(text.encode()).hexdigest()}
+  rows.append(assessment(req,s,'paper',s['identity']['pmcid'],[span],{'endpoint':('MISMATCH','Actual source endpoints; artificial test label')},reason='SOFTWARE EXCLUSION ACCOUNTING FIXTURE ONLY'))
+ b.catalog.window_source=lambda spec:{'article':json.loads(Path(spec['article_path']).read_text()),'token':spec['source_token']}
+ bind_assessments(req,rows,tmp_path/'window_fixture_assessments.json')
+ p=PilotCaseExecutor(tmp_path/'cases',seen(),ModelBudget(tmp_path/'b.sqlite',cfg,offline=True),b).run(req)
+ c=p['run_manifest']['scientific_inclusion_summary']
+ assert c['windows_planned']>0 and c['processing_eligible_windows']==0
+ assert c['windows_scientifically_excluded']==c['windows_planned'] and c['windows_V3_processed']==0
+ assert len(b.transport.calls)==0 and not c['source_fully_extracted']

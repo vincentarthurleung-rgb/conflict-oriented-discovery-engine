@@ -55,8 +55,10 @@ class PilotCaseExecutor:
         from code_engine.orchestration.pilot_dependencies import effective_dependencies
         dependencies=self.backend.dependency_manifest() if hasattr(self.backend,'dependency_manifest') else effective_dependencies(Path(__file__).resolve().parents[3],fixture=self.backend.fixture)
         inclusion_inputs=inclusion_input_identity(request)
-        derived_dependencies=content_hash({'implementation_dependencies_sha256':dependencies['sha256'],'scientific_inclusion_inputs_sha256':inclusion_inputs})
-        dest=self.root/cid;fingerprint=content_hash({'inclusion_inputs_sha256':inclusion_inputs,'request':request,'backend_sha256':self.backend.fingerprint,'budget_sha256':self.budget.fingerprint,'historical_root':self.seen.root,'effective_dependencies_sha256':dependencies['sha256']})
+        from code_engine.orchestration.pilot_comparison import input_identity as comparison_input_identity
+        comparison_inputs=comparison_input_identity(request)
+        derived_dependencies=content_hash({'implementation_dependencies_sha256':dependencies['sha256'],'scientific_inclusion_inputs_sha256':inclusion_inputs,'scientific_comparison_inputs_sha256':comparison_inputs})
+        dest=self.root/cid;fingerprint=content_hash({'comparison_inputs_sha256':comparison_inputs,'inclusion_inputs_sha256':inclusion_inputs,'request':request,'backend_sha256':self.backend.fingerprint,'budget_sha256':self.budget.fingerprint,'historical_root':self.seen.root,'effective_dependencies_sha256':dependencies['sha256']})
         def durable(path,text):
             temp=path.with_name(path.name+'.tmp')
             with temp.open('w') as stream:stream.write(text);stream.flush();os.fsync(stream.fileno())
@@ -107,9 +109,9 @@ class PilotCaseExecutor:
         dest.mkdir();manifest={'case_id':cid,'question':request['question'],'scope':request.get('scope',{}),'evidence_mode':request['evidence_mode'],
                               'input_sha256':fingerprint,'historical_root':self.seen.root,'stages':[],
                               'sources':[],'has_deterministic_model_stubs':self.backend.fixture,'effective_dependencies_sha256':dependencies['sha256'],
-                              'terminal_state':None,'terminal_reason':None,'stage_contract_version':'case_stages_v4','effective_inclusion_inputs_sha256':inclusion_inputs,'derived_execution_dependencies_sha256':derived_dependencies,'scientific_question_identity':question_identity(request),'continuation_of_package_sha256':request.get('continuation_of_package_sha256')}
+                              'terminal_state':None,'terminal_reason':None,'stage_contract_version':'case_stages_v4','effective_inclusion_inputs_sha256':inclusion_inputs,'effective_comparison_inputs_sha256':comparison_inputs,'derived_execution_dependencies_sha256':derived_dependencies,'scientific_question_identity':question_identity(request),'continuation_of_package_sha256':request.get('continuation_of_package_sha256')}
         durable(dest/'manifest.progress.json',canonical_json(manifest)+'\n')
-        artifacts=[];pairs=[];tip=fingerprint;active=None;active_window=None;source_plans={};window_states={};all_records=[];sources=[];inclusion=InclusionLedger(request);paper_decisions={}
+        artifacts=[];pairs=[];comparison=None;tip=fingerprint;active=None;active_window=None;source_plans={};window_states={};all_records=[];sources=[];inclusion=InclusionLedger(request);paper_decisions={}
         def save(name,value):
             path=dest/name;raw=canonical_json(value)+'\n'
             with path.open('x') as f:f.write(raw)
@@ -287,12 +289,12 @@ class PilotCaseExecutor:
                     # Access failures and retrieval exclusions are separate from
                     # scientific exclusion, including sources never selected.
                     coverage=manifest.get('literature_coverage') or {}
-                    selected={s['identity']['pmcid'] for s in sources}
+                    selected={str(s['identity'].get('pmcid') or s['identity'].get('pmid') or s['identity'].get('doi')) for s in sources}
                     for entry in coverage.get('papers',[]):
                         metadata=entry.get('metadata') or {}
                         if isinstance(metadata,str):metadata=json.loads(metadata)
                         identity={k:metadata.get(k) for k in ('pmid','pmcid','doi')}
-                        if identity.get('pmcid') in selected:continue
+                        if str(identity.get('pmcid') or identity.get('pmid') or identity.get('doi')) in selected:continue
                         inclusion.decide({'identity':identity,'access_state':entry.get('status','not_yet_acquired'),'retrieval_eligibility':entry.get('decision','not_assessed')})
                     save('scientific_inclusion_initial.json',inclusion.export())
                     value={'paper_decisions':{k:v['decision'] for k,v in paper_decisions.items()},'retrieval_eligibility_is_not_inclusion':True}
@@ -423,6 +425,26 @@ class PilotCaseExecutor:
                         save('projection_summary.json',summary);save('projected_native_observations.json',projected)
                     value={'normalized_claims':len(normalized),'native_core_records_projected':len(records)}
                 elif stage=='shadow_alignment':
+                    if request.get('scientific_comparison_profile') != 'legacy_shadow_v1':
+                        from code_engine.orchestration.pilot_comparison import run_comparison
+                        upstream={'effective_dependencies_sha256':derived_dependencies,
+                                  'intake_trace_sha256':file_hash(dest/'semantic_intake_trace.json'),
+                                  'inclusion_ledger_sha256':content_hash(inclusion.export()),
+                                  'native_records':{r['record_key'] if r.get('record_key') else str(i):file_hash(r['core']) for i,r in enumerate(all_records)},
+                                  'linkage_and_projection':{str(p.relative_to(dest)):file_hash(p) for p in dest.rglob('*.json') if
+                                      p.name.endswith(('_linkage_input.json','_linkage_outcome.json')) or p.name in ('projected_native_observations.json','projection_summary.json')}}
+                        comparison=run_comparison(request,inclusion.export(),all_records,bindings=upstream)
+                        save('scientific_comparison.json',comparison)
+                        manifest['scientific_comparison_summary']={k:comparison[k] for k in ('schema_version','input_state','denominators','coverage','formal_authority_blockers')}
+                        value={'comparison_sha256':content_hash(comparison),'denominators':comparison['denominators'],'formal_scientific_authorization':False}
+                        if comparison['input_state']['status']=='NOT_EVALUATED':
+                            manifest.update(terminal_state='NOT_EVALUABLE',terminal_reason='B4_SEMANTIC_INPUT_UNAVAILABLE; no legacy lexical comparison substituted')
+                            event(stage,'skipped','Missing pinned source-grounded semantic comparison input.',value)
+                            break
+                        event(stage,'executed','Source-bound provisional scientific comparison; formal L4 prerequisites preserved.',value)
+                        continue
+                    if not (self.backend.fixture and self.budget.offline and request['evidence_mode']=='authentic_seen_replay'):
+                        raise CaseIntegrity('legacy_shadow_profile_is_offline_historical_compatibility_only')
                     eligible=[];excluded=[]
                     for record in records:
                         readiness=record['prepared']['experimental_core_handoff_audit']['readiness']['status']
@@ -436,13 +458,27 @@ class PilotCaseExecutor:
                     value={'pair_count':len(pairs),'pair_hashes':[p['package_sha256'] for p in pairs]}
                     if not pairs:
                         event(stage,'skipped','Fewer than two complete source-reviewed experimental records.',value);manifest.update(terminal_state='INSUFFICIENT_EVIDENCE',terminal_reason='ONE_OR_INCOMPLETE_EXPERIMENTAL_SOURCE');break
-                elif stage=='context_analysis':value={'context_differences':[p['alignment']['context_differences'] for p in pairs],'causal_explanation_authorized':False}
+                elif stage=='context_analysis':
+                    value={'context_differences':[p['context_differences'] for p in comparison['pairs']],
+                           'context_attribution':[p['context_attribution'] for p in comparison['pairs']],
+                           'causal_explanation_authorized':False} if comparison is not None else {'context_differences':[p['alignment']['context_differences'] for p in pairs],'causal_explanation_authorized':False}
+                    if comparison is not None:save('scientific_context_attribution.json',value)
                 elif stage=='contradiction_classification':
+                    if comparison is not None:
+                        # Keep case terminal conservative: provisional diagnostics cannot
+                        # impersonate an existing formally reviewed pair package.
+                        value={'pair_qualifications':[{'pair_id':p['pair_id'],'alignment':p['alignment'],'qualification':p['qualification'],'formal_qualification':p['formal_qualification']} for p in comparison['pairs']],
+                               'formal_scientific_authorization':False}
+                        save('scientific_qualification.json',value)
+                        manifest.update(terminal_state='NOT_EVALUABLE',terminal_reason='SOURCE_BOUND_PROVISIONAL_COMPARISON_COMPLETE; formal scientific qualification blocked; see pair diagnostics')
+                        event(stage,'executed','Provisional screening and formal abstention reported separately.',value)
+                        continue
                     states=[p['terminal_state'] for p in pairs]
                     terminal=next((state for state in ('PROVISIONAL_CONTRADICTION','NO_CONTRADICTION_AFTER_COMPARISON','INSUFFICIENT_EVIDENCE','NOT_SUFFICIENTLY_COMPARABLE') if state in states),'NOT_EVALUABLE')
                     manifest.update(terminal_state=terminal,terminal_reason='Existing Shadow results; no scientific qualification or authority granted.');value={'pair_terminals':states,'case_terminal':terminal}
                 elif stage=='hypothesis':
-                    hypotheses=[h for p in pairs for h in p['alignment']['hypotheses']];value={'hypotheses':hypotheses}
+                    hypotheses=comparison['hypotheses'] if comparison is not None else [h for p in pairs for h in p['alignment']['hypotheses']];value={'hypotheses':hypotheses}
+                    if comparison is not None:save('scientific_hypothesis_constraints.json',{'hypotheses':hypotheses,'abstentions':[{'pair_id':p['pair_id'],'reason':p.get('hypothesis_abstention_reason',p['reason'])} for p in comparison['pairs'] if not p['hypotheses']],'qualified_hypotheses':0,'scientific_authorization':False})
                     if not hypotheses:event(stage,'skipped','Existing Shadow criteria produced zero hypotheses.',value);continue
                 event(stage,'executed','Existing implementation executed on this case-bound input.',value)
                 if request.get('development_stop_after')==stage:
@@ -467,15 +503,15 @@ class PilotCaseExecutor:
             window_progress()
             if any(not x['source_processing_complete'] for x in manifest['fulltext_coverage'].values()) and manifest['terminal_state'] not in ('MODEL_FAILED','INTEGRITY_FAILED','BUDGET_STOP'):
                 manifest.update(terminal_state='PARTIAL_RESOURCE_STOP',terminal_reason='Source windows or unprojected XML regions remain pending; not source-level scientific completion.')
-        known_papers={r['source_identity'].get('pmcid') for r in inclusion.export()['rows'] if r['scope_level']=='paper'}
+        known_papers={str(r['source_identity'].get('pmcid') or r['source_identity'].get('pmid') or r['source_identity'].get('doi')) for r in inclusion.export()['rows'] if r['scope_level']=='paper'}
         for source in sources:
-            if source['identity'].get('pmcid') not in known_papers:inclusion.decide(source)
+            if str(source['identity'].get('pmcid') or source['identity'].get('pmid') or source['identity'].get('doi')) not in known_papers:inclusion.decide(source)
         for entry in (manifest.get('literature_coverage') or {}).get('papers',[]):
             metadata=entry.get('metadata') or {}
             try:
                 if isinstance(metadata,str):metadata=json.loads(metadata)
                 identity={k:metadata.get(k) for k in ('pmid','pmcid','doi')}
-                if identity.get('pmcid') not in {r['source_identity'].get('pmcid') for r in inclusion.export()['rows'] if r['scope_level']=='paper'}:inclusion.decide({'identity':identity,'access_state':entry.get('status','not_yet_acquired'),'retrieval_eligibility':entry.get('decision','not_assessed')})
+                if str(identity.get('pmcid') or identity.get('pmid') or identity.get('doi')) not in {str(r['source_identity'].get('pmcid') or r['source_identity'].get('pmid') or r['source_identity'].get('doi')) for r in inclusion.export()['rows'] if r['scope_level']=='paper'}:inclusion.decide({'identity':identity,'access_state':entry.get('status','not_yet_acquired'),'retrieval_eligibility':entry.get('decision','not_assessed')})
             except (ValueError,TypeError):pass
         manifest['_model_usage_rows']=self.budget.snapshot(cid)['requests']
         manifest['scientific_inclusion_summary']=coverage_accounting(manifest,inclusion.export()['rows'],all_records,source_plans,window_states,dest)

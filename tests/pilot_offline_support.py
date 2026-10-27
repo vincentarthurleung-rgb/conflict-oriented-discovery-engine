@@ -15,7 +15,7 @@ def fixture_budget(total='20',per_case='10'):
  return {'kind':'offline_billing_fixture','total_cap_usd':total,'case_cap_usd':per_case,'max_attempts':2,'models':{'fixture':{'provider':'offline-test','model':'deterministic-source-replay','input_usd_per_million':'1','output_usd_per_million':'2','verification_basis':'OFFLINE DETERMINISTIC BILLING FIXTURE, NOT LIVE PRICE OR SPEND AUTHORIZATION','max_input_tokens':500000,'max_output_tokens':100000}}}
 
 def request(cid,count=2):
- return {'case_id':cid,'question':'How does lower oxygen affect HIF-1alpha protein abundance in the specified cell systems?','scope':{'entity':'HIF-1α protein','endpoint':'protein abundance','intervention':'specified oxygen exposure','context':'source-specific oxygen, time and cells'},'evidence_mode':'authentic_seen_replay','source_count':count,'model_stages':{s:'fixture' for s in ['builder_v4','quality_v2','experimental_v3_core','ai_review']}}
+ return {'scientific_comparison_profile':'legacy_shadow_v1','case_id':cid,'question':'How does lower oxygen affect HIF-1alpha protein abundance in the specified cell systems?','scope':{'entity':'HIF-1α protein','endpoint':'protein abundance','intervention':'specified oxygen exposure','context':'source-specific oxygen, time and cells'},'evidence_mode':'authentic_seen_replay','source_count':count,'model_stages':{s:'fixture' for s in ['builder_v4','quality_v2','experimental_v3_core','ai_review']}}
 
 def replay_manifest(pair='HIF'):
  from code_engine.orchestration.pilot_replay import FrozenReplayBackend

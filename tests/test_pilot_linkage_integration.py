@@ -91,7 +91,7 @@ def test_actual_unified_executor_exports_CSA_provisional_decisions_and_original_
  backend,cfg,req=backend_fixture(tmp_path/'inputs')
  ex=PilotCaseExecutor(tmp_path/'cases',ar_seen,ModelBudget(tmp_path/'b.db',cfg,offline=True),backend)
  p=ex.run(req);validate_case_package(p)
- assert p['terminal_state']=='INSUFFICIENT_EVIDENCE',p['reason']
+ assert p['terminal_state']=='NOT_EVALUABLE' and 'B4_SEMANTIC_INPUT_UNAVAILABLE' in p['reason'],p['reason']
  assert p['run_manifest']['stage_contract_version']=='case_stages_v4'
  stage=next(s for s in p['run_manifest']['stages'] if s['stage']=='source_grounded_linkage');assert stage['status']=='executed'
  d=verify_dataset(tmp_path/'cases'/req['case_id']/'dataset')
@@ -115,7 +115,7 @@ def test_raw_linkage_fixture_response_reuse_no_duplicate_charge_and_immutable_re
  backend,cfg,req=backend_fixture(tmp_path/'inputs',provider_fixture=True)
  b=ModelBudget(tmp_path/'b.db',cfg,offline=True);cache=SourceModelCache(tmp_path/'cache')
  ex=PilotCaseExecutor(tmp_path/'cases',ar_seen,b,backend,model_cache=cache)
- one=ex.run(req);assert one['terminal_state']=='INSUFFICIENT_EVIDENCE',one['reason']
+ one=ex.run(req);assert one['terminal_state']=='NOT_EVALUABLE' and 'B4_SEMANTIC_INPUT_UNAVAILABLE' in one['reason'],one['reason']
  assert len(backend.transport.calls)==3
  before=tree(tmp_path/'cases'/req['case_id']);two=ex.run({**req,'case_id':'NEW-IMMUTABLE'})
  assert len(backend.transport.calls)==3 and two['costs']['accounted_nusd']==0
