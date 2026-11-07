@@ -66,11 +66,12 @@ def test_authentic_unified_executor_delivery(tmp_path,factory,props,pairs):
 def software_pair():
  # No biomedical paper, no authentic source and no publication accuracy estimate.
  def prop(side,direction):
-  fs={k:facet('SOFTWARE_'+k,['S'+side]) for k in ('entity','factor','focal_contrast','endpoint','assay','system','time','dose','species','genotype','shared_conditions')}
+  fs={k:facet('SOFTWARE_'+k,['S'+side]) for k in ('entity','factor','focal_contrast','endpoint','assay','system','time','dose','species','genotype','shared_conditions','statistical_interpretation')}
   return {'proposition_identity':'SOFTWARE:'+side,'key':side,'publication':{'pmid':'SOFTWARE_'+side,'pmcid':'SOFTWARE_'+side},
    'experiment_identity':'SOFTWARE_EXP_'+side,'cohort_dependency':None,'scope_identity':side,'provenance':'SOFTWARE_FIXTURE',
-   'source_evidence':[{'evidence_span_id':'S'+side}],'facets':fs,'inclusion_decision':'INCLUDED',
-   'result':{'direction':direction,'comparator_orientation':'tested_vs_reference'}}
+   'source_evidence':[{'evidence_span_id':'S'+side}],'facets':fs,'inclusion_decision':'INCLUDED','factor_role':'exposure',
+   'result':{'direction':direction,'comparator_orientation':'tested_vs_reference',
+             'description':facet('SOFTWARE_FIXTURE reported endpoint response',['S'+side]),'effect_size':facet()}}
  a,b=prop('A','increase'),prop('B','decrease')
  axes=[{'dimension':key,'decision':'MATCH','evidence_refs_a':['SA'],'evidence_refs_b':['SB'],
         'reason':'SOFTWARE_FIXTURE explicit same semantic role and endpoint'} for key in AXES]

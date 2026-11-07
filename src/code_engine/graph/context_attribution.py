@@ -64,9 +64,13 @@ def context_entropy_reduction(observations: List[Dict[str, Any]], base_entropy: 
 
     ranked = []
     for (axis, value), signs in grouped.items():
-        counts = Counter(signs)
-        total = len(signs)
-        ent = calculate_shannon_entropy([counts.get(1, 0) / total, counts.get(-1, 0) / total])
+        from .probabilistic_conflict import binary_direction_summary
+        signal = binary_direction_summary(signs)
+        counts = Counter(x for x in signs if type(x) is int and x in (-1,1))
+        total = signal['valid_sign_count']
+        if not total:
+            continue
+        ent = signal['entropy']
         reduction = round(max(0.0, base_entropy - ent), 4)
         ranked.append(
             {

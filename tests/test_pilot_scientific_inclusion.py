@@ -22,7 +22,7 @@ def seen():
 def test_authentic_actual_executor_source_scope_and_provisional_dataset(tmp_path,which,func,native):
  b,cfg,req=func(tmp_path/'inputs');p=PilotCaseExecutor(tmp_path/'cases',seen(),ModelBudget(tmp_path/'b.sqlite',cfg,offline=True),b).run(req)
  assert p['terminal_state']=='NOT_EVALUABLE',p['reason']
- m=p['run_manifest'];assert m['stage_contract_version']=='case_stages_v4'
+ m=p['run_manifest'];assert m['stage_contract_version']=='case_stages_v5'
  data=verify_dataset(tmp_path/'cases'/req['case_id']/'dataset')
  assert data['scientific_counts']['experimental_core']==native
  assert data['scientific_counts']['scientific_inclusion']>0 and not data['pipeline_complete']

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import hashlib
 from typing import Any, Dict, List, Tuple
 
 from code_engine.graph.context_attribution import build_context_attributions, calculate_shannon_entropy
@@ -38,7 +39,13 @@ def group_observations(observations: List[Dict[str, Any]]) -> Dict[Tuple[str, st
 
     grouped: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
     for obs in observations:
-        grouped[_pair_key(obs)].append(obs)
+        scope = (obs.get('direction_semantics',{}).get('relationship_kind','unresolved_relation'),
+                 *(str(obs.get(k) or '') if obs.get(k)!='unknown' else '' for k in
+                   ('relation_family','measurement_dimension','endpoint_raw')))
+        key = _pair_key(obs)
+        if scope != ('unresolved_relation','','',''):
+            key = (*key,*scope)
+        grouped[key].append(obs)
     return grouped
 
 
@@ -56,7 +63,15 @@ def build_conflict_graph(
     conflict_gate = active_thresholds["marginal_entropy_conflict_gate"]
     type_i_gate = active_thresholds["type_i_attribution_gate"]
 
-    all_grouped = group_observations(observations)
+    from code_engine.extraction.direction_semantics import effective_legacy_direction
+    from .probabilistic_conflict import binary_direction_summary
+    derived = []
+    for row in observations:
+        audit = effective_legacy_direction(row)
+        derived.append({**row, "raw_relation_sign": audit["raw_extracted_sign"],
+                        "relation_sign": audit["effective_sign"] if audit['conflict_screen_eligible'] else None,
+                        "direction_semantics": audit})
+    all_grouped = group_observations(derived)
     skipped_by_pair: Dict[Tuple[str, str], int] = {}
     grouped: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
     for pair, items in all_grouped.items():
@@ -67,12 +82,15 @@ def build_conflict_graph(
         ]
         skipped_by_pair[pair] = len(items) - len(included)
         if included:
-            grouped[pair] = included
+            unique = {}
+            for obs in included:
+                identity=(obs.get('pmcid') or obs.get('pmid') or obs.get('source_asset'),
+                          obs['evidence_id'],obs['relation_sign'])
+                unique.setdefault(identity,obs)
+            grouped[pair] = list(unique.values())
     edge_entropy = {}
     for pair, items in grouped.items():
-        counts = Counter(item["relation_sign"] for item in items)
-        total = len(items)
-        edge_entropy[pair] = calculate_shannon_entropy([counts.get(1, 0) / total, counts.get(-1, 0) / total])
+        edge_entropy[pair] = binary_direction_summary(item["relation_sign"] for item in items)["entropy"] or 0.0
 
     attributions = build_context_attributions(
         grouped, edge_entropy, latent_pool,
@@ -84,12 +102,13 @@ def build_conflict_graph(
     type_counters = {"Uncontested": 0, "Type I": 0, "Type II": 0, "Type III": 0}
 
     for pair, raw_obs in grouped.items():
-        pair_subject, pair_object = pair
+        pair_subject, pair_object = pair[:2]
         seen_ids = set()
         observations_dedup = []
         for obs in raw_obs:
-            if obs["evidence_id"] not in seen_ids:
-                seen_ids.add(obs["evidence_id"])
+            identity = (obs.get("pmcid") or obs.get("pmid") or obs.get("source_asset"), obs["evidence_id"], obs["relation_sign"])
+            if identity not in seen_ids:
+                seen_ids.add(identity)
                 observations_dedup.append(obs)
 
         total_obs = len(observations_dedup)
@@ -101,21 +120,20 @@ def build_conflict_graph(
         subject_entity_type = str(representative.get("subject_entity_type") or "unknown")
         object_entity_type = str(representative.get("object_entity_type") or "unknown")
         sign_counts = Counter(obs["relation_sign"] for obs in observations_dedup)
-        unique_labs = {obs["source_asset"] for obs in observations_dedup}
-        h_r = calculate_shannon_entropy(
-            [sign_counts.get(1, 0) / total_obs, sign_counts.get(-1, 0) / total_obs]
-        )
+        publications = {str(obs.get('pmcid') or obs.get('pmid')) for obs in observations_dedup if obs.get('pmcid') or obs.get('pmid')}
+        binary = binary_direction_summary(obs["relation_sign"] for obs in observations_dedup)
+        h_r = binary["entropy"] or 0.0
         mean_edge_confidence = round(sum(float(obs.get("confidence", 0.0)) for obs in observations_dedup) / total_obs, 4)
         attr = attributions[pair]
         attribution_score = float(attr["score_components"]["legacy_em_score"])
         collapsed_entropy = float(attr["score_components"]["legacy_collapsed_entropy"])
         best_delta_c = attr["score_components"]["legacy_em_best_delta_c"]
 
-        is_conflicting = h_r >= conflict_gate
+        is_conflicting = binary["directional_discordance"] and h_r >= conflict_gate
         conflict_type = "Uncontested"
         primary_driver = "None"
         if is_conflicting:
-            if total_obs <= 2 or len(unique_labs) == 1:
+            if total_obs <= 2 or len(publications) <= 1:
                 conflict_type = "Type III"
                 primary_driver = "System_Noise_or_Single_Lab_Bias"
             elif attribution_score >= type_i_gate:
@@ -135,6 +153,8 @@ def build_conflict_graph(
                 "article_title": obs["article_title"],
                 "evidence_sentence": obs["evidence_sentence"],
                 "relation_sign": obs["relation_sign"],
+                    "raw_relation_sign": obs.get("raw_relation_sign"),
+                    "direction_semantics": obs.get("direction_semantics"),
                 "context_snapshot": obs["context"],
                 "allow_high_confidence_graph_use": obs.get("allow_high_confidence_graph_use", False),
                 "normalization_quality": obs.get("normalization_quality", "legacy_unspecified"),
@@ -161,7 +181,11 @@ def build_conflict_graph(
                 "weak_supervised_delta_c": best_delta_c,
                 "attribution_significance_score": attribution_score,
                 "evidence_count": total_obs,
-                "independent_labs_count": len(unique_labs),
+                "independent_labs_count": 0,
+                "independent_publications_count": len(publications),
+                "lab_independence_status": "NOT_ESTABLISHED; source files are not independent laboratories",
+                "direction_signal": binary,
+                "scientific_authorization": False,
                 "mean_edge_confidence": mean_edge_confidence,
                 "whitebox_traceability": traceability,
                 "normalization_quality_summary": dict(Counter(
@@ -173,6 +197,8 @@ def build_conflict_graph(
         )
 
         edge_id = f"{pair_subject}->{pair_object}"
+        if len(pair)>2:
+            edge_id += ':scope_' + hashlib.sha256(repr(pair[2:]).encode()).hexdigest()[:16]
         conflict_edges.append(
             {
                 "edge_id": edge_id,
@@ -186,13 +212,20 @@ def build_conflict_graph(
                 "object_entity_type": object_entity_type,
                 "positive_count": sign_counts.get(1, 0),
                 "negative_count": sign_counts.get(-1, 0),
-                "neutral_count": sign_counts.get(0, 0),
+                "neutral_count": sum(o.get('raw_relation_sign') in (0,'neutral_or_association') for o in observations_dedup),
+                "neutral_is_not_zero_effect": True,
                 "entropy": h_r,
-                "conflict_status": "conflicting" if is_conflicting else "uncontested",
+                "conflict_status": "insufficient_evidence" if not binary["valid_sign_count"] else "conflicting" if is_conflicting else "uncontested",
+                "direction_signal": binary,
+                "independent_publications_count": len(publications),
+                "context_partitions": [{"context": o.get("context", {}), "source_asset": o.get("source_asset"), "evidence_id": o["evidence_id"], "effective_sign": o["relation_sign"]} for o in observations_dedup],
+                "scientific_authorization": False,
+                "formal_conflict": False,
                 "conflict_type": conflict_type,
                 "supporting_triples": [obs["triple_id"] for obs in observations_dedup if obs["relation_sign"] == 1],
                 "contradicting_triples": [obs["triple_id"] for obs in observations_dedup if obs["relation_sign"] == -1],
-                "independent_labs_count": len(unique_labs),
+                "independent_labs_count": 0,
+                "lab_independence_status": "NOT_ESTABLISHED; source files are not independent laboratories",
                 "high_confidence_normalized_evidence_count": sum(
                     bool(obs.get("allow_high_confidence_graph_use", False)) for obs in observations_dedup
                 ),

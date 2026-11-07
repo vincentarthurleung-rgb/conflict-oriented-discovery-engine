@@ -92,7 +92,7 @@ def test_actual_unified_executor_exports_CSA_provisional_decisions_and_original_
  ex=PilotCaseExecutor(tmp_path/'cases',ar_seen,ModelBudget(tmp_path/'b.db',cfg,offline=True),backend)
  p=ex.run(req);validate_case_package(p)
  assert p['terminal_state']=='NOT_EVALUABLE' and 'B4_SEMANTIC_INPUT_UNAVAILABLE' in p['reason'],p['reason']
- assert p['run_manifest']['stage_contract_version']=='case_stages_v4'
+ assert p['run_manifest']['stage_contract_version']=='case_stages_v5'
  stage=next(s for s in p['run_manifest']['stages'] if s['stage']=='source_grounded_linkage');assert stage['status']=='executed'
  d=verify_dataset(tmp_path/'cases'/req['case_id']/'dataset')
  assert d['scientific_counts']['linkage_stage_inputs']==1 and d['scientific_counts']['linkage_stage_outcomes']==1

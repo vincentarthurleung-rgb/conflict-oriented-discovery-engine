@@ -10,7 +10,7 @@ from code_engine.schemas.evidence import EvidenceRecord
 from code_engine.schemas.l1_extraction import L1_CONTEXT_FIELDS, L1ExtractedClaim
 
 
-SIGN_TO_INT = {"positive": 1, "negative": -1, "neutral_or_association": 0, "unknown": 0}
+SIGN_TO_INT = {"positive": 1, "negative": -1, "neutral_or_association": 0, "unknown": None}
 INT_TO_SIGN = {1: "positive", -1: "negative", 0: "neutral_or_association"}
 
 
@@ -76,6 +76,8 @@ def l1_claim_to_legacy_tuple(claim: L1ExtractedClaim) -> dict[str, Any]:
         for field in L1_CONTEXT_FIELDS
         if getattr(claim, field)
     })
+    from code_engine.extraction.direction_semantics import effective_legacy_direction
+    direction_audit = effective_legacy_direction({**claim.model_dump(), "raw_relation_sign": claim.direct_relation_sign})
     return {
         "subject": claim.subject_raw,
         "relation_raw": claim.relation_raw,
@@ -83,7 +85,9 @@ def l1_claim_to_legacy_tuple(claim: L1ExtractedClaim) -> dict[str, Any]:
         "polarity_type": claim.polarity_type,
         "direction": claim.direction,
         "direction_confidence": claim.direction_confidence,
-        "relation_sign": SIGN_TO_INT[claim.direct_relation_sign],
+        "relation_sign": direction_audit["effective_sign"],
+        "raw_relation_sign": claim.direct_relation_sign,
+        "direction_semantics": direction_audit,
         "therapeutic_direction": claim.therapeutic_direction,
         "object": claim.object_raw,
         "context": context,
@@ -117,6 +121,9 @@ def legacy_tuple_to_l1_claim(
     context = dict(tuple_dict.get("context") or {})
     warnings = list(tuple_dict.get("extraction_warnings") or [])
     warnings.append("converted_from_legacy_tuple_missing_native_l1_v2_provenance")
+    raw_sign = tuple_dict.get("raw_relation_sign", tuple_dict.get("relation_sign"))
+    restored_sign = raw_sign if isinstance(raw_sign, str) and raw_sign in SIGN_TO_INT else (
+        INT_TO_SIGN.get(raw_sign, "unknown") if type(raw_sign) is int else "unknown")
     values = {
         field: str(context.get(field) or context.get("cell_line_or_type" if field == "cell_type" else field) or "")
         for field in L1_CONTEXT_FIELDS
@@ -147,7 +154,7 @@ def legacy_tuple_to_l1_claim(
         polarity_type=str(tuple_dict.get("polarity_type") or "unknown"),
         direction=str(tuple_dict.get("direction") or "unknown"),
         direction_confidence=float(tuple_dict.get("direction_confidence", 0.0)),
-        direct_relation_sign=INT_TO_SIGN.get(int(tuple_dict.get("relation_sign", 0)), "unknown"),
+        direct_relation_sign=restored_sign,
         therapeutic_direction=str(tuple_dict.get("therapeutic_direction") or "unknown"),
         object_raw=str(tuple_dict.get("object") or ""),
         object_type=str(tuple_dict.get("object_type") or "unknown"),

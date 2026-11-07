@@ -18,7 +18,8 @@ class DirectionalRelation(CODEBaseModel):
 
 
 TERM_GROUPS = (
-    ("no_effect", ("no significant effect", "no effect", "unchanged", "not alter", "did not alter", "无显著影响", "无明显影响", "未改变")),
+    ("not_significant", ("no significant", "not significant", "not statistically significant", "no statistically significant", "nonsignificant", "non-significant", "无显著影响", "无明显影响")),
+    ("no_effect", ("no effect", "unchanged", "not alter", "did not alter", "未改变")),
     ("mixed", ("mixed", "inconsistent", "conflicting", "不一致", "混合")),
     ("decrease", ("downregulate", "down-regulate", "decrease", "reduce", "lower", "下调", "减少", "降低")),
     ("increase", ("upregulate", "up-regulate", "increase", "elevate", "上调", "增加", "升高")),

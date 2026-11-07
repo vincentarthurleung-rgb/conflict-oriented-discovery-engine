@@ -258,6 +258,8 @@ def build_propositions(request, ledger, records, *, bindings):
             'scientific_signature': _signature(p, p.native_observation_id or p.scope_identity),
             'formal_authority_blockers': FORMAL_BLOCKERS,
             'normalization_uncertainty': 'No new canonical identity, assay equivalence, causal edge or grounding authority'}
+        from code_engine.fulltext.projection_interpretation import interpret_proposition
+        prop['effective_interpretation']=interpret_proposition(prop)
         prop['proposition_identity'] = 'pilot_proposition:' + content_hash(prop)
         propositions.append(prop)
     pairs = [PairAssessment.model_validate(p) for p in raw.get('pairs', [])]
@@ -340,6 +342,16 @@ def compare_pair(a, b, assessment=None):
     else: alignment = 'SAME_PROPOSITION_CANDIDATE'
     oriented = all(x['result']['comparator_orientation'] == 'tested_vs_reference' for x in (a, b))
     directions = [x['result']['direction'] for x in (a, b)]
+    from code_engine.fulltext.projection_interpretation import interpret_proposition
+    effective=[interpret_proposition(x) for x in (a,b)]
+    effective_errors=[]
+    for x,e in zip((a,b),effective):
+        if x.get('effective_interpretation') is not None and x['effective_interpretation']!=e:
+            effective_errors.append('SOURCE_PROPOSITION_EFFECTIVE_BINDING_CHANGED')
+        if any(k in x for k in ('observed_outcome_sign','formal_relation','scientific_edge_layer')):
+            effective_errors.append('LEGACY_PROJECTION_FIELDS_NOT_SOURCE_RESULT_AUTHORITY')
+    result['effective_semantic_inputs']=effective
+    result['effective_semantic_guard_reasons']=effective_errors
     if alignment == 'RELATED_BUT_DIFFERENT_PROPOSITION': qualification = 'DIFFERENT_SCIENTIFIC_PROPOSITIONS'
     elif alignment == 'NOT_COMPARABLE': qualification = 'NOT_EVALUATED'
     elif alignment != 'SAME_PROPOSITION_CANDIDATE' or not oriented: qualification = 'INSUFFICIENT_EVIDENCE'
@@ -348,6 +360,10 @@ def compare_pair(a, b, assessment=None):
     elif set(directions) == {'increase', 'decrease'}:
         qualification = 'CONTEXT_DEPENDENT_DISAGREEMENT' if statuses['different'] else 'CANDIDATE_CONTRADICTION'
     else: qualification = 'INSUFFICIENT_EVIDENCE'
+    if effective_errors or (qualification in ('CANDIDATE_CONTRADICTION','CONTEXT_DEPENDENT_DISAGREEMENT')
+        and not all(e['effect_contradiction_screening_permitted'] for e in effective)):
+        qualification='INSUFFICIENT_EVIDENCE'
+        result['effective_semantic_guard_reasons'].append('SOURCE_ASSOCIATION_NULL_OR_UNVERIFIED_DIRECTION_NOT_OPPOSING_CAUSAL_EFFECT_AUTHORITY')
     result.update(alignment=alignment, qualification=qualification,
         direction_interpretation='Nonsignificance is not equality, zero effect or opposition',
         scientific_comparability='supports_further_provisional_review' if alignment == 'SAME_PROPOSITION_CANDIDATE' else 'not_established',
@@ -373,6 +389,12 @@ def compare_pair(a, b, assessment=None):
 
 def constrained_hypotheses(pair, a, b, assessment):
     if pair['qualification'] not in ('CANDIDATE_CONTRADICTION', 'CONTEXT_DEPENDENT_DISAGREEMENT'):
+        return []
+    from code_engine.fulltext.projection_interpretation import interpret_proposition
+    if not all(interpret_proposition(p)['effect_contradiction_screening_permitted'] for p in (a,b)) or pair.get('effective_semantic_guard_reasons'):
+        return []
+    if any(any(k in p for k in ('observed_outcome_sign','formal_relation','scientific_edge_layer')) or
+           (p.get('effective_interpretation') is not None and p['effective_interpretation']!=interpret_proposition(p)) for p in (a,b)):
         return []
     h = assessment.hypothesis
     support = next((c for c in pair['context_attribution'] if c['axis'] == h.modifier_axis and
@@ -429,6 +451,7 @@ def run_comparison(request, ledger, records, *, bindings):
         'unresolved_pairs': sum(p['qualification'] in ('INSUFFICIENT_EVIDENCE', 'NOT_EVALUATED') for p in pairs),
         'qualified_hypotheses': 0, 'provisional_hypotheses': len(hypotheses), 'formal_contradictions': 0}
     return {**AUTHORITY, 'schema_version': VERSION, 'input_state': state, 'question_identity': question_identity(request),
+        'consumption_role': 'optional_Work_review_suggestions; no initial directional discovery authority',
         'bindings': bindings, 'propositions': props, 'pairs': pairs, 'publication_dependencies': groups,
         'denominators': counts, 'hypotheses': hypotheses, 'formal_authority_blockers': FORMAL_BLOCKERS,
         'dependence_inventory': [{'publication': pmc,

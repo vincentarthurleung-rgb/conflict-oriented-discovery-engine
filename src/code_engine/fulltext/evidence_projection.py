@@ -536,6 +536,11 @@ def _contexts_compatible(left: dict[str, Any], right: dict[str, Any]) -> bool:
 def aggregate_canonical_edges(observations: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     base_groups: dict[tuple[str, ...], list[dict[str, Any]]] = defaultdict(list)
     for row in observations:
+        from .projection_interpretation import requires_effective,consumer_guard
+        if requires_effective(row):
+            guard=consumer_guard(row,'causal_graph')
+            row.setdefault('effective_consumer_guards',{})['causal_graph']=guard
+            if not guard['allowed_by_effective_layer']:continue
         if row.get("formal_core_graph_eligible"):
             base_groups[(
                 str(row.get("subject_canonical_id")), str(row.get("object_canonical_id")), _relation_axis(row),
@@ -608,7 +613,7 @@ def build_conflict_bundles(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(result, key=lambda x: x["bundle_id"])
 
 
-def project_fulltext_run(source_run: str | Path, output_root: str | Path | None = None) -> dict[str, Any]:
+def project_fulltext_run(source_run: str | Path, output_root: str | Path | None = None, *, interpretation_configuration=None) -> dict[str, Any]:
     source = Path(source_run).resolve()
     artifacts = source / "artifacts"
     observations = _rows(artifacts / "l2_fulltext_observations.jsonl")
@@ -635,6 +640,9 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
             if (artifacts / name).is_file()
         },
     }
+    from .projection_interpretation import interpret_projection,implementation_identity,input_identity as interpretation_identity,raw_projection,consumer_guard
+    input_identity['effective_interpretation']={'implementation':implementation_identity(),
+        'inputs':interpretation_identity(interpretation_configuration)}
     digest = _stable_hash(input_identity)
     root = Path(output_root).resolve() if output_root else source.parent
     output = root / f"{source.name}__fulltext_evidence_projection_{digest}"
@@ -729,6 +737,9 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
             "core_exclusion_reasons": [] if gate["eligible"] else gate.get("reasons") or [gate.get("reason")],
             "formal_relation": gate.get("formal_relation"), "formal_relation_family": gate.get("relation_family"),
         })
+        row['effective_interpretation']=interpret_projection(row,interpretation_configuration)
+        row['effective_consumer_guards']={purpose:consumer_guard(row,purpose) for purpose in
+            ('review','causal_graph','V2_readiness_authority','effect_contradiction','equality','machine_reuse','hypothesis')}
         projected.append(row)
         reasoning.append(chain_payload)
         context_audit.append({
@@ -736,6 +747,20 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
             "experiment_id": chain_payload["experiment_id"], "context": context, "bindings": context_rows,
         })
 
+    atomic_write_jsonl(out / 'fulltext_raw_projected_observations.jsonl',[raw_projection(r) for r in projected])
+    atomic_write_jsonl(out / 'effective_projection_interpretations.jsonl',[r['effective_interpretation'] for r in projected])
+    atomic_write_jsonl(out / 'effective_projection_consumer_guards.jsonl',[{'observation_id':r.get('observation_id'),'guards':r['effective_consumer_guards']} for r in projected])
+    from code_engine.discovery.directional_discovery import native_direction_record, discover_directions
+    initial_rows=[];initial_rejected=[]
+    for row in projected:
+        formal=row.get('formal_v3_native_payload')
+        if not formal:continue
+        try:
+            initial_rows.append(native_direction_record(formal,publication={k:formal['provenance'].get(k) for k in ('pmid','pmcid')}))
+        except (ValueError,KeyError,TypeError) as error:
+            initial_rejected.append({'observation_id':row.get('observation_id'),'reason':str(error)})
+    initial=discover_directions(initial_rows)
+    atomic_write_json(out/'initial_direction_discovery.json',{**initial,'rejected':initial_rejected})
     edges, exact_merges = aggregate_canonical_edges(projected)
     bundles = build_conflict_bundles(edges)
     core = [x for x in projected if x.get("formal_core_graph_eligible")]
@@ -810,7 +835,13 @@ def project_fulltext_run(source_run: str | Path, output_root: str | Path | None 
         "strict_core_observations_after": len(core), "unique_canonical_edges_after": len(edges),
         "evidence_records_after": len(projected), "reviewable_evidence_after": len(reviewable),
         "conflict_candidates_after": sum(x["adjudication"] == "true_conflict_candidate" for x in bundles),
-        "true_conflicts_after": sum(x["adjudication"] == "true_conflict_candidate" for x in bundles),
+        "conflict_signal_counts": initial['counts'],
+        "raw_polarity_collisions_after": initial['counts']['RAW_POLARITY_COLLISION'],
+        "provisional_directional_discordances_after": initial['counts']['PROVISIONAL_DIRECTIONAL_DISCORDANCE'],
+        "qualified_candidates_after": 0,
+        "formally_authorized_conflicts_after": 0,
+        "count_scope": "current projection only; qualification and formal adjudication NOT_INVOKED",
+        "deprecated_removed_fields": {"true_conflicts_after": "Candidate bundles are not authorized conflicts; use the separate signal counts"},
         "safety_violations": safety, "status": "completed",
     }
     upgrade_summary = {

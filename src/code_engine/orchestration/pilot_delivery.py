@@ -10,7 +10,11 @@ STAGES_V1=('intake','source_selection_acquisition','immutable_handoff','builder_
         'context_analysis','contradiction_classification','hypothesis','atlas_export')
 STAGES_V2=STAGES_V1[:-1]+('dataset_export','atlas_export')
 STAGES_V3=STAGES_V2[:6]+('source_grounded_linkage',)+STAGES_V2[6:]
-STAGES=STAGES_V3[:3]+('scientific_inclusion',)+STAGES_V3[3:]
+STAGES_V4=STAGES_V3[:3]+('scientific_inclusion',)+STAGES_V3[3:]
+# Optional AI review cannot prevent a prior deterministic extraction-only signal.
+_pre_review=tuple(s for s in STAGES_V4 if s!='ai_review')
+_index=_pre_review.index('normalization_projection')+1
+STAGES=_pre_review[:_index]+('initial_sign_discordance','ai_review')+_pre_review[_index:]
 
 def make_case_package(manifest:dict,*,pairs:list[dict],artifacts:list[dict],costs:dict)->dict:
     package={**ShadowAuthority().model_dump(mode='json'),'schema_version':'ai_provisional_case_attempt_v1',
@@ -35,7 +39,7 @@ def validate_case_package(p):
         if s['case_id']!=p['case_id'] or s['status'] not in STAGE_STATES or not s['reason'] or s['previous_sha256']!=previous:raise ValueError('case_stage_lineage_invalid')
         if content_hash({k:v for k,v in s.items() if k!='stage_sha256'})!=s['stage_sha256']:raise ValueError('case_stage_hash_mismatch')
         previous=s['stage_sha256'];stage_names.append(s['stage'])
-    expected={'case_stages_v4':STAGES,'case_stages_v3':STAGES_V3,'case_stages_v2':STAGES_V2}.get(m.get('stage_contract_version'),STAGES_V1)
+    expected={'case_stages_v5':STAGES,'case_stages_v4':STAGES_V4,'case_stages_v3':STAGES_V3,'case_stages_v2':STAGES_V2}.get(m.get('stage_contract_version'),STAGES_V1)
     if tuple(stage_names)!=expected or previous!=m['stage_chain_tip']:raise ValueError('case_stage_chain_invalid')
     for a in p['artifacts']:
         import hashlib
@@ -57,7 +61,7 @@ def validate_case_package(p):
 def case_queue_row(p):
     validate_case_package(p)
     return {'review_item_id':'ai_case:'+p['package_sha256'],'case_id':p['case_id'],
-            'item_type':'ai_provisional_case_review' if p['run_manifest'].get('stage_contract_version') in ('case_stages_v2','case_stages_v3','case_stages_v4') else 'ai_provisional_case_attempt','source_scope':p['evidence_mode'],
+            'item_type':'ai_provisional_case_review' if p['run_manifest'].get('stage_contract_version') in ('case_stages_v2','case_stages_v3','case_stages_v4','case_stages_v5') else 'ai_provisional_case_attempt','source_scope':p['evidence_mode'],
             'paper_title':p['question'],'evidence_sentence':p['terminal_state']+': '+p['reason'],
             'review_package':p}
 
@@ -65,7 +69,7 @@ def case_queue_row(p):
 def case_review_rows(package):
     """One attempt denominator plus independently assignable pair review units."""
     rows=[case_queue_row(package)]
-    if package['run_manifest'].get('stage_contract_version') in ('case_stages_v2','case_stages_v3','case_stages_v4'):
+    if package['run_manifest'].get('stage_contract_version') in ('case_stages_v2','case_stages_v3','case_stages_v4','case_stages_v5'):
         from code_engine.discovery.pilot_acceptance import review_queue_row
         for pair in package['pair_packages']:
             row=review_queue_row(pair);row['item_type']='ai_provisional_pair_review';rows.append(row)

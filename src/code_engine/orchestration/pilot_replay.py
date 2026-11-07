@@ -11,6 +11,7 @@ from code_engine.system_b.annotation_schemas.registry import canonical_json
 from scripts import search_plan_v24_alpha318b_post_builder_prechecks as prechecks
 from scripts.search_plan_v24_alpha317c_reconcile_builder_offline import candidate_id
 from scripts.search_plan_v24_alpha320a_v4_localizer import localize_exact_body_quote
+from code_engine.construction.source_quote_localization import localize_for_quality, VERSION as LOCALIZATION_VERSION
 
 class FrozenReplayBackend:
  fixture=True
@@ -45,10 +46,17 @@ class FrozenReplayBackend:
   return m
  def candidate(self,pmc):return copy.deepcopy(self.candidates[pmc])
  def quality_request(self,b,bm,br):
-  parsed=json.loads(br['choices'][0]['message']['content']);survivors=[]
+  parsed=json.loads(br['choices'][0]['message']['content']);survivors=[];localizations=[]
+  context=b.get('source_localization_context')
   for c in parsed['candidates']:
-   cid=candidate_id(b['token'],c);loc=localize_exact_body_quote(c['construction_evidence_span']['exact_text'],b['document']['body_text'],b['document']['paragraphs']);ec=copy.deepcopy(c);ec['construction_evidence_span']={'source_field':'body','start_offset':loc['body_document_start_offset'],'end_offset':loc['body_document_end_offset'],'exact_text':c['construction_evidence_span']['exact_text']};survivors.append({'candidate_id':cid,'candidate_payload_sha256':content_hash(c),'candidate':ec,'original_array_positions':[0]})
+   cid=candidate_id(b['token'],c)
+   loc=localize_for_quality(c['construction_evidence_span']['exact_text'],b['document'],context=context)
+   localizations.append({'candidate_id':cid,'candidate_payload_sha256':content_hash(c),'localization':loc})
+   ec=copy.deepcopy(c);ec['construction_evidence_span']={'source_field':'body','start_offset':loc['body_document_start_offset'],'end_offset':loc['body_document_end_offset'],'exact_text':loc['original_source_text']}
+   survivors.append({'candidate_id':cid,'candidate_payload_sha256':content_hash(c),'candidate':ec,'original_array_positions':[0]})
   survivors.sort(key=lambda r:(r['candidate_payload_sha256'],r['candidate_id']));payload=prechecks.build_quality_payload(b['token'],survivors,b['document'],b['private_identity']);m=copy.deepcopy(json.loads(self.qmfile.read_text()));m.update(construction_document_sha256=content_hash(b['document']),builder_request_sha256=bm['request_sha256'],builder_response_sha256=content_hash(br),private_source_token_sha256=hashlib.sha256(b['token'].encode()).hexdigest(),quality_payload=payload)
+  if context is not None:
+   m.update(source_quote_localization_policy=LOCALIZATION_VERSION,source_localization_context=copy.deepcopy(context),source_localization_context_sha256=content_hash(context),source_quote_localizations=localizations)
   m['request']['model']='deterministic-source-replay';m['request']['messages'][1]['content']=canonical_json(payload['candidate_packets'])+'\n'+canonical_json(m['expected_response_schema']);m['request_sha256']=content_hash(m['request']);return m
  def complete(self,stage,key,payload,*,provider,model,max_output_tokens):
   self.calls.append((stage,key))

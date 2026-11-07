@@ -1,0 +1,228 @@
+{
+  "schema_version": "bounded_hif_local_identity_scope_v1",
+  "owner_instruction_sha256": "1970b4a09c37869824384472d034ada2fc169809f2610f2063df9f8d88f5f081",
+  "permitted_target_surface": "HIF-1α",
+  "permitted_existing_type": "protein",
+  "permitted_role": "measurement_target_identity",
+  "issuer_identity": "code_engine.orchestration.pilot_hif_identity_verification:issue_local_verification",
+  "permission_scope": "bounded_hif_local_type_role_v1",
+  "max_validity_seconds": 86400,
+  "entries": [
+    {
+      "publication": {
+        "doi": null,
+        "pmcid": "PMC4024011",
+        "pmid": "24835245"
+      },
+      "observation_id": "seen_alignment_observation:38e8043b0f0be4cb13eaa8dc5c9da0e5dac2edd64fea0c627271750bb1a33ab9",
+      "Core_revision": "structured_experimental_observation_revision_v1:8f2ffe16617cc2e8180c4a07da65711d79df725c1f414e82b8f1fb40fbed0a3c",
+      "B4_10_evidence": {
+        "path": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20261029_code_recovery_batch4_10_identity_evidence_offline/release_v2/HIF/cases/B3-HIF/scientific_identity_evidence.json",
+        "sha256": "ff99626ca98dddc8193e60aeb45ab72bceb43e154cb5963ef65e026497efae89"
+      },
+      "B4_10_revision": "scientific_identity_evidence_preparation_v1:43d32f136b03c47777f9f5edbefea093af93de7004732a491f5ff3e72e5a67d7",
+      "B4_proposition_revision": "pilot_proposition:ce20d618c8afc3a629040518bb06848221e9ac7442f97b77a7b1404ea3883e67",
+      "B3_revision": "scientific_inclusion_revision:8f7c4138fb5e08e5f0a1e731aea4fc8dfe827339a1aa900bfa5cda2ba3837af0",
+      "B4_8_effective_revision": "effective_projection_interpretation_v1:ff9ec3ae8622bd1284563db21f8819875e0368b3edabac8aec3d4d70d021b784",
+      "native_core": {
+        "path": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20261029_code_recovery_batch4_9_native_proposition_binding_offline/release_v2/HIF/cases/B3-HIF/PMC4024011/core.json",
+        "sha256": "cbcd360a2836d54479eb6dcc285a2a473b9c4f43bd18d6c6a7e6760adb86c876"
+      },
+      "source_packet": {
+        "path": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20261016_code_comparable_evidence_discovery_review_integration_seen_offline/PMC4024011/evidence_packet.json",
+        "sha256": "621732f78c0c4d029e5cb075f50808973b18cbbf3ba7e8d170248d8ba2cdfd1c"
+      },
+      "source_sha256": "0e2705c9adedb41e09d26edc61c1ec5243ceed495a970e0580ce162818fcff1b",
+      "primary_span_id": "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+      "primary_span_text": "(A) Western blot showing the protein levels of HIF-1α in HCT116. Cells were cultured at 20% or 5% O2 for 72 hours.",
+      "primary_span_text_sha256": "7b378075554ecb13d9f90d85aa5991bbf87e1115f71afe190627d9e5630a8d77",
+      "context": {
+        "cell_type": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "HCT116"
+        },
+        "dose": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "5% versus 20% O2"
+        },
+        "time": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "72 hours"
+        },
+        "assay": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a",
+            "seen_alignment_span:7dc73be6f359e4de32c320b9a3add549f884a5a6e15162a4cc10b6fdac931f7a",
+            "seen_alignment_span:3f3c8a4426f8a4654e05f7ddebf12da4f4d828d4f94d879b04b5e38402bcd913"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "Western blot of cell protein lysate"
+        },
+        "tested_arm": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "5% O2 HCT116"
+        },
+        "reference_arm": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "20% O2 HCT116"
+        },
+        "shared_conditions": {
+          "evidence_refs": [
+            "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+            "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a",
+            "seen_alignment_span:7dc73be6f359e4de32c320b9a3add549f884a5a6e15162a4cc10b6fdac931f7a",
+            "seen_alignment_span:3f3c8a4426f8a4654e05f7ddebf12da4f4d828d4f94d879b04b5e38402bcd913"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "HCT116 cultured oxygen comparison; medium described in Methods"
+        }
+      },
+      "affirmative_evidence": {
+        "protein_target": {
+          "span_id": "seen_alignment_span:851ca692bf251b4e3c9e7476d7d600b680baf343b46357678609b24fad59216a",
+          "quote": "HIF-1α protein levels increased"
+        },
+        "protein_readout": {
+          "span_id": "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+          "quote": "Western blot showing the protein levels of HIF-1α"
+        },
+        "exposure_reference": {
+          "span_id": "seen_alignment_span:7ac993a5d217912d6affe765ffef614d3b35805b838de4025fd25f528ef2f817",
+          "quote": "(A) Western blot showing the protein levels of HIF-1α in HCT116. Cells were cultured at 20% or 5% O2 for 72 hours."
+        }
+      },
+      "nominal_reference_concentration_percent": 20
+    },
+    {
+      "publication": {
+        "doi": null,
+        "pmcid": "PMC7749157",
+        "pmid": "33339852"
+      },
+      "observation_id": "seen_alignment_observation:277558c2464701e39665eae878b91d86c10831bc85614df8224bf93e1c74b5c3",
+      "Core_revision": "structured_experimental_observation_revision_v1:b428637af07d08b59651ef47e9b5d938f1fc0eb1f3ec2144d0313785a23a06ba",
+      "B4_10_evidence": {
+        "path": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20261029_code_recovery_batch4_10_identity_evidence_offline/release_v2/HIF/cases/B3-HIF/scientific_identity_evidence.json",
+        "sha256": "ff99626ca98dddc8193e60aeb45ab72bceb43e154cb5963ef65e026497efae89"
+      },
+      "B4_10_revision": "scientific_identity_evidence_preparation_v1:05f31fd43be0535b7ca536e89c344161cdbe01089c18b485c5354e0fdac0ab67",
+      "B4_proposition_revision": "pilot_proposition:fa6513ef4b3499ed86e06fa029003c6e11ee2ad71fb13d2e204dda5faad04c7f",
+      "B3_revision": "scientific_inclusion_revision:56740f085238ba04b9ed1322f994bbc2195a3af92b5177238dd413227ef3ff84",
+      "B4_8_effective_revision": "effective_projection_interpretation_v1:26095edd66f1b39c8e793854edcd5a782a0301e448ea534cab5779f4aab6eeea",
+      "native_core": {
+        "path": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20261029_code_recovery_batch4_9_native_proposition_binding_offline/release_v2/HIF/cases/B3-HIF/PMC7749157/core.json",
+        "sha256": "8c2836d316a267fb25bdcfb3cd51125c9dfba21a4a216e82d46db782e916ed6e"
+      },
+      "source_packet": {
+        "path": "/home/vincent/project/conflict-oriented-discovery-engine/runs/20261016_code_comparable_evidence_discovery_review_integration_seen_offline/PMC7749157/evidence_packet.json",
+        "sha256": "e97870577513d8b5d2e03d4318e4b8cb905f2715d4b44ef102924aa21f3ff69d"
+      },
+      "source_sha256": "cb15ae2566353bfb6a009277f36973703d578f23c0686693aa2423a59cee67d7",
+      "primary_span_id": "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+      "primary_span_text": "(G) A549 cells were incubated in normoxia or hypoxia (1% O2) for 24 h, in the presence of either DMSO (vehicle control) or HIF-1α inhibitor (C26H29NO5), at the indicated concentrations, and whole cell lysates were prepared. HIF-1α, Rab5, RhoA and actin levels were assessed by Western blotting and quantified by scanning densitometry analysis. Numerical data below each panel represent relative HIF-1α and Rab5 levels (normalized to actin), respectively, and shown as follows. HIF-1α: normoxia/DMSO (1.00 ± 0.73), hypoxia/DMSO (6.83 ± 2.62), hypoxia/5 μM inhibitor (10.99 ± 2.66), hypoxia/10 μM inhibitor (13.26 ± 4.91). Rab5: normoxia/DMSO (1.00 ± 0.24), hypoxia/DMSO (1.04 ± 0.34), hypoxia/5 μM inhibitor (1.30 ± 0.55), hypoxia/10 μM inhibitor (1.13 ± 0.47). Numerical data are shown as the average of 3 independent experiments (mean ± SEM). The graph indicates relative RhoA levels (normalized to actin), and data are shown as the average of 3 independent experiments (mean ±  SEM). *p < 0.05; ***p < 0.001.",
+      "primary_span_text_sha256": "59575d6496a18068c0569b0ce98b7b2256bed9ae1e91676cc856b47442872c8b",
+      "context": {
+        "cell_type": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "A549"
+        },
+        "dose": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "1% O2 versus normoxia; normoxia percentage not specified in selected caption"
+        },
+        "time": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "24 hours"
+        },
+        "assay": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb",
+            "seen_alignment_span:cb9a3311f4324909812c6ef9f026b2084674fd98c6c9921f2ae52f7a05cd2231",
+            "seen_alignment_span:3c60e6b4a89417442525b626fe7c067d1812a29fb12a64d94a4f9f6d78c7ee35"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "Western blot of cell protein lysate"
+        },
+        "tested_arm": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "1% O2 A549 with DMSO"
+        },
+        "reference_arm": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "normoxia A549 with DMSO"
+        },
+        "shared_conditions": {
+          "evidence_refs": [
+            "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+            "seen_alignment_span:56c266b5a175cf7d9e5a8ddfdc28b138d6080a878b2df68185d7015fbea6c9fb",
+            "seen_alignment_span:cb9a3311f4324909812c6ef9f026b2084674fd98c6c9921f2ae52f7a05cd2231",
+            "seen_alignment_span:3c60e6b4a89417442525b626fe7c067d1812a29fb12a64d94a4f9f6d78c7ee35"
+          ],
+          "uncertainty": "Source-bound Work interpretation, not independent validation",
+          "value": "DMSO in selected arms; inhibitor-treated arms excluded"
+        }
+      },
+      "affirmative_evidence": {
+        "protein_target": {
+          "span_id": "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+          "quote": "HIF-1α, Rab5, RhoA and actin levels were assessed by Western blotting"
+        },
+        "protein_readout": {
+          "span_id": "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+          "quote": "whole cell lysates were prepared"
+        },
+        "exposure_reference": {
+          "span_id": "seen_alignment_span:6473d18343d35f851a7fd4893310df69e86339a240584369adbfd57442315aa5",
+          "quote": "(G) A549 cells were incubated in normoxia or hypoxia (1% O2) for 24 h, in the presence of either DMSO (vehicle control) or HIF-1α inhibitor (C26H29NO5), at the indicated concentrations, and whole cell lysates were prepared. HIF-1α, Rab5, RhoA and actin levels were assessed by Western blotting and quantified by scanning densitometry analysis. Numerical data below each panel represent relative HIF-1α and Rab5 levels (normalized to actin), respectively, and shown as follows. HIF-1α: normoxia/DMSO (1.00 ± 0.73), hypoxia/DMSO (6.83 ± 2.62), hypoxia/5 μM inhibitor (10.99 ± 2.66), hypoxia/10 μM inhibitor (13.26 ± 4.91). Rab5: normoxia/DMSO (1.00 ± 0.24), hypoxia/DMSO (1.04 ± 0.34), hypoxia/5 μM inhibitor (1.30 ± 0.55), hypoxia/10 μM inhibitor (1.13 ± 0.47). Numerical data are shown as the average of 3 independent experiments (mean ± SEM). The graph indicates relative RhoA levels (normalized to actin), and data are shown as the average of 3 independent experiments (mean ±  SEM). *p < 0.05; ***p < 0.001."
+        }
+      },
+      "nominal_reference_concentration_percent": null
+    }
+  ],
+  "external_identity_authorized": false,
+  "operational_equivalence_authorized": false,
+  "comparator_orientation_authorized": false,
+  "relation_materialization_authorized": false
+}

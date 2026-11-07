@@ -159,11 +159,11 @@ def extract_normalized_observations(
                 for node_idx, node in enumerate(sample["causal_tuples"]):
                     sub_raw = str(node.get("subject", "")).strip()
                     obj_raw = str(node.get("object", "")).strip()
-                    sign = node.get("relation_sign", 1)
+                    from code_engine.extraction.direction_semantics import effective_legacy_direction
+                    direction_audit = effective_legacy_direction(node)
+                    sign = direction_audit["effective_sign"]
                     evidence = str(node.get("evidence_sentence", "")).strip()
                     if any(kw in sub_raw.lower() or kw in obj_raw.lower() for kw in forbidden):
-                        continue
-                    if sign not in (-1, 0, 1):
                         continue
 
                     fingerprint = dict(node.get("prompt_fingerprint") or {})
@@ -253,6 +253,12 @@ def extract_normalized_observations(
                             "direction": node.get("direction", "unknown"),
                             "direction_confidence": float(node.get("direction_confidence", 0.0)),
                             "relation_sign": sign,
+                            "raw_relation_sign": direction_audit["raw_extracted_sign"],
+                            "direction_semantics": direction_audit,
+                            "measurement_dimension": node.get("measurement_dimension"),
+                            "endpoint_raw": node.get("endpoint_raw"),
+                            "pmid": node.get("pmid") or l1_data.get("pmid"),
+                            "pmcid": node.get("pmcid") or l1_data.get("pmcid"),
                             "evidence_sentence": evidence,
                             "evidence_id": evidence_id,
                             "context": {k: str(v).upper().strip() for k, v in node.get("context", {}).items()},

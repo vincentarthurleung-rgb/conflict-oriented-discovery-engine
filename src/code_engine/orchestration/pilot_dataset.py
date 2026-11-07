@@ -10,7 +10,24 @@ from code_engine.discovery.ai_review_shadow import content_hash
 from code_engine.system_b.annotation_schemas.registry import canonical_json
 from code_engine.discovery.ai_review_shadow import ShadowAuthority
 
-TABLES={'publication_dependencies':'Publication/experiment/cohort grouping; missing experiment scopes and independent-publication group denominators',
+TABLES={'initial_sign_discordance':'Deterministic A/B discovery from native source evidence; no Work comparison, qualification or formal authority',
+ 'dose_stratified_direction_reversal':'Versioned source-local dose-only diagnostic payload per executed initial-discovery artifact; family count is separate from table rows and A/B/C/D; no conflict entropy or authority',
+ 'bounded_local_identity_verification':'Owner-scoped HIF protein type/role verification, exact receipt, independent caller trust inputs and residual integrity rejection',
+ 'bounded_local_target_correspondence':'Existing local-equivalence decision for only the two approved protein targets; operational and scientific promotion authority withheld',
+ 'scientific_identity_evidence':'Exact role/source evidence, structured-only terms, resolver candidates, unverified identity and actual blocking integrity decisions',
+ 'scientific_identity_review_packets':'Unanswered review requests bound to exact evidence revisions; no reviewer or authority assigned',
+ 'native_proposition_bindings':'Source-aware per-pair provisional match/nonmatch/unresolved decisions; original native and source-proposition records remain independent',
+ 'native_proposition_binding_inventory':'Native/proposition correspondence coverage; unmatched is not scientific exclusion',
+ 'raw_evidence_projection':'Unchanged legacy projection fields, explicitly non-authoritative for causal/null/equality interpretation',
+ 'effective_projection_interpretation':'Versioned provisional source design, association direction, statistical support, null/equality separation and disabled authority',
+ 'effective_projection_consumer_guards':'Explicit review versus causal/contradiction/readiness/equality/machine/hypothesis authority abstentions',
+ 'effective_source_proposition_interpretation':'Independent B4 source-packet association/statistical interpretation; not a positional mapping to native records',
+ 'native_representation_lineage':'Explicit original XML, derived JSON, provider-block coordinates, authentic V3 identity, source-lineage proof and per-record native/Core acceptance or rejection; no scientific authority',
+ 'semantic_grounding':'Original proposal, structural result and conservative provisional semantics, with source applicability and missing authority',
+ 'semantic_receipts':'Immutable provisional receipts; not machine or independent scientific authorization',
+ 'semantic_receipt_verification':'Time-bound fail-closed provenance verification and explicit disabled machine issuance',
+ 'semantic_proposition_guards':'B4 source contexts, B3 scope decisions, null/observational boundaries preserved',
+ 'publication_dependencies':'Publication/experiment/cohort grouping; missing experiment scopes and independent-publication group denominators',
  'validation_requirements':'Existing hypothesis validation requirement records; empty when no supported hypothesis exists',
  'missing_scientific_authority':'Explicit ordered formal qualification blockers; no policy or reviewer authority invented',
  'scientific_comparison_coverage':'Actual source-bound provisional comparison execution coverage, separate from formal qualification',
@@ -52,7 +69,29 @@ def export_attempt_dataset(manifest,case_dir,output,*,pairs=(),human_reviews=())
  for p in sorted(case_dir.rglob('*.json')):
   if output in p.parents:continue
   name=p.name
-  if name=='scientific_comparison.json':
+  if name=='initial_sign_discordance.json':
+   d=read(p);tables['initial_sign_discordance'].append(d)
+   if d.get('dose_stratified_direction_reversal'):tables['dose_stratified_direction_reversal'].append(d['dose_stratified_direction_reversal'])
+  elif name=='bounded_hif_identity_verification.json':
+   d=read(p);tables['bounded_local_identity_verification'].extend(d['rows'])
+   if d.get('correspondence'):tables['bounded_local_target_correspondence'].append(d['correspondence'])
+  elif name=='scientific_identity_evidence.json':tables['scientific_identity_evidence'].extend(read(p)['rows'])
+  elif name=='scientific_identity_review_packets.json':tables['scientific_identity_review_packets'].extend(read(p)['rows'])
+  elif name=='native_proposition_bindings.json':
+   d=read(p);tables['native_proposition_bindings'].extend(d['rows']);tables['native_proposition_binding_inventory'].extend([{'schema_version':d['schema_version'],'status':d['status'],'binding_revision':d.get('revision_identity'),'current_dependency_identity':d['current_dependency_identity'],'kind':kind,**r} for kind,items in (('native',d['native_inventory']),('proposition',d['proposition_inventory'])) for r in items])
+  elif name=='raw_projected_native_observations.json':tables['raw_evidence_projection'].extend(read(p))
+  elif name=='effective_projection_interpretations.json':tables['effective_projection_interpretation'].extend(read(p)['rows'])
+  elif name=='effective_projection_consumer_guards.json':tables['effective_projection_consumer_guards'].extend(read(p)['rows'])
+  elif name=='effective_source_proposition_interpretations.json':tables['effective_source_proposition_interpretation'].extend(read(p)['rows'])
+  elif name.endswith('_native_representation_handoff.json'):
+   d=read(p);tables['native_representation_lineage'].extend({**r,'source_representations':d['source_representations'],'transformation_provenance':d['transformation_provenance'],'provider_lineage':d['provider_lineage'],'configuration_pin':d['configuration_pin']} for r in d['records'])
+  elif name.endswith('_semantic_assessment.json'):
+   d=read(p);tables['semantic_grounding'].append(d)
+   tables['semantic_receipts'].extend(r['receipt'] for r in d.get('rows',[]))
+   tables['semantic_receipt_verification'].extend(r['verification'] for r in d.get('rows',[]))
+   if d.get('verification'):tables['semantic_receipt_verification'].append(d['verification'])
+  elif name=='semantic_proposition_guards.json':tables['semantic_proposition_guards'].extend(read(p)['rows'])
+  elif name=='scientific_comparison.json':
    d=read(p);tables['scientific_propositions'].extend(d['propositions']);tables['scientific_comparison'].append(d)
    tables['publication_dependencies'].append({'publication_groups':d['dependence_inventory'],'independent_publication_pair_groups':d['publication_dependencies'],'denominators':d['denominators']})
    tables['validation_requirements'].extend(d['validation_requirements'])

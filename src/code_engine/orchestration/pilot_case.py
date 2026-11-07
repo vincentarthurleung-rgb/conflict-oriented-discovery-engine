@@ -57,8 +57,21 @@ class PilotCaseExecutor:
         inclusion_inputs=inclusion_input_identity(request)
         from code_engine.orchestration.pilot_comparison import input_identity as comparison_input_identity
         comparison_inputs=comparison_input_identity(request)
-        derived_dependencies=content_hash({'implementation_dependencies_sha256':dependencies['sha256'],'scientific_inclusion_inputs_sha256':inclusion_inputs,'scientific_comparison_inputs_sha256':comparison_inputs})
-        dest=self.root/cid;fingerprint=content_hash({'comparison_inputs_sha256':comparison_inputs,'inclusion_inputs_sha256':inclusion_inputs,'request':request,'backend_sha256':self.backend.fingerprint,'budget_sha256':self.budget.fingerprint,'historical_root':self.seen.root,'effective_dependencies_sha256':dependencies['sha256']})
+        from code_engine.orchestration.pilot_semantic_grounding import input_identity as semantic_input_identity
+        semantic_inputs=semantic_input_identity(request)
+        from code_engine.orchestration.pilot_native_representation import input_identity as native_input_identity
+        native_inputs=native_input_identity(request)
+        from code_engine.fulltext.projection_interpretation import input_identity as projection_input_identity
+        projection_inputs=projection_input_identity(request.get('projection_interpretations'))
+        from code_engine.orchestration.pilot_native_proposition_binding import input_identity as binding_input_identity
+        binding_inputs=binding_input_identity(request)
+        from code_engine.orchestration.pilot_identity_evidence import input_identity as identity_input_identity
+        identity_inputs=identity_input_identity(request)
+        from code_engine.orchestration.pilot_hif_identity_verification import input_identity as bounded_identity_input_identity
+        bounded_identity_inputs=bounded_identity_input_identity(request)
+        native_inputs=content_hash({'native':native_inputs,'effective_projection_inputs':projection_inputs,'native_proposition_binding_inputs':binding_inputs,'scientific_identity_evidence_inputs':identity_inputs,'bounded_identity_verification_inputs':bounded_identity_inputs})
+        derived_dependencies=content_hash({'implementation_dependencies_sha256':dependencies['sha256'],'scientific_inclusion_inputs_sha256':inclusion_inputs,'scientific_comparison_inputs_sha256':comparison_inputs,'semantic_grounding_inputs_sha256':semantic_inputs,'native_representation_inputs_sha256':native_inputs})
+        dest=self.root/cid;fingerprint=content_hash({'native_representation_inputs_sha256':native_inputs,'semantic_inputs_sha256':semantic_inputs,'comparison_inputs_sha256':comparison_inputs,'inclusion_inputs_sha256':inclusion_inputs,'request':request,'backend_sha256':self.backend.fingerprint,'budget_sha256':self.budget.fingerprint,'historical_root':self.seen.root,'effective_dependencies_sha256':dependencies['sha256']})
         def durable(path,text):
             temp=path.with_name(path.name+'.tmp')
             with temp.open('w') as stream:stream.write(text);stream.flush();os.fsync(stream.fileno())
@@ -109,7 +122,7 @@ class PilotCaseExecutor:
         dest.mkdir();manifest={'case_id':cid,'question':request['question'],'scope':request.get('scope',{}),'evidence_mode':request['evidence_mode'],
                               'input_sha256':fingerprint,'historical_root':self.seen.root,'stages':[],
                               'sources':[],'has_deterministic_model_stubs':self.backend.fixture,'effective_dependencies_sha256':dependencies['sha256'],
-                              'terminal_state':None,'terminal_reason':None,'stage_contract_version':'case_stages_v4','effective_inclusion_inputs_sha256':inclusion_inputs,'effective_comparison_inputs_sha256':comparison_inputs,'derived_execution_dependencies_sha256':derived_dependencies,'scientific_question_identity':question_identity(request),'continuation_of_package_sha256':request.get('continuation_of_package_sha256')}
+                              'terminal_state':None,'terminal_reason':None,'stage_contract_version':'case_stages_v5','effective_inclusion_inputs_sha256':inclusion_inputs,'effective_comparison_inputs_sha256':comparison_inputs,'effective_semantic_grounding_inputs_sha256':semantic_inputs,'derived_execution_dependencies_sha256':derived_dependencies,'scientific_question_identity':question_identity(request),'continuation_of_package_sha256':request.get('continuation_of_package_sha256')}
         durable(dest/'manifest.progress.json',canonical_json(manifest)+'\n')
         artifacts=[];pairs=[];comparison=None;tip=fingerprint;active=None;active_window=None;source_plans={};window_states={};all_records=[];sources=[];inclusion=InclusionLedger(request);paper_decisions={}
         def save(name,value):
@@ -344,7 +357,18 @@ class PilotCaseExecutor:
                             active_window=(pmc,window['window_id']) if window else None;key=pmc+'_'+window['window_id'] if window else pmc
                             payload={'source_sha256':s['binding']['source_sha256'],'article':json.loads(Path(s['article_path']).read_text()),'source_artifact':s.get('origin_article_path',s['article_path']),'quality_claims':[c for c in claims if c['source_identity']['pmcid']==pmc and (not window or window['window_id'] in c.get('source_window_occurrences',[]))]}
                             if window:payload['window']=window
-                            out=model(stage,key,payload)
+                            native_pin=request.get('native_representation_handoffs',{}).get(pmc)
+                            if native_pin:
+                                if window:raise CaseIntegrity('historical_native_replay_cannot_be_reassigned_to_new_window')
+                                from code_engine.orchestration.pilot_native_representation import recover_native_jsonl
+                                from code_engine.orchestration.pilot_dependencies import DEFAULT_REVIEW_PROMPT
+                                review_prompt_path=Path(self.backend.review_prompt) if self.backend.review_prompt else Path(self.backend.repository)/DEFAULT_REVIEW_PROMPT
+                                native=recover_native_jsonl(native_pin,source=s,review_prompt=review_prompt_path.read_text())
+                                save(key+'_native_representation_handoff.json',native['audit'])
+                                out={'records':native['records']}
+                                if native['audit']['counts']['rejected_or_unresolved'] or native['audit']['batch_rejection_reason']:out['incomplete']={'native_representation_rejections':native['audit']}
+                                save(key+'_native_representation_reuse.json',{'configuration':native_pin,'actual_new_API_dispatches':0,'new_extractions':0,'historical_JSONL_records':native['audit']['counts']['authentic_JSONL_records_present'],'source_lineage_and_Core_counts':native['audit']['counts']})
+                            else:out=model(stage,key,payload)
                             if window:window_states[pmc][window['window_id']][stage]={'status':'failed_validation' if (out or {}).get('assembly_failures') or (out or {}).get('incomplete',{}).get('rejected') or (out or {}).get('incomplete',{}).get('provider_parse_error') else 'processed','reason':'Actual response retained; parse/assembly failures do not imply source completion','rejected_observations':len((out or {}).get('incomplete',{}).get('rejected',[])),'output_state':'empty' if out is not None and 'formal_v3' in out.get('incomplete',{}) and not out.get('incomplete',{}).get('formal_v3',{}).get('experimental_observations') and not out.get('records') and not out.get('core_utf8') and not out.get('incomplete',{}).get('rejected') and not out.get('incomplete',{}).get('provider_parse_error') else 'nonempty_or_unresolved'};window_progress()
                             if out and out.get('records'):extracted.extend(out['records'])
                             if out and 'core_utf8' in out:extracted.append(out)
@@ -355,7 +379,10 @@ class PilotCaseExecutor:
                             formal=json.loads(out['core_utf8'])['ExperimentalObservationV3'];suffix=content_hash(formal['observation_id'])[:20];record_key=pmc+'_'+suffix if pmc in source_plans or len(extracted)>1 else pmc
                             d=dest/pmc/suffix if pmc in source_plans or len(extracted)>1 else dest/pmc;d.mkdir(parents=True);packet=d/'packet.json';core=d/'core.json';prompt=d/'review_prompt.txt'
                             packet.write_text(out['packet_utf8']);core.write_text(out['core_utf8']);prompt.write_text(out['review_prompt_utf8'])
-                            bound=load_bound_packet(packet,prompt,core)
+                            if out.get('native_representation_binding'):
+                                from code_engine.orchestration.pilot_native_representation import load_native_bound_packet_v1
+                                bound=load_native_bound_packet_v1(packet,prompt,core,out['native_representation_binding'])
+                            else:bound=load_bound_packet(packet,prompt,core)
                             if bound.input_hashes['source']!=s['binding']['source_sha256'] or bound.packet['source']['pmcid']!=pmc:raise CaseIntegrity('experimental_core_unrelated_source')
                             prepared=prepare_experimental_handoff(json.loads(core.read_text()),d)
                             lineage=out.get('v3_lineage')
@@ -364,7 +391,7 @@ class PilotCaseExecutor:
                                 for field,name in (('raw_provider_response','response'),('validated_formal_v3','validated')):
                                     path=save(record_key+'_V3_'+name+'.json',material[field]);pins[name]={'path':str(path.resolve()),'sha256':file_hash(path)}
                                 lineage={**pins,**{k:material[k] for k in ('hydration_context','source_blocks','window')}}
-                            records.append({'source':s,'record_key':record_key,'packet':packet,'core':core,'prompt':prompt,'prepared':prepared,'v3_lineage':lineage})
+                            records.append({'source':s,'record_key':record_key,'packet':packet,'core':core,'prompt':prompt,'prepared':prepared,'v3_lineage':lineage,'native_representation_binding':out.get('native_representation_binding')})
                             obs_decision=inclusion.decide(s,scope_level='observation',scope_identity=formal['observation_id'],observation=formal)
                             inclusion.decide(s,scope_level='experiment',scope_identity=formal['experiment']['experiment_id'],observation=formal)
                             records[-1]['inclusion']=obs_decision
@@ -378,6 +405,7 @@ class PilotCaseExecutor:
                     summaries=[];active_window=None
                     for r in records:
                         key=r['record_key'];envelope=json.loads(r['core'].read_text());oid=envelope['ExperimentalObservationV3']['observation_id']
+                        prepared_linkage=None
                         outcome={'schema_version':LINKAGE_VERSION,'observation_identity':oid,'status':'not_prepared','materialized_links':0,'scientific_authorization':False,'human_gold':False,'strict_core_eligible':False}
                         try:
                             if not r.get('v3_lineage'):raise ValueError('original_V3_response_lineage_unavailable')
@@ -385,6 +413,7 @@ class PilotCaseExecutor:
                             settings=self.budget.models[request['model_stages'][stage]] if stage in request['model_stages'] else {}
                             prepared_linkage=prepare_stage(envelope,r['v3_lineage'],supplement=supplement,question_domain=getattr(self.backend,'question_domain',None),model=settings.get('model','deepseek-flash'),max_output_tokens=settings.get('max_output_tokens',8192),input_token_ceiling=min(40000,settings.get('max_input_tokens',40000)))
                             save(key+'_linkage_input.json',prepared_linkage)
+                            r['linkage_prepared']=prepared_linkage
                             replay=self.backend.linkage_replay(oid) if hasattr(self.backend,'linkage_replay') else None
                             if replay is not None:
                                 save(key+'_linkage_replay_origin.json',replay)
@@ -403,6 +432,12 @@ class PilotCaseExecutor:
                         except (ValueError,KeyError,TypeError) as error:
                             outcome.update(status='rejected_input_or_response',reason=type(error).__name__+':'+str(error))
                         save(key+'_linkage_outcome.json',outcome)
+                        from code_engine.orchestration.pilot_semantic_grounding import run_semantic_stage,NO_AUTHORITY
+                        try:semantic=run_semantic_stage(prepared_linkage,outcome,request,r['inclusion'])
+                        except (ValueError,KeyError,TypeError,OSError) as error:
+                            semantic={**NO_AUTHORITY,'status':'ABSTAIN','rows':[],'reason_codes':['SEMANTIC_INPUT_INVALID:'+type(error).__name__+':'+str(error)],'materialized_links':0,'verification':{'status':'BLOCKED','machine_reuse_authorized':False}}
+                        save(key+'_semantic_assessment.json',semantic)
+                        r['semantic_grounding']=semantic
                         summaries.append({'observation_identity':oid,'status':outcome['status'],'materialized_links':0})
                     save('linkage_stage_summary.json',{'schema_version':LINKAGE_VERSION,'records':summaries,'model_execution_configured':stage in request['model_stages'],'scientific_authorization':False})
                     value={'records':summaries,'materialized_links':0,'independent_scientific_authorization':False}
@@ -411,7 +446,11 @@ class PilotCaseExecutor:
                         event(stage,'skipped','No AI review configured; no synthetic review substituted.');continue
                     for r in records:
                         pmc=r['source']['identity']['pmcid'];key=r.get('record_key',pmc);out=model(stage,key,{'packet':json.loads(r['packet'].read_text()),'core':json.loads(r['core'].read_text()),'prompt':r['prompt'].read_text()})
-                        review=bind_review(load_bound_packet(r['packet'],r['prompt'],r['core']),out);r['review']=save(key+'_review.json',review.model_dump(mode='json'))
+                        if r.get('native_representation_binding'):
+                            from code_engine.orchestration.pilot_native_representation import load_native_bound_packet_v1
+                            review_bound=load_native_bound_packet_v1(r['packet'],r['prompt'],r['core'],r['native_representation_binding'])
+                        else:review_bound=load_bound_packet(r['packet'],r['prompt'],r['core'])
+                        review=bind_review(review_bound,out);r['review']=save(key+'_review.json',review.model_dump(mode='json'))
                     value={'source_reviews_bound':len(records),'new_independent_review':False if self.backend.fixture else None}
                     if not records:event(stage,'skipped','No complete experimental record to review.',value);continue
                 elif stage=='normalization_projection':
@@ -419,11 +458,28 @@ class PilotCaseExecutor:
                     normalized=normalize_reviewable_builder_claims(claims,resolver);save('normalized_builder_claims.json',normalized)
                     if records:
                         inp=dest/'projection_input/artifacts';inp.mkdir(parents=True);(inp/'l35_fulltext_l1_claims.jsonl').write_text(''.join(canonical_json(json.loads(r['core'].read_text()))+'\n' for r in records))
-                        summary=project_fulltext_run(inp.parent,dest/'projection')
+                        summary=project_fulltext_run(inp.parent,dest/'projection',interpretation_configuration=request.get('projection_interpretations'))
                         projected=[json.loads(line) for line in (Path(summary['output_run'])/'artifacts/fulltext_projected_observations.jsonl').read_text().splitlines() if line.strip()]
                         if len(projected)!=len(records):raise CaseIntegrity('native_projection_record_loss')
                         save('projection_summary.json',summary);save('projected_native_observations.json',projected)
+                        from code_engine.fulltext.projection_interpretation import raw_projection
+                        save('raw_projected_native_observations.json',[raw_projection(p) for p in projected])
+                        save('effective_projection_interpretations.json',{'schema_version':'effective_projection_interpretation_v1','rows':[p['effective_interpretation'] for p in projected]})
+                        save('effective_projection_consumer_guards.json',{'rows':[{'observation_id':p['observation_id'],'guards':p['effective_consumer_guards']} for p in projected]})
+                        for record in records:
+                            oid=json.loads(record['core'].read_text())['ExperimentalObservationV3']['observation_id']
+                            record['projection_row']=next(p for p in projected if p['observation_id']==oid)
+                            record['effective_projection']=record['projection_row']['effective_interpretation']
                     value={'normalized_claims':len(normalized),'native_core_records_projected':len(records)}
+                elif stage=='initial_sign_discordance':
+                    from code_engine.discovery.directional_discovery import run_initial_discovery
+                    initial=run_initial_discovery(all_records,dependencies=dependencies['sha256'])
+                    save('initial_sign_discordance.json',initial)
+                    manifest['initial_discovery_summary']={k:initial[k] for k in
+                        ('schema_version','counts','input_observations','retained_observations','independent_publication_pairs','Work_assessments_consumed','formal_L4_invoked')}
+                    value=manifest['initial_discovery_summary']
+                    event(stage,'executed','Deterministic exploratory direction signals; all retained native records, no Work comparison or formal admission prerequisite.',value)
+                    continue
                 elif stage=='shadow_alignment':
                     if request.get('scientific_comparison_profile') != 'legacy_shadow_v1':
                         from code_engine.orchestration.pilot_comparison import run_comparison
@@ -435,6 +491,20 @@ class PilotCaseExecutor:
                                       p.name.endswith(('_linkage_input.json','_linkage_outcome.json')) or p.name in ('projected_native_observations.json','projection_summary.json')}}
                         comparison=run_comparison(request,inclusion.export(),all_records,bindings=upstream)
                         save('scientific_comparison.json',comparison)
+                        from code_engine.orchestration.pilot_native_proposition_binding import bind_native_propositions
+                        from code_engine.orchestration.pilot_identity_evidence import retained_binding_artifact,prepare_identity_evidence
+                        retained_binding=retained_binding_artifact(request)
+                        native_binding=retained_binding if retained_binding is not None else bind_native_propositions(request,inclusion.export(),all_records,comparison['propositions'],dependencies=derived_dependencies)
+                        save('native_proposition_bindings.json',native_binding)
+                        identity_evidence=prepare_identity_evidence(request,inclusion.export(),all_records,comparison['propositions'],dependencies=derived_dependencies)
+                        save('scientific_identity_evidence.json',identity_evidence)
+                        save('scientific_identity_review_packets.json',{'rows':identity_evidence['review_packets'],'scientific_authorization':False})
+                        from code_engine.orchestration.pilot_hif_identity_verification import run_bounded_hif_verification
+                        bounded_identity=run_bounded_hif_verification(request,identity_evidence,dependencies=derived_dependencies)
+                        save('bounded_hif_identity_verification.json',bounded_identity)
+                        save('effective_source_proposition_interpretations.json',{'schema_version':'effective_projection_interpretation_v1:source_proposition','rows':[p['effective_interpretation'] for p in comparison['propositions']],'native_record_mapping':'NOT_INFERRED_FROM_COUNT_OR_POSITION','scientific_authorization':False})
+                        from code_engine.orchestration.pilot_semantic_grounding import assess_proposition
+                        save('semantic_proposition_guards.json',{'schema_version':'conservative_source_semantic_assessment_v1','rows':[assess_proposition(p) for p in comparison['propositions']],'scientific_authorization':False})
                         manifest['scientific_comparison_summary']={k:comparison[k] for k in ('schema_version','input_state','denominators','coverage','formal_authority_blockers')}
                         value={'comparison_sha256':content_hash(comparison),'denominators':comparison['denominators'],'formal_scientific_authorization':False}
                         if comparison['input_state']['status']=='NOT_EVALUATED':
@@ -448,6 +518,11 @@ class PilotCaseExecutor:
                     eligible=[];excluded=[]
                     for record in records:
                         readiness=record['prepared']['experimental_core_handoff_audit']['readiness']['status']
+                        f=json.loads(record['core'].read_text())['ExperimentalObservationV3'];effective=record.get('effective_projection',{})
+                        interpretation_required=(f['experiment']['design_type']=='unknown' or effective.get('study_design',{}).get('provisional_assessment')=='observational' or effective.get('statistical_significance',{}).get('assessment')=='source_reported_nonsignificant')
+                        if interpretation_required:
+                            excluded.append({'observation_revision_identity':record['prepared']['experimental_core']['revision']['identity'],'existing_readiness':readiness,'reason':'EFFECTIVE_OBSERVATIONAL_NULL_OR_UNKNOWN_SEMANTICS_NOT_MACHINE_REUSE_AUTHORITY; structural V2 status alone is insufficient'})
+                            continue
                         if readiness.startswith('machine_reusable'):eligible.append(record)
                         else:excluded.append({'observation_revision_identity':record['prepared']['experimental_core']['revision']['identity'],'existing_readiness':readiness,'reason':'Reviewable native record retained; existing Core linkage readiness blocks Shadow alignment'})
                     if excluded:save('shadow_alignment_exclusions.json',excluded)
@@ -518,6 +593,11 @@ class PilotCaseExecutor:
         manifest.pop('_model_usage_rows',None)
         save('scientific_inclusion_final.json',inclusion.export())
         save('scientific_inclusion_coverage.json',manifest['scientific_inclusion_summary'])
+        native_audits=[json.loads(p.read_text()) for p in sorted(dest.glob('*_native_representation_handoff.json'))]
+        if native_audits:
+            comparison_file=dest/'scientific_comparison.json'
+            proposition_count=len(json.loads(comparison_file.read_text()).get('propositions',[])) if comparison_file.exists() else 0
+            save('native_representation_availability.json',{'schema_version':'native_representation_availability_v1','native_handoff_counts':[a['counts'] for a in native_audits],'native_Core_records_retained':len(all_records),'native_records_permitted_downstream':len(records),'B4_propositions_available_independently':proposition_count,'native_to_B4_mapping':'NOT_INFERRED; no mapping by cardinality or index','machine_reuse_authorized':False,'scientific_authorization':False,'human_gold':False,'strict_core_eligible':False})
         manifest['scientific_stage_completion']={'schema_version':'pilot_scientific_stage_completion_v1','stages':{s['stage']:{'status':s['status'],'output_sha256':s['output_sha256']} for s in manifest['stages']},'full_L0_L6_scientific_execution':False,'formal_scientific_authorization':False,'reason':'Stage execution records include candidates and rejected materialization; they do not certify the original L0–L6 scientific chain.'}
         save('scientific_stage_completion.json',manifest['scientific_stage_completion'])
         manifest['dataset_export']=export_attempt_dataset(manifest,dest,dest/'dataset',pairs=pairs)

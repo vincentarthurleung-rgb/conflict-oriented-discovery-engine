@@ -303,9 +303,21 @@ def token_budget_preflight(candidate: dict[str, Any], block: dict[str, Any],
                            budget: FulltextTokenBudget) -> dict[str, Any]:
     prompt = build_prompt(candidate, block)
     text = str(block.get("text") or "")
-    setup = "\n".join(re.findall(r"(?m)^PRECEDING_SETUP:.*(?:\n(?!CURRENT_|LINKED_METHODS:).*)*", text))
-    methods = "\n".join(re.findall(r"(?m)^LINKED_METHODS:.*(?:\n(?!CURRENT_|PRECEDING_SETUP:).*)*", text))
-    block_body = re.sub(r"(?ms)^PRECEDING_SETUP:.*?(?=^CURRENT_|\Z)|^LINKED_METHODS:.*", "", text)
+    # A DOTALL Methods match used to consume every later CURRENT_RESULTS line.
+    # Track framing boundaries explicitly, retaining multiline source content.
+    regions = {"setup": [], "methods": [], "body": []}
+    region = "body"
+    for line in text.splitlines(keepends=True):
+        if line.startswith("PRECEDING_SETUP:"):
+            region = "setup"
+        elif line.startswith("LINKED_METHODS:"):
+            region = "methods"
+        elif re.match(r"^CURRENT_[A-Z_]+:", line):
+            region = "body"
+        regions[region].append(line)
+    setup = "".join(regions["setup"])
+    methods = "".join(regions["methods"])
+    block_body = "".join(regions["body"])
     fixed_prompt = prompt.replace(text, "")
     system_tokens = estimate_tokens(fixed_prompt)
     body_tokens = estimate_tokens(block_body)

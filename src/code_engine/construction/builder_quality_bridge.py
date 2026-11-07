@@ -18,6 +18,7 @@ from scripts import search_plan_v24_alpha318b_post_builder_prechecks as precheck
 from scripts.search_plan_v24_alpha317a_safety_audits import leakage_failed
 from scripts.search_plan_v24_alpha317c_reconcile_builder_offline import candidate_id
 from scripts.search_plan_v24_alpha320a_v4_localizer import SUCCESS, localize_exact_body_quote
+from code_engine.construction.source_quote_localization import localize_for_quality, VERSION as LOCALIZATION_VERSION
 
 from code_engine.construction.handoff_adapter import validate_construction_document
 from code_engine.extraction.polarity import normalize_directional_relation
@@ -95,30 +96,37 @@ def project_quality_accepted_builder_claims(
     require(bm["request"]["messages"][1]["content"] == expected_user, "BUILDER_VISIBLE_INPUT_MISMATCH")
     parsed = _strict_json(br["choices"][0]["message"]["content"].encode())
     prechecks.validate_builder_response(canonical(parsed), private_source_token, schema)
+    localization_context = qm.get("source_localization_context")
+    if localization_context is not None:
+        require(qm.get("source_quote_localization_policy") == LOCALIZATION_VERSION and
+                qm.get("source_localization_context_sha256") == sha(canonical(localization_context)), "SOURCE_LOCALIZATION_CONTEXT_MISMATCH")
+        require(localization_context.get("source_identity") == {k: str(source_identity[k]) for k in ("pmcid", "pmid")}, "SOURCE_LOCALIZATION_IDENTITY_MISMATCH")
     by_id: dict[str, dict] = {}
     survivors = []
+    localizations = []
     for position, candidate in enumerate(parsed["candidates"]):
         cid = candidate_id(private_source_token, candidate)
         if cid in by_id:
             require(by_id[cid]["candidate"] == candidate, "CANDIDATE_ID_COLLISION")
             by_id[cid]["original_array_positions"].append(position)
             continue
-        location = localize_exact_body_quote(candidate["construction_evidence_span"]["exact_text"], document["body_text"], document["paragraphs"])
+        location = localize_for_quality(candidate["construction_evidence_span"]["exact_text"], document, context=localization_context)
+        localizations.append({"candidate_id": cid, "candidate_payload_sha256": sha(canonical(candidate)), "localization": location})
         record = {"candidate": candidate, "location": location, "original_array_positions": [position]}
         by_id[cid] = record
-        if location["development_v4_localization_state"] != SUCCESS:
-            continue
         start, end = location["body_document_start_offset"], location["body_document_end_offset"]
         sentence = prechecks.evidence_sentence(document["body_text"], start, end)
         if leakage_failed(candidate["neutral_proposition"], private_identity["title_1"], sentence):
             continue
         enriched = copy.deepcopy(candidate)
         enriched["construction_evidence_span"] = {"source_field": "body", "start_offset": start, "end_offset": end,
-                                                   "exact_text": candidate["construction_evidence_span"]["exact_text"]}
+                                                   "exact_text": location["original_source_text"]}
         survivors.append({"candidate_id": cid, "candidate_payload_sha256": sha(canonical(candidate)), "candidate": enriched,
                           "original_array_positions": record["original_array_positions"]})
     survivors.sort(key=lambda r: (r["candidate_payload_sha256"], r["candidate_id"]))
     expected_payload = prechecks.build_quality_payload(private_source_token, survivors, document, private_identity)
+    if localization_context is not None:
+        require(localizations == qm.get("source_quote_localizations"), "SOURCE_LOCALIZATION_AUDIT_MISMATCH")
     require(expected_payload == qm["quality_payload"], "QUALITY_INPUT_CANDIDATE_OR_EVIDENCE_MISMATCH")
     packets = expected_payload["candidate_packets"]
     # The exact model-visible packet list must actually occur in the frozen request.
@@ -161,7 +169,12 @@ def project_quality_accepted_builder_claims(
                              "quality_request_sha256": qm["request_sha256"], "quality_response_sha256": quality_response_sha256,
                              "source_token_sha256": sha(private_source_token.encode())},
         )
-        claims.append(claim.model_dump(mode="json"))
+        output = claim.model_dump(mode="json")
+        if localization_context is not None:
+            # A future real Quality decision may consume this record; an
+            # equivalent quote must never be relabeled as verbatim evidence.
+            output["source_quote_localization"] = record["location"]
+        claims.append(output)
     return {"claims": claims, "quality_accepted_count": len(eligible), "quality_not_accepted_ids": sorted(set(by_id) - eligible),
             "exact_duplicate_candidates_removed": sum(len(r["original_array_positions"]) - 1 for r in by_id.values()),
             "experimental_observations_created": 0}

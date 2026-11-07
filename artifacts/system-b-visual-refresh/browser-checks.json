@@ -1,0 +1,98 @@
+[
+  {
+    "page": "01-home-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "02-case-detail-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "03-evidence-detail-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "05-graph-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "06-graph-local-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "07-home-mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "workspaceWidth": 390,
+    "workspaceScroll": 390,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "08-graph-mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "workspaceWidth": 390,
+    "workspaceScroll": 390,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "09-review-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "10-review-mobile",
+    "viewport": 390,
+    "documentWidth": 390,
+    "workspaceWidth": 390,
+    "workspaceScroll": 390,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "11-users-table-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "12-user-drawer-desktop",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "workspaceWidth": 1208,
+    "workspaceScroll": 1208,
+    "background": "rgb(246, 248, 251)"
+  },
+  {
+    "page": "13-users-table-tablet",
+    "viewport": 768,
+    "documentWidth": 768,
+    "workspaceWidth": 768,
+    "workspaceScroll": 768,
+    "background": "rgb(246, 248, 251)"
+  }
+]

@@ -32,6 +32,23 @@ def relation_entropy(positive_count: int, negative_count: int) -> float:
     return round(-sum(p * math.log2(p) for p in probabilities if p > 0), 6)
 
 
+def binary_direction_summary(signs):
+    """Binary Shannon signal only; unknown/neutral are not zero-effect votes."""
+    values = list(signs)
+    positive = sum(type(x) is int and x == 1 for x in values)
+    negative = sum(type(x) is int and x == -1 for x in values)
+    total = positive + negative
+    opposed = positive > 0 and negative > 0
+    return {"schema_version": "binary_polarity_signal_v2", "positive_count": positive,
+            "negative_count": negative, "valid_sign_count": total,
+            "excluded_direction_count": len(values) - total,
+            "entropy": relation_entropy(positive, negative) if total else None,
+            "directional_discordance": opposed,
+            "direction_status": "insufficient_evidence" if not total else
+                                "opposed" if opposed else "no_polarity_collision",
+            "scientific_authorization": False, "formal_conflict": False}
+
+
 def compute_probabilistic_conflict_state(
     edge: dict[str, Any],
     *,
@@ -60,6 +77,9 @@ def compute_probabilistic_conflict_state(
     probabilities = {key: round(value / total, 6) for key, value in raw.items()}
     classification = max(probabilities, key=probabilities.get)
     warnings = ["posterior_like_state_is_deterministic_heuristic_not_bayesian"]
+    if not positive + negative:
+        classification = "insufficient_evidence"
+        warnings.append("no_valid_binary_direction; heuristic_weights_are_not_evidence_of_agreement")
     if evidence_count <= 2:
         warnings.append("low_evidence_count")
     if lab_count <= 1:

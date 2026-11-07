@@ -1,12 +1,12 @@
 :root{
   --atlas-font:Inter,"Noto Sans SC","Microsoft YaHei UI",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --atlas-bg:#f6f8f8;
+  --atlas-bg:#f6f8fb;
   --atlas-surface:#ffffff;
-  --atlas-ink:#172326;
-  --atlas-muted:#667579;
-  --atlas-line:#d9e2e3;
-  --atlas-accent:#176b6d;
-  --atlas-accent-2:#a85522;
+  --atlas-ink:#243047;
+  --atlas-muted:#64748b;
+  --atlas-line:#e7ebf2;
+  --atlas-accent:#5365cf;
+  --atlas-accent-2:#94702f;
   --atlas-success:#146c43;
   --atlas-warning:#8a5a00;
   --atlas-danger:#b42318;
@@ -19,10 +19,10 @@
   --space-7:48px;
   --radius-sm:6px;
   --radius:8px;
-  --radius-lg:14px;
-  --shadow-sm:0 1px 2px rgba(18,35,38,.08);
-  --shadow:0 8px 24px rgba(18,35,38,.12);
-  --focus-ring:0 0 0 3px rgba(23,107,109,.28);
+  --radius-lg:8px;
+  --shadow-sm:0 1px 2px rgba(36,48,71,.04);
+  --shadow:0 8px 24px rgba(36,48,71,.07);
+  --focus-ring:0 0 0 3px rgba(83,101,207,.14);
   --motion-fast:120ms;
 }
 button,a,input,select,textarea{font-family:var(--atlas-font)}

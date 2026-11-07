@@ -379,12 +379,20 @@ function renderAIProvisionalPackage(p){
 function renderAICaseAttempt(p){
  var count=p.source_count===undefined?(p.sources||[]).length:p.source_count;
  var html='<section class="ai-provisional-package card"><h2>科学案例评审</h2><p class="badge warn">AI_PROVISIONAL_NOT_INDEPENDENTLY_VALIDATED</p><h3>'+esc(p.question)+'</h3><p>流程终态：'+esc(p.terminal_state)+'</p><p>'+esc(p.reason)+'</p><p>已保留来源：'+esc(count)+'；失败和证据不足不从案例总数中删除。</p>';
+ if(p.initial_discovery_summary){var c=p.initial_discovery_summary.counts;html+='<section class="initial-direction-discovery"><h3>确定性方向探索</h3><p>原始方向碰撞：'+esc(c.RAW_POLARITY_COLLISION)+'；暂定方向不一致：'+esc(c.PROVISIONAL_DIRECTIONAL_DISCORDANCE)+'；已合格候选：'+esc(c.QUALIFIED_CONTRADICTION_CANDIDATE)+'；正式授权冲突：'+esc(c.FORMALLY_AUTHORIZED_CONFLICT)+'。</p><p>后两项在此探索通道未执行。初步信号不依赖 AI 可比性判断，也不代表正式科学矛盾。</p></section>';}
+ (p.initial_discovery_artifacts||[]).forEach(function(a){html+='<details><summary>方向、比较组、上下文与原文证据</summary><pre>'+esc(a.utf8)+'</pre></details>'});
  if(p.run_manifest.has_deterministic_model_stubs)html+='<p class="badge warn">工程重放：模型输出使用冻结资产或确定性夹具；本次没有新模型提取或独立科学验证。</p>';
  html+='<details class="pilot-execution-details"><summary>执行轨迹、成本与限制</summary><ol>';
  (p.run_manifest.stages||[]).forEach(function(s){html+='<li><strong>'+esc(s.stage)+' — '+esc(s.status)+'</strong><p>'+esc(s.reason)+'</p></li>'});
  html+='</ol><p>'+esc(p.costs.fixture_accounting_not_actual_API_spend?'离线计费夹具，实际付费调用为零。':'已记录费用与未结算预留。')+'</p><p>预算账本金额：'+esc(String((p.costs.accounted_nusd||0)/1000000000))+' USD</p><p>'+esc(p.costs.blocked_reason||'')+'</p><p>'+esc(p.uncertainty)+'</p></details>';
  (p.pair_packages||[]).forEach(function(pair){html+=renderAIProvisionalPackage(pair)});
  if(p.display_projection&&(p.pair_count||p.linkage_stage_count))html+='<div id="case-scientific-pager"><p>论文对 '+p.pair_count+' · 分页加载原文与 AI 判断。案例整体判断与单独分配的论文对判断分别保存。</p><div id="case-scientific-page"></div></div>';
+ (p.semantic_grounding_artifacts||[]).forEach(function(a){html+=renderConservativeSemanticEvidence(a)});
+ (p.native_representation_artifacts||[]).forEach(function(a){var d=JSON.parse(a.utf8);html+='<details><summary>原生 V3、来源表示与交接状态</summary><p>XML 原文、JSON 投影与提供者文本块分别绑定。技术交接不授予科学权限；原生记录与命题数量分别统计。</p><pre>'+esc(JSON.stringify(d,null,2))+'</pre></details>'});
+ (p.effective_projection_artifacts||[]).forEach(function(a){html+=renderEffectiveProjection(a)});
+ (p.bounded_identity_verification_artifacts||[]).forEach(function(a){var d=JSON.parse(a.utf8);html+='<details><summary>有界局部蛋白身份验证</summary><p>'+esc(d.status)+'：仅限批准的 HIF 蛋白类型与角色；不代表外部身份、操作等价、独立专家审核或正式科学晋升。有效期和当前修订见附件。</p><pre>'+esc(a.utf8)+'</pre></details>'});
+ (p.scientific_identity_evidence_artifacts||[]).forEach(function(a){html+='<details><summary>科学身份的来源证据与待决问题</summary><p>原文提及、候选身份、测量含义和科学权限分别记录；有效证据包不构成身份批准。</p><pre>'+esc(a.utf8)+'</pre></details>'});
+ (p.native_proposition_binding_artifacts||[]).forEach(function(a){var d=JSON.parse(a.utf8);html+='<details><summary>原生记录与来源命题的对应</summary><p>来源暂定对应：'+esc(JSON.stringify(d.counts||{}))+'。未匹配记录继续保留；不继承纳入决定，不授予科学身份、比较方向或正式冲突权限。</p><pre>'+esc(a.utf8)+'</pre></details>'});
  (p.scientific_comparison_artifacts||[]).forEach(function(a){html+='<details><summary>命题、可比性与科学暂定诊断 · '+esc(a.role)+'</summary><pre>'+esc(a.utf8)+'</pre></details>'});
  (p.scientific_inclusion_artifacts||[]).forEach(function(a){html+='<details><summary>科学纳入与覆盖 · '+esc(a.role)+'</summary><pre>'+esc(a.utf8)+'</pre></details>'});
  if(p.linkage_stage_count)html+='<p>实验连接候选：'+esc(p.linkage_stage_count)+' 条观察记录。候选验证和物化拒绝保留在原始证据页；不构成科学授权。</p>';
@@ -396,12 +404,31 @@ function renderAICaseAttempt(p){
 function changeReviewPage(delta){window._reviewPageOffset=Math.max(0,(window._reviewPageOffset||0)+delta);return selectReviewLayer(_crActiveCase,_crActiveLayer)}
 function filterPilotCases(value){document.querySelectorAll('.review-case-card').forEach(function(card){var statuses=(card.dataset.terminals||'').split(',');card.hidden=value!==''&&!statuses.some(function(s){return value==='partial'?/FAILED|STOP|INSUFFICIENT|NOT_EVALUABLE/.test(s):s===value})})}
 function scientificFacet(x){return (x&&x.value)||'未报告'}
+function renderEffectiveProjection(a){
+ var d=JSON.parse(a.utf8),html='<details><summary>观察关联、统计结果与有效解释 · '+esc(a.role)+'</summary>';
+ if(a.role==='effective_projection_interpretations.json'){
+  html+='<p>AI 源绑定暂定解释；关联不等于因果。未显著不等于零效应或等效性。旧投影标签与符号保留为审计，不作为有效科学权限。</p><table><thead><tr><th>原始观察</th><th>人群 / 端点</th><th>关联方向</th><th>统计解释</th><th>原报告</th><th>因果 / 等效</th></tr></thead><tbody>';
+  (d.rows||[]).forEach(function(e){var sig=e.statistical_significance,dir=e.reported_association_direction;
+   html+='<tr><td>'+esc(e.binding.observation_id)+' · '+esc(e.status)+'</td><td>'+esc(e.cohort_as_reported||'未确立')+' / '+esc(e.endpoint_as_reported||'未确立')+'</td><td>'+esc(dir==='positive'?'正向关联':dir==='negative'?'负向关联':'方向未确立')+'</td><td>'+esc(sig.assessment==='source_reported_nonsignificant'?'原文未报告显著关联':sig.assessment==='source_reported_significant'?'依原文统计陈述报告显著':'未确立')+'</td><td>'+esc(sig.raw_support||'未确立精确 P')+'<p>'+esc(e.null_or_absence_of_detection.raw_outcome_language||'')+'</p></td><td>均未授予</td></tr>';
+  });html+='</tbody></table>';
+ }else html+='<p>原始兼容字段和消费者弃权分别保留，不得从旧的 0、increases 或干预层名推断零效应、因果调控或科学重用权限。</p>';
+ return html+'<details><summary>原始字段、证据坐标、版本与明确限制</summary><pre>'+esc(a.utf8)+'</pre></details></details>';
+}
+function renderConservativeSemanticEvidence(a){
+ var d=JSON.parse(a.utf8),html='<details><summary>源语义暂定评估与来源绑定检查</summary><p>机器重用签发未获批准；独立科学授权、Gold 和正式物化均未授予。</p>';
+ if((d.rows||[]).some(function(r){return r.assessment})){
+  html+='<table><thead><tr><th>原始序号</th><th>结构结果</th><th>暂定语义</th><th>生成时来源绑定检查</th><th>理由</th></tr></thead><tbody>';
+  d.rows.forEach(function(r){var x=r.assessment;html+='<tr><td>'+esc(String(x.original_proposal_index+1))+'</td><td>'+esc(x.structural_result)+'</td><td>'+esc(x.semantic_status)+'</td><td>'+esc(r.verification.status)+' · '+esc(r.verification.verified_as_of)+'</td><td>'+esc(x.reason_codes.join('; '))+'</td></tr>'});html+='</tbody></table>';
+ }
+ return html+'<details><summary>原始提议、证据适用性、历史暴露、receipt 和权限缺口</summary><pre>'+esc(a.utf8)+'</pre></details></details>';
+}
 function renderProvisionalLinkageEvidence(item){
  var input=item.original_evidence?JSON.parse(item.original_evidence.utf8):null,decision=JSON.parse(item.candidate_decisions.utf8);
  var html='<section class="evidence-card"><h3>实验连接候选 · 未独立科学验证</h3><p>正式物化：0；科学授权：未授予。</p>';
  if(input){var packet=input.input;html+='<p>'+esc(packet.source_identity.pmcid)+' · '+esc(packet.observation_identity)+'</p>';
  html+='<details open><summary>原文与精确来源</summary>'+(packet.evidence_spans||[]).map(function(span){return '<article><strong>'+esc(span.evidence_span_id)+' · '+esc(span.section||span.source_role)+'</strong><blockquote>'+esc(span.text)+'</blockquote><p class="meta">'+esc(span.block_id)+' ['+span.char_start+', '+span.char_end+') · '+esc(span.text_hash)+'</p></article>'}).join('')+'</details>';
  html+='<details><summary>跨区域适用性评估（AI 暂定）</summary><pre>'+esc(JSON.stringify(input.source_applicability_assessment,null,2))+'</pre></details>';}
+ if(item.semantic_assessment)html+=renderConservativeSemanticEvidence(item.semantic_assessment);
  html+='<details open><summary>候选决策、拒绝原因和 V2 诊断</summary><pre>'+esc(JSON.stringify(decision,null,2))+'</pre></details></section>';return html;
 }
 function renderScientificComparison(pair){
@@ -420,6 +447,7 @@ function renderSourceBoundComparison(item){
   var html='<section><h3>'+esc(p.publication.pmcid)+' · 源绑定命题</h3><p>纳入判断：'+esc(p.inclusion_decision)+'；原生 Core 就绪状态：'+esc((p.native_readiness||{}).status||'未建立')+'</p><p class="badge warn">AI 暂定，未独立验证</p><dl>';
   Object.keys(p.facets).forEach(function(k){var f=p.facets[k];html+='<dt>'+esc(k)+'</dt><dd>'+esc(f.value||'未报告 / 未解决')+'<p class="meta">'+esc(f.uncertainty)+'</p></dd>'});
   html+='</dl><p>观察结果：'+esc(p.result.description.value||'未解决')+'</p><p>未知事项：'+esc(p.missing_information.join('; '))+'</p>';
+  if(p.effective_interpretation){var e=p.effective_interpretation;html+='<p>有效解释：'+esc(e.statistical_null_as_recorded?'未报告统计显著结果；不代表零效应或等效':e.effective_relation_kind==='association'?'观察性关联；不代表因果增加或降低':'源报告比较后的观察结果；因果权限未授予')+'</p>';}
   p.source_evidence.forEach(function(e){html+='<blockquote>'+esc(e.text)+'</blockquote><p class="meta">'+esc(e.evidence_span_id)+' · '+esc(e.char_start)+':'+esc(e.char_end)+' · '+esc(e.text_hash)+'</p>'});
   return html+'</section>';
  }
@@ -428,7 +456,7 @@ function renderSourceBoundComparison(item){
 async function loadCaseEvidencePage(offset){
  var target=document.querySelector('#case-scientific-page');if(!target||!_crItem)return;var id=_crItem.review_item_id;target.innerHTML='<p>正在加载本组原文与判断…</p>';
  try{var page=await api('/api/review-item/'+encodeURIComponent(id)+'/scientific-page?offset='+offset+'&limit=1');if(!_crItem||_crItem.review_item_id!==id)return;
- target.innerHTML=page.items.map(function(item){return item.kind==='provisional_linkage_evidence'?renderProvisionalLinkageEvidence(item):(item.kind==='provisional_scientific_proposition'||item.kind==='provisional_scientific_pair')?renderSourceBoundComparison(item):renderScientificComparison(item)}).join('')+(page.linkage_evidence_items||[]).map(renderProvisionalLinkageEvidence).join('')+'<nav aria-label="证据分页"><button id="evidence-prev" '+(offset===0?'disabled':'')+'>上一组</button><span> '+(offset+1)+' / '+page.total+' </span><button id="evidence-next" '+(offset+1>=page.total?'disabled':'')+'>下一组</button></nav>';
+ target.innerHTML=page.items.map(function(item){return item.kind==='provisional_linkage_evidence'?renderProvisionalLinkageEvidence(item):(item.kind==='provisional_scientific_proposition'||item.kind==='provisional_scientific_pair')?renderSourceBoundComparison(item):renderScientificComparison(item)}).join('')+(page.linkage_evidence_items||[]).map(renderProvisionalLinkageEvidence).join('')+(page.semantic_grounding_items||[]).map(renderProvisionalLinkageEvidence).join('')+((page.bounded_identity_verification||[]).length?'<details><summary>本观察的有界身份验证与剩余阻塞</summary><pre>'+esc(JSON.stringify(page.bounded_identity_verification,null,2))+'</pre></details>':'')+((page.scientific_identity_evidence||[]).length?'<details><summary>本命题的身份证据与实际准入结果</summary><pre>'+esc(JSON.stringify(page.scientific_identity_evidence,null,2))+'</pre></details>':'')+((page.native_proposition_bindings||[]).length?'<details><summary>本命题的原生来源对应（暂定）</summary><pre>'+esc(JSON.stringify(page.native_proposition_bindings,null,2))+'</pre></details>':'')+'<nav aria-label="证据分页"><button id="evidence-prev" '+(offset===0?'disabled':'')+'>上一组</button><span> '+(offset+1)+' / '+page.total+' </span><button id="evidence-next" '+(offset+1>=page.total?'disabled':'')+'>下一组</button></nav>';
  target.querySelector('#evidence-prev').onclick=function(){loadCaseEvidencePage(offset-1)};target.querySelector('#evidence-next').onclick=function(){loadCaseEvidencePage(offset+1)};
  target.querySelectorAll('.evidence-anchor-link').forEach(function(a){a.onclick=function(ev){ev.preventDefault();var passage=document.getElementById(a.getAttribute('href').slice(1));if(passage){passage.scrollIntoView({block:'center',behavior:'smooth'});passage.focus();passage.classList.add('evidence-highlight');setTimeout(function(){passage.classList.remove('evidence-highlight')},3000)}}});
  }catch(e){target.innerHTML='<p class="error">无法加载证据：'+esc(e.message)+'</p>'}

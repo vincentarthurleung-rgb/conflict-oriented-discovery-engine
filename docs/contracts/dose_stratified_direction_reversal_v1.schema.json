@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Source-local dose-stratified direction reversal diagnostic v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "diagnostic", "scope", "families", "reversal_family_count", "eligible_source_families", "abstentions", "duplicates", "scientific_authorization", "human_gold", "strict_core_eligible", "qualified_for_l4", "formal_conflict", "influences_existing_ABCD", "scientific_conflict_entropy_computed", "contradiction_probability_estimated", "Work_or_AI_review_consumed"],
+  "properties": {
+    "schema_version": {"const": "dose_stratified_direction_reversal_v1"},
+    "diagnostic": {"const": "DOSE_STRATIFIED_DIRECTION_REVERSAL"},
+    "scope": {"const": "source_local_dose_only"},
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["diagnostic", "context_comparison_identity", "context_comparison_key", "varying_context_fields", "strata", "opposing_dose_comparisons", "dependency", "interpretation", "scientific_authorization", "human_gold", "strict_core_eligible", "qualified_for_l4", "formal_conflict"],
+        "properties": {
+          "diagnostic": {"const": "DOSE_STRATIFIED_DIRECTION_REVERSAL"},
+          "context_comparison_identity": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "context_comparison_key": {"type": "object"},
+          "varying_context_fields": {"const": ["dose_raw"]},
+          "strata": {"type": "array", "minItems": 2, "items": {"type": "object", "required": ["observation_id", "record_identity", "native_revision_sha256", "dose", "raw_extracted_sign", "source_reported_direction", "effective_direction", "screening_direction", "statistical_significance_status", "statistical_scope_uncertainty", "tested_arm", "reference_arm", "original_result_span_identities", "source_result_evidence", "verified_packet_sha256", "extraction_warnings"]}},
+          "opposing_dose_comparisons": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["observation_ids", "doses", "source_reported_directions", "independent_comparison"], "properties": {"independent_comparison": {"const": false}}}},
+          "dependency": {"type": "object", "required": ["publication_count", "source_document_count", "dose_observation_count", "distinct_dose_contexts", "distinct_original_result_spans", "shared_original_result_spans", "independent_publication_replications", "independent_experimental_replications", "independent_biological_studies", "independence_status"], "properties": {"publication_count": {"const": 1}, "source_document_count": {"const": 1}, "independent_publication_replications": {"const": 0}, "independent_experimental_replications": {"type": "null"}, "independent_biological_studies": {"type": "null"}}},
+          "interpretation": {"type": "string"},
+          "scientific_authorization": {"const": false}, "human_gold": {"const": false},
+          "strict_core_eligible": {"const": false}, "qualified_for_l4": {"const": false}, "formal_conflict": {"const": false}
+        }
+      }
+    },
+    "reversal_family_count": {"type": "integer", "minimum": 0},
+    "eligible_source_families": {"type": "integer", "minimum": 0},
+    "abstentions": {"type": "array", "items": {"type": "object", "required": ["reasons"]}},
+    "duplicates": {"type": "array", "items": {"type": "object", "required": ["observation_id", "reason"]}},
+    "scientific_authorization": {"const": false}, "human_gold": {"const": false},
+    "strict_core_eligible": {"const": false}, "qualified_for_l4": {"const": false}, "formal_conflict": {"const": false},
+    "influences_existing_ABCD": {"const": false}, "scientific_conflict_entropy_computed": {"const": false},
+    "contradiction_probability_estimated": {"const": false}, "Work_or_AI_review_consumed": {"const": false}
+  }
+}
